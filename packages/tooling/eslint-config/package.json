@@ -1,0 +1,10 @@
+{
+  "name": "@suite/eslint-config",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Shared ESLint boundary rules for Business OS suite",
+  "main": "base.js",
+  "files": [
+    "base.js"
+  ]
+}

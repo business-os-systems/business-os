@@ -1,0 +1,48 @@
+name: "Bug Report / Incident"
+description: "File an issue for unexpected behavior, regression, or security flaw"
+title: "[BUG]: "
+labels: ["type:bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### Business OS Bug Report
+        Provide detailed reproduction steps and logs.
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      description: Rate the impact of this defect
+      options:
+        - "P0 - Blocker (Data leak / Security incident / Production crash)"
+        - "P1 - High (Major flow broken with no workaround)"
+        - "P2 - Medium (Feature flaw with workaround)"
+        - "P3 - Low (UI polish / minor discrepancy)"
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Exact steps to trigger the bug.
+      placeholder: "1. Login as user X\n2. Call endpoint Y\n3. Observe error Z"
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What should have happened.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior & Error Envelope
+      description: What actually occurred (include RFC 7807 Problem Details payload or stack trace).
+    validations:
+      required: true

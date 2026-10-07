@@ -1,0 +1,61 @@
+name: "Sprint Task / Feature"
+description: "Implementation ticket for a sprint backlog item"
+title: "[TASK]: "
+labels: ["type:feat"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### Business OS Implementation Ticket
+        Fill out the details below before picking up this task.
+
+  - type: input
+    id: sprint
+    attributes:
+      label: Sprint / Milestone
+      description: Which sprint does this ticket belong to? (e.g. Sprint 0: Platform Core Foundation)
+      placeholder: "Sprint 0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Target Subsystem / Package
+      description: Select the primary module or package this ticket touches
+      options:
+        - "packages/core/db"
+        - "packages/core/auth"
+        - "packages/core/core"
+        - "packages/core/redis"
+        - "packages/core/logger"
+        - "apps/api"
+        - "apps/web"
+        - "packages/modules/sites-cms"
+        - "packages/modules/booking-engine"
+        - "packages/modules/lodging-pms"
+        - "packages/modules/restaurant-pos"
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope of Work
+      description: Detailed description of what needs to be implemented.
+      placeholder: "1. Initialize Prisma client extension...\n2. Add RBAC check..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance Criteria (Pass / Fail)
+      description: Checklist that must pass before PR merge.
+      value: |
+        - [ ] Type safety verified with zero `any` types
+        - [ ] Multi-tenant isolation verified
+        - [ ] Automated integration tests written and passing
+        - [ ] Conventional commit standard followed
+    validations:
+      required: true
