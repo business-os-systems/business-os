@@ -41,3 +41,4 @@ coverage/
 *.local.*
 .developer.identity.json
 
+*.code-workspace
