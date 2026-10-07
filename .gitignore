@@ -35,3 +35,9 @@ coverage/
 *.njsproj
 *.sln
 *.sw?
+
+# Local Developer Overrides & Credentials (Untracked)
+*.local
+*.local.*
+.developer.identity.json
+
