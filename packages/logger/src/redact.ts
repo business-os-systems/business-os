@@ -1,0 +1,45 @@
+/**
+ * Comprehensive list of sensitive property paths to redact across logs.
+ * Covers authentication tokens, passwords, PINs, card data, and authorization headers.
+ */
+export const DEFAULT_REDACT_PATHS: readonly string[] = [
+  "password",
+  "*.password",
+  "*.*.password",
+  "pin",
+  "*.pin",
+  "*.*.pin",
+  "token",
+  "*.token",
+  "*.*.token",
+  "accessToken",
+  "*.accessToken",
+  "*.*.accessToken",
+  "refreshToken",
+  "*.refreshToken",
+  "*.*.refreshToken",
+  "secret",
+  "*.secret",
+  "*.*.secret",
+  "creditCard",
+  "*.creditCard",
+  "*.*.creditCard",
+  "cardNumber",
+  "*.cardNumber",
+  "*.*.cardNumber",
+  "cvv",
+  "*.cvv",
+  "*.*.cvv",
+  "authorization",
+  "*.authorization",
+  "*.*.authorization",
+  "apiKey",
+  "*.apiKey",
+  "*.*.apiKey",
+  "headers.authorization",
+  "headers.cookie",
+  "req.headers.authorization",
+  "req.headers.cookie",
+];
+
+export const REDACT_CENSOR = "[REDACTED]";
