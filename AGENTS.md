@@ -64,6 +64,7 @@ You are **STRICTLY PROHIBITED** from:
 - ❌ Bypassing tenant isolation (`organizationId` / `branchId`).
 - ❌ Running `prisma db push` on production or staging databases (use forward-only migrations).
 - ❌ Touching or modifying the live `river-view-homstay-lite` repository.
+- ❌ Deleting or modifying `*.code-workspace` files (these define the active multi-root IDE workspace).
 
 ---
 
