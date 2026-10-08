@@ -1,8 +1,8 @@
 packages:
   - "apps/*"
-  - "packages/core/*"
-  - "packages/tooling/*"
+  - "packages/*"
   - "packages/modules/*"
+  - "tooling/*"
 allowBuilds:
   '@prisma/client': true
   '@prisma/engines': true

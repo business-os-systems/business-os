@@ -18,7 +18,7 @@ importers:
         specifier: ^5.7.3
         version: 5.9.3
 
-  packages/core/db:
+  packages/db:
     dependencies:
       '@prisma/client':
         specifier: ^6.4.1
@@ -55,9 +55,9 @@ importers:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@20.19.43)(supports-color@7.2.0)
 
-  packages/tooling/eslint-config: {}
+  tooling/eslint-config: {}
 
-  packages/tooling/tsconfig: {}
+  tooling/tsconfig: {}
 
 packages:
 
