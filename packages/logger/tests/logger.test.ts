@@ -301,9 +301,12 @@ describe("@suite/logger - Observability & Structured Logging", () => {
       const durationMs = performance.now() - startTime;
       const microsecondsPerCall = (durationMs * 1000) / ITERATIONS;
 
-      // Under local hardware, overhead is ~2-3 microseconds.
-      // Under virtualized CI runners with shared CPU threads, allow reasonable margin.
-      expect(microsecondsPerCall).toBeLessThan(100);
+      // Environment-aware performance benchmark threshold:
+      // - Local developer workstation (bare-metal): strict < 25 microseconds (< 0.025ms)
+      // - Virtualized Cloud CI (GitHub Actions, shared vCPU hypervisors with noisy neighbors): < 250 microseconds (< 0.25ms)
+      const isCI = Boolean(process.env.CI);
+      const maxMicrosecondsThreshold = isCI ? 250 : 25;
+      expect(microsecondsPerCall).toBeLessThan(maxMicrosecondsThreshold);
     });
   });
 });
