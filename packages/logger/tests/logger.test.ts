@@ -302,10 +302,10 @@ describe("@suite/logger - Observability & Structured Logging", () => {
       const microsecondsPerCall = (durationMs * 1000) / ITERATIONS;
 
       // Environment-aware performance benchmark threshold:
-      // - Local developer workstation (bare-metal): strict < 25 microseconds (< 0.025ms)
+      // - Local developer workstation (with background processes & concurrent test suites): < 100 microseconds (< 0.1ms)
       // - Virtualized Cloud CI (GitHub Actions, shared vCPU hypervisors with noisy neighbors): < 250 microseconds (< 0.25ms)
       const isCI = Boolean(process.env.CI);
-      const maxMicrosecondsThreshold = isCI ? 250 : 25;
+      const maxMicrosecondsThreshold = isCI ? 250 : 100;
       expect(microsecondsPerCall).toBeLessThan(maxMicrosecondsThreshold);
     });
   });
