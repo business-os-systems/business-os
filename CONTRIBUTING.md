@@ -1,30 +1,45 @@
 # Engineering SDLC & Contributing Guidelines
 ## The 12-Pillar Enterprise Governance Protocol
-### Business OS (Composable Business Operating System)
+### Universal Composable Business Operating System (Business OS)
+### Target Workspace: `/home/rohit-bahuguna/RB/business-os`
 
-Welcome to the **Business OS** engineering repository. This project is built and maintained to **top-tier enterprise standards** (modeled on the rigor of Stripe, Shopify Plus, Linear, and AWS).
+Welcome to the **Business OS** engineering repository. This project is built and maintained to **top-tier enterprise standards** (modeled on the engineering rigor of Stripe, Shopify Plus, Linear, and AWS).
 
-Every contributor, engineer, and AI agent must adhere strictly to the **12-Pillar SDLC Framework** defined below.
+Every contributor, engineer, and AI agent must adhere strictly to the **12-Pillar SDLC Framework** and monorepo architectural rules defined below.
 
 ---
 
-## 1. Ticketing & Sprint Management
+## 1. Identity & Git Committer Configuration
 
-### Rule 1: Strict Issue-First Policy (Zero Un-Ticketed Work)
-- **No ticket = No code.** Absolutely no branch is created, no file is edited, and no commit is made without an active, numbered GitHub Issue (`#X`) assigned to a Sprint Milestone.
-- If a new defect, edge case, or refactor is identified, file an Issue first using `.github/ISSUE_TEMPLATE/` before touching any code.
+All Git actions, commits, and PRs in this repository **MUST** use this developer identity:
+- **Author Name:** `Rohit Bahuguna`
+- **Author Email:** `rohitbahuguna.work@gmail.com`
+- **SSH Remote Host:** `github-personal` (configured in `~/.ssh/config` using `~/.ssh/personal`)
+- **Git Push Remote:** `origin` (`git@github-personal:business-os-systems/business-os.git`)
+- Local overrides and developer credentials are stored in `.developer.identity.json` (permanently gitignored).
+
+---
+
+## 2. Ticketing & Sprint Management
+
+### Rule 1: Strict Issue-First Policy (NO TICKET = NO CODE)
+- **You are STRICTLY FORBIDDEN from writing code, editing files, creating branches, or committing without an active, numbered GitHub Issue (`#X`).**
+- Before doing ANY work:
+  1. Check open issues using `gh issue list --repo business-os-systems/business-os`.
+  2. If a ticket does not exist for the work requested, create one first using `gh issue create` attached to Milestone `Sprint 0: Platform Core Foundation`.
+  3. Only then proceed to create the branch.
 
 ### Rule 2: Deterministic Kanban State Machine
 Every ticket transitions through 5 sequential states on the **Business OS Core Product Roadmap** project board:
 1. `📋 Product Backlog`: Unscheduled future features or technical debt.
 2. `🎯 Ready for Sprint`: Fully specified with concrete Pass/Fail acceptance criteria.
 3. `⏳ In Progress`: Feature branch checked out and actively being coded.
-4. `👀 In Review`: Pull request opened with all automated CI checks passing.
-5. `✅ Done`: Pull request squash-merged to `main`, issue automatically closed.
+4. `👀 In Review`: Pull request opened targeting `dev` with all automated CI checks passing.
+5. `✅ Done`: Pull request squash-merged to `dev` (with subsequent environment promotion to `staging` and `main`), issue closed.
 
 ---
 
-## 2. Git & Branching Strategy
+## 3. Git & Branching Strategy
 
 ### Rule 3: 3-Tier Environment Promotion Pipeline
 We follow a structured 3-tier environment promotion architecture modeling enterprise release trains:
@@ -35,65 +50,135 @@ feat/#X-slug ──(PR)──> dev ──(Promotion PR)──> staging ──(Re
 ```
 
 1. **`dev` (Development Environment):**
-   - Active daily integration branch. All feature branches (`feat/*`) and defect fixes (`fix/*`) branch from `dev` and merge into `dev`.
+   - Active daily integration branch. **ALL feature work branches from and targets `dev`.**
    - Connected to development databases and test sandbox services.
 2. **`staging` (Pre-Production / Beta Environment):**
-   - Staging mirror for end-to-end integration testing, 4 AM night audit simulations, and beta customer preview.
-   - Promoted from `dev` at sprint milestone milestones.
-3. **`main` (Production Environment):**
+   - Staging mirror for end-to-end integration testing, 4:00 AM night audit simulations, and beta customer preview.
+   - Promoted from `dev` at sprint milestones.
+3. **`main` (Live Production Environment):**
    - The live, revenue-generating production system powering paying businesses.
    - Deployed strictly via verified Release PRs from `staging` with SemVer release tagging.
 
-### Rule 4: Protected Branches & Branch Naming
+### Rule 4: Protected Branches & Branch Naming Standard
 - **Protected Branches:** Direct pushes and force-pushes (`git push --force`) to `main`, `staging`, and `dev` are strictly prohibited.
 - **Branch Naming Standard:**
+  ```bash
+  git checkout -b <type>/#<issue-number>-<short-kebab-slug> dev
+  ```
   - **Features:** `feat/#<issue-num>-<kebab-slug>` (e.g. `feat/#3-platform-db-schema`)
   - **Bug Fixes:** `fix/#<issue-num>-<kebab-slug>` (e.g. `fix/#12-tenant-isolation-leak`)
-  - **Chores / Tooling:** `chore/#<issue-num>-<kebab-slug>` (e.g. `chore/#10-enterprise-sdlc-governance`)
+  - **Chores / Tooling:** `chore/#<issue-num>-<kebab-slug>` (e.g. `chore/#14-add-agents-md`)
   - **Documentation:** `docs/#<issue-num>-<kebab-slug>` (e.g. `docs/#15-api-contracts`)
   - **Emergency Hotfixes:** `hotfix/#<issue-num>-<kebab-slug>` (branched from `main`, backported to `staging` and `dev`)
 
 ---
 
-## 3. Code Standards & Local Quality Gates
+## 4. Monorepo Topology & Architectural Boundaries
+
+### Master Workspace Directory Layout
+```
+business-os/
+├── .changeset/                   # Semantic versioning and changelog generator
+├── .github/                      # CI/CD GitHub Actions workflows
+├── .husky/                       # Pre-commit git hooks (lint-staged, boundary check)
+├── .npmrc                        # Strict pnpm configuration
+├── package.json                  # Root monorepo workspace package.json
+├── pnpm-lock.yaml                # Deterministic lockfile
+├── pnpm-workspace.yaml           # Workspace declaration
+├── turbo.json                    # Turborepo task pipeline and caching rules
+│
+├── apps/                         # Executable Deployable Applications
+│   ├── api/                      # Hono v4 REST + RPC API Gateway (Node.js 22)
+│   ├── dashboard/                # Next.js 16 App Router Multi-Tenant Admin Portal
+│   ├── web/                      # Next.js 16 Public Guest Storefront & Engine
+│   ├── worker-audit/             # Standalone BullMQ Worker (Hash chaining & Archival)
+│   ├── desktop/                  # Tauri v2 POS Offline Desktop Shell (Rust + Web)
+│   ├── mobile/                   # Capacitor v8 Android/iOS Staff App
+│   └── ai-service/               # Python 3.12 FastAPI + LangGraph Sidecar
+│
+├── packages/                     # Core Platform Libraries & Shared Primitives
+│   ├── db/                       # Prisma v6 client, Schema folders & Tenant extensions
+│   ├── auth/                     # Better-Auth instantiation, Session MW, Passkeys, SSO
+│   ├── core/                     # RBAC evaluator, Operational clock turnover, Zod schemas
+│   ├── audit-sdk/                # BullMQ audit producer, SHA-256 cryptographic chaining
+│   ├── media/                    # Cloudflare R2 S3 client, presigned URL helpers
+│   ├── redis/                    # ioredis client singleton, distributed locks, rate limiters
+│   ├── logger/                   # Pino v9 structured logger with correlation IDs
+│   └── ui/                       # Shared shadcn/ui components & Tailwind v4 variables
+│
+├── packages/modules/             # Modular Business Suite Apps (Pluggable Verticals)
+│   ├── sites-cms/                # App 1: Headless CMS & Visual Website Builder
+│   ├── booking-engine/           # App 2: Public Booking Engine & Guest Portal
+│   ├── lodging-pms/              # App 3: Lodging PMS & Front Desk
+│   ├── restaurant-pos/           # App 4: Restaurant POS & Kitchen Display (KDS)
+│   ├── inventory/                # App 5: Central Stock & Material Requisitions
+│   └── ...                       # Subsequent modular apps (6 to 12)
+│
+└── tooling/                      # Shared Developer Tooling & Configurations
+    ├── tsconfig/                 # Shared tsconfig bases (base, nextjs, react, node)
+    ├── eslint-config/            # ESLint flat config + import boundary rules
+    ├── tailwind-config/          # Tailwind CSS v4 shared styling tokens
+    └── prettier-config/          # Shared formatting rules
+```
+
+### Architectural Boundary Directives:
+1. **Unidirectional Flow:** Code flows strictly downward (`apps/*` $\rightarrow$ `packages/modules/*` $\rightarrow$ `packages/*`).
+2. **Zero Cross-App Imports:** Deployable apps (`apps/*`) never import other apps directly.
+3. **Zero Cross-Module Direct Imports:** Pluggable modules (`packages/modules/*`) never import each other directly; cross-module events pass asynchronously via BullMQ / Redis or public platform contracts.
+4. **Encapsulated Database Access:** Database access is strictly encapsulated in `@suite/db`. `@suite/core` contains pure domain logic with **zero database dependencies**.
+5. **Foundation Packages:** Infrastructure libraries (`@suite/db`, `@suite/redis`, `@suite/logger`) **NEVER** import higher-level domain packages.
+6. **Zero Phantom Dependencies:** Every imported dependency must be declared in the package's local `package.json`.
+
+---
+
+## 5. Code Standards & Local Quality Gates
 
 ### Rule 5: Zero-Compromise Type Safety & Validation
 - `strict: true` across all TypeScript compiler configurations.
 - **Zero raw `any` types** and zero `@ts-ignore` bypasses.
 - All network boundaries (REST endpoints, RPC parameters, BullMQ payloads) must be parsed and validated with **Zod**.
-- **Type-Safe Environment Variables:** Every app validates its required environment variables at process boot; if any variable is missing or invalid, the process terminates immediately with an explicit error.
+- **Type-Safe Environment Variables:** Every package and app validates its required environment variables at process boot; if any variable is missing or invalid, the process terminates immediately with an explicit error.
 
-### Rule 6: Pre-Commit Quality Guard (Local Gates)
-Before any commit is accepted, local verification runs:
-1. Code formatting validation via `prettier`.
-2. Static analysis and architectural boundary checks via `eslint`.
-3. TypeScript compiler checks via `turbo run typecheck`.
+### Rule 6: Mandatory Local Quality Gates
+Before any commit or push is accepted, run the complete local gate:
+```bash
+pnpm turbo run lint && pnpm turbo run typecheck && pnpm turbo run test
+```
+All three checks must pass with zero errors.
 
 ---
 
-## 4. Pull Request Lifecycle & Merging
+## 6. Pull Request Lifecycle & The Human Approval Gate
 
 ### Rule 7: Pull Request Size Discipline (The Small PR Rule)
 - Pull requests must be small, atomic, and focused (**< 400 lines of code changed**, excluding auto-generated lockfiles or database migrations).
 - Large epics must be split into logical sub-tickets to ensure rigorous, fast code review.
 
-### Rule 8: Mandatory CI Gates & The Human Merge Approval Gate
+### Rule 8: Mandatory CI Gates & THE HUMAN MERGE APPROVAL GATE
 - Every PR triggers GitHub Actions Continuous Integration (`.github/workflows/ci.yml`):
   - ✅ **Lint:** `pnpm turbo run lint`
   - ✅ **Typecheck:** `pnpm turbo run typecheck`
   - ✅ **Automated Tests:** `pnpm turbo run test`
-- **Merge Strategy:** **Squash and Merge** into target branch (`dev`, `staging`, or `main`).
-- **THE MANDATORY HUMAN APPROVAL GATE:**
-  - AI agents and automated tools are **STRICTLY PROHIBITED** from merging Pull Requests autonomously.
-  - The agent must present the PR URL, summarize changes and test results, and **wait for explicit written Human/User approval** (e.g., *"Merge it"* or *"Approved"*) before executing `gh pr merge`.
+- **Conventional Commits:** All commits follow `type(scope): description (closes #X)` (e.g. `feat(logger): implement structured logging with pino v9 (closes #5)`).
+- **THE MANDATORY HUMAN MERGE APPROVAL GATE:**
+  - **AI AGENTS AND AUTOMATED TOOLS ARE STRICTLY FORBIDDEN FROM MERGING PULL REQUESTS AUTONOMOUSLY.**
+  - When you finish coding a ticket:
+    1. Run local gates: `pnpm turbo run lint && pnpm turbo run typecheck && pnpm turbo run test`.
+    2. Commit with Conventional Commits: `type(scope): description (closes #X)`.
+    3. Push branch: `git push -u origin <branch-name>`.
+    4. Open Pull Request targeting `dev`: `gh pr create --base dev ...`.
+    5. Verify GitHub Actions CI turns **Green ✅**.
+    6. **STOP. Present the PR link to the user, explain the changes, and WAIT FOR EXPLICIT WRITTEN APPROVAL (e.g. "Merge it" or "Approved").**
+    7. Only execute `gh pr merge <num> --squash --delete-branch` AFTER human approval is given.
 
 ---
 
-## 5. Data Safety & Architecture Documentation
+## 7. Data Safety & Architecture Documentation
 
 ### Rule 9: Zero-Downtime Migration Policy (Expand-and-Contract)
 - Destructive schema migrations (dropping columns, changing types in place) are prohibited on production schemas.
 - Forward-only, timestamped SQL migrations applied via `prisma migrate deploy`.
+- Running `prisma db push` on production or staging databases is strictly forbidden.
 - All seed scripts must be idempotent (`upsert`), ensuring repeat runs never fail or corrupt state.
 
 ### Rule 10: Architectural Decision Records (ADRs)
@@ -101,38 +186,40 @@ Before any commit is accepted, local verification runs:
 
 ---
 
-## 6. AI Agent Operational Protocol & Absolute Guardrails
+## 8. AI Agent Operational Protocol & Absolute Guardrails
 
 ### Rule 11: The Agent's Mandatory 7-Step Cycle
 When working on any ticket, the AI agent must strictly follow:
-1. **Identify Issue:** Verify the assigned GitHub Issue number and pass/fail criteria.
-2. **Branch:** Create isolated branch `git checkout -b <type>/#<issue-num>-<slug> dev` from latest `dev`.
+1. **Identify Issue:** Verify the assigned GitHub Issue number and pass/fail criteria via `gh issue list`.
+2. **Branch from `dev`:** Create isolated branch `git checkout -b <type>/#<issue-num>-<slug> dev`.
 3. **Verify Identity:** Ensure commits are attributed to `Rohit Bahuguna <rohitbahuguna.work@gmail.com>`.
 4. **Implement Scope:** Write code strictly adhering to the issue scope and architecture specs.
 5. **Local Verification:** Run `pnpm turbo run lint && pnpm turbo run typecheck && pnpm turbo run test`.
-6. **Push & Open PR:** Push branch and create PR via `gh pr create` targeting base `dev` with linked issue `Closes #X`.
-7. **Human Approval & Merge:** Present PR to user. **Wait for user approval** before running `gh pr merge`.
+6. **Push & Open PR:** Push branch and create PR targeting `dev` (`gh pr create --base dev ...`).
+7. **Human Approval Gate & Merge:** Present PR to user. **Wait for explicit written user approval** before running `gh pr merge <num> --squash --delete-branch`.
 
-### Rule 12: The Agent's Absolute Negative Constraints
-The AI agent is **STRICTLY PROHIBITED** from:
+### Rule 12: Architectural Quality Bar & Absolute Negative Constraints
+You are **STRICTLY PROHIBITED** from:
 - ❌ Merging any Pull Request without explicit human written approval.
-- ❌ Direct pushing to `main`, `staging`, or `dev`.
-- ❌ Bypassing TypeScript errors with `@ts-ignore` or `any`.
-- ❌ Deleting or disabling failing tests just to make a CI pipeline pass.
-- ❌ Writing "TODO: add auth/security later" placeholders.
+- ❌ Direct pushing or force-pushing to `main`, `staging`, or `dev`.
+- ❌ Using `@ts-ignore` or `any` to bypass TypeScript errors.
+- ❌ Deleting or disabling failing tests to force CI to pass.
+- ❌ Writing "TODO: add auth/security later" mock implementations.
 - ❌ Hardcoding mock data in production route handlers.
+- ❌ Bypassing tenant isolation (`organizationId` / `branchId`).
+- ❌ Running `prisma db push` on production or staging databases (use forward-only migrations).
 - ❌ Touching or modifying the live `river-view-homstay-lite` repository.
+- ❌ Deleting or modifying `*.code-workspace` files (these define the active multi-root IDE workspace).
 
 ---
 
-## 7. Versioning, Changesets & Feature Flags
+## 9. Versioning, Changesets & Feature Flags
 
 ### Semantic Versioning (SemVer) & Changesets:
 - Changes are tracked using `@changesets/cli` in `.changeset/`.
 - Merging to `dev` aggregates changesets.
 - Promoting to `staging` generates pre-release versions (e.g. `v0.1.0-beta.1`).
 - Promoting to `main` executes `changeset version`, bumping `package.json` versions and updating `CHANGELOG.md`.
-- `InstalledApp.version` in PostgreSQL tracks each tenant's installed version for zero-downtime schema migrations.
 
 ### Feature Flags Architecture ("Deploy != Release"):
 - Deploying code does not mean releasing it. New features are wrapped in feature flags.
@@ -141,11 +228,12 @@ The AI agent is **STRICTLY PROHIBITED** from:
 
 ---
 
-## 8. Developer Git Setup Checklist
+## 10. Specification References
 
-Ensure your local repository uses your personal identity:
-```bash
-git config user.name "Rohit Bahuguna"
-git config user.email "rohitbahuguna.work@gmail.com"
-```
-Local developer credentials and overrides must be placed in `.developer.identity.json`, which is permanently gitignored.
+Before implementing domain features, you **MUST** consult the authoritative specifications in `/home/rohit-bahuguna/RB/Composable_Business_Operating_System/`:
+- **Architecture & Scaling:** `02-architecture-and-tech-stack/TECH_STACK_HLD_AND_SCALING_BLUEPRINT.md`
+- **Platform Core DB Schema:** `03-platform-core/CORE_DATABASE_LLD_AND_ERD.md`
+- **API & Event Contracts:** `03-platform-core/CORE_API_AND_EVENT_CONTRACTS.md`
+- **Engineering Constitution:** `00-master-tracker/ENTERPRISE_ENGINEERING_STANDARDS_AND_PHILOSOPHY.md`
+- **Sprint Implementation Backlog:** `04-monorepo-and-infrastructure/SPRINT_0_TASK_BREAKDOWN.md`
+- **Monorepo Rules & Boundaries:** `04-monorepo-and-infrastructure/MONOREPO_RULES_STRUCTURE.md`

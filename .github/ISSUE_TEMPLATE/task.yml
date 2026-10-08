@@ -24,17 +24,30 @@ body:
       label: Target Subsystem / Package
       description: Select the primary module or package this ticket touches
       options:
-        - "packages/core/db"
-        - "packages/core/auth"
-        - "packages/core/core"
-        - "packages/core/redis"
-        - "packages/core/logger"
+        - "packages/db"
+        - "packages/auth"
+        - "packages/core"
+        - "packages/redis"
+        - "packages/logger"
+        - "packages/media"
+        - "packages/audit-sdk"
+        - "packages/ui"
         - "apps/api"
+        - "apps/dashboard"
         - "apps/web"
+        - "apps/worker-audit"
+        - "apps/desktop"
+        - "apps/mobile"
+        - "apps/ai-service"
         - "packages/modules/sites-cms"
         - "packages/modules/booking-engine"
         - "packages/modules/lodging-pms"
         - "packages/modules/restaurant-pos"
+        - "packages/modules/inventory"
+        - "tooling/tsconfig"
+        - "tooling/eslint-config"
+        - "tooling/tailwind-config"
+        - "tooling/prettier-config"
     validations:
       required: true
 

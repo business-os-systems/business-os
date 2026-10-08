@@ -27,30 +27,47 @@ This repository is organized as a high-performance **Turborepo v2 + pnpm** works
 
 ```
 business-os/
+├── .changeset/                   # Semantic versioning and changelog generator
+├── .github/                      # CI/CD GitHub Actions workflows
+├── .husky/                       # Pre-commit git hooks (lint-staged, boundary check)
+├── .npmrc                        # Strict pnpm configuration
+├── package.json                  # Root monorepo workspace package.json
+├── pnpm-lock.yaml                # Deterministic lockfile
+├── pnpm-workspace.yaml           # Workspace declaration
+├── turbo.json                    # Turborepo task pipeline and caching rules
 │
-├── apps/
-│   ├── api/                     # High-throughput Core API Gateway (Hono v4 + Node.js)
-│   ├── web/                     # Unified Multi-Tenant Storefront (Next.js 15 App Router)
-│   ├── dashboard/               # Tenant Admin & Back-Office ERP (Next.js 15 + Tailwind)
-│   └── pos-desktop/             # Offline-Resilient Physical POS (Tauri v2 + Rust)
+├── apps/                         # Executable Deployable Applications
+│   ├── api/                      # Hono v4 REST + RPC API Gateway (Node.js 22)
+│   ├── dashboard/                # Next.js 16 App Router Multi-Tenant Admin Portal
+│   ├── web/                      # Next.js 16 Public Guest Storefront & Engine
+│   ├── worker-audit/             # Standalone BullMQ Worker (Hash chaining & Archival)
+│   ├── desktop/                  # Tauri v2 POS Offline Desktop Shell (Rust + Web)
+│   ├── mobile/                   # Capacitor v8 Android/iOS Staff App
+│   └── ai-service/               # Python 3.12 FastAPI + LangGraph Sidecar
 │
-├── packages/
-│   ├── core/
-│   │   ├── db/                  # PostgreSQL 16 + Prisma v6 schema & tenant $extends
-│   │   ├── auth/                # Better-Auth v1.1+, SSO & manager override PIN
-│   │   ├── core/                # 4 AM turnover clock, RBAC engine & RFC 7807 errors
-│   │   ├── redis/               # ioredis connection pool & Redlock distributed mutex
-│   │   └── logger/              # Pino v9 structured logger with trace correlation
-│   │
-│   ├── modules/
-│   │   ├── sites-cms/           # App 1: Website Builder & Headless CMS
-│   │   ├── booking-engine/      # App 2: Public Booking Engine & Guest Portal
-│   │   ├── lodging-pms/         # App 3: Lodging PMS & Front Desk Operations
-│   │   └── restaurant-pos/      # App 4: Restaurant POS & Kitchen Display (KDS)
-│   │
-│   └── tooling/
-│       ├── tsconfig/            # Shared strict TypeScript compiler configurations
-│       └── eslint-config/       # Architecture boundary rules and linter guards
+├── packages/                     # Core Platform Libraries & Shared Primitives
+│   ├── db/                       # Prisma v6 client, Schema folders & Tenant extensions
+│   ├── auth/                     # Better-Auth instantiation, Session MW, Passkeys, SSO
+│   ├── core/                     # RBAC evaluator, Operational clock turnover, Zod schemas
+│   ├── audit-sdk/                # BullMQ audit producer, SHA-256 cryptographic chaining
+│   ├── media/                    # Cloudflare R2 S3 client, presigned URL helpers
+│   ├── redis/                    # ioredis client singleton, distributed locks, rate limiters
+│   ├── logger/                   # Pino v9 structured logger with correlation IDs
+│   └── ui/                       # Shared shadcn/ui components & Tailwind v4 variables
+│
+├── packages/modules/             # Modular Business Suite Apps (Pluggable Verticals)
+│   ├── sites-cms/                # App 1: Headless CMS & Visual Website Builder
+│   ├── booking-engine/           # App 2: Public Booking Engine & Guest Portal
+│   ├── lodging-pms/              # App 3: Lodging PMS & Front Desk
+│   ├── restaurant-pos/           # App 4: Restaurant POS & Kitchen Display (KDS)
+│   ├── inventory/                # App 5: Central Stock & Material Requisitions
+│   └── ...                       # Subsequent modular apps (6 to 12)
+│
+└── tooling/                      # Shared Developer Tooling & Configurations
+    ├── tsconfig/                 # Shared tsconfig bases (base, nextjs, react, node)
+    ├── eslint-config/            # ESLint flat config + import boundary rules
+    ├── tailwind-config/          # Tailwind CSS v4 shared styling tokens
+    └── prettier-config/          # Shared formatting rules
 ```
 
 ---
@@ -58,10 +75,12 @@ business-os/
 ## 3. Strict Boundary Rules
 
 To preserve enterprise maintainability and prevent technical debt:
-1. **Unidirectional Flow:** Applications (`apps/*`) depend on business modules (`packages/modules/*`), which depend on core infrastructure (`packages/core/*`).
-2. **Zero Cross-Module Direct Imports:** Modules never import each other directly; cross-module events pass via BullMQ or platform contracts.
-3. **Tenant Isolation:** All database access is mediated through `@suite/db` with automatic tenant isolation hooks.
-4. **Zero Untyped Code:** All schemas are strictly typed with Zod and TypeScript `strict: true`.
+1. **Unidirectional Flow:** Applications (`apps/*`) depend on business modules (`packages/modules/*`) and shared platform packages (`packages/*`). Platform packages never import applications.
+2. **Zero Cross-App Imports:** Deployable apps (`apps/*`) never import other apps directly.
+3. **Zero Cross-Module Direct Imports:** Pluggable modules (`packages/modules/*`) never import each other directly; cross-module events pass asynchronously via BullMQ or platform contracts.
+4. **Encapsulated Database Access:** Database access is strictly encapsulated in `@suite/db`; `@suite/core` contains pure domain logic with zero direct database dependencies.
+5. **Tenant Isolation:** All database operations enforce tenant isolation hooks (`organizationId` / `branchId`).
+6. **Zero Untyped Code:** All schemas are strictly validated with Zod and TypeScript `strict: true` (zero `@ts-ignore` and zero `any`).
 
 ---
 
