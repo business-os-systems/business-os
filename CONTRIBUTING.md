@@ -170,6 +170,7 @@ All three checks must pass with zero errors.
     5. Verify GitHub Actions CI turns **Green ✅**.
     6. **STOP. Present the PR link to the user, explain the changes, and WAIT FOR EXPLICIT WRITTEN APPROVAL (e.g. "Merge it" or "Approved").**
     7. Only execute `gh pr merge <num> --squash --delete-branch` AFTER human approval is given.
+    8. **Post-Merge Integration Gate (P0 Stop-the-Line):** Immediately after merging, monitor and verify that `dev`'s post-merge GitHub Actions CI run turns **Green ✅**. If `dev` turns Red, **STOP ALL NEW WORK IMMEDIATELY** — resolving `dev` is P0 priority before picking up any new issue, creating any new branch, or writing any code.
 
 ---
 
@@ -197,6 +198,7 @@ When working on any ticket, the AI agent must strictly follow:
 5. **Local Verification:** Run `pnpm turbo run lint && pnpm turbo run typecheck && pnpm turbo run test`.
 6. **Push & Open PR:** Push branch and create PR targeting `dev` (`gh pr create --base dev ...`).
 7. **Human Approval Gate & Merge:** Present PR to user. **Wait for explicit written user approval** before running `gh pr merge <num> --squash --delete-branch`.
+8. **Post-Merge Integration Gate (P0 Stop-the-Line):** Immediately after merging, verify `dev`'s post-merge CI turns **Green ✅**. If `dev` breaks, all new work stops until `dev` is resolved.
 
 ### Rule 12: Architectural Quality Bar & Absolute Negative Constraints
 You are **STRICTLY PROHIBITED** from:
@@ -210,6 +212,8 @@ You are **STRICTLY PROHIBITED** from:
 - ❌ Running `prisma db push` on production or staging databases (use forward-only migrations).
 - ❌ Touching or modifying the live `river-view-homstay-lite` repository.
 - ❌ Deleting or modifying `*.code-workspace` files (these define the active multi-root IDE workspace).
+- ❌ Writing undocumented API endpoints: Every HTTP route **MUST** be registered with `@hono/zod-openapi`'s `createRoute()` with schemas for params, request body, and RFC 7807 problem details responses.
+- ❌ Exposing `/doc` and `/openapi.json` without environment guards: Internal documentation must be protected or restricted in production.
 
 ---
 

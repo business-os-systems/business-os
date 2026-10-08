@@ -1,9 +1,20 @@
-import { Hono } from "hono";
-import { z } from "zod";
+import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { prisma } from "@suite/db";
 import { NotFoundError, ValidationError } from "@suite/core/errors";
 
-export const organizationsRouter = new Hono();
+export const organizationsRouter = new OpenAPIHono({
+  defaultHook: (result, _c) => {
+    if (!result.success) {
+      throw new ValidationError(
+        "Invalid request parameters",
+        result.error.errors.map((e) => ({
+          name: e.path.join("."),
+          reason: e.message,
+        }))
+      );
+    }
+  },
+});
 
 const createOrgSchema = z.object({
   name: z.string().min(2).max(191),
@@ -15,13 +26,140 @@ const createOrgSchema = z.object({
   customDomain: z.string().max(191).optional(),
 });
 
-const updateOrgSchema = createOrgSchema.partial();
+const OrganizationResponseSchema = z.object({
+  id: z.string().openapi({ example: "org_cm123xyz" }),
+  name: z.string().openapi({ example: "Acme Hospitality Corp" }),
+  slug: z.string().openapi({ example: "acme-hospitality" }),
+  currency: z.string().openapi({ example: "INR" }),
+  country: z.string().openapi({ example: "IN" }),
+  defaultLocale: z.string().openapi({ example: "en" }),
+  jurisdiction: z.string().openapi({ example: "IN_DEFAULT" }),
+  customDomain: z.string().nullable().optional().openapi({ example: "hospitality.acme.com" }),
+  createdAt: z.date().or(z.string()).openapi({ example: "2026-10-08T12:00:00.000Z" }),
+  updatedAt: z.date().or(z.string()).openapi({ example: "2026-10-08T12:00:00.000Z" }),
+  branches: z
+    .array(
+      z.object({
+        id: z.string(),
+        name: z.string(),
+        code: z.string(),
+        type: z.string(),
+        status: z.string(),
+      })
+    )
+    .optional(),
+});
 
-/**
- * GET /api/v1/organizations
- * Lists all active organizations.
- */
-organizationsRouter.get("/", async (c) => {
+const listOrganizationsResponseSchema = z.object({
+  success: z.literal(true),
+  data: z.array(OrganizationResponseSchema),
+  requestId: z.string().openapi({ example: "req_01924823" }),
+  timestamp: z.string().openapi({ example: "2026-10-08T12:00:00.000Z" }),
+});
+
+const getOrganizationResponseSchema = z.object({
+  success: z.literal(true),
+  data: OrganizationResponseSchema,
+  requestId: z.string().openapi({ example: "req_01924823" }),
+  timestamp: z.string().openapi({ example: "2026-10-08T12:00:00.000Z" }),
+});
+
+const problemDetailsResponseSchema = z.object({
+  type: z.string().openapi({ example: "https://errors.business-os.com/errors/not-found" }),
+  title: z.string().openapi({ example: "Not Found" }),
+  status: z.number().openapi({ example: 404 }),
+  detail: z.string().openapi({ example: "Organization [org_123] not found" }),
+  instance: z.string().openapi({ example: "/api/v1/organizations/org_123" }),
+  code: z.string().openapi({ example: "ORGANIZATION_NOT_FOUND" }),
+  requestId: z.string().openapi({ example: "req_abc123" }),
+  timestamp: z.string().openapi({ example: "2026-10-08T12:00:00.000Z" }),
+});
+
+export const listOrganizationsRoute = createRoute({
+  method: "get",
+  path: "/",
+  tags: ["Organizations & Tenancy"],
+  summary: "List all organizations",
+  description: "Fetches a high-level list of registered tenant organizations and their primary branches.",
+  responses: {
+    200: {
+      content: {
+        "application/json": {
+          schema: listOrganizationsResponseSchema,
+        },
+      },
+      description: "List of organizations successfully retrieved.",
+    },
+  },
+});
+
+export const createOrganizationRoute = createRoute({
+  method: "post",
+  path: "/",
+  tags: ["Organizations & Tenancy"],
+  summary: "Create a new organization",
+  description: "Provisions a new root tenant organization.",
+  request: {
+    body: {
+      content: {
+        "application/json": {
+          schema: createOrgSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    201: {
+      content: {
+        "application/json": {
+          schema: getOrganizationResponseSchema,
+        },
+      },
+      description: "Organization successfully created.",
+    },
+    422: {
+      content: {
+        "application/problem+json": {
+          schema: problemDetailsResponseSchema,
+        },
+      },
+      description: "Validation error on payload.",
+    },
+  },
+});
+
+export const getOrganizationRoute = createRoute({
+  method: "get",
+  path: "/{id}",
+  tags: ["Organizations & Tenancy"],
+  summary: "Get organization by ID",
+  description: "Fetches detailed organizational records, operational branches, and statutory tax profile.",
+  request: {
+    params: z.object({
+      id: z.string().openapi({ description: "Unique Organization ID", example: "org_cm123xyz" }),
+    }),
+  },
+  responses: {
+    200: {
+      content: {
+        "application/json": {
+          schema: getOrganizationResponseSchema,
+        },
+      },
+      description: "Organization details found.",
+    },
+    404: {
+      content: {
+        "application/problem+json": {
+          schema: problemDetailsResponseSchema,
+        },
+      },
+      description: "Organization ID not found.",
+    },
+  },
+});
+
+organizationsRouter.openapi(listOrganizationsRoute, async (c) => {
   const orgs = await prisma.organization.findMany({
     orderBy: { createdAt: "desc" },
     include: {
@@ -31,20 +169,45 @@ organizationsRouter.get("/", async (c) => {
     },
   });
 
-  return c.json({
-    success: true,
-    data: orgs,
-    requestId: c.get("requestId") || "req_unknown",
-    timestamp: new Date().toISOString(),
-  });
+  return c.json(
+    {
+      success: true as const,
+      data: orgs,
+      requestId: c.get("requestId") || "req_unknown",
+      timestamp: new Date().toISOString(),
+    },
+    200
+  );
 });
 
-/**
- * GET /api/v1/organizations/:id
- * Fetches organization by ID.
- */
-organizationsRouter.get("/:id", async (c) => {
-  const id = c.req.param("id");
+organizationsRouter.openapi(createOrganizationRoute, async (c) => {
+  const body = c.req.valid("json");
+
+  const org = await prisma.organization.create({
+    data: {
+      name: body.name,
+      slug: body.slug,
+      currency: body.currency,
+      country: body.country,
+      defaultLocale: body.defaultLocale,
+      jurisdiction: body.jurisdiction,
+      customDomain: body.customDomain,
+    },
+  });
+
+  return c.json(
+    {
+      success: true as const,
+      data: org,
+      requestId: c.get("requestId") || "req_unknown",
+      timestamp: new Date().toISOString(),
+    },
+    201
+  );
+});
+
+organizationsRouter.openapi(getOrganizationRoute, async (c) => {
+  const { id } = c.req.valid("param");
 
   const org = await prisma.organization.findUnique({
     where: { id },
@@ -60,90 +223,13 @@ organizationsRouter.get("/:id", async (c) => {
     });
   }
 
-  return c.json({
-    success: true,
-    data: org,
-    requestId: c.get("requestId") || "req_unknown",
-    timestamp: new Date().toISOString(),
-  });
-});
-
-/**
- * POST /api/v1/organizations
- * Creates a new organization root.
- */
-organizationsRouter.post("/", async (c) => {
-  const rawBody = await c.req.json().catch(() => ({}));
-  const parseResult = createOrgSchema.safeParse(rawBody);
-
-  if (!parseResult.success) {
-    throw new ValidationError(
-      "Invalid organization payload",
-      parseResult.error.errors.map((e) => ({
-        name: e.path.join("."),
-        reason: e.message,
-      }))
-    );
-  }
-
-  const org = await prisma.organization.create({
-    data: {
-      name: parseResult.data.name,
-      slug: parseResult.data.slug,
-      currency: parseResult.data.currency,
-      country: parseResult.data.country,
-      defaultLocale: parseResult.data.defaultLocale,
-      jurisdiction: parseResult.data.jurisdiction,
-      customDomain: parseResult.data.customDomain,
-    },
-  });
-
   return c.json(
     {
-      success: true,
+      success: true as const,
       data: org,
       requestId: c.get("requestId") || "req_unknown",
       timestamp: new Date().toISOString(),
     },
-    201
+    200
   );
-});
-
-/**
- * PATCH /api/v1/organizations/:id
- * Updates organization details.
- */
-organizationsRouter.patch("/:id", async (c) => {
-  const id = c.req.param("id");
-  const rawBody = await c.req.json().catch(() => ({}));
-  const parseResult = updateOrgSchema.safeParse(rawBody);
-
-  if (!parseResult.success) {
-    throw new ValidationError(
-      "Invalid organization update payload",
-      parseResult.error.errors.map((e) => ({
-        name: e.path.join("."),
-        reason: e.message,
-      }))
-    );
-  }
-
-  const existing = await prisma.organization.findUnique({ where: { id } });
-  if (!existing) {
-    throw new NotFoundError(`Organization [${id}] not found`, {
-      code: "ORGANIZATION_NOT_FOUND",
-    });
-  }
-
-  const updated = await prisma.organization.update({
-    where: { id },
-    data: parseResult.data,
-  });
-
-  return c.json({
-    success: true,
-    data: updated,
-    requestId: c.get("requestId") || "req_unknown",
-    timestamp: new Date().toISOString(),
-  });
 });

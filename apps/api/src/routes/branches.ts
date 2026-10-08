@@ -1,33 +1,114 @@
-import { Hono } from "hono";
-import { z } from "zod";
+import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { prisma } from "@suite/db";
-import { NotFoundError, ValidationError } from "@suite/core/errors";
+import { NotFoundError } from "@suite/core/errors";
 
-export const branchesRouter = new Hono();
+export const branchesRouter = new OpenAPIHono();
 
-const createBranchSchema = z.object({
-  organizationId: z.string().min(1, "Organization ID is required"),
-  name: z.string().min(2).max(191),
-  code: z.string().min(2).max(32).regex(/^[A-Z0-9_-]+$/, "Code must be uppercase alphanumeric with dashes/underscores"),
-  type: z.string().min(2).max(64),
-  timezone: z.string().default("Asia/Kolkata"),
-  nightAuditHour: z.number().int().min(0).max(23).default(4),
-  currency: z.string().length(3).default("INR"),
-  locale: z.string().max(10).default("en"),
-  dateFormat: z.string().max(20).default("YYYY-MM-DD"),
-  timeFormat: z.string().max(5).default("12h"),
-  taxIdentifier: z.string().max(64).optional(),
-  parentBranchId: z.string().optional(),
+const BranchResponseSchema = z.object({
+  id: z.string().openapi({ example: "br_cm123xyz" }),
+  organizationId: z.string().openapi({ example: "org_cm123xyz" }),
+  name: z.string().openapi({ example: "Riverview Homestay Main" }),
+  code: z.string().openapi({ example: "RVM-01" }),
+  type: z.string().openapi({ example: "HOSPITALITY_LODGING" }),
+  timezone: z.string().openapi({ example: "Asia/Kolkata" }),
+  nightAuditHour: z.number().openapi({ example: 4 }),
+  currency: z.string().openapi({ example: "INR" }),
+  locale: z.string().openapi({ example: "en" }),
+  status: z.string().openapi({ example: "ACTIVE" }),
+  parentBranchId: z.string().nullable().optional(),
+  createdAt: z.date().or(z.string()).openapi({ example: "2026-10-08T12:00:00.000Z" }),
+  updatedAt: z.date().or(z.string()).openapi({ example: "2026-10-08T12:00:00.000Z" }),
+  organization: z
+    .object({
+      id: z.string(),
+      name: z.string(),
+      slug: z.string(),
+    })
+    .optional(),
 });
 
-const updateBranchSchema = createBranchSchema.partial().omit({ organizationId: true });
+const listBranchesResponseSchema = z.object({
+  success: z.literal(true),
+  data: z.array(BranchResponseSchema),
+  requestId: z.string().openapi({ example: "req_01924823" }),
+  timestamp: z.string().openapi({ example: "2026-10-08T12:00:00.000Z" }),
+});
 
-/**
- * GET /api/v1/branches
- * Lists operational branches filtered by organizationId.
- */
-branchesRouter.get("/", async (c) => {
-  const orgId = c.req.query("organizationId") || c.req.header("x-organization-id");
+const getBranchResponseSchema = z.object({
+  success: z.literal(true),
+  data: BranchResponseSchema,
+  requestId: z.string().openapi({ example: "req_01924823" }),
+  timestamp: z.string().openapi({ example: "2026-10-08T12:00:00.000Z" }),
+});
+
+const problemDetailsResponseSchema = z.object({
+  type: z.string().openapi({ example: "https://errors.business-os.com/errors/not-found" }),
+  title: z.string().openapi({ example: "Not Found" }),
+  status: z.number().openapi({ example: 404 }),
+  detail: z.string().openapi({ example: "Branch [br_123] not found" }),
+  instance: z.string().openapi({ example: "/api/v1/branches/br_123" }),
+  code: z.string().openapi({ example: "BRANCH_NOT_FOUND" }),
+  requestId: z.string().openapi({ example: "req_abc123" }),
+  timestamp: z.string().openapi({ example: "2026-10-08T12:00:00.000Z" }),
+});
+
+export const listBranchesRoute = createRoute({
+  method: "get",
+  path: "/",
+  tags: ["Operational Branches & Hierarchy"],
+  summary: "List operational branches",
+  description: "Lists operational physical branches (properties, stores, cafes) filtered by organization ID.",
+  request: {
+    query: z.object({
+      organizationId: z.string().optional().openapi({ description: "Filter branches by Organization ID", example: "org_cm123xyz" }),
+    }),
+  },
+  responses: {
+    200: {
+      content: {
+        "application/json": {
+          schema: listBranchesResponseSchema,
+        },
+      },
+      description: "Branches successfully retrieved.",
+    },
+  },
+});
+
+export const getBranchRoute = createRoute({
+  method: "get",
+  path: "/{id}",
+  tags: ["Operational Branches & Hierarchy"],
+  summary: "Get branch by ID",
+  description: "Fetches single branch details including parent/sub-branch hierarchy, address, and local timezone/4 AM turnover settings.",
+  request: {
+    params: z.object({
+      id: z.string().openapi({ description: "Unique Branch ID", example: "br_cm123xyz" }),
+    }),
+  },
+  responses: {
+    200: {
+      content: {
+        "application/json": {
+          schema: getBranchResponseSchema,
+        },
+      },
+      description: "Branch details found.",
+    },
+    404: {
+      content: {
+        "application/problem+json": {
+          schema: problemDetailsResponseSchema,
+        },
+      },
+      description: "Branch not found.",
+    },
+  },
+});
+
+branchesRouter.openapi(listBranchesRoute, async (c) => {
+  const { organizationId } = c.req.valid("query");
+  const orgId = organizationId || c.req.header("x-organization-id");
 
   const branches = await prisma.branch.findMany({
     where: orgId ? { organizationId: orgId } : undefined,
@@ -37,20 +118,19 @@ branchesRouter.get("/", async (c) => {
     },
   });
 
-  return c.json({
-    success: true,
-    data: branches,
-    requestId: c.get("requestId") || "req_unknown",
-    timestamp: new Date().toISOString(),
-  });
+  return c.json(
+    {
+      success: true as const,
+      data: branches,
+      requestId: c.get("requestId") || "req_unknown",
+      timestamp: new Date().toISOString(),
+    },
+    200
+  );
 });
 
-/**
- * GET /api/v1/branches/:id
- * Fetches branch by ID.
- */
-branchesRouter.get("/:id", async (c) => {
-  const id = c.req.param("id");
+branchesRouter.openapi(getBranchRoute, async (c) => {
+  const { id } = c.req.valid("param");
 
   const branch = await prisma.branch.findUnique({
     where: { id },
@@ -67,82 +147,13 @@ branchesRouter.get("/:id", async (c) => {
     });
   }
 
-  return c.json({
-    success: true,
-    data: branch,
-    requestId: c.get("requestId") || "req_unknown",
-    timestamp: new Date().toISOString(),
-  });
-});
-
-/**
- * POST /api/v1/branches
- * Creates a new branch operational unit.
- */
-branchesRouter.post("/", async (c) => {
-  const rawBody = await c.req.json().catch(() => ({}));
-  const parseResult = createBranchSchema.safeParse(rawBody);
-
-  if (!parseResult.success) {
-    throw new ValidationError(
-      "Invalid branch creation payload",
-      parseResult.error.errors.map((e) => ({
-        name: e.path.join("."),
-        reason: e.message,
-      }))
-    );
-  }
-
-  const branch = await prisma.branch.create({
-    data: parseResult.data,
-  });
-
   return c.json(
     {
-      success: true,
+      success: true as const,
       data: branch,
       requestId: c.get("requestId") || "req_unknown",
       timestamp: new Date().toISOString(),
     },
-    201
+    200
   );
-});
-
-/**
- * PATCH /api/v1/branches/:id
- * Updates branch details.
- */
-branchesRouter.patch("/:id", async (c) => {
-  const id = c.req.param("id");
-  const rawBody = await c.req.json().catch(() => ({}));
-  const parseResult = updateBranchSchema.safeParse(rawBody);
-
-  if (!parseResult.success) {
-    throw new ValidationError(
-      "Invalid branch update payload",
-      parseResult.error.errors.map((e) => ({
-        name: e.path.join("."),
-        reason: e.message,
-      }))
-    );
-  }
-
-  const existing = await prisma.branch.findUnique({ where: { id } });
-  if (!existing) {
-    throw new NotFoundError(`Branch [${id}] not found`, {
-      code: "BRANCH_NOT_FOUND",
-    });
-  }
-
-  const updated = await prisma.branch.update({
-    where: { id },
-    data: parseResult.data,
-  });
-
-  return c.json({
-    success: true,
-    data: updated,
-    requestId: c.get("requestId") || "req_unknown",
-    timestamp: new Date().toISOString(),
-  });
 });
