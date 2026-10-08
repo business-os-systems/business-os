@@ -1,0 +1,35 @@
+{
+  "name": "@suite/redis",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/ tests/",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "bullmq": "^5.41.0",
+    "ioredis": "^5.4.2"
+  },
+  "devDependencies": {
+    "@suite/eslint-config": "workspace:*",
+    "@suite/tsconfig": "workspace:*",
+    "@types/node": "^20.17.19",
+    "@typescript-eslint/eslint-plugin": "^8.26.0",
+    "@typescript-eslint/parser": "^8.26.0",
+    "eslint": "^8.57.1",
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.8"
+  }
+}
