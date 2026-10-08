@@ -1,0 +1,584 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ==========================================
+// 1. ORGANIZATION & TENANCY ROOT
+// ==========================================
+
+enum OrgStatus {
+  ACTIVE
+  TRIAL
+  PAST_DUE
+  SUSPENDED
+  ARCHIVED
+}
+
+model Organization {
+  id                  String             @id @default(cuid())
+  name                String             @db.VarChar(191) // Legal / Brand Name (e.g. "Himalayan Hospitality Group")
+  slug                String             @unique @db.VarChar(191) // e.g. "himalayan-group"
+  customDomain        String?            @unique @db.VarChar(191) // e.g. "app.himalayanstay.com"
+
+  currency            String             @default("INR") @db.VarChar(3) // Master HQ currency: "INR", "AED", "USD", "EUR"
+  country             String             @default("IN") @db.VarChar(2)  // "IN", "AE", "US", "FR"
+  defaultLocale       String             @default("en") @db.VarChar(10) // Fallback language: "en", "hi", "ar"
+  jurisdiction        String             @default("IN_DEFAULT") @db.VarChar(50) // "IN_DEFAULT", "AE_DUBAI", "SA_ZATCA"
+
+  status              OrgStatus          @default(ACTIVE)
+  themeConfig         Json               @default("{}") // Master theme CSS tokens: primary, accent, fontHeading, radius
+  metadata            Json               @default("{}") // Extensibility hook: custom tenant settings & plugins
+
+  createdAt           DateTime           @default(now()) @db.Timestamptz(6)
+  updatedAt           DateTime           @updatedAt @db.Timestamptz(6)
+
+  // 1:1 Universal Statutory Tax Credentials
+  taxProfile          OrganizationTaxProfile?
+
+  // Physical Geography & Ground Reality
+  registeredAddressId String?
+  registeredAddress   Address?           @relation(fields: [registeredAddressId], references: [id], onDelete: SetNull)
+  branches            Branch[]           // Ground Operational Execution Units (Homestays, Cafes, Warehouses)
+
+  // 1:N Core Identity, Access & Entitlements
+  users               UserOrganization[] // Company membership
+  userBranchRoles     UserBranchRole[]   // Branch-scoped role execution
+  roles               Role[]             // Dynamic RBAC catalog
+  invitations         OrganizationInvitation[]
+  apiKeys             ApiKey[]           // M2M / Webhooks
+  ssoConnections      SsoConnection[]    // Enterprise Corporate Identity & Domain Discovery
+  installedApps       InstalledApp[]     // Modular app store entitlements
+  media               Media[]            // Universal R2 digital asset store
+
+  @@index([status])
+  @@map("organizations")
+}
+
+// ==========================================
+// 2. GEOGRAPHIC & OPERATIONAL SITES PRIMITIVES (Ground Reality)
+// ==========================================
+
+model Address {
+  id             String              @id @default(cuid())
+
+  // Human-Readable Postal Coordinates
+  streetAddress  String              @db.VarChar(255) // Flat/Building, Street, Area
+  landmark       String?             @db.VarChar(191) // e.g. "Near Hadimba Temple, Old Manali"
+  city           String              @db.VarChar(100)
+  state          String              @db.VarChar(100)
+  postalCode     String              @db.VarChar(20)
+  country        String              @default("IN") @db.VarChar(2) // ISO 3166-1 alpha-2
+
+  // High-Precision Geospatial Coordinates (for Google Maps, Navigation, Geo-fencing)
+  latitude       Decimal?            @db.Decimal(10, 7)
+  longitude      Decimal?            @db.Decimal(10, 7)
+  googlePlaceId  String?             @db.VarChar(255)
+  mapUrl         String?             @db.Text
+
+  createdAt      DateTime            @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime            @updatedAt @db.Timestamptz(6)
+
+  // Relationships
+  branches       Branch[]
+  organizations  Organization[]
+
+  @@index([city, state, country])
+  @@map("addresses")
+}
+
+model Branch {
+  id              String              @id @default(cuid())
+  organizationId  String
+  organization    Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Optional Self-Referential Hierarchy (Sub-branches / Outlets / Sections within a resort)
+  parentBranchId  String?
+  parentBranch    Branch?             @relation("BranchHierarchy", fields: [parentBranchId], references: [id], onDelete: Restrict)
+  subBranches     Branch[]            @relation("BranchHierarchy")
+
+  name            String              @db.VarChar(191) // e.g. "River View Homestay", "River View Cafe"
+  code            String              @db.VarChar(32)  // e.g. "MANALI-01", "CAFE-01"
+
+  // Dynamic Classification & Multi-App Capabilities (NO STATIC SQL ENUMS!)
+  type            String              @db.VarChar(64)  // "homestay", "restaurant", "central_warehouse", "salon"
+  capabilities    String[]            @default([])     // ["lodging", "dining", "retail", "events"]
+  status          String              @default("ACTIVE") @db.VarChar(32) // "ACTIVE", "TEMPORARILY_CLOSED", "ARCHIVED"
+
+  // Ground Operational Clock & Turnover (Per-Branch Operational Reality!)
+  timezone        String              @default("Asia/Kolkata") @db.VarChar(64) // Local IANA timezone
+  nightAuditHour  Int                 @default(4)                             // Operational day cutoff / rollover hour (default 4:00 AM)
+
+  // Ground Localization & Formatting (Branch-Specific!)
+  currency        String              @default("INR") @db.VarChar(3)          // Local operational currency
+  locale          String              @default("en") @db.VarChar(10)          // Local language
+  dateFormat      String              @default("YYYY-MM-DD") @db.VarChar(20)  // "DD/MM/YYYY" vs "YYYY-MM-DD"
+  timeFormat      String              @default("12h") @db.VarChar(5)          // "12h" vs "24h"
+  taxIdentifier   String?             @db.VarChar(64)                         // Local GSTIN/State TIN/TRN
+
+  // Physical Location & Geography
+  addressId       String?
+  address         Address?            @relation(fields: [addressId], references: [id], onDelete: SetNull)
+
+  // Extensibility hook for app-specific branch settings
+  metadata        Json                @default("{}")
+
+  // Core Identity, Scoped Access & App Entitlements
+  userRoles       UserBranchRole[]
+  appConfigs      AppBranchConfig[]
+
+  createdAt       DateTime            @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime            @updatedAt @db.Timestamptz(6)
+
+  @@unique([organizationId, code])
+  @@index([organizationId, status])
+  @@index([organizationId, type])
+  @@index([parentBranchId])
+  @@index([addressId])
+  @@map("branches")
+}
+
+// ==========================================
+// 3. UNIVERSAL DIGITAL ASSET & MEDIA PRIMITIVE (Cloudflare R2)
+// ==========================================
+
+model Media {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Storage Location (Cloudflare R2 Object Storage)
+  url            String       @db.Text         // Public CDN URL or Base Storage Path
+  storageKey     String       @unique @db.VarChar(255) // Bucket object key (e.g. "org_123/rooms/deluxe_01.webp")
+  filename       String       @db.VarChar(255) // Original uploaded name
+  mimeType       String       @db.VarChar(100) // "image/webp", "application/pdf", "image/jpeg"
+  sizeBytes      Int                           // Byte size for quota & billing tracking
+
+  // Layout & Responsive Metadata (Next.js Image CLS prevention)
+  width          Int?
+  height         Int?
+  altText        String?      @db.VarChar(255)
+
+  // Security & Data Privacy (OWASP Compliance)
+  isPrivate      Boolean      @default(false)  // If true, requires presigned URL; NEVER served publicly!
+
+  // App Categorization
+  appId          String?      @db.VarChar(64)  // e.g. "lodging_pms", "restaurant_pos", "sites_cms"
+  folder         String       @default("general") @db.VarChar(64) // "rooms", "menu", "kyc", "receipts"
+
+  // Audit
+  uploadedById   String?      @db.VarChar(64)  // User ID who uploaded
+
+  createdAt      DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @db.Timestamptz(6)
+
+  @@index([organizationId, folder])
+  @@index([organizationId, appId])
+  @@index([organizationId, isPrivate])
+  @@map("media")
+}
+
+// ==========================================
+// 4. STATUTORY TAX & GOVERNMENT CREDENTIALS
+// ==========================================
+
+model OrganizationTaxProfile {
+  id                  String       @id @default(cuid())
+  organizationId      String       @unique
+  organization        Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  taxSystem           String       @db.VarChar(32) // "IN_GST", "SA_ZATCA", "AE_VAT", "EU_VAT"
+  legalBusinessName   String       @db.VarChar(255)
+  taxIdentificationNo String       @db.VarChar(64) // GSTIN (India), TIN (Saudi), TRN (Dubai)
+  registeredAddress   Json
+
+  // Encrypted Government API Keys & Digital Signatures (AES-256)
+  encryptedApiSecret  String?      @db.Text
+  digitalCertificate  String?      @db.Text // CSID X.509 cert for ZATCA or digital sign
+  isEInvoicingActive  Boolean      @default(false)
+
+  createdAt           DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt           DateTime     @updatedAt @db.Timestamptz(6)
+
+  @@map("organization_tax_profiles")
+}
+
+// ==========================================
+// 5. USERS, DYNAMIC ROLES & PERMISSIONS (Better-Auth)
+// ==========================================
+
+model Role {
+  id                String           @id @default(cuid())
+  organizationId    String?          // NULL = Global System Default Role (e.g. "Platform Super Admin")
+  organization      Organization?    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  name              String           @db.VarChar(64) // e.g. "Senior Receptionist", "Head Bartender", "Night Auditor"
+  slug              String           @db.VarChar(64) // e.g. "senior-receptionist"
+  description       String?          @db.VarChar(255)
+  isSystem          Boolean          @default(false) // If true, cannot be deleted (e.g. "Organization Owner")
+
+  createdAt         DateTime         @default(now()) @db.Timestamptz(6)
+  updatedAt         DateTime         @updatedAt @db.Timestamptz(6)
+
+  permissions       RolePermission[]
+  branchAssignments UserBranchRole[]
+  invitations       OrganizationInvitation[]
+
+  @@unique([organizationId, slug])
+  @@index([organizationId])
+  @@map("roles")
+}
+
+model Permission {
+  id          String           @id @default(cuid())
+  appId       String           @db.VarChar(64) // e.g. "lodging_pms", "restaurant_pos"
+  action      String           @unique @db.VarChar(64) // e.g. "bookings:create", "folios:void", "reports:financial:view"
+  description String           @db.VarChar(255)
+
+  roles       RolePermission[]
+
+  @@index([appId])
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model User {
+  id              String             @id @default(cuid())
+  email           String             @unique @db.VarChar(255)
+  name            String             @db.VarChar(191)
+  mobile          String?            @db.VarChar(32)
+  emailVerified   Boolean            @default(false)
+  image           String?            @db.Text
+
+  // Manager PIN for Anti-Theft Voids & Financial Overrides (Bcrypt / Argon2 hash)
+  managerPinHash  String?            @db.VarChar(255)
+
+  // Extensibility Hook: Dynamic User Preferences
+  metadata        Json               @default("{}")
+
+  createdAt       DateTime           @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime           @updatedAt @db.Timestamptz(6)
+
+  // Better-Auth Core Relations
+  accounts        Account[]
+  sessions        Session[]
+  passkeys        Passkey[]
+  organizations   UserOrganization[]
+  branchRoles     UserBranchRole[]
+  invitationsSent OrganizationInvitation[] @relation("Inviter")
+
+  @@map("users")
+}
+
+model Account {
+  id                    String    @id @default(cuid())
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  accountId             String    @db.VarChar(255) // Provider's user ID or local email
+  providerId            String    @db.VarChar(64)  // "credential", "google", "apple", "github"
+
+  accessToken           String?   @db.Text
+  refreshToken          String?   @db.Text
+  idToken               String?   @db.Text
+  accessTokenExpiresAt  DateTime? @db.Timestamptz(6)
+  refreshTokenExpiresAt DateTime? @db.Timestamptz(6)
+  scope                 String?   @db.Text
+  password              String?   @db.Text         // Scrypt / Argon2 hash for email credentials
+
+  createdAt             DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt             DateTime  @updatedAt @db.Timestamptz(6)
+
+  @@unique([providerId, accountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Session {
+  id                   String        @id @default(cuid())
+  userId               String
+  user                 User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  token                String        @unique @db.VarChar(255)
+  expiresAt            DateTime      @db.Timestamptz(6)
+  ipAddress            String?       @db.VarChar(45)
+  userAgent            String?       @db.Text
+
+  // Multi-Tenant Active Context
+  activeOrganizationId String?       @db.VarChar(64)
+  activeBranchId       String?       @db.VarChar(64) // Tracks which branch the user is currently operating in
+
+  createdAt            DateTime      @default(now()) @db.Timestamptz(6)
+  updatedAt            DateTime      @updatedAt @db.Timestamptz(6)
+
+  @@index([userId])
+  @@index([token])
+  @@map("sessions")
+}
+
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String   @db.VarChar(255) // Email or Phone number
+  value      String   @db.Text         // SHA-256 hashed token or OTP
+  expiresAt  DateTime @db.Timestamptz(6)
+
+  createdAt  DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @db.Timestamptz(6)
+
+  @@unique([identifier, value])
+  @@index([identifier])
+  @@map("verifications")
+}
+
+model Passkey {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name         String?  @db.VarChar(100) // e.g. "MacBook TouchID", "iPhone FaceID"
+  publicKey    String   @db.Text
+  credentialID String   @unique @db.Text
+  counter      Int      @default(0)
+  deviceType   String?  @db.VarChar(32)
+  backedUp     Boolean  @default(false)
+  transports   String?  @db.VarChar(255)
+
+  createdAt    DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([userId])
+  @@map("passkeys")
+}
+
+enum UserOrgStatus {
+  ACTIVE
+  INVITED
+  SUSPENDED
+  REVOKED
+}
+
+// ==========================================
+// ROOT TENANT MEMBERSHIP (Company Level)
+// ==========================================
+model UserOrganization {
+  id              String        @id @default(cuid())
+  userId          String
+  organizationId  String
+
+  status          UserOrgStatus @default(ACTIVE)
+
+  // POS / Front-Desk Fast Shift-Switch PIN (Bcrypt hash of 4-6 digits)
+  terminalPinHash String?       @db.VarChar(255)
+
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization    Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime      @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime      @updatedAt @db.Timestamptz(6)
+
+  @@unique([userId, organizationId])
+  @@index([organizationId, status])
+  @@map("user_organizations")
+}
+
+// ==========================================
+// BRANCH-SCOPED ROLE ASSIGNMENT (Execution Level)
+// ==========================================
+model UserBranchRole {
+  id             String       @id @default(cuid())
+  userId         String
+  organizationId String
+  branchId       String?      // NULL = Organization-Wide Access (Master Owner / Global Admin)
+  roleId         String       // The dynamic Role
+
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  branch         Branch?      @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  role           Role         @relation(fields: [roleId], references: [id], onDelete: Restrict)
+
+  createdAt      DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @db.Timestamptz(6)
+
+  @@unique([userId, organizationId, branchId, roleId])
+  @@index([userId, organizationId])
+  @@index([branchId])
+  @@map("user_branch_roles")
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+  CANCELED
+}
+
+model OrganizationInvitation {
+  id             String           @id @default(cuid())
+  organizationId String
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  email          String           @db.VarChar(255)
+  roleId         String           // Pre-assigned dynamic Role
+  role           Role             @relation(fields: [roleId], references: [id], onDelete: Restrict)
+
+  token          String           @unique @db.VarChar(255)
+  status         InvitationStatus @default(PENDING)
+  expiresAt      DateTime         @db.Timestamptz(6)
+
+  inviterId      String
+  inviter        User             @relation("Inviter", fields: [inviterId], references: [id], onDelete: Cascade)
+
+  createdAt      DateTime         @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime         @updatedAt @db.Timestamptz(6)
+
+  @@index([organizationId, email])
+  @@index([token])
+  @@map("organization_invitations")
+}
+
+model ApiKey {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  name           String       @db.VarChar(100) // e.g. "Channex OTA Webhook", "Accounting Export"
+  keyPrefix      String       @db.VarChar(16)  // e.g. "sk_live_chnx"
+  keyHash        String       @unique @db.VarChar(64) // SHA-256(secretKey)
+
+  scopes         Json         @default("[]")   // Allowed permissions: ["bookings:read", "rates:update"]
+
+  lastUsedAt     DateTime?    @db.Timestamptz(6)
+  expiresAt      DateTime?    @db.Timestamptz(6)
+  revokedAt      DateTime?    @db.Timestamptz(6)
+
+  createdAt      DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @db.Timestamptz(6)
+
+  @@index([organizationId])
+  @@index([keyHash])
+  @@map("api_keys")
+}
+
+// ==========================================
+// ENTERPRISE IDENTITY & DOMAIN SSO (Better-Auth)
+// ==========================================
+model SsoConnection {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Corporate Domain (e.g. "abcrestaurant.com", "himalayanstay.com")
+  domain         String       @unique @db.VarChar(191)
+
+  // Dynamic Provider Protocol
+  providerType   String       @db.VarChar(64)
+
+  // Extensible Provider Configuration (AES-256 encrypted for client secrets / private certs)
+  config         Json         @default("{}")
+
+  // Access & Security Enforcement Policy
+  enforceSso     Boolean      @default(false)
+
+  // Just-In-Time (JIT) Provisioning
+  defaultRoleId  String?      @db.VarChar(64)
+
+  createdAt      DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @db.Timestamptz(6)
+
+  @@index([domain])
+  @@index([organizationId])
+  @@map("sso_connections")
+}
+
+// ==========================================
+// 6. DYNAMIC APP SUITE ENTITLEMENTS (The App Store / Odoo Model)
+// ==========================================
+
+model InstalledApp {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Dynamic Namespaced Slug (e.g. "sites_cms", "lodging_pms", "restaurant_pos")
+  appId          String       @db.VarChar(64)
+
+  version        String       @default("1.0.0") @db.VarChar(32)
+  isEnabled      Boolean      @default(true)
+  settings       Json         @default("{}")
+
+  installedAt    DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @db.Timestamptz(6)
+
+  @@unique([organizationId, appId])
+  @@index([organizationId, isEnabled])
+  @@map("installed_apps")
+}
+
+model AppBranchConfig {
+  id             String       @id @default(cuid())
+  organizationId String       @db.VarChar(64) // Tenant boundary anchor
+  branchId       String
+  branch         Branch       @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  // Dynamic Namespaced Slug (e.g. "sites_cms", "lodging_pms", "pharmacy_dispensary", "dealership_dms")
+  appId          String       @db.VarChar(64)
+  isEnabled      Boolean      @default(true)
+  settings       Json         @default("{}") // Branch-specific overrides for this app
+
+  createdAt      DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @db.Timestamptz(6)
+
+  @@unique([branchId, appId])
+  @@index([organizationId, appId])
+  @@map("app_branch_configs")
+}
+
+// ==========================================
+// 7. DECOUPLED HIGH-THROUGHPUT AUDIT ARCHITECTURE (Anti-Theft & Compliance)
+// ==========================================
+
+model AuditLog {
+  id                 String   @id @default(cuid())
+  organizationId     String   // Tenant boundary
+  appId              String   @db.VarChar(64) // e.g. "restaurant_pos", "lodging_pms", "payments_folio"
+
+  actorUserId        String?  // Null if triggered by public guest/customer/webhook
+  actorRole          String   @db.VarChar(32) // "ORG_OWNER", "FRONT_DESK", "RESTAURANT_WAITER", "SYSTEM"
+
+  action             String   @db.VarChar(64) // "BOOKING_CANCELLED", "ITEM_VOIDED", "RATE_MUTATED", "ROLE_ELEVATED"
+  entityType         String   @db.VarChar(64) // "Booking", "Payment", "Order", "Folio", "UserOrganization"
+  entityId           String   @db.VarChar(64)
+
+  reason             String?  @db.VarChar(255) // Required for voids, refunds, rate discounts
+  managerPinVerified Boolean  @default(false)  // Anti-theft manager override proof
+
+  oldData            Json?
+  newData            Json?
+
+  ipAddress          String?  @db.VarChar(45)
+  userAgent          String?  @db.Text
+  timestamp          DateTime @default(now()) @db.Timestamptz(6)
+
+  // Cryptographic Tamper-Proof Hash Chaining (OWASP ASVS 4.0.3 Non-Repudiation)
+  prevHash           String?  @db.VarChar(64)  // SHA-256 hash of preceding org record
+  recordHash         String   @db.VarChar(64)  // SHA-256(prevHash + timestamp + action + actor + entityId + newData)
+
+  @@index([organizationId, timestamp])
+  @@index([organizationId, appId, action])
+  @@index([entityType, entityId])
+  @@map("audit_logs")
+}
