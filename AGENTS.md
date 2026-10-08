@@ -53,6 +53,7 @@ All Git actions, commits, and PRs in this repository **MUST** use this developer
   5. Verify GitHub Actions CI turns **Green ✅**.
   6. **STOP. Present the PR link to the user, explain the changes, and WAIT FOR EXPLICIT WRITTEN APPROVAL (e.g. "Merge it" or "Approved").**
   7. Only execute `gh pr merge <num> --squash --delete-branch` AFTER human approval is given.
+  8. **Post-Merge Integration Gate (P0 Stop-the-Line):** Immediately after merging, monitor and verify that `dev`'s post-merge GitHub Actions CI run turns **Green ✅**. If `dev` turns Red, **STOP ALL NEW WORK IMMEDIATELY** — resolving `dev` is P0 priority before picking up any new issue, creating any new branch, or writing any code.
 
 ---
 
