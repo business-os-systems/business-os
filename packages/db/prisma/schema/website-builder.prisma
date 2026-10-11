@@ -1,0 +1,483 @@
+// ==============================================================================
+// APP 01: WEBSITE BUILDER & HEADLESS CMS (@suite/website-builder)
+// Isolated Domain Schema: All models are namespaced with "cms_"
+// ZERO reverse coupling to core Organization or Branch models.
+// ==============================================================================
+
+enum CmsSiteStatus {
+  DRAFT
+  PUBLISHED
+  MAINTENANCE
+  SUSPENDED
+  ARCHIVED
+}
+
+enum CmsDomainStatus {
+  PENDING_VERIFICATION
+  ACTIVE
+  ERROR
+  DELETED
+}
+
+enum CmsPageStatus {
+  DRAFT
+  PUBLISHED
+  SCHEDULED
+  ARCHIVED
+}
+
+enum CmsLocaleStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum CmsFormSubmissionStatus {
+  NEW
+  PROCESSED
+  SPAM
+  ARCHIVED
+}
+
+enum CmsRedirectType {
+  PERMANENT // 301
+  TEMPORARY // 302
+}
+
+model CmsSite {
+  id              String         @id @default(cuid())
+  organizationId  String         // Tenant boundary scalar (no reverse model coupling)
+  branchId        String?        // Operational branch scalar (no reverse model coupling)
+
+  title           String         @db.VarChar(191)
+  slug            String         @db.VarChar(191)
+  status          CmsSiteStatus  @default(DRAFT)
+  timezone        String         @default("Asia/Kolkata") @db.VarChar(64)
+  primaryLocale   String         @default("en") @db.VarChar(10)
+
+  // Design system token linkage
+  themeId         String?
+  theme           CmsTheme?      @relation(fields: [themeId], references: [id], onDelete: SetNull)
+
+  createdAt       DateTime       @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime       @updatedAt @db.Timestamptz(6)
+
+  // Relational Modules within CMS boundary
+  settings        CmsSiteSettings?
+  seoSettings     CmsSiteSeoSettings?
+  domains         CmsDomain[]
+  pages           CmsPage[]
+  collections     CmsCollection[]
+  locales         CmsSiteLocale[]
+  redirects       CmsUrlRedirect[]
+  formSubmissions CmsFormSubmission[]
+  plugins         CmsPluginInstallation[]
+  navigationMenus CmsNavigationMenu[]
+  analyticsDaily  CmsSiteAnalyticsDaily[]
+  auditTrails     CmsAuditTrail[]
+
+  @@unique([organizationId, slug])
+  @@unique([id, organizationId]) // Target for composite foreign keys
+  @@index([organizationId, status])
+  @@index([branchId])
+  @@map("cms_sites")
+}
+
+model CmsSiteSettings {
+  id              String       @id @default(cuid())
+  organizationId  String
+  siteId          String       @unique
+  site            CmsSite      @relation(fields: [siteId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  faviconUrl      String?      @db.Text
+  brandLogoUrl    String?      @db.Text
+  brandName       String?      @db.VarChar(191)
+  headerAst       Json         @default("{}") // Global site navigation AST
+  footerAst       Json         @default("{}") // Global site footer AST
+  customCss       String?      @db.Text
+  customHeadCode  String?      @db.Text
+
+  createdAt       DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime     @updatedAt @db.Timestamptz(6)
+
+  @@unique([siteId, organizationId])
+  @@index([organizationId, siteId])
+  @@map("cms_site_settings")
+}
+
+model CmsDomain {
+  id                 String           @id @default(cuid())
+  organizationId     String
+  siteId             String
+  site               CmsSite          @relation(fields: [siteId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  hostname           String           @unique @db.VarChar(255) // e.g. "stay.riverview.com" or "riverview.business-os.site"
+  isPrimary          Boolean          @default(false)
+  isSubdomain        Boolean          @default(false) // true for *.business-os.site
+  status             CmsDomainStatus  @default(PENDING_VERIFICATION)
+  verificationToken  String           @db.VarChar(64) // _businessos-challenge
+  sslActive          Boolean          @default(false)
+  verifiedAt         DateTime?        @db.Timestamptz(6)
+
+  createdAt          DateTime         @default(now()) @db.Timestamptz(6)
+  updatedAt          DateTime         @updatedAt @db.Timestamptz(6)
+
+  @@index([organizationId, siteId])
+  @@index([hostname, status])
+  @@map("cms_domains")
+}
+
+model CmsPage {
+  id              String         @id @default(cuid())
+  organizationId  String
+  siteId          String
+  site            CmsSite        @relation(fields: [siteId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  parentId        String?
+  parentPage      CmsPage?       @relation("CmsPageHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  childPages      CmsPage[]      @relation("CmsPageHierarchy")
+
+  title           String         @db.VarChar(191)
+  slug            String         @db.VarChar(191) // "/rooms", "/about-us"
+  orderIndex      Int            @default(0)
+  status          CmsPageStatus  @default(DRAFT)
+  isHomePage      Boolean        @default(false)
+
+  // System Design: CAS Concurrency Revision
+  revision        Int            @default(1)
+
+  createdAt       DateTime       @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime       @updatedAt @db.Timestamptz(6)
+
+  content         CmsPageContent?
+  versions        CmsPageVersion[]
+  translations    CmsPageTranslation[]
+  comments        CmsPageComment[]
+
+  @@unique([siteId, slug])
+  @@unique([id, organizationId]) // Target for composite foreign keys
+  @@index([organizationId, siteId])
+  @@index([siteId, status])
+  @@index([parentId])
+  @@map("cms_pages")
+}
+
+model CmsPageContent {
+  id              String      @id @default(cuid())
+  organizationId  String
+  pageId          String      @unique
+  page            CmsPage     @relation(fields: [pageId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  // Dual-Track Content Isolation Pattern
+  draftAst        Json        @default("{}") // Live authoring state
+  publishedAst    Json?       // Edge CDN storefront production state
+  publishedAt     DateTime?   @db.Timestamptz(6)
+
+  createdAt       DateTime    @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime    @updatedAt @db.Timestamptz(6)
+
+  @@unique([pageId, organizationId])
+  @@index([organizationId, pageId])
+  @@map("cms_page_contents")
+}
+
+model CmsPageVersion {
+  id              String      @id @default(cuid())
+  organizationId  String
+  pageId          String
+  page            CmsPage     @relation(fields: [pageId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  versionNumber   Int
+  astSnapshot     Json        // Immutable snapshot of published AST
+  label           String?     @db.VarChar(100) // e.g. "Holiday Sale 2026 Release"
+  createdByUserId String?     @db.VarChar(191)
+
+  createdAt       DateTime    @default(now()) @db.Timestamptz(6)
+
+  @@unique([pageId, versionNumber])
+  @@index([organizationId, pageId])
+  @@map("cms_page_versions")
+}
+
+model CmsPageComment {
+  id              String           @id @default(cuid())
+  organizationId  String
+  pageId          String
+  page            CmsPage          @relation(fields: [pageId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  parentId        String?
+  parentComment   CmsPageComment?  @relation("CmsCommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies         CmsPageComment[] @relation("CmsCommentReplies")
+
+  blockId         String?          @db.VarChar(64) // Targeted block UUID in the AST
+  coordX          Decimal?         @db.Decimal(5, 2) // Canvas % x-coordinate
+  coordY          Decimal?         @db.Decimal(5, 2) // Canvas % y-coordinate
+  commentText     String           @db.Text
+  authorUserId    String           @db.VarChar(191)
+  resolved        Boolean          @default(false)
+
+  createdAt       DateTime         @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime         @updatedAt @db.Timestamptz(6)
+
+  @@index([organizationId, pageId])
+  @@index([parentId])
+  @@map("cms_page_comments")
+}
+
+model CmsCollection {
+  id              String              @id @default(cuid())
+  organizationId  String
+  siteId          String
+  site            CmsSite             @relation(fields: [siteId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  name            String              @db.VarChar(191) // "Rooms", "Menu Items", "Blog Posts"
+  slug            String              @db.VarChar(191) // "rooms", "menu-items"
+  schemaJson      Json                // Dynamic Zod/JSON schema defining content fields
+
+  createdAt       DateTime            @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime            @updatedAt @db.Timestamptz(6)
+
+  items           CmsCollectionItem[]
+
+  @@unique([siteId, slug])
+  @@unique([id, organizationId])
+  @@index([organizationId, siteId])
+  @@map("cms_collections")
+}
+
+model CmsCollectionItem {
+  id              String         @id @default(cuid())
+  organizationId  String
+  collectionId    String
+  collection      CmsCollection  @relation(fields: [collectionId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  slug            String         @db.VarChar(191)
+  dataJson        Json           // Structured content validated against collection.schemaJson
+  revision        Int            @default(1)
+  isPublished     Boolean        @default(false)
+
+  createdAt       DateTime       @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime       @updatedAt @db.Timestamptz(6)
+
+  @@unique([collectionId, slug])
+  @@index([organizationId, collectionId])
+  @@map("cms_collection_items")
+}
+
+model CmsTheme {
+  id              String       @id @default(cuid())
+  organizationId  String?      // NULL for platform global themes, set for custom tenant brand themes
+  name            String       @db.VarChar(191)
+  code            String       @unique @db.VarChar(64)
+  tokens          Json         // Design system tokens: fonts, colors, radii, shadows
+
+  createdAt       DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime     @updatedAt @db.Timestamptz(6)
+
+  sites           CmsSite[]
+
+  @@index([organizationId])
+  @@map("cms_themes")
+}
+
+model CmsTemplate {
+  id              String       @id @default(cuid())
+  organizationId  String?      // NULL for platform global templates
+  name            String       @db.VarChar(191)
+  category        String       @db.VarChar(64) // "hospitality", "restaurant", "retail", "services"
+  previewImageUrl String?      @db.Text
+  blueprintJson   Json         // Turnkey multi-page site structure and sample content
+
+  createdAt       DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime     @updatedAt @db.Timestamptz(6)
+
+  @@index([organizationId, category])
+  @@map("cms_templates")
+}
+
+model CmsSectionTemplate {
+  id              String       @id @default(cuid())
+  organizationId  String?      // NULL for platform global block presets
+  name            String       @db.VarChar(191)
+  category        String       @db.VarChar(64) // "hero", "features", "pricing", "testimonials", "faq"
+  blockAst        Json         // Reusable block subtree
+
+  createdAt       DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime     @updatedAt @db.Timestamptz(6)
+
+  @@index([organizationId, category])
+  @@map("cms_section_templates")
+}
+
+model CmsSiteSeoSettings {
+  id               String      @id @default(cuid())
+  organizationId   String
+  siteId           String      @unique
+  site             CmsSite     @relation(fields: [siteId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  metaTitle        String?     @db.VarChar(191)
+  metaDescription  String?     @db.Text
+  ogImageUrl       String?     @db.Text
+  robotsTxt        String?     @db.Text
+  enableLlmsTxt    Boolean     @default(true) // Generative Engine Optimization (GEO)
+  customStructuredData Json?   // Schema.org JSON-LD
+
+  createdAt        DateTime    @default(now()) @db.Timestamptz(6)
+  updatedAt        DateTime    @updatedAt @db.Timestamptz(6)
+
+  @@unique([siteId, organizationId])
+  @@index([organizationId, siteId])
+  @@map("cms_site_seo_settings")
+}
+
+model CmsSiteLocale {
+  id              String           @id @default(cuid())
+  organizationId  String
+  siteId          String
+  site            CmsSite          @relation(fields: [siteId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  locale          String           @db.VarChar(10) // "fr", "hi", "es"
+  displayName     String           @db.VarChar(64) // "Français", "हिंदी"
+  status          CmsLocaleStatus  @default(ACTIVE)
+
+  createdAt       DateTime         @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime         @updatedAt @db.Timestamptz(6)
+
+  @@unique([siteId, locale])
+  @@index([organizationId, siteId])
+  @@map("cms_site_locales")
+}
+
+model CmsPageTranslation {
+  id              String       @id @default(cuid())
+  organizationId  String
+  pageId          String
+  page            CmsPage      @relation(fields: [pageId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  locale          String       @db.VarChar(10)
+  title           String       @db.VarChar(191)
+  translatedAst   Json
+
+  createdAt       DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime     @updatedAt @db.Timestamptz(6)
+
+  @@unique([pageId, locale])
+  @@index([organizationId, pageId])
+  @@map("cms_page_translations")
+}
+
+model CmsUrlRedirect {
+  id              String           @id @default(cuid())
+  organizationId  String
+  siteId          String
+  site            CmsSite          @relation(fields: [siteId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  sourcePath      String           @db.VarChar(255) // "/old-rates"
+  targetUrl       String           @db.Text         // "/pricing"
+  type            CmsRedirectType  @default(PERMANENT)
+
+  createdAt       DateTime         @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime         @updatedAt @db.Timestamptz(6)
+
+  @@unique([siteId, sourcePath])
+  @@index([organizationId, siteId])
+  @@map("cms_url_redirects")
+}
+
+model CmsFormSubmission {
+  id                 String                   @id @default(cuid())
+  organizationId     String
+  siteId             String
+  site               CmsSite                  @relation(fields: [siteId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  blockId            String                   @db.VarChar(64) // Form block UUID in AST
+  idempotencyKey     String                   @db.VarChar(64) // Client x-idempotency-key (UUIDv4)
+  payloadJson        Json                     // Form data fields
+  attachments        Json                     @default("[]")  // R2 storage references
+  status             CmsFormSubmissionStatus  @default(NEW)
+
+  // GDPR & Anti-PII Compliance
+  submitterEmailHash String?                  @db.VarChar(64) // SHA-256 HMAC for GDPR right-to-erasure lookup
+
+  createdAt          DateTime                 @default(now()) @db.Timestamptz(6)
+
+  @@unique([siteId, idempotencyKey])
+  @@index([organizationId, siteId, status])
+  @@index([submitterEmailHash])
+  @@map("cms_form_submissions")
+}
+
+model CmsSiteAnalyticsDaily {
+  id              String       @id @default(cuid())
+  organizationId  String
+  siteId          String
+  site            CmsSite      @relation(fields: [siteId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  date            DateTime     @db.Date
+  totalVisits     Int          @default(0)
+  uniqueVisitors  Int          @default(0)
+  bounceRate      Decimal      @default(0.0) @db.Decimal(5, 2)
+  topPaths        Json         @default("[]") // [{ path: "/", count: 120 }]
+
+  createdAt       DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime     @updatedAt @db.Timestamptz(6)
+
+  @@unique([siteId, date])
+  @@index([organizationId, siteId, date])
+  @@map("cms_site_analytics_daily")
+}
+
+model CmsPluginInstallation {
+  id              String       @id @default(cuid())
+  organizationId  String
+  siteId          String
+  site            CmsSite      @relation(fields: [siteId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  pluginId        String       @db.VarChar(64) // "mailchimp", "whatsapp_chat", "google_analytics"
+  enabled         Boolean      @default(true)
+  encryptedConfig String       @db.Text        // AES-256-GCM encrypted credentials with tenant AAD
+  iv              String       @db.VarChar(32) // 96-bit AES-GCM IV
+  tag             String       @db.VarChar(32) // 128-bit authentication tag
+
+  createdAt       DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime     @updatedAt @db.Timestamptz(6)
+
+  @@unique([siteId, pluginId])
+  @@index([organizationId, siteId])
+  @@map("cms_plugin_installations")
+}
+
+model CmsNavigationMenu {
+  id              String       @id @default(cuid())
+  organizationId  String
+  siteId          String
+  site            CmsSite      @relation(fields: [siteId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  name            String       @db.VarChar(191) // "Header Nav", "Footer Secondary"
+  handle          String       @db.VarChar(64)  // "primary", "footer"
+  itemsAst        Json         // Menu links, dropdowns, and target URLs
+
+  createdAt       DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime     @updatedAt @db.Timestamptz(6)
+
+  @@unique([siteId, handle])
+  @@index([organizationId, siteId])
+  @@map("cms_navigation_menus")
+}
+
+model CmsAuditTrail {
+  id              String       @id @default(cuid())
+  organizationId  String
+  siteId          String
+  site            CmsSite      @relation(fields: [siteId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  action          String       @db.VarChar(64) // "PAGE_PUBLISHED", "THEME_UPDATED", "DOMAIN_LINKED"
+  entityType      String       @db.VarChar(64) // "CmsPage", "CmsSite", "CmsDomain"
+  entityId        String       @db.VarChar(64)
+  actorUserId     String       @db.VarChar(191)
+  changesJson     Json?
+
+  createdAt       DateTime     @default(now()) @db.Timestamptz(6)
+
+  @@index([organizationId, siteId, createdAt])
+  @@map("cms_audit_trails")
+}
