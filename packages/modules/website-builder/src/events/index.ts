@@ -24,3 +24,6 @@ export const PagePublishedEventPayloadSchema = z.object({
 export type PagePublishedEventPayload = z.infer<
   typeof PagePublishedEventPayloadSchema
 >;
+
+export * from "./catalog.js";
+export * from "./outbox-writer.js";
