@@ -78,6 +78,21 @@ You are **STRICTLY PROHIBITED** from:
 - ❌ Deleting or modifying `*.code-workspace` files (these define the active multi-root IDE workspace).
 - ❌ Writing undocumented API endpoints: Every HTTP route **MUST** be registered with `@hono/zod-openapi`'s `createRoute()` with schemas for params, request body, and RFC 7807 problem details responses.
 - ❌ Exposing `/doc` and `/openapi.json` without environment guards: Internal documentation must be protected or restricted in production.
+- ❌ **Mutating Core Platform Models for Modular Apps (Core Domain Immutability Law):**
+  When working on ANY modular app (App 01 through App 12):
+  1. You are **STRICTLY FORBIDDEN** from modifying `packages/db/prisma/schema/core.prisma` or adding reverse relation fields (e.g. `cmsSites`, `posOrders`, `pmsBookings`) to `Organization`, `Branch`, `User`, `Role`, or any core platform model.
+  2. Core platform models are **READ-ONLY** to modular app tickets.
+  3. Modular schemas MUST live strictly in their own dedicated file: `packages/db/prisma/schema/<app-name>.prisma`.
+  4. Multi-tenancy in modular apps is established strictly via scalar IDs (`organizationId String`, `branchId String?`) without declaring reverse Prisma relations in core models.
+- ❌ **Orphan / Un-Namespaced Database Tables:** Every table belonging to a modular app MUST use its mandatory application namespace prefix in PostgreSQL (e.g. `cms_*`, `pos_*`, `pms_*`). Generic table names (`pages`, `orders`, `forms`) are strictly forbidden.
+
+---
+
+## 5.1 Pre-Execution Blast Radius Gate
+Before asking human approval to start ANY issue, the agent MUST explicitly state the **Blast Radius**:
+1. *Will this issue touch or modify any shared core package (`@suite/core`, `@suite/auth`, or `schema/core.prisma`)?* (Must be NO for modular app tickets).
+2. *Does this issue introduce any reverse dependency from Core to Module?* (Must be NO).
+3. *What exact new files will be created and which existing files will be touched?*
 
 ---
 
