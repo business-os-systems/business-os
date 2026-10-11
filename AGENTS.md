@@ -78,6 +78,7 @@ You are **STRICTLY PROHIBITED** from:
 - ❌ Deleting or modifying `*.code-workspace` files (these define the active multi-root IDE workspace).
 - ❌ Writing undocumented API endpoints: Every HTTP route **MUST** be registered with `@hono/zod-openapi`'s `createRoute()` with schemas for params, request body, and RFC 7807 problem details responses.
 - ❌ Exposing `/doc` and `/openapi.json` without environment guards: Internal documentation must be protected or restricted in production.
+- ❌ Orphan / Un-Namespaced Database Tables: Every table belonging to a modular app MUST use its mandatory application namespace prefix in PostgreSQL (e.g. Website Builder/CMS tables MUST start with `cms_`, Restaurant POS with `pos_`, Lodging PMS with `pms_`). Generic, un-namespaced table names (e.g. `pages`, `forms`, `orders`) are strictly prohibited in modular apps.
 
 ---
 
