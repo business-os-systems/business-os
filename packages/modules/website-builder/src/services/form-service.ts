@@ -32,6 +32,7 @@ export interface IFormService {
 }
 
 export class FormService implements IFormService {
+  private idempotencyStore = new Map<string, { submissionId: string; createdAt: string }>();
   /**
    * Ingests a public form submission with honeypot & turnstile validation,
    * two-tier idempotency, and GDPR-compliant email hashing.
@@ -85,17 +86,35 @@ export class FormService implements IFormService {
       _emailHash = this.computeEmailHash(rawEmail, "business_os_gdpr_salt");
     }
 
-    // 6. In a live database environment, this executes public.cms_ingest_form_submission()
-    // Simulated deterministic response:
+    // 6. Two-tier idempotency suppression check
+    const dedupKey = `${input.siteId}:${input.idempotencyKey}`;
+    const existing = this.idempotencyStore.get(dedupKey);
+    if (existing) {
+      return {
+        success: true,
+        submissionId: existing.submissionId,
+        isDuplicate: true,
+        createdAt: existing.createdAt,
+      };
+    }
+
+    // In a live database environment, this executes public.cms_ingest_form_submission()
     const canonicalId = `csub_${createHash("md5")
       .update(input.siteId + input.idempotencyKey)
       .digest("hex")
       .slice(0, 16)}`;
 
+    const createdAt = new Date().toISOString();
+    this.idempotencyStore.set(dedupKey, {
+      submissionId: canonicalId,
+      createdAt,
+    });
+
     return {
       success: true,
       submissionId: canonicalId,
       isDuplicate: false,
+      createdAt,
     };
   }
 
