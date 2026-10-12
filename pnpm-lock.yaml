@@ -247,6 +247,9 @@ importers:
       '@suite/redis':
         specifier: workspace:*
         version: link:../../redis
+      '@suite/ui':
+        specifier: workspace:*
+        version: link:../../ui
       hono:
         specifier: ^4.7.0
         version: 4.13.13
@@ -263,6 +266,12 @@ importers:
       '@types/node':
         specifier: ^20.17.19
         version: 20.19.43
+      '@types/react':
+        specifier: ^18.3.18
+        version: 18.3.31
+      '@types/react-dom':
+        specifier: ^18.3.5
+        version: 18.3.7(@types/react@18.3.31)
       '@typescript-eslint/eslint-plugin':
         specifier: ^8.26.0
         version: 8.71.1(@typescript-eslint/parser@8.71.1(eslint@8.57.1(supports-color@7.2.0))(supports-color@7.2.0)(typescript@5.9.3))(eslint@8.57.1(supports-color@7.2.0))(supports-color@7.2.0)(typescript@5.9.3)
@@ -272,6 +281,12 @@ importers:
       eslint:
         specifier: ^8.57.1
         version: 8.57.1(supports-color@7.2.0)
+      react:
+        specifier: ^18.3.1
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.3.1
+        version: 18.3.1(react@18.3.1)
       typescript:
         specifier: ^5.7.3
         version: 5.9.3
