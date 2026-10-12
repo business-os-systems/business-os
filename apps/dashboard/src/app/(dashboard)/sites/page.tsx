@@ -1,69 +1,94 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { SiteListTable, CreateSiteDialog, type SiteSummary, type CreateSiteInput } from "@/components/sites";
 
-const INITIAL_SITES: SiteSummary[] = [
-  {
-    id: "site_riverview_main",
-    organizationId: "org-1",
-    name: "Riverview Bistro Flagship",
-    subdomain: "riverview-bistro",
-    customDomain: "riverviewbistro.com",
-    status: "PUBLISHED",
-    publishedAt: "2026-10-10 12:00:00",
-    pagesCount: 4,
-    updatedAt: "2026-10-12 10:15:00",
-  },
-  {
-    id: "site_cafe_terrace",
-    organizationId: "org-1",
-    name: "Cafe Terrace & Wine Bar",
-    subdomain: "cafe-terrace",
-    customDomain: null,
-    status: "DRAFT",
-    publishedAt: null,
-    pagesCount: 2,
-    updatedAt: "2026-10-11 16:40:00",
-  },
-  {
-    id: "site_catering_express",
-    organizationId: "org-1",
-    name: "Catering & Private Events",
-    subdomain: "catering-express",
-    customDomain: "catering.riverviewbistro.com",
-    status: "PUBLISHED",
-    publishedAt: "2026-10-09 09:30:00",
-    pagesCount: 3,
-    updatedAt: "2026-10-10 14:22:00",
-  },
-];
-
 export default function SitesPage() {
-  const [sites, setSites] = useState<SiteSummary[]>(INITIAL_SITES);
+  const [sites, setSites] = useState<SiteSummary[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
-  const handleCreateSite = (data: CreateSiteInput) => {
-    const newSite: SiteSummary = {
-      id: `site_${Date.now()}`,
-      organizationId: "org-1",
-      name: data.name,
-      subdomain: data.subdomain,
-      customDomain: data.customDomain || null,
-      status: "DRAFT",
-      pagesCount: 1,
-      updatedAt: new Date().toISOString().replace("T", " ").substring(0, 19),
-    };
-    setSites((prev) => [newSite, ...prev]);
+  // Fetch real sites from database API
+  useEffect(() => {
+    async function loadSites() {
+      try {
+        const res = await fetch("/api/cms/sites");
+        if (res.ok) {
+          const data = await res.json();
+          const mapped: SiteSummary[] = (data.sites || []).map((s: {
+            id: string;
+            organizationId: string;
+            title: string;
+            slug: string;
+            status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+            pagesCount: number;
+            updatedAt: string;
+            primaryDomain?: string;
+          }) => ({
+            id: s.id,
+            organizationId: s.organizationId,
+            name: s.title,
+            subdomain: s.slug,
+            customDomain: s.primaryDomain && !s.primaryDomain.includes(".business-os.site") ? s.primaryDomain : null,
+            status: s.status,
+            publishedAt: s.status === "PUBLISHED" ? s.updatedAt : null,
+            pagesCount: s.pagesCount || 0,
+            updatedAt: s.updatedAt.replace("T", " ").substring(0, 19),
+          }));
+          setSites(mapped);
+        }
+      } catch {
+        // Leave sites empty on failure
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadSites();
+  }, []);
+
+  const handleCreateSite = async (data: CreateSiteInput) => {
+    try {
+      const res = await fetch("/api/cms/sites", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          title: data.name,
+          slug: data.subdomain,
+          brandName: data.name,
+        }),
+      });
+
+      if (res.ok) {
+        const resData = await res.json();
+        const newSite: SiteSummary = {
+          id: resData.site.id,
+          organizationId: "org-1",
+          name: resData.site.title,
+          subdomain: resData.site.slug,
+          customDomain: null,
+          status: "DRAFT",
+          publishedAt: null,
+          pagesCount: 1,
+          updatedAt: new Date().toISOString().replace("T", " ").substring(0, 19),
+        };
+        setSites((prev) => [newSite, ...prev]);
+      }
+    } catch {
+      // Ignored
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex h-64 items-center justify-center text-xs font-medium text-slate-400">
+        Loading websites...
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <SiteListTable
-        sites={sites}
-        onCreateSite={() => setIsCreateOpen(true)}
-      />
-
+      <SiteListTable sites={sites} onCreateSite={() => setIsCreateOpen(true)} />
       <CreateSiteDialog
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
