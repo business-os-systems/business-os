@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import React from "react";
 import { renderToString } from "react-dom/server";
+import LoginPage from "../src/app/(auth)/login/page";
+import SiteOnboardingWizard from "../src/app/(dashboard)/sites/onboarding/page";
 import OverviewPage from "../src/app/(dashboard)/page";
 import SitesPage from "../src/app/(dashboard)/sites/page";
 import SitePagesPage from "../src/app/(dashboard)/sites/[siteId]/pages/page";
@@ -30,6 +32,18 @@ describe("Automated E2E Integration Suite: Complete Authoring Lifecycle (@suite/
     vi.restoreAllMocks();
   });
 
+  describe("Lifecycle Step 0: Platform Auth Gate & Tenant Login", () => {
+    it("renders enterprise login credentials form and secure TLS badge", () => {
+      const html = renderToString(<LoginPage />);
+
+      expect(html).toContain("Business OS");
+      expect(html).toContain("Sign In to Workspace");
+      expect(html).toContain("operator@company.com");
+      expect(html).toContain("Auto-fill demo credentials");
+      expect(html).toContain("TLS Encrypted");
+    });
+  });
+
   describe("Lifecycle Step 1: Executive Launcher & Tenant Overview", () => {
     it("renders executive app launcher with all installed business applications", () => {
       const html = renderToString(<OverviewPage />);
@@ -40,6 +54,18 @@ describe("Automated E2E Integration Suite: Complete Authoring Lifecycle (@suite/
       expect(html).toContain("Lodging Property Management (PMS)");
       expect(html).toContain("Central Inventory &amp; Stock Requisitions");
       expect(html).toContain("href=\"/sites\"");
+    });
+  });
+
+  describe("Lifecycle Step 2: Step-by-Step Site Onboarding Wizard", () => {
+    it("renders step 1 of 4 onboarding wizard with name and subdomain inputs", () => {
+      const html = renderToString(<SiteOnboardingWizard />);
+
+      expect(html).toContain("Website Onboarding Wizard");
+      expect(html).toContain("Step 1 of 4");
+      expect(html).toContain("Name Your Website &amp; Subdomain");
+      expect(html).toContain(".business-os.site");
+      expect(html).toContain("Next: Business Goal");
     });
   });
 
@@ -283,6 +309,79 @@ describe("Automated E2E Integration Suite: Complete Authoring Lifecycle (@suite/
       // Cleanliness Check: Zero editor artifacts in guest preview
       expect(html).not.toContain("Page Layers");
       expect(html).not.toContain("Block inspector for");
+    });
+  });
+
+  describe("Lifecycle Step 7: Live Page Publishing & Version Snapshots", () => {
+    it("promotes draft to edge production, records immutable version snapshot, and increments revision", async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        status: 200,
+        json: async () => ({
+          success: true,
+          pageId: "page_home_01",
+          revision: 5,
+          versionNumber: 2,
+        }),
+      });
+      global.fetch = mockFetch;
+
+      const client = new CmsApiClient({ baseUrl: "http://gateway.test", enableOfflineFallback: false });
+      const result = await client.publishPage({
+        organizationId: "org_riverside",
+        pageId: "page_home_01",
+        expectedRevision: 4,
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.revision).toBe(5);
+      expect(result.versionNumber).toBe(2);
+      expect(mockFetch).toHaveBeenCalledWith(
+        "http://gateway.test/api/v1/cms/admin/pages/page_home_01/publish",
+        expect.objectContaining({
+          method: "POST",
+          headers: expect.objectContaining({
+            "x-tenant-id": "org_riverside",
+          }),
+        })
+      );
+    });
+
+    it("fetches immutable version history snapshots for page audit trail", async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          versions: [
+            {
+              id: "ver_2",
+              organizationId: "org_riverside",
+              pageId: "page_home_01",
+              versionNumber: 2,
+              label: "Release v2",
+              astSnapshot: { live: true },
+              createdAt: "2026-10-12T12:00:00Z",
+            },
+            {
+              id: "ver_1",
+              organizationId: "org_riverside",
+              pageId: "page_home_01",
+              versionNumber: 1,
+              label: "Release v1",
+              astSnapshot: { live: false },
+              createdAt: "2026-10-11T12:00:00Z",
+            },
+          ],
+        }),
+      });
+      global.fetch = mockFetch;
+
+      const client = new CmsApiClient({ baseUrl: "http://gateway.test", enableOfflineFallback: false });
+      const result = await client.listPageVersions("org_riverside", "page_home_01");
+
+      expect(result.success).toBe(true);
+      expect(result.versions.length).toBe(2);
+      expect(result.versions[0]?.versionNumber).toBe(2);
+      expect(result.versions[1]?.versionNumber).toBe(1);
     });
   });
 });
