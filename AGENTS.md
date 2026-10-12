@@ -18,11 +18,21 @@ All Git actions, commits, and PRs in this repository **MUST** use this developer
 
 ---
 
-## 2. Rule 1: Strict Issue-First Policy (NO TICKET = NO CODE)
+## 2. Rule 1: Strict Issue-First Policy & Mandatory Human Issue Approval Gate (NO TICKET = NO CODE)
 - **You are STRICTLY FORBIDDEN from writing code, editing files, creating branches, or committing without an active, numbered GitHub Issue (`#X`).**
+- **MANDATORY HUMAN ISSUE APPROVAL GATE:**
+  - AI agents are **STRICTLY FORBIDDEN from autonomously creating GitHub issues or milestones**.
+  - Before creating ANY GitHub issue (for a new sprint, feature, bugfix, or chore):
+    1. The agent **MUST ask the user first** and present the proposed issues in a **clear tabular view** specifying:
+       - Proposed Ticket Code & Title
+       - Meaning & Architectural Purpose (what it actually means/does)
+       - Target Package / File Paths
+       - Prerequisites & Priority
+    2. The agent **MUST WAIT for explicit written approval** from the user before executing `gh issue create` or provisioning any milestone.
+  - Only after the user confirms the plan and explicitly approves the issue list may the agent provision them on GitHub.
 - Before doing ANY work:
   1. Check open issues using `gh issue list --repo business-os-systems/business-os`.
-  2. If a ticket does not exist for the work requested, create one first using `gh issue create` attached to Milestone `Sprint 0: Platform Core Foundation`.
+  2. If an approved ticket does not exist for the work requested, follow the Human Issue Approval Gate above.
   3. Only then proceed to create the branch.
 
 ---
@@ -68,6 +78,7 @@ You are **STRICTLY PROHIBITED** from:
 - ❌ Deleting or modifying `*.code-workspace` files (these define the active multi-root IDE workspace).
 - ❌ Writing undocumented API endpoints: Every HTTP route **MUST** be registered with `@hono/zod-openapi`'s `createRoute()` with schemas for params, request body, and RFC 7807 problem details responses.
 - ❌ Exposing `/doc` and `/openapi.json` without environment guards: Internal documentation must be protected or restricted in production.
+- ❌ Orphan / Un-Namespaced Database Tables: Every table belonging to a modular app MUST use its mandatory application namespace prefix in PostgreSQL (e.g. Website Builder/CMS tables MUST start with `cms_`, Restaurant POS with `pos_`, Lodging PMS with `pms_`). Generic, un-namespaced table names (e.g. `pages`, `forms`, `orders`) are strictly prohibited in modular apps.
 
 ---
 
