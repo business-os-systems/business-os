@@ -6,3 +6,4 @@ export * from "./db/index.js";
 export * from "./workers/index.js";
 export * from "./ast/index.js";
 export * from "./components/blocks/index.js";
+export * from "./render/index.js";
