@@ -19,6 +19,7 @@ describe("Website Builder Visual Studio & Live Canvas Mounting (@suite/dashboard
           pageTitle="Homepage & Hero"
           revision={5}
           status="PUBLISHED"
+          autosaveStatus="saved"
           isLayersOpen={true}
           isInspectorOpen={true}
           onToggleLayers={() => {}}

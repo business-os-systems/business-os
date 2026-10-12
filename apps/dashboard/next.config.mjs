@@ -12,6 +12,15 @@ const nextConfig = {
     };
     return config;
   },
+  async rewrites() {
+    const apiUrl = process.env.API_URL || "http://localhost:3000";
+    return [
+      {
+        source: "/api/v1/:path*",
+        destination: `${apiUrl}/api/v1/:path*`,
+      },
+    ];
+  },
 };
 
 export default nextConfig;
