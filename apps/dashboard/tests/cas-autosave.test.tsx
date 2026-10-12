@@ -151,7 +151,7 @@ describe("Live CAS Autosave & API Gateway Proxying (@suite/dashboard)", () => {
   });
 
   describe("StudioWorkspace Full Autosave Wiring", () => {
-    it("mounts workspace with active revision and autosave status", () => {
+    it("mounts workspace with active revision, Publish button, and autosave status", () => {
       const html = renderToString(
         <StudioWorkspace
           organizationId="org_test"
@@ -165,6 +165,72 @@ describe("Live CAS Autosave & API Gateway Proxying (@suite/dashboard)", () => {
       expect(html).toContain("Ready");
       expect(html).toContain("Page Layers");
       expect(html).toContain("Hero Showcase");
+      expect(html).toContain("Publish");
+    });
+  });
+
+  describe("Publishing & Version History Snapshot Gateway", () => {
+    it("publishes page and advances revision with version number", async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        status: 200,
+        json: async () => ({
+          success: true,
+          pageId: "page_publish_1",
+          revision: 5,
+          versionNumber: 2,
+        }),
+      });
+      global.fetch = mockFetch;
+
+      const client = new CmsApiClient({ baseUrl: "http://api.test", enableOfflineFallback: false });
+      const result = await client.publishPage({
+        organizationId: "org_1",
+        pageId: "page_publish_1",
+        expectedRevision: 4,
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.revision).toBe(5);
+      expect(result.versionNumber).toBe(2);
+      expect(mockFetch).toHaveBeenCalledWith(
+        "http://api.test/api/v1/cms/admin/pages/page_publish_1/publish",
+        expect.objectContaining({
+          method: "POST",
+          headers: expect.objectContaining({
+            "Content-Type": "application/json",
+            "x-tenant-id": "org_1",
+          }),
+        })
+      );
+    });
+
+    it("fetches page version history snapshots", async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          versions: [
+            {
+              id: "ver_1",
+              organizationId: "org_1",
+              pageId: "page_1",
+              versionNumber: 1,
+              label: "Initial Release",
+              astSnapshot: {},
+              createdAt: "2026-10-12T10:00:00Z",
+            },
+          ],
+        }),
+      });
+      global.fetch = mockFetch;
+
+      const client = new CmsApiClient({ baseUrl: "http://api.test", enableOfflineFallback: false });
+      const result = await client.listPageVersions("org_1", "page_1");
+
+      expect(result.success).toBe(true);
+      expect(result.versions.length).toBe(1);
+      expect(result.versions[0]?.versionNumber).toBe(1);
+      expect(result.versions[0]?.label).toBe("Initial Release");
     });
   });
 });

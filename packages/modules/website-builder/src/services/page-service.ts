@@ -20,6 +20,17 @@ export interface PublishPageResult {
   message?: string;
 }
 
+export interface PageVersionRecord {
+  id: string;
+  organizationId: string;
+  pageId: string;
+  versionNumber: number;
+  label?: string | null;
+  astSnapshot: Record<string, unknown>;
+  createdByUserId?: string | null;
+  createdAt: string;
+}
+
 export interface PageRecord {
   id: string;
   organizationId: string;
@@ -49,6 +60,7 @@ export interface CreatePageInput {
 export class PageService {
   // In-memory backing cache for high-speed deterministic test suites and instant authoring
   private memoryPages: Map<string, PageRecord> = new Map();
+  private memoryVersions: Map<string, PageVersionRecord[]> = new Map();
 
   constructor(private readonly db = prisma) {
     // Seed initial demo page for testing
@@ -408,6 +420,21 @@ export class PageService {
     page.revision += 1;
     this.memoryPages.set(page.id, page);
 
+    // Record in-memory version snapshot
+    const versionNumber = (this.memoryVersions.get(page.id)?.length || 0) + 1;
+    const versionRecord: PageVersionRecord = {
+      id: `ver_${Date.now()}_${versionNumber}`,
+      organizationId: params.organizationId,
+      pageId: page.id,
+      versionNumber,
+      label: `Release v${versionNumber}`,
+      astSnapshot: { ...page.draftAst },
+      createdByUserId: params.createdByUserId || null,
+      createdAt: new Date().toISOString(),
+    };
+    const currentVersions = this.memoryVersions.get(page.id) || [];
+    this.memoryVersions.set(page.id, [versionRecord, ...currentVersions]);
+
     try {
       await this.db.$transaction(async (tx) => {
         await tx.cmsPage.update({
@@ -440,7 +467,7 @@ export class PageService {
           data: {
             organizationId: params.organizationId,
             pageId: params.pageId,
-            versionNumber: page.revision - 1,
+            versionNumber,
             astSnapshot: page.draftAst as unknown as Prisma.InputJsonValue,
             createdByUserId: params.createdByUserId || null,
           },
@@ -455,7 +482,149 @@ export class PageService {
       pageId: page.id,
       revision: page.revision,
       publishedAst: page.publishedAst,
-      versionNumber: 1,
+      versionNumber,
+    };
+  }
+
+  /**
+   * Lists immutable version snapshots for a page
+   */
+  public async listPageVersions(
+    organizationId: string,
+    pageId: string
+  ): Promise<PageVersionRecord[]> {
+    const memVersions = this.memoryVersions.get(pageId);
+    if (memVersions && memVersions.length > 0) {
+      return memVersions.filter((v) => v.organizationId === organizationId);
+    }
+
+    try {
+      const versions = await this.db.cmsPageVersion.findMany({
+        where: {
+          organizationId,
+          pageId,
+        },
+        orderBy: {
+          versionNumber: "desc",
+        },
+      });
+
+      return versions.map((v) => ({
+        id: v.id,
+        organizationId: v.organizationId,
+        pageId: v.pageId,
+        versionNumber: v.versionNumber,
+        label: v.label,
+        astSnapshot: v.astSnapshot as Record<string, unknown>,
+        createdByUserId: v.createdByUserId,
+        createdAt: v.createdAt.toISOString(),
+      }));
+    } catch {
+      return memVersions || [];
+    }
+  }
+
+  /**
+   * Rolls back a page's draft and published state to a prior immutable version snapshot
+   */
+  public async rollbackPageVersion(params: {
+    organizationId: string;
+    pageId: string;
+    versionNumber: number;
+    expectedRevision: number;
+  }): Promise<{
+    success: boolean;
+    pageId: string;
+    revision: number;
+    restoredVersion: number;
+    draftAst: Record<string, unknown>;
+    errorCode?: string;
+    message?: string;
+  }> {
+    const page = await this.getPage(params.organizationId, params.pageId);
+    if (!page) {
+      return {
+        success: false,
+        pageId: params.pageId,
+        revision: 0,
+        restoredVersion: 0,
+        draftAst: {},
+        errorCode: "PAGE_NOT_FOUND",
+        message: "Page not found within organization.",
+      };
+    }
+
+    if (page.revision !== params.expectedRevision) {
+      return {
+        success: false,
+        pageId: params.pageId,
+        revision: page.revision,
+        restoredVersion: 0,
+        draftAst: page.draftAst,
+        errorCode: "CMS_CONCURRENCY_CONFLICT",
+        message: `Concurrency conflict on rollback: Active revision is ${page.revision}.`,
+      };
+    }
+
+    const versions = await this.listPageVersions(params.organizationId, params.pageId);
+    const targetVersion = versions.find((v) => v.versionNumber === params.versionNumber);
+
+    if (!targetVersion) {
+      return {
+        success: false,
+        pageId: params.pageId,
+        revision: page.revision,
+        restoredVersion: 0,
+        draftAst: page.draftAst,
+        errorCode: "VERSION_NOT_FOUND",
+        message: `Version ${params.versionNumber} not found for page.`,
+      };
+    }
+
+    // Apply restored AST snapshot
+    page.draftAst = { ...targetVersion.astSnapshot };
+    page.publishedAst = { ...targetVersion.astSnapshot };
+    page.revision += 1;
+    this.memoryPages.set(page.id, page);
+
+    try {
+      await this.db.$transaction(async (tx) => {
+        await tx.cmsPage.update({
+          where: {
+            id_organizationId: {
+              id: params.pageId,
+              organizationId: params.organizationId,
+            },
+          },
+          data: {
+            revision: page.revision,
+          },
+        });
+
+        await tx.cmsPageContent.update({
+          where: {
+            pageId_organizationId: {
+              pageId: params.pageId,
+              organizationId: params.organizationId,
+            },
+          },
+          data: {
+            draftAst: targetVersion.astSnapshot as unknown as Prisma.InputJsonValue,
+            publishedAst: targetVersion.astSnapshot as unknown as Prisma.InputJsonValue,
+            publishedAt: new Date(),
+          },
+        });
+      });
+    } catch {
+      // Memory state preserved
+    }
+
+    return {
+      success: true,
+      pageId: page.id,
+      revision: page.revision,
+      restoredVersion: targetVersion.versionNumber,
+      draftAst: page.draftAst,
     };
   }
 }

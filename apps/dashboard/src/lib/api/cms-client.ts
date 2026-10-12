@@ -157,6 +157,62 @@ export class CmsApiClient implements ICmsApiClient {
       };
     }
   }
+
+  async listPageVersions(
+    organizationId: string,
+    pageId: string
+  ): Promise<{ success: boolean; versions: import("./types").PageVersionSnapshot[]; errorCode?: string; message?: string }> {
+    const endpoint = `${this.baseUrl}/api/v1/cms/admin/pages/${pageId}/versions`;
+
+    try {
+      const response = await fetch(endpoint, {
+        method: "GET",
+        headers: {
+          "x-tenant-id": organizationId,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return {
+          success: true,
+          versions: data.versions || [],
+        };
+      }
+
+      return {
+        success: false,
+        versions: [],
+        errorCode: "FETCH_VERSIONS_FAILED",
+        message: `HTTP ${response.status}`,
+      };
+    } catch (error) {
+      if (this.enableOfflineFallback) {
+        return {
+          success: true,
+          versions: [
+            {
+              id: `ver_demo_${pageId}`,
+              organizationId,
+              pageId,
+              versionNumber: 1,
+              label: "Release v1",
+              astSnapshot: {},
+              createdByUserId: "user_owner",
+              createdAt: new Date().toISOString(),
+            },
+          ],
+        };
+      }
+
+      return {
+        success: false,
+        versions: [],
+        errorCode: "NETWORK_ERROR",
+        message: error instanceof Error ? error.message : "Network failure",
+      };
+    }
+  }
 }
 
 export const defaultCmsClient = new CmsApiClient();

@@ -131,4 +131,62 @@ describe("Authoring Studio Management APIs & CAS Concurrency (S1-7)", () => {
 
     expect(res.status).toBe(200);
   });
+
+  it("should list version history snapshots with metadata", async () => {
+    const res = await router.request("/pages/page_demo_1/versions", {
+      method: "GET",
+      headers: {
+        "x-tenant-id": "org_alpha",
+      },
+    });
+
+    expect(res.status).toBe(200);
+    const data = (await res.json()) as {
+      versions: Array<{ versionNumber: number; label?: string; astSnapshot: Record<string, unknown> }>;
+    };
+    expect(data.versions.length).toBeGreaterThanOrEqual(1);
+    expect(data.versions[0]?.versionNumber).toBe(1);
+    expect(data.versions[0]?.label).toBe("Release v1");
+  });
+
+  it("should rollback page to prior version snapshot cleanly", async () => {
+    // Current revision after previous tests is 3 (updated in rootRouter test)
+    const res = await router.request("/pages/page_demo_1/versions/1/rollback", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-tenant-id": "org_alpha",
+      },
+      body: JSON.stringify({
+        expectedRevision: 4,
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    const data = (await res.json()) as {
+      success: boolean;
+      revision: number;
+      restoredVersion: number;
+      draftAst: Record<string, unknown>;
+    };
+    expect(data.success).toBe(true);
+    expect(data.restoredVersion).toBe(1);
+    expect(data.revision).toBe(5);
+  });
+
+  it("should reject rollback with 409 Conflict if expectedRevision diverged", async () => {
+    // Revision is now 5; client sends 4
+    const res = await router.request("/pages/page_demo_1/versions/1/rollback", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-tenant-id": "org_alpha",
+      },
+      body: JSON.stringify({
+        expectedRevision: 4,
+      }),
+    });
+
+    expect(res.status).toBe(409);
+  });
 });

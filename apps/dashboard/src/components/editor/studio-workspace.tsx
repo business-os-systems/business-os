@@ -192,6 +192,31 @@ export function StudioWorkspace({
   const [isInspectorOpen, setIsInspectorOpen] = useState(true);
   const [isAddDrawerOpen, setIsAddDrawerOpen] = useState(false);
   const [targetSectionIdForAdd, setTargetSectionIdForAdd] = useState<string | null>(null);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [pageStatus, setPageStatus] = useState<"DRAFT" | "PUBLISHED">(status);
+  const [versionsCount, setVersionsCount] = useState<number>(1);
+
+  // Publish page handler
+  const handlePublish = useCallback(async () => {
+    setIsPublishing(true);
+    try {
+      // Flush any dirty pending autosave first
+      await flushSave();
+      const res = await cmsClient.publishPage({
+        organizationId,
+        pageId,
+        expectedRevision: lastSavedRevision,
+      });
+      if (res.success) {
+        setPageStatus("PUBLISHED");
+        if (res.versionNumber) {
+          setVersionsCount(res.versionNumber);
+        }
+      }
+    } finally {
+      setIsPublishing(false);
+    }
+  }, [cmsClient, organizationId, pageId, lastSavedRevision, flushSave]);
 
   // Active Block and Section resolution
   const activeBlock = useMemo<BlockAst | null>(() => {
@@ -427,7 +452,7 @@ export function StudioWorkspace({
         pageId={pageId}
         pageTitle={pageTitle}
         revision={lastSavedRevision}
-        status={status}
+        status={pageStatus}
         autosaveStatus={autosaveStatus}
         isLayersOpen={isLayersOpen}
         isInspectorOpen={isInspectorOpen}
@@ -438,6 +463,9 @@ export function StudioWorkspace({
           setIsAddDrawerOpen(true);
         }}
         onFlushSave={flushSave}
+        onPublish={handlePublish}
+        isPublishing={isPublishing}
+        versionsCount={versionsCount}
       />
 
       {/* Main Studio Body Workspace */}

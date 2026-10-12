@@ -34,4 +34,7 @@ export interface StudioHeaderProps {
   onToggleInspector: () => void;
   onOpenAddDrawer: () => void;
   onFlushSave?: () => void;
+  onPublish?: () => void;
+  isPublishing?: boolean;
+  versionsCount?: number;
 }
