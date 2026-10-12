@@ -6,6 +6,8 @@ import {
   BlockTreeSidebar,
   BlockPropertyInspector,
   AddBlockDrawer,
+  useEditorAutosave,
+  CasConflictDialog,
   type CanvasSelectionState,
 } from "@suite/website-builder/editor";
 import type {
@@ -14,6 +16,7 @@ import type {
   BlockAst,
   BlockStyleTokens,
 } from "@suite/website-builder/ast";
+import { defaultCmsClient } from "../../lib/api";
 import { StudioHeader } from "./studio-header";
 import type { StudioWorkspaceProps } from "./types";
 
@@ -146,14 +149,39 @@ const DEFAULT_SEED_AST: PageAst = {
 };
 
 export function StudioWorkspace({
+  organizationId = "org_demo",
   siteId,
   pageId,
   pageTitle = "Homepage & Welcome Hero",
   initialAst = DEFAULT_SEED_AST,
-  revision = 4,
+  initialRevision = 4,
+  revision,
   status = "PUBLISHED",
+  cmsClient = defaultCmsClient,
 }: StudioWorkspaceProps) {
-  const [pageAst, setPageAst] = useState<PageAst>(initialAst);
+  const startingRevision = revision ?? initialRevision;
+
+  // Wire useEditorAutosave hook connected to CmsApiClient
+  const {
+    status: autosaveStatus,
+    lastSavedRevision,
+    currentAst,
+    conflictData,
+    updateAst,
+    flushSave,
+    resolveConflictKeepMine,
+    resolveConflictKeepServer,
+  } = useEditorAutosave(
+    cmsClient as unknown as Parameters<typeof useEditorAutosave>[0],
+    organizationId,
+    pageId,
+    initialAst,
+    startingRevision,
+    {
+      debounceMs: 500,
+    }
+  );
+
   const [selection, setSelection] = useState<CanvasSelectionState>({
     selectedBlockId: "b_hero_1",
     selectedSectionId: "sec_hero",
@@ -168,7 +196,7 @@ export function StudioWorkspace({
   // Active Block and Section resolution
   const activeBlock = useMemo<BlockAst | null>(() => {
     if (!selection.selectedBlockId) return null;
-    for (const section of pageAst.sections) {
+    for (const section of currentAst.sections) {
       for (const block of section.blocks) {
         if (block.id === selection.selectedBlockId) {
           return block;
@@ -176,21 +204,21 @@ export function StudioWorkspace({
       }
     }
     return null;
-  }, [pageAst, selection.selectedBlockId]);
+  }, [currentAst, selection.selectedBlockId]);
 
   const activeSection = useMemo<SectionAst | null>(() => {
     if (selection.selectedSectionId) {
-      const match = pageAst.sections.find((s) => s.id === selection.selectedSectionId);
+      const match = currentAst.sections.find((s) => s.id === selection.selectedSectionId);
       if (match) return match;
     }
     if (selection.selectedBlockId) {
-      const match = pageAst.sections.find((s) =>
+      const match = currentAst.sections.find((s) =>
         s.blocks.some((b) => b.id === selection.selectedBlockId)
       );
       if (match) return match;
     }
     return null;
-  }, [pageAst, selection.selectedSectionId, selection.selectedBlockId]);
+  }, [currentAst, selection.selectedSectionId, selection.selectedBlockId]);
 
   // Block Selection
   const handleSelectBlock = useCallback(
@@ -203,7 +231,7 @@ export function StudioWorkspace({
         return;
       }
 
-      const parentSection = pageAst.sections.find((s) =>
+      const parentSection = currentAst.sections.find((s) =>
         s.blocks.some((b) => b.id === blockId)
       );
 
@@ -213,7 +241,7 @@ export function StudioWorkspace({
         selectedSectionId: parentSection ? parentSection.id : prev.selectedSectionId,
       }));
     },
-    [pageAst]
+    [currentAst]
   );
 
   // Section Selection
@@ -228,9 +256,9 @@ export function StudioWorkspace({
   // Update Block Properties
   const handleChangeBlockProps = useCallback(
     (blockId: string, newProps: Record<string, unknown>) => {
-      setPageAst((prev) => ({
-        ...prev,
-        sections: prev.sections.map((sec) => ({
+      const updatedAst: PageAst = {
+        ...currentAst,
+        sections: currentAst.sections.map((sec) => ({
           ...sec,
           blocks: sec.blocks.map((b) => {
             if (b.id !== blockId) return b;
@@ -243,17 +271,18 @@ export function StudioWorkspace({
             } as BlockAst;
           }),
         })),
-      }));
+      };
+      updateAst(updatedAst);
     },
-    []
+    [currentAst, updateAst]
   );
 
   // Update Block Styles
   const handleChangeBlockStyles = useCallback(
     (blockId: string, newStyles: BlockStyleTokens) => {
-      setPageAst((prev) => ({
-        ...prev,
-        sections: prev.sections.map((sec) => ({
+      const updatedAst: PageAst = {
+        ...currentAst,
+        sections: currentAst.sections.map((sec) => ({
           ...sec,
           blocks: sec.blocks.map((b) => {
             if (b.id !== blockId) return b;
@@ -266,132 +295,140 @@ export function StudioWorkspace({
             } as BlockAst;
           }),
         })),
-      }));
+      };
+      updateAst(updatedAst);
     },
-    []
+    [currentAst, updateAst]
   );
 
   // Move Section
-  const handleMoveSection = useCallback((fromIndex: number, toIndex: number) => {
-    setPageAst((prev) => {
+  const handleMoveSection = useCallback(
+    (fromIndex: number, toIndex: number) => {
       if (
         fromIndex < 0 ||
-        fromIndex >= prev.sections.length ||
+        fromIndex >= currentAst.sections.length ||
         toIndex < 0 ||
-        toIndex >= prev.sections.length
+        toIndex >= currentAst.sections.length
       ) {
-        return prev;
+        return;
       }
-      const newSections = [...prev.sections];
+      const newSections = [...currentAst.sections];
       const [moved] = newSections.splice(fromIndex, 1);
       if (moved) {
         newSections.splice(toIndex, 0, moved);
       }
-      return { ...prev, sections: newSections };
-    });
-  }, []);
+      updateAst({ ...currentAst, sections: newSections });
+    },
+    [currentAst, updateAst]
+  );
 
   // Delete Section
-  const handleDeleteSection = useCallback((sectionId: string) => {
-    setPageAst((prev) => ({
-      ...prev,
-      sections: prev.sections.filter((s) => s.id !== sectionId),
-    }));
-    setSelection((prev) => ({
-      ...prev,
-      selectedSectionId: prev.selectedSectionId === sectionId ? null : prev.selectedSectionId,
-      selectedBlockId: null,
-    }));
-  }, []);
+  const handleDeleteSection = useCallback(
+    (sectionId: string) => {
+      const updatedAst: PageAst = {
+        ...currentAst,
+        sections: currentAst.sections.filter((s) => s.id !== sectionId),
+      };
+      updateAst(updatedAst);
+      setSelection((prev) => ({
+        ...prev,
+        selectedSectionId: prev.selectedSectionId === sectionId ? null : prev.selectedSectionId,
+        selectedBlockId: null,
+      }));
+    },
+    [currentAst, updateAst]
+  );
 
   // Toggle Visibility
-  const handleToggleSectionVisibility = useCallback((sectionId: string) => {
-    setPageAst((prev) => ({
-      ...prev,
-      sections: prev.sections.map((sec) => {
-        if (sec.id !== sectionId) return sec;
-        const currentVis = sec.visibility || {};
-        return {
-          ...sec,
-          visibility: {
-            ...currentVis,
-            hideOnDesktop: !currentVis.hideOnDesktop,
-          },
-        };
-      }),
-    }));
-  }, []);
+  const handleToggleSectionVisibility = useCallback(
+    (sectionId: string) => {
+      const updatedAst: PageAst = {
+        ...currentAst,
+        sections: currentAst.sections.map((sec) => {
+          if (sec.id !== sectionId) return sec;
+          const currentVis = sec.visibility || {};
+          return {
+            ...sec,
+            visibility: {
+              ...currentVis,
+              hideOnDesktop: !currentVis.hideOnDesktop,
+            },
+          };
+        }),
+      };
+      updateAst(updatedAst);
+    },
+    [currentAst, updateAst]
+  );
 
   // Add Block
   const handleAddBlock = useCallback(
     (newBlock: BlockAst, targetSecId?: string) => {
-      setPageAst((prev) => {
-        if (!targetSecId) {
-          const lastSec = prev.sections[prev.sections.length - 1];
-          if (!lastSec) {
-            return {
-              ...prev,
-              sections: [
-                {
-                  id: `sec_${Date.now()}`,
-                  name: "New Section",
-                  blocks: [newBlock],
-                },
-              ],
-            };
-          }
-          return {
-            ...prev,
-            sections: prev.sections.map((sec) =>
-              sec.id === lastSec.id
-                ? { ...sec, blocks: [...sec.blocks, newBlock] }
-                : sec
-            ),
-          };
+      let updatedSections: SectionAst[];
+      if (!targetSecId) {
+        const lastSec = currentAst.sections[currentAst.sections.length - 1];
+        if (!lastSec) {
+          updatedSections = [
+            {
+              id: `sec_${Date.now()}`,
+              name: "New Section",
+              blocks: [newBlock],
+            },
+          ];
+        } else {
+          updatedSections = currentAst.sections.map((sec) =>
+            sec.id === lastSec.id
+              ? { ...sec, blocks: [...sec.blocks, newBlock] }
+              : sec
+          );
         }
-        return {
-          ...prev,
-          sections: prev.sections.map((sec) => {
-            if (sec.id !== targetSecId) return sec;
-            return {
-              ...sec,
-              blocks: [...sec.blocks, newBlock],
-            };
-          }),
-        };
-      });
+      } else {
+        updatedSections = currentAst.sections.map((sec) => {
+          if (sec.id !== targetSecId) return sec;
+          return {
+            ...sec,
+            blocks: [...sec.blocks, newBlock],
+          };
+        });
+      }
+
+      updateAst({ ...currentAst, sections: updatedSections });
       setSelection({
         selectedBlockId: newBlock.id,
         selectedSectionId: targetSecId || null,
         hoveredBlockId: null,
       });
     },
-    []
+    [currentAst, updateAst]
   );
 
   // Add Section
-  const handleAddSection = useCallback((newSection: SectionAst) => {
-    setPageAst((prev) => ({
-      ...prev,
-      sections: [...prev.sections, newSection],
-    }));
-    const firstBlock = newSection.blocks[0];
-    setSelection({
-      selectedSectionId: newSection.id,
-      selectedBlockId: firstBlock ? firstBlock.id : null,
-      hoveredBlockId: null,
-    });
-  }, []);
+  const handleAddSection = useCallback(
+    (newSection: SectionAst) => {
+      updateAst({
+        ...currentAst,
+        sections: [...currentAst.sections, newSection],
+      });
+      const firstBlock = newSection.blocks[0];
+      setSelection({
+        selectedSectionId: newSection.id,
+        selectedBlockId: firstBlock ? firstBlock.id : null,
+        hoveredBlockId: null,
+      });
+    },
+    [currentAst, updateAst]
+  );
 
   return (
     <div className="h-screen w-screen overflow-hidden flex flex-col bg-slate-900">
-      {/* Studio Header Bar */}
+      {/* Studio Header Bar with Live CAS & Autosave Indicators */}
       <StudioHeader
         siteId={siteId}
         pageId={pageId}
         pageTitle={pageTitle}
-        revision={revision}
+        revision={lastSavedRevision}
         status={status}
+        autosaveStatus={autosaveStatus}
         isLayersOpen={isLayersOpen}
         isInspectorOpen={isInspectorOpen}
         onToggleLayers={() => setIsLayersOpen((prev) => !prev)}
@@ -400,6 +437,7 @@ export function StudioWorkspace({
           setTargetSectionIdForAdd(selection.selectedSectionId);
           setIsAddDrawerOpen(true);
         }}
+        onFlushSave={flushSave}
       />
 
       {/* Main Studio Body Workspace */}
@@ -407,7 +445,7 @@ export function StudioWorkspace({
         {/* Left: Layer Tree Sidebar */}
         {isLayersOpen && (
           <BlockTreeSidebar
-            sections={pageAst.sections}
+            sections={currentAst.sections}
             selectedSectionId={selection.selectedSectionId}
             selectedBlockId={selection.selectedBlockId}
             onSelectSection={handleSelectSection}
@@ -418,7 +456,7 @@ export function StudioWorkspace({
             onOpenAddDrawer={(targetSectionIndex) => {
               const sec =
                 typeof targetSectionIndex === "number"
-                  ? pageAst.sections[targetSectionIndex]
+                  ? currentAst.sections[targetSectionIndex]
                   : null;
               setTargetSectionIdForAdd(sec ? sec.id : null);
               setIsAddDrawerOpen(true);
@@ -429,7 +467,7 @@ export function StudioWorkspace({
         {/* Center: Live Scaled Visual Canvas */}
         <div className="flex-1 h-full min-w-0 overflow-hidden relative bg-slate-100">
           <VisualCanvas
-            ast={pageAst}
+            ast={currentAst}
             selection={selection}
             onSelectBlock={handleSelectBlock}
             onHoverBlock={(blockId) =>
@@ -461,6 +499,14 @@ export function StudioWorkspace({
         onAddBlock={handleAddBlock}
         onAddSection={handleAddSection}
         targetSectionId={targetSectionIdForAdd}
+      />
+
+      {/* CAS Concurrency Conflict Dialog (HTTP 409 Resolution) */}
+      <CasConflictDialog
+        isOpen={autosaveStatus === "conflict"}
+        conflict={conflictData}
+        onKeepMine={resolveConflictKeepMine}
+        onKeepServer={resolveConflictKeepServer}
       />
     </div>
   );
