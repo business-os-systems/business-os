@@ -5,3 +5,4 @@ export * from "./routes/index.js";
 export * from "./db/index.js";
 export * from "./workers/index.js";
 export * from "./ast/index.js";
+export * from "./components/blocks/index.js";

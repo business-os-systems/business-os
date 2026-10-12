@@ -50,16 +50,25 @@
     "@suite/db": "workspace:*",
     "@suite/logger": "workspace:*",
     "@suite/redis": "workspace:*",
+    "@suite/ui": "workspace:*",
     "hono": "^4.7.0",
     "zod": "^3.24.2"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0"
   },
   "devDependencies": {
     "@suite/eslint-config": "workspace:*",
     "@suite/tsconfig": "workspace:*",
     "@types/node": "^20.17.19",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
     "@typescript-eslint/eslint-plugin": "^8.26.0",
     "@typescript-eslint/parser": "^8.26.0",
     "eslint": "^8.57.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "typescript": "^5.7.3",
     "vitest": "^2.1.8"
   }
