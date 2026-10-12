@@ -35,6 +35,21 @@
       "types": "./src/db/index.ts",
       "import": "./src/db/index.ts",
       "default": "./src/db/index.ts"
+    },
+    "./editor": {
+      "types": "./src/editor/index.ts",
+      "import": "./src/editor/index.ts",
+      "default": "./src/editor/index.ts"
+    },
+    "./ast": {
+      "types": "./src/ast/index.ts",
+      "import": "./src/ast/index.ts",
+      "default": "./src/ast/index.ts"
+    },
+    "./render": {
+      "types": "./src/render/index.ts",
+      "import": "./src/render/index.ts",
+      "default": "./src/render/index.ts"
     }
   },
   "scripts": {
