@@ -3,11 +3,15 @@ import { createStorefrontRouter } from "./storefront.js";
 import { createFormRouter } from "./forms.js";
 import { createAdminRouter } from "./admin/index.js";
 import { PageService } from "../services/page-service.js";
+import { SiteService } from "../services/site-service.js";
 
 /**
  * Creates module sub-router for public and management website builder routes
  */
-export function createWebsiteBuilderRoutes(pageService?: PageService): OpenAPIHono {
+export function createWebsiteBuilderRoutes(
+  pageService?: PageService,
+  siteService?: SiteService
+): OpenAPIHono {
   const router = new OpenAPIHono();
 
   router.get("/health", (c) => {
@@ -24,7 +28,7 @@ export function createWebsiteBuilderRoutes(pageService?: PageService): OpenAPIHo
   router.route("/storefront/forms", createFormRouter());
 
   // Mount Studio Management Admin API under /admin
-  router.route("/admin", createAdminRouter(pageService));
+  router.route("/admin", createAdminRouter(pageService, siteService));
 
   return router;
 }
@@ -32,4 +36,3 @@ export function createWebsiteBuilderRoutes(pageService?: PageService): OpenAPIHo
 export * from "./storefront.js";
 export * from "./forms.js";
 export * from "./admin/index.js";
-
