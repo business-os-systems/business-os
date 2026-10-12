@@ -73,6 +73,51 @@ export class PageService {
   }
 
   /**
+   * Creates a page scoped to tenant and site
+   */
+  public async createPage(
+    params: Omit<PageRecord, "revision" | "status" | "publishedAst" | "publishedAt">
+  ): Promise<PageRecord> {
+    const page: PageRecord = {
+      ...params,
+      revision: 1,
+      status: "DRAFT",
+      publishedAst: null,
+      publishedAt: null,
+    };
+    this.pages.set(page.id, page);
+    return page;
+  }
+
+  /**
+   * Retrieves a page with strict tenant isolation check
+   */
+  public async getPage(
+    organizationId: string,
+    pageId: string
+  ): Promise<PageRecord | null> {
+    const page = this.pages.get(pageId);
+    if (!page || page.organizationId !== organizationId) {
+      return null;
+    }
+    return page;
+  }
+
+  /**
+   * Deletes a page with strict tenant isolation check
+   */
+  public async deletePage(
+    organizationId: string,
+    pageId: string
+  ): Promise<boolean> {
+    const page = this.pages.get(pageId);
+    if (!page || page.organizationId !== organizationId) {
+      return false;
+    }
+    return this.pages.delete(pageId);
+  }
+
+  /**
    * Updates draft AST with atomic Compare-and-Swap (CAS) Concurrency Control
    */
   public async updateDraftContent(params: {
