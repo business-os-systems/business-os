@@ -125,6 +125,18 @@ describe("Website Builder Sites & Pages Explorer", () => {
       expect(html).toContain("href=\"/sites/site_alpha/preview/page_home\"");
       expect(html).toContain("Edit in Studio");
     });
+
+    it("renders zero-data empty state when sites list is empty", () => {
+      const html = renderToString(<SiteListTable sites={[]} />);
+      expect(html).toContain("No Websites Created Yet");
+      expect(html).toContain("Launch Onboarding Wizard");
+    });
+
+    it("renders zero-data empty state when pages list is empty", () => {
+      const html = renderToString(<PageExplorerTable siteId="site_empty" pages={[]} onCreatePage={() => {}} />);
+      expect(html).toContain("No Pages Found");
+      expect(html).toContain("Create First Page");
+    });
   });
 
   describe("Dialog Components", () => {

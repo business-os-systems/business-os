@@ -43,66 +43,86 @@ export function PageExplorerTable({
         )}
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
-        <table className="w-full text-left text-sm text-slate-600">
-          <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-400 border-b border-slate-200">
-            <tr>
-              <th className="py-3 px-4">Page Title</th>
-              <th className="py-3 px-4">Route Path</th>
-              <th className="py-3 px-4">Status</th>
-              <th className="py-3 px-4">CAS Revision</th>
-              <th className="py-3 px-4">Last Modified</th>
-              <th className="py-3 px-4 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {pages.map((page) => (
-              <tr key={page.id} className="hover:bg-slate-50/80 transition-colors">
-                <td className="py-3.5 px-4 font-semibold text-slate-900">
-                  <div className="flex items-center gap-2">
-                    <span>{page.name}</span>
-                    {page.isHome && (
-                      <Badge variant="secondary" className="text-[10px]">
-                        Home
-                      </Badge>
-                    )}
-                  </div>
-                </td>
-                <td className="py-3.5 px-4 font-mono text-xs text-slate-700">
-                  {`/${page.slug}`}
-                </td>
-                <td className="py-3.5 px-4">
-                  <Badge variant={PAGE_STATUS_VARIANTS[page.status]}>
-                    {page.status}
-                  </Badge>
-                </td>
-                <td className="py-3.5 px-4 text-xs font-mono text-slate-500">
-                  {`v${page.version}`}
-                </td>
-                <td className="py-3.5 px-4 text-xs text-slate-500">
-                  {page.updatedAt}
-                </td>
-                <td className="py-3.5 px-4 text-right">
-                  <div className="inline-flex items-center gap-2">
-                    <Link href={`/sites/${siteId}/preview/${page.id}`}>
-                      <Button variant="outline" size="sm" className="gap-1">
-                        <EyeIcon className="w-3.5 h-3.5" />
-                        Preview
-                      </Button>
-                    </Link>
-                    <Link href={`/sites/${siteId}/editor/${page.id}`}>
-                      <Button variant="default" size="sm" className="gap-1">
-                        Edit in Studio
-                        <ArrowRightIcon className="w-3.5 h-3.5" />
-                      </Button>
-                    </Link>
-                  </div>
-                </td>
+      {pages.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-slate-300 bg-white p-12 text-center shadow-sm">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-blue-50 text-blue-600 mb-4">
+            <PlusIcon className="h-7 w-7" />
+          </div>
+          <h3 className="text-lg font-bold text-slate-900 tracking-tight">No Pages Found</h3>
+          <p className="mt-1.5 text-xs text-slate-500 max-w-sm mx-auto">
+            This website does not have any pages created yet. Create a Home landing page or subpath to begin authoring in the Visual Studio.
+          </p>
+          {onCreatePage && (
+            <div className="mt-6">
+              <Button variant="default" size="sm" onClick={onCreatePage} className="gap-1.5">
+                <PlusIcon className="w-4 h-4" />
+                Create First Page
+              </Button>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+          <table className="w-full text-left text-sm text-slate-600">
+            <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-400 border-b border-slate-200">
+              <tr>
+                <th className="py-3 px-4">Page Title</th>
+                <th className="py-3 px-4">Route Path</th>
+                <th className="py-3 px-4">Status</th>
+                <th className="py-3 px-4">CAS Revision</th>
+                <th className="py-3 px-4">Last Modified</th>
+                <th className="py-3 px-4 text-right">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {pages.map((page) => (
+                <tr key={page.id} className="hover:bg-slate-50/80 transition-colors">
+                  <td className="py-3.5 px-4 font-semibold text-slate-900">
+                    <div className="flex items-center gap-2">
+                      <span>{page.name}</span>
+                      {page.isHome && (
+                        <Badge variant="secondary" className="text-[10px]">
+                          Home
+                        </Badge>
+                      )}
+                    </div>
+                  </td>
+                  <td className="py-3.5 px-4 font-mono text-xs text-slate-700">
+                    {`/${page.slug}`}
+                  </td>
+                  <td className="py-3.5 px-4">
+                    <Badge variant={PAGE_STATUS_VARIANTS[page.status]}>
+                      {page.status}
+                    </Badge>
+                  </td>
+                  <td className="py-3.5 px-4 text-xs font-mono text-slate-500">
+                    {`v${page.version}`}
+                  </td>
+                  <td className="py-3.5 px-4 text-xs text-slate-500">
+                    {page.updatedAt}
+                  </td>
+                  <td className="py-3.5 px-4 text-right">
+                    <div className="inline-flex items-center gap-2">
+                      <Link href={`/sites/${siteId}/preview/${page.id}`}>
+                        <Button variant="outline" size="sm" className="gap-1">
+                          <EyeIcon className="w-3.5 h-3.5" />
+                          Preview
+                        </Button>
+                      </Link>
+                      <Link href={`/sites/${siteId}/editor/${page.id}`}>
+                        <Button variant="default" size="sm" className="gap-1">
+                          Edit in Studio
+                          <ArrowRightIcon className="w-3.5 h-3.5" />
+                        </Button>
+                      </Link>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

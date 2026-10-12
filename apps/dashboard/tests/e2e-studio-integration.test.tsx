@@ -7,7 +7,12 @@ import SitePagesPage from "../src/app/(dashboard)/sites/[siteId]/pages/page";
 import StudioEditorPage from "../src/app/(editor)/sites/[siteId]/editor/[pageId]/page";
 import SitePreviewPage from "../src/app/(editor)/sites/[siteId]/preview/[pageId]/page";
 import { CmsApiClient } from "../src/lib/api/cms-client";
-import { CreateSiteSchema, CreatePageSchema } from "../src/components/sites";
+import {
+  CreateSiteSchema,
+  CreatePageSchema,
+  SiteListTable,
+  PageExplorerTable,
+} from "../src/components/sites";
 
 vi.mock("next/navigation", () => ({
   useParams: () => ({
@@ -39,16 +44,46 @@ describe("Automated E2E Integration Suite: Complete Authoring Lifecycle (@suite/
   });
 
   describe("Lifecycle Step 2: Website Builder Sites Listing & Domain Discovery", () => {
-    it("renders sites listing page with domain routes and new website trigger", () => {
-      const html = renderToString(<SitesPage />);
+    it("renders sites listing page and table with domain routes and new website trigger", () => {
+      // Test page SSR loading state
+      const pageHtml = renderToString(<SitesPage />);
+      expect(pageHtml).toContain("Loading websites...");
 
-      expect(html).toContain("Websites &amp; Storefronts");
-      expect(html).toContain("Riverview Bistro Flagship");
-      expect(html).toContain("riverview-bistro.business-os.site");
-      expect(html).toContain("riverviewbistro.com");
-      expect(html).toContain("Cafe Terrace &amp; Wine Bar");
-      expect(html).toContain("New Website");
-      expect(html).toContain("href=\"/sites/site_riverview_main/pages\"");
+      // Test table rendering with dynamic data
+      const mockSites = [
+        {
+          id: "site_riverview_main",
+          organizationId: "org_1",
+          name: "Riverview Bistro Flagship",
+          subdomain: "riverview-bistro",
+          customDomain: "riverviewbistro.com",
+          status: "PUBLISHED" as const,
+          publishedAt: "2026-10-10 12:00:00",
+          pagesCount: 2,
+          updatedAt: "2026-10-12 10:00:00",
+        },
+        {
+          id: "site_cafe_terrace",
+          organizationId: "org_1",
+          name: "Cafe Terrace & Wine Bar",
+          subdomain: "cafe-terrace",
+          customDomain: null,
+          status: "DRAFT" as const,
+          publishedAt: null,
+          pagesCount: 1,
+          updatedAt: "2026-10-12 11:00:00",
+        },
+      ];
+      const tableHtml = renderToString(
+        <SiteListTable sites={mockSites} onCreateSite={() => {}} />
+      );
+      expect(tableHtml).toContain("Websites &amp; Storefronts");
+      expect(tableHtml).toContain("Riverview Bistro Flagship");
+      expect(tableHtml).toContain("riverview-bistro.business-os.site");
+      expect(tableHtml).toContain("riverviewbistro.com");
+      expect(tableHtml).toContain("Cafe Terrace &amp; Wine Bar");
+      expect(tableHtml).toContain("New Website");
+      expect(tableHtml).toContain("href=\"/sites/site_riverview_main/pages\"");
     });
 
     it("enforces strict Zod validation on new site creation inputs", () => {
@@ -69,21 +104,53 @@ describe("Automated E2E Integration Suite: Complete Authoring Lifecycle (@suite/
 
   describe("Lifecycle Step 3: Page Explorer & Revision Tracking", () => {
     it("renders page explorer with URL hierarchy, CAS revisions, and Studio links", () => {
-      const html = renderToString(<SitePagesPage />);
+      // Test page SSR loading state
+      const pageHtml = renderToString(<SitePagesPage />);
+      expect(pageHtml).toContain("Loading pages...");
 
-      expect(html).toContain("Site Pages");
-      expect(html).toContain("Homepage &amp; Welcome Hero");
-      expect(html).toContain("/index");
-      expect(html).toContain("Home");
-      expect(html).toContain("v4");
-      expect(html).toContain("Summer Tasting Menu");
-      expect(html).toContain("/menu");
-      expect(html).toContain("v2");
-      expect(html).toContain("New Page");
-      expect(html).toContain("Edit in Studio");
-      expect(html).toContain("Preview");
-      expect(html).toContain("href=\"/sites/site_riverview_main/editor/page_home_01\"");
-      expect(html).toContain("href=\"/sites/site_riverview_main/preview/page_home_01\"");
+      // Test table rendering with dynamic data
+      const mockPages = [
+        {
+          id: "page_home_01",
+          siteId: "site_riverview_main",
+          name: "Homepage & Welcome Hero",
+          slug: "index",
+          isHome: true,
+          status: "PUBLISHED" as const,
+          version: 4,
+          updatedAt: "2026-10-12 10:00:00",
+        },
+        {
+          id: "page_menu_02",
+          siteId: "site_riverview_main",
+          name: "Summer Tasting Menu",
+          slug: "menu",
+          isHome: false,
+          status: "DRAFT" as const,
+          version: 2,
+          updatedAt: "2026-10-12 11:00:00",
+        },
+      ];
+      const tableHtml = renderToString(
+        <PageExplorerTable
+          siteId="site_riverview_main"
+          pages={mockPages}
+          onCreatePage={() => {}}
+        />
+      );
+      expect(tableHtml).toContain("Site Pages");
+      expect(tableHtml).toContain("Homepage &amp; Welcome Hero");
+      expect(tableHtml).toContain("/index");
+      expect(tableHtml).toContain("Home");
+      expect(tableHtml).toContain("v4");
+      expect(tableHtml).toContain("Summer Tasting Menu");
+      expect(tableHtml).toContain("/menu");
+      expect(tableHtml).toContain("v2");
+      expect(tableHtml).toContain("New Page");
+      expect(tableHtml).toContain("Edit in Studio");
+      expect(tableHtml).toContain("Preview");
+      expect(tableHtml).toContain("href=\"/sites/site_riverview_main/editor/page_home_01\"");
+      expect(tableHtml).toContain("href=\"/sites/site_riverview_main/preview/page_home_01\"");
     });
 
     it("enforces strict Zod validation on new page creation inputs", () => {

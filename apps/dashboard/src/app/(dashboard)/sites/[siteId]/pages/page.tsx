@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
@@ -10,62 +10,57 @@ import {
   type CreatePageInput,
 } from "@/components/sites";
 
-const INITIAL_PAGES: PageSummary[] = [
-  {
-    id: "page_home_01",
-    siteId: "site_riverview_main",
-    name: "Homepage & Welcome Hero",
-    slug: "index",
-    isHome: true,
-    status: "PUBLISHED",
-    version: 4,
-    updatedAt: "2026-10-12 11:20:00",
-  },
-  {
-    id: "page_menu_02",
-    siteId: "site_riverview_main",
-    name: "Summer Tasting Menu",
-    slug: "menu",
-    isHome: false,
-    status: "PUBLISHED",
-    version: 2,
-    updatedAt: "2026-10-11 14:15:00",
-  },
-  {
-    id: "page_reservations_03",
-    siteId: "site_riverview_main",
-    name: "Table Reservations & VIP Booking",
-    slug: "reservations",
-    isHome: false,
-    status: "DRAFT",
-    version: 1,
-    updatedAt: "2026-10-12 09:45:00",
-  },
-  {
-    id: "page_about_04",
-    siteId: "site_riverview_main",
-    name: "Our Story & Culinary Philosophy",
-    slug: "about",
-    isHome: false,
-    status: "PUBLISHED",
-    version: 3,
-    updatedAt: "2026-10-10 18:00:00",
-  },
-];
-
 export default function SitePagesPage() {
   const params = useParams();
-  const siteId = (params?.["siteId"] as string) || "site_riverview_main";
+  const siteId = (params?.["siteId"] as string) || "";
 
-  const [pages, setPages] = useState<PageSummary[]>(INITIAL_PAGES);
+  const [pages, setPages] = useState<PageSummary[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+
+  useEffect(() => {
+    async function loadPages() {
+      if (!siteId) return;
+      try {
+        const res = await fetch(`/api/cms/sites/${siteId}/pages`);
+        if (res.ok) {
+          const data = await res.json();
+          const mapped: PageSummary[] = (data.pages || []).map((p: {
+            id: string;
+            siteId: string;
+            title: string;
+            slug: string;
+            isHomePage: boolean;
+            status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+            revision: number;
+            updatedAt?: string;
+          }) => ({
+            id: p.id,
+            siteId: p.siteId,
+            name: p.title,
+            slug: p.slug.replace(/^\//, ""),
+            isHome: p.isHomePage,
+            status: p.status,
+            version: p.revision,
+            updatedAt: p.updatedAt ? p.updatedAt.replace("T", " ").substring(0, 19) : "Just now",
+          }));
+          setPages(mapped);
+        }
+      } catch {
+        // Fallback to empty on error
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadPages();
+  }, [siteId]);
 
   const handleCreatePage = (data: CreatePageInput) => {
     const newPage: PageSummary = {
       id: `page_${Date.now()}`,
       siteId,
       name: data.name,
-      slug: data.slug,
+      slug: data.slug.replace(/^\//, ""),
       isHome: data.isHome,
       status: "DRAFT",
       version: 1,
@@ -74,17 +69,26 @@ export default function SitePagesPage() {
     setPages((prev) => [...prev, newPage]);
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex h-64 items-center justify-center text-xs font-medium text-slate-400">
+        Loading pages...
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs text-slate-500">
-        <Link href="/sites" className="hover:text-blue-600 transition-colors">
-          Websites &amp; Storefronts
+      {/* Breadcrumb Header */}
+      <div className="flex items-center gap-2 text-xs text-slate-500">
+        <Link href="/sites" className="hover:text-slate-900 transition-colors">
+          Websites
         </Link>
         <span>/</span>
         <span className="font-mono text-slate-900 font-medium">{siteId}</span>
         <span>/</span>
-        <span className="text-slate-900 font-semibold">Pages</span>
-      </nav>
+        <span>Pages Explorer</span>
+      </div>
 
       <PageExplorerTable
         siteId={siteId}
