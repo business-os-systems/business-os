@@ -42,6 +42,109 @@ const PublishBodySchema = z.object({
   expectedRevision: z.number().int().positive(),
 });
 
+const PageVersionSchema = z.object({
+  id: z.string(),
+  organizationId: z.string(),
+  pageId: z.string(),
+  versionNumber: z.number().int(),
+  label: z.string().nullable().optional(),
+  astSnapshot: z.record(z.unknown()),
+  createdByUserId: z.string().nullable().optional(),
+  createdAt: z.string(),
+});
+
+const RollbackBodySchema = z.object({
+  expectedRevision: z.number().int().positive(),
+});
+
+/**
+ * Route: GET /api/v1/cms/admin/pages/:pageId/versions
+ */
+export const listPageVersionsRoute = createRoute({
+  method: "get",
+  path: "/pages/:pageId/versions",
+  summary: "List Page Version Snapshots",
+  description: "Lists all immutable published version snapshots for a page in descending version order.",
+  request: {
+    params: z.object({
+      pageId: z.string().min(1),
+    }),
+    headers: z.object({
+      "x-tenant-id": z.string().min(1),
+    }),
+  },
+  responses: {
+    200: {
+      description: "Version history retrieved successfully",
+      content: {
+        "application/json": {
+          schema: z.object({
+            versions: z.array(PageVersionSchema),
+          }),
+        },
+      },
+    },
+  },
+});
+
+/**
+ * Route: POST /api/v1/cms/admin/pages/:pageId/versions/:versionNumber/rollback
+ */
+export const rollbackVersionRoute = createRoute({
+  method: "post",
+  path: "/pages/:pageId/versions/:versionNumber/rollback",
+  summary: "Rollback Page to Prior Version Snapshot",
+  description: "Restores draft and published AST to an immutable historical version snapshot.",
+  request: {
+    params: z.object({
+      pageId: z.string().min(1),
+      versionNumber: z.coerce.number().int().positive(),
+    }),
+    headers: z.object({
+      "x-tenant-id": z.string().min(1),
+    }),
+    body: {
+      content: {
+        "application/json": {
+          schema: RollbackBodySchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      description: "Page rolled back successfully",
+      content: {
+        "application/json": {
+          schema: z.object({
+            success: z.boolean(),
+            pageId: z.string(),
+            revision: z.number().int(),
+            restoredVersion: z.number().int(),
+            draftAst: z.record(z.unknown()),
+          }),
+        },
+      },
+    },
+    404: {
+      description: "Page or version snapshot not found",
+      content: {
+        "application/problem+json": {
+          schema: ProblemDetailsSchema,
+        },
+      },
+    },
+    409: {
+      description: "CAS Concurrency conflict during rollback",
+      content: {
+        "application/problem+json": {
+          schema: ProblemDetailsSchema,
+        },
+      },
+    },
+  },
+});
+
 /**
  * Route: GET /api/v1/cms/admin/sites/:siteId/pages
  */
@@ -416,6 +519,67 @@ export function createAdminPagesRouter(
         pageId: result.pageId,
         revision: result.revision,
         versionNumber: result.versionNumber,
+      },
+      200
+    );
+  });
+
+  // GET /pages/:pageId/versions
+  router.openapi(listPageVersionsRoute, async (c) => {
+    const { pageId } = c.req.valid("param");
+    const { "x-tenant-id": tenantId } = c.req.valid("header");
+
+    const versions = await pageService.listPageVersions(tenantId, pageId);
+    return c.json({ versions }, 200);
+  });
+
+  // POST /pages/:pageId/versions/:versionNumber/rollback
+  router.openapi(rollbackVersionRoute, async (c) => {
+    const { pageId, versionNumber } = c.req.valid("param");
+    const { "x-tenant-id": tenantId } = c.req.valid("header");
+    const body = c.req.valid("json");
+
+    const result = await pageService.rollbackPageVersion({
+      organizationId: tenantId,
+      pageId,
+      versionNumber,
+      expectedRevision: body.expectedRevision,
+    });
+
+    if (!result.success) {
+      if (result.errorCode === "CMS_CONCURRENCY_CONFLICT") {
+        return c.json(
+          {
+            type: "https://errors.business-os.com/cms/concurrency-conflict",
+            title: "Concurrency Conflict on Rollback",
+            status: 409,
+            detail: result.message || "Page revision conflict.",
+            instance: c.req.path,
+            activeRevision: result.revision,
+          },
+          409
+        );
+      }
+
+      return c.json(
+        {
+          type: "https://errors.business-os.com/cms/not-found",
+          title: "Resource Not Found",
+          status: 404,
+          detail: result.message || "Version or page not found.",
+          instance: c.req.path,
+        },
+        404
+      );
+    }
+
+    return c.json(
+      {
+        success: true,
+        pageId: result.pageId,
+        revision: result.revision,
+        restoredVersion: result.restoredVersion,
+        draftAst: result.draftAst,
       },
       200
     );

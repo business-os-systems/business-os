@@ -48,7 +48,26 @@ export interface FetchPageResult {
   message?: string;
 }
 
+export interface PageVersionSnapshot {
+  id: string;
+  organizationId: string;
+  pageId: string;
+  versionNumber: number;
+  label?: string | null;
+  astSnapshot: Record<string, unknown>;
+  createdByUserId?: string | null;
+  createdAt: string;
+}
+
+export interface ListVersionsResult {
+  success: boolean;
+  versions: PageVersionSnapshot[];
+  errorCode?: string;
+  message?: string;
+}
+
 export interface ICmsApiClient {
   updateDraftContent: (params: UpdateDraftContentParams) => Promise<UpdateDraftContentResult>;
   publishPage: (params: PublishPageParams) => Promise<PublishPageResult>;
+  listPageVersions?: (organizationId: string, pageId: string) => Promise<ListVersionsResult>;
 }

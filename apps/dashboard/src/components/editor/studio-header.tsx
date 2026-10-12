@@ -68,6 +68,9 @@ export function StudioHeader({
   onToggleInspector,
   onOpenAddDrawer,
   onFlushSave,
+  onPublish,
+  isPublishing = false,
+  versionsCount,
 }: StudioHeaderProps) {
   const currentAutosave = AUTOSAVE_CONFIG[autosaveStatus] || AUTOSAVE_CONFIG.idle;
 
@@ -94,6 +97,11 @@ export function StudioHeader({
           <Badge variant={STATUS_VARIANTS[status]} className="text-[10px] ml-1">
             {status}
           </Badge>
+          {typeof versionsCount === "number" && versionsCount > 0 && (
+            <span className="text-[10px] font-mono text-slate-400 bg-slate-800 px-1.5 py-0.5 rounded">
+              {`v${versionsCount} snapshots`}
+            </span>
+          )}
         </div>
       </div>
 
@@ -124,6 +132,19 @@ export function StudioHeader({
             className="h-8 gap-1.5 border-slate-700 text-slate-200 hover:bg-slate-800 hover:text-white text-xs disabled:opacity-40"
           >
             <span>Save</span>
+          </Button>
+        )}
+
+        {onPublish && (
+          <Button
+            type="button"
+            size="sm"
+            variant="default"
+            onClick={onPublish}
+            disabled={isPublishing}
+            className="h-8 gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs disabled:opacity-50"
+          >
+            <span>{isPublishing ? "Publishing..." : "Publish"}</span>
           </Button>
         )}
 
