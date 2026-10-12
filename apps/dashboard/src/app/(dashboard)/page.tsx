@@ -3,39 +3,53 @@ import Link from "next/link";
 import { Card, CardHeader, CardTitle, CardContent, Button, Badge } from "@suite/ui";
 import { GlobeIcon, ShoppingCartIcon, BuildingIcon, PackageIcon } from "@suite/ui/icons";
 
+interface AppLauncherCard {
+  title: string;
+  code: string;
+  desc: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  status: "Available" | "Coming Soon";
+  isAvailable: boolean;
+}
+
 export default function OverviewPage() {
-  const APPS = [
+  const APPS: AppLauncherCard[] = [
     {
       title: "Website Builder & Headless CMS",
       code: "App 01",
-      desc: "Visual page editor, AST canvas, responsive preview, and edge storefront delivery.",
+      desc: "Visual canvas studio, section blueprints, responsive device preview, and edge storefront delivery.",
       href: "/sites",
       icon: GlobeIcon,
-      status: "Ready in Studio",
+      status: "Available",
+      isAvailable: true,
     },
     {
       title: "Lodging Property Management (PMS)",
       code: "App 03",
-      desc: "Reservation grid, room inventory, guest check-in, and night audit cutoff.",
+      desc: "Multi-property reservation calendar, unit inventory, guest check-in, and night audit rollover.",
       href: "/pms",
       icon: BuildingIcon,
-      status: "Configured",
+      status: "Coming Soon",
+      isAvailable: false,
     },
     {
       title: "Restaurant POS & KDS",
       code: "App 04",
-      desc: "Fast touch counter ordering, ESC/POS ticket printing, and kitchen stations.",
+      desc: "Fast touch counter ordering, KOT ticket printing, table management, and shift reconciliation.",
       href: "/pos",
       icon: ShoppingCartIcon,
-      status: "Configured",
+      status: "Coming Soon",
+      isAvailable: false,
     },
     {
       title: "Central Inventory & Stock Requisitions",
       code: "App 05",
-      desc: "Multi-warehouse balances, inter-branch transfers, and vendor purchase orders.",
+      desc: "Multi-warehouse stock balances, inter-branch transfers, wastage logs, and vendor procurement.",
       href: "/inventory",
       icon: PackageIcon,
-      status: "Configured",
+      status: "Coming Soon",
+      isAvailable: false,
     },
   ];
 
@@ -46,7 +60,7 @@ export default function OverviewPage() {
           Executive App Launcher
         </h1>
         <p className="text-sm text-slate-500 mt-1">
-          Welcome to Riverview Hospitality Group. Select an installed module to launch its workspace.
+          Welcome to your Business OS workspace. Select an installed module to launch its environment.
         </p>
       </div>
 
@@ -57,7 +71,13 @@ export default function OverviewPage() {
             <Card key={app.code} className="hover:shadow-md transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
+                  <div
+                    className={`p-2 rounded-lg ${
+                      app.isAvailable
+                        ? "bg-blue-50 text-blue-600"
+                        : "bg-slate-100 text-slate-400"
+                    }`}
+                  >
                     <Icon className="h-6 w-6" />
                   </div>
                   <div>
@@ -67,17 +87,26 @@ export default function OverviewPage() {
                     </Badge>
                   </div>
                 </div>
-                <Badge variant="default" className="text-xs">
+                <Badge
+                  variant={app.isAvailable ? "default" : "secondary"}
+                  className="text-xs"
+                >
                   {app.status}
                 </Badge>
               </CardHeader>
               <CardContent className="space-y-4 pt-2">
                 <p className="text-xs text-slate-600 leading-relaxed">{app.desc}</p>
-                <Link href={app.href} className="inline-block">
-                  <Button variant="default" size="sm">
-                    Open Application
+                {app.isAvailable ? (
+                  <Link href={app.href} className="inline-block">
+                    <Button variant="default" size="sm">
+                      Open Application
+                    </Button>
+                  </Link>
+                ) : (
+                  <Button variant="outline" size="sm" disabled className="opacity-60 cursor-not-allowed">
+                    Coming Soon
                   </Button>
-                </Link>
+                )}
               </CardContent>
             </Card>
           );

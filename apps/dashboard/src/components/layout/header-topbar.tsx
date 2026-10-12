@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Badge, Button } from "@suite/ui";
-import { MenuIcon, BuildingIcon } from "@suite/ui/icons";
+import { MenuIcon, BuildingIcon, LogOutIcon } from "@suite/ui/icons";
 import type { TenantContext } from "./types";
 
 interface HeaderTopbarProps {
@@ -12,12 +12,21 @@ interface HeaderTopbarProps {
 
 export function HeaderTopbar({
   tenant = {
-    organizationId: "org-demo-enterprise",
-    organizationName: "Riverview Hospitality Group",
-    activeBranchName: "Flagship Riverside Cafe (Branch #1)",
+    organizationId: "org-primary-workspace",
+    organizationName: "Business OS Workspace",
+    activeBranchName: "Primary Operations (Main Branch)",
   },
   onToggleSidebar,
 }: HeaderTopbarProps) {
+  const handleSignOut = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch {
+      // Ignore network errors on logout
+    }
+    window.location.href = "/login";
+  };
+
   return (
     <header className="flex h-16 w-full items-center justify-between border-b border-slate-200 bg-white px-6">
       <div className="flex items-center gap-4">
@@ -61,6 +70,17 @@ export function HeaderTopbar({
             </span>
           </div>
         </div>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleSignOut}
+          className="text-slate-500 hover:text-red-600 hover:bg-red-50 text-xs gap-1.5 px-2"
+          title="Sign out of workspace"
+        >
+          <LogOutIcon className="h-4 w-4" />
+          <span className="hidden sm:inline">Sign Out</span>
+        </Button>
       </div>
     </header>
   );
