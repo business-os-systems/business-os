@@ -9,107 +9,176 @@
 
 ---
 
-## 1. Architecture Overview
+## 🚀 How to Start the Servers
 
-Business OS is a composable, multi-tenant enterprise operating system built to power hotels, homestays, restaurants, retail shops, and service businesses through a unified, modular app architecture.
+All commands are simple and work directly with either **`npm run <command>`** or **`pnpm <command>`** from the root folder.
 
-Instead of running disconnected legacy systems (e.g., separate PMS, POS, CMS, and accounting software), Business OS consolidates all operations around **4 Universal Primitives**:
-1. **Ledger (Finance & Transactions):** Double-entry accounting, real-time folios, and GST tax auditing.
-2. **Material (Inventory & Stock):** Unit-conversion inventory tracking, wastage logging, and procurement.
-3. **People (IAM & Staff Management):** Centralized identity, multi-branch switching, biometric Passkeys, and shift PINs.
-4. **Asset (Physical Units):** Rooms, restaurant tables, parking lots, and rental equipment.
+### 1. Start the Website Builder & Admin Dashboard (Port 3001)
+To start the visual website builder and admin dashboard:
+```bash
+npm run dev:dashboard
+# or
+pnpm dev:dashboard
+```
+👉 **Open in browser:** **[http://localhost:3001](http://localhost:3001)**
+
+> **💡 Note:** The dashboard runs completely standalone with built-in mock data and in-memory autosave fallbacks! You can immediately create sites, edit pages on the visual canvas, add blocks, inspect properties, and test responsive preview sandboxes without needing any database or backend running.
 
 ---
 
-## 2. Monorepo Topology
+### 2. Start the Backend API Gateway (Port 4000)
+To start the backend API server:
+```bash
+npm run dev:api
+# or
+pnpm dev:api
+```
+👉 **Interactive API Docs (OpenAPI / Scalar):** **[http://localhost:4000/reference](http://localhost:4000/reference)**
 
-This repository is organized as a high-performance **Turborepo v2 + pnpm** workspace:
+---
+
+### 3. Start Both Dashboard and API Together
+To run all applications concurrently in a single terminal:
+```bash
+npm run dev
+# or
+pnpm dev
+```
+
+---
+
+## 📋 Simple Commands Reference
+
+| What you want to do | npm Command | pnpm Command | URL / Port |
+| :--- | :--- | :--- | :--- |
+| **Start Website Builder & Dashboard** | `npm run dev:dashboard` | `pnpm dev:dashboard` | `http://localhost:3001` |
+| **Start Backend API Gateway** | `npm run dev:api` | `pnpm dev:api` | `http://localhost:4000` |
+| **Start All Dev Servers** | `npm run dev` | `pnpm dev` | Both 3001 & 4000 |
+| **Build Dashboard for Production** | `npm run build:dashboard` | `pnpm build:dashboard` | — |
+| **Build Backend API for Production** | `npm run build:api` | `pnpm build:api` | — |
+| **Build Entire Monorepo** | `npm run build` | `pnpm build` | — |
+| **Run Dashboard Unit & E2E Tests** | `npm run test:dashboard` | `pnpm test:dashboard` | Vitest (40 tests) |
+| **Run Website Builder Module Tests** | `npm run test:website-builder` | `pnpm test:website-builder` | Vitest (36 tests) |
+| **Run Backend API Tests** | `npm run test:api` | `pnpm test:api` | Vitest |
+| **Run All Monorepo Tests** | `npm run test` | `pnpm test` | All packages |
+| **Generate Prisma Database Client** | `npm run db:generate` | `pnpm db:generate` | — |
+| **Open Prisma Database Studio** | `npm run db:studio` | `pnpm db:studio` | `http://localhost:5555` |
+| **Run Monorepo Typecheck** | `npm run typecheck` | `pnpm typecheck` | TypeScript Strict |
+| **Run Monorepo Linting** | `npm run lint` | `pnpm lint` | ESLint |
+
+---
+
+## 🖥️ Live Walkthrough: Website Builder Studio
+
+Once you run `npm run dev:dashboard` (or `pnpm dev:dashboard`), open `http://localhost:3001` and explore:
+
+1. **Dashboard Home:** `http://localhost:3001/`  
+   High-level overview showing active sites, system metrics, and quick action buttons.
+
+2. **Sites Explorer:** `http://localhost:3001/sites`  
+   View your sites (e.g. *Riverview Bistro Flagship*, *Cafe Terrace & Wine Bar*), manage domains, and create new sites.
+
+3. **Page Explorer:** `http://localhost:3001/sites/site_riverview_main/pages`  
+   View all pages under a site (`/`, `/menu`, `/about`, `/reservations`) and click "Open Visual Studio".
+
+4. **Visual Studio Editor:** `http://localhost:3001/sites/site_riverview_main/editor/page_home`  
+   The core interactive visual builder:
+   - **Visual Canvas:** Click any section or block (Hero, Features, Pricing, Testimonials, CTA) to select it with live blue selection bounds.
+   - **Block Tree (Left Drawer):** Inspect section/block hierarchy and add new blocks with one click.
+   - **Property Inspector (Right Panel):** Live-edit headlines, copy, badges, buttons, colors, and paddings in real time.
+   - **Autosave Engine:** Debounced CAS (Compare-And-Swap) optimistic auto-save with conflict detection.
+
+5. **Full-Screen Preview Sandbox:** `http://localhost:3001/sites/site_riverview_main/preview/page_home`  
+   Preview your site in full screen and toggle between **Desktop**, **Tablet**, and **Mobile** viewports.
+
+---
+
+## 📁 Project Structure (What Each Part Does)
+
+The repository is structured as a high-performance **Turborepo + pnpm** monorepo divided into **Apps**, **Modules**, and **Packages**:
 
 ```
 business-os/
-├── .changeset/                   # Semantic versioning and changelog generator
-├── .github/                      # CI/CD GitHub Actions workflows
-├── .husky/                       # Pre-commit git hooks (lint-staged, boundary check)
-├── .npmrc                        # Strict pnpm configuration
-├── package.json                  # Root monorepo workspace package.json
-├── pnpm-lock.yaml                # Deterministic lockfile
-├── pnpm-workspace.yaml           # Workspace declaration
-├── turbo.json                    # Turborepo task pipeline and caching rules
 │
-├── apps/                         # Executable Deployable Applications
-│   ├── api/                      # Hono v4 REST + RPC API Gateway (Node.js 22)
-│   ├── dashboard/                # Next.js 16 App Router Multi-Tenant Admin Portal
-│   ├── web/                      # Next.js 16 Public Guest Storefront & Engine
-│   ├── worker-audit/             # Standalone BullMQ Worker (Hash chaining & Archival)
-│   ├── desktop/                  # Tauri v2 POS Offline Desktop Shell (Rust + Web)
-│   ├── mobile/                   # Capacitor v8 Android/iOS Staff App
-│   └── ai-service/               # Python 3.12 FastAPI + LangGraph Sidecar
+├── apps/                                  # 🚀 Executable Deployable Applications
+│   │
+│   ├── dashboard/                         # Next.js 15 Admin Portal & Visual Studio (Port 3001)
+│   │                                      # • Run command: npm run dev:dashboard
+│   │                                      # • Shell navigation, tenant switcher, and sidebar
+│   │                                      # • Sites Explorer and Page Explorer
+│   │                                      # • Visual Canvas Editor and Preview Sandbox
+│   │
+│   └── api/                               # Hono v4 REST API Gateway (Port 4000)
+│                                          # • Run command: npm run dev:api
+│                                          # • REST API endpoints with OpenAPI 3.1 documentation
+│                                          # • Multi-tenant authentication middleware & RBAC guards
 │
-├── packages/                     # Core Platform Libraries & Shared Primitives
-│   ├── db/                       # Prisma v6 client, Schema folders & Tenant extensions
-│   ├── auth/                     # Better-Auth instantiation, Session MW, Passkeys, SSO
-│   ├── core/                     # RBAC evaluator, Operational clock turnover, Zod schemas
-│   ├── audit-sdk/                # BullMQ audit producer, SHA-256 cryptographic chaining
-│   ├── media/                    # Cloudflare R2 S3 client, presigned URL helpers
-│   ├── redis/                    # ioredis client singleton, distributed locks, rate limiters
-│   ├── logger/                   # Pino v9 structured logger with correlation IDs
-│   └── ui/                       # Shared shadcn/ui components & Tailwind v4 variables
+├── packages/modules/                      # 🧩 Modular Business Suite (Pluggable Verticals)
+│   │
+│   └── website-builder/                   # App 01: Headless CMS & Visual Website Builder
+│       ├── src/ast/                       # • Abstract Syntax Tree schema & Zod validators
+│       ├── src/editor/                    # • Canvas, Block Tree, Inspector & CAS autosave hook
+│       ├── src/render/                    # • 5 Core Blocks (Hero, Features, Pricing, Testimonials, CTA)
+│       ├── src/db/                        # • CMS database repository & queries
+│       ├── src/services/                  # • Publishing logic, OCC versioning, domain routing
+│       └── src/routes/                    # • Hono CMS API route handlers
 │
-├── packages/modules/             # Modular Business Suite Apps (Pluggable Verticals)
-│   ├── sites-cms/                # App 1: Headless CMS & Visual Website Builder
-│   ├── booking-engine/           # App 2: Public Booking Engine & Guest Portal
-│   ├── lodging-pms/              # App 3: Lodging PMS & Front Desk
-│   ├── restaurant-pos/           # App 4: Restaurant POS & Kitchen Display (KDS)
-│   ├── inventory/                # App 5: Central Stock & Material Requisitions
-│   └── ...                       # Subsequent modular apps (6 to 12)
+├── packages/                              # 🧱 Core Platform Libraries (Shared across all apps)
+│   │
+│   ├── ui/                                # Central Design System (@suite/ui)
+│   │                                      # • Reusable components (Buttons, Dialogs, Drawers, Badges, etc.)
+│   │                                      # • Central Lucide icon facade (@suite/ui/icons)
+│   │
+│   ├── db/                                # Database layer with Prisma v6
+│   │                                      # • Multi-tenant schemas (core.prisma, website-builder.prisma)
+│   │                                      # • Prisma Client singleton & tenant isolation extensions
+│   │
+│   ├── auth/                              # Authentication layer (Better-Auth, session handling, PIN overrides)
+│   ├── core/                              # Universal business primitives & RBAC authorization engine
+│   ├── redis/                             # Redis client singleton, distributed locks, rate limiters
+│   └── logger/                            # Structured Pino v9 logger with correlation IDs
 │
-└── tooling/                      # Shared Developer Tooling & Configurations
-    ├── tsconfig/                 # Shared tsconfig bases (base, nextjs, react, node)
-    ├── eslint-config/            # ESLint flat config + import boundary rules
-    ├── tailwind-config/          # Tailwind CSS v4 shared styling tokens
-    └── prettier-config/          # Shared formatting rules
+└── tooling/                               # ⚙️ Shared Engineering Configurations
+    ├── tsconfig/                          # Strict TypeScript configurations
+    ├── eslint-config/                     # Monorepo linting rules
+    └── tailwind-config/                   # Shared Tailwind CSS tokens & styling
 ```
 
 ---
 
-## 3. Strict Boundary Rules
+## 🏛️ Clean Architecture & Monorepo Rules
 
-To preserve enterprise maintainability and prevent technical debt:
-1. **Unidirectional Flow:** Applications (`apps/*`) depend on business modules (`packages/modules/*`) and shared platform packages (`packages/*`). Platform packages never import applications.
-2. **Zero Cross-App Imports:** Deployable apps (`apps/*`) never import other apps directly.
-3. **Zero Cross-Module Direct Imports:** Pluggable modules (`packages/modules/*`) never import each other directly; cross-module events pass asynchronously via BullMQ or platform contracts.
-4. **Encapsulated Database Access:** Database access is strictly encapsulated in `@suite/db`; `@suite/core` contains pure domain logic with zero direct database dependencies.
-5. **Tenant Isolation:** All database operations enforce tenant isolation hooks (`organizationId` / `branchId`).
-6. **Zero Untyped Code:** All schemas are strictly validated with Zod and TypeScript `strict: true` (zero `@ts-ignore` and zero `any`).
+1. **Unidirectional Dependency Flow:**  
+   `apps` $\rightarrow$ `packages/modules` $\rightarrow$ `packages (core/ui/db)` $\rightarrow$ `tooling`.  
+   Platform packages never depend on apps or modules.
+
+2. **Zero Cross-App Imports:**  
+   `apps/dashboard` and `apps/api` are isolated deployables and never import each other directly.
+
+3. **Core Domain Immutability:**  
+   Modular apps (App 01 Website Builder, App 02 POS, App 03 PMS, etc.) never modify `packages/db/prisma/schema/core.prisma` or inject reverse foreign relations into core models (`Organization`, `Branch`, `User`). Modular schemas live exclusively in their own isolated schema files (`schema/<app-name>.prisma`).
+
+4. **Multi-Tenancy at Kernel Level:**  
+   Every business entity belongs to an `organizationId` (and optional `branchId`). All database reads/writes enforce tenant isolation boundaries.
 
 ---
 
-## 4. Getting Started
+## 🛠️ Prerequisites & Setup
 
-### Prerequisites:
 - **Node.js:** `>= 20.0.0`
-- **pnpm:** `>= 9.0.0`
-- **PostgreSQL:** `16+`
-- **Redis:** `7+`
+- **pnpm:** `>= 9.0.0` (Install with: `npm install -g pnpm`)
 
-### Setup:
+### First-Time Setup:
 ```bash
-# Clone the repository
-git clone git@github.com:business-os-systems/business-os.git
-cd business-os
-
-# Install workspace dependencies
+# 1. Install dependencies
 pnpm install
 
-# Run type checking across the entire monorepo
-pnpm typecheck
-
-# Run linting across all packages
-pnpm lint
+# 2. Start the dashboard
+npm run dev:dashboard
+# or: pnpm dev:dashboard
 ```
 
 ---
 
-## 5. Engineering Standards & Quality Bar
-
-This codebase is governed by our permanent **[Enterprise Engineering Standards and Philosophy](file:///home/rohit-bahuguna/RB/Composable_Business_Operating_System/00-master-tracker/ENTERPRISE_ENGINEERING_STANDARDS_AND_PHILOSOPHY.md)**.
+## 📜 Engineering Standards
+This repository adheres to strict enterprise specifications documented in [`ENTERPRISE_ENGINEERING_STANDARDS_AND_PHILOSOPHY.md`](file:///home/rohit-bahuguna/RB/Composable_Business_Operating_System/00-master-tracker/ENTERPRISE_ENGINEERING_STANDARDS_AND_PHILOSOPHY.md).
