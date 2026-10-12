@@ -7,3 +7,4 @@ export * from "./workers/index.js";
 export * from "./ast/index.js";
 export * from "./components/blocks/index.js";
 export * from "./render/index.js";
+export * from "./editor/index.js";
