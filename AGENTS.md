@@ -77,6 +77,7 @@ You are **STRICTLY PROHIBITED** from:
 - ❌ Touching or modifying the live `river-view-homstay-lite` repository.
 - ❌ Deleting or modifying `*.code-workspace` files (these define the active multi-root IDE workspace).
 - ❌ Writing undocumented API endpoints: Every HTTP route **MUST** be registered with `@hono/zod-openapi`'s `createRoute()` with schemas for params, request body, and RFC 7807 problem details responses.
+- ❌ Exposing `/doc` and `/openapi.json` without environment guards: Internal documentation must be protected or restricted in production.
 - ❌ **Mutating Core Platform Models for Modular Apps (Core Domain Immutability Law):**
   When working on ANY modular app (App 01 through App 12):
   1. You are **STRICTLY FORBIDDEN** from modifying `packages/db/prisma/schema/core.prisma` or adding reverse relation fields (e.g. `cmsSites`, `posOrders`, `pmsBookings`) to `Organization`, `Branch`, `User`, `Role`, or any core platform model.
