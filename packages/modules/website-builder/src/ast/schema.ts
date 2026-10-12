@@ -5,6 +5,12 @@ import { z } from "zod";
  * Zero-eval security: strictly rejects unknown fields and unsafe link protocols.
  */
 
+/**
+ * AstIdSchema permits standard UUIDs (from Postgres/DB persistence) as well as
+ * semantic prefixed IDs (e.g. b_hero_123, sec_nav, fld_email) created in editor canvas.
+ */
+export const AstIdSchema = z.string().min(1).max(100);
+
 // Safe URL regex: permits relative paths (/...), http, https, mailto, tel. Rejects javascript:, data:, etc.
 export const SafeUrlSchema = z
   .string()
@@ -94,7 +100,7 @@ export const HeroBlockPropsSchema = z
 
 export const HeroBlockAstSchema = z
   .object({
-    id: z.string().uuid(),
+    id: AstIdSchema,
     type: z.literal("hero"),
     props: HeroBlockPropsSchema,
     styles: BlockStyleTokensSchema.optional(),
@@ -104,7 +110,7 @@ export const HeroBlockAstSchema = z
 // 2. Features Grid Block Schema
 export const FeatureItemSchema = z
   .object({
-    id: z.string().uuid(),
+    id: AstIdSchema,
     iconName: z.string().max(60).optional(),
     title: z.string().min(1).max(120),
     description: z.string().max(600),
@@ -123,7 +129,7 @@ export const FeaturesBlockPropsSchema = z
 
 export const FeaturesBlockAstSchema = z
   .object({
-    id: z.string().uuid(),
+    id: AstIdSchema,
     type: z.literal("features"),
     props: FeaturesBlockPropsSchema,
     styles: BlockStyleTokensSchema.optional(),
@@ -140,7 +146,7 @@ export const PricingTierFeatureSchema = z
 
 export const PricingTierItemSchema = z
   .object({
-    id: z.string().uuid(),
+    id: AstIdSchema,
     name: z.string().min(1).max(80),
     description: z.string().max(300).optional(),
     priceAmount: z.number().min(0),
@@ -166,7 +172,7 @@ export const PricingBlockPropsSchema = z
 
 export const PricingBlockAstSchema = z
   .object({
-    id: z.string().uuid(),
+    id: AstIdSchema,
     type: z.literal("pricing"),
     props: PricingBlockPropsSchema,
     styles: BlockStyleTokensSchema.optional(),
@@ -176,7 +182,7 @@ export const PricingBlockAstSchema = z
 // 4. Form Block Schema
 export const FormFieldItemSchema = z
   .object({
-    id: z.string().uuid(),
+    id: AstIdSchema,
     name: z.string().min(1).max(60).regex(/^[a-zA-Z0-9_]+$/),
     label: z.string().min(1).max(100),
     type: z.enum(["text", "email", "tel", "textarea", "select", "checkbox"]),
@@ -190,7 +196,7 @@ export const FormBlockPropsSchema = z
   .object({
     headline: z.string().max(250).optional(),
     subheadline: z.string().max(1000).optional(),
-    formId: z.string().uuid(),
+    formId: AstIdSchema,
     submitButtonText: z.string().max(60).optional(),
     successMessage: z.string().max(300).optional(),
     errorMessage: z.string().max(300).optional(),
@@ -200,7 +206,7 @@ export const FormBlockPropsSchema = z
 
 export const FormBlockAstSchema = z
   .object({
-    id: z.string().uuid(),
+    id: AstIdSchema,
     type: z.literal("form"),
     props: FormBlockPropsSchema,
     styles: BlockStyleTokensSchema.optional(),
@@ -210,7 +216,7 @@ export const FormBlockAstSchema = z
 // 5. FAQ Block Schema
 export const FaqItemSchema = z
   .object({
-    id: z.string().uuid(),
+    id: AstIdSchema,
     question: z.string().min(1).max(300),
     answer: z.string().min(1).max(3000),
   })
@@ -226,7 +232,7 @@ export const FaqBlockPropsSchema = z
 
 export const FaqBlockAstSchema = z
   .object({
-    id: z.string().uuid(),
+    id: AstIdSchema,
     type: z.literal("faq"),
     props: FaqBlockPropsSchema,
     styles: BlockStyleTokensSchema.optional(),
@@ -242,7 +248,7 @@ export const RichTextBlockPropsSchema = z
 
 export const RichTextBlockAstSchema = z
   .object({
-    id: z.string().uuid(),
+    id: AstIdSchema,
     type: z.literal("rich-text"),
     props: RichTextBlockPropsSchema,
     styles: BlockStyleTokensSchema.optional(),
@@ -260,7 +266,7 @@ export interface NavItemType {
 export const NavItemSchema: z.ZodType<NavItemType> = z.lazy(() =>
   z
     .object({
-      id: z.string().uuid(),
+      id: AstIdSchema,
       label: z.string().min(1).max(60),
       target: LinkTargetSchema,
       children: z.array(NavItemSchema).max(10).optional(),
@@ -285,7 +291,7 @@ export const NavbarBlockPropsSchema = z
 
 export const NavbarBlockAstSchema = z
   .object({
-    id: z.string().uuid(),
+    id: AstIdSchema,
     type: z.literal("navbar"),
     props: NavbarBlockPropsSchema,
     styles: BlockStyleTokensSchema.optional(),
@@ -295,13 +301,13 @@ export const NavbarBlockAstSchema = z
 // 8. Footer Block Schema
 export const FooterColumnSchema = z
   .object({
-    id: z.string().uuid(),
+    id: AstIdSchema,
     title: z.string().min(1).max(60),
     links: z
       .array(
         z
           .object({
-            id: z.string().uuid(),
+            id: AstIdSchema,
             label: z.string().min(1).max(60),
             target: LinkTargetSchema,
           })
@@ -339,7 +345,7 @@ export const FooterBlockPropsSchema = z
 
 export const FooterBlockAstSchema = z
   .object({
-    id: z.string().uuid(),
+    id: AstIdSchema,
     type: z.literal("footer"),
     props: FooterBlockPropsSchema,
     styles: BlockStyleTokensSchema.optional(),
@@ -361,7 +367,7 @@ export const BlockAstSchema = z.discriminatedUnion("type", [
 // Section AST Schema
 export const SectionAstSchema = z
   .object({
-    id: z.string().uuid(),
+    id: AstIdSchema,
     name: z.string().max(100).optional(),
     visibility: ResponsiveVisibilitySchema.optional(),
     styles: SectionStyleTokensSchema.optional(),
