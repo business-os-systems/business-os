@@ -16,15 +16,15 @@ export interface CreateAuthOptions {
  * and cryptographically secure session cookies.
  */
 export function createAuth(prisma: PrismaClient, options: CreateAuthOptions = {}) {
-  const secret =
-    options.secret ||
-    process.env.BETTER_AUTH_SECRET ||
-    "suite-default-enterprise-secret-key-at-least-32-chars-long";
+  const secret = options.secret ?? process.env.BETTER_AUTH_SECRET;
+  if (!secret) {
+    throw new Error("BETTER_AUTH_SECRET is required to initialize authentication engine.");
+  }
 
-  const baseURL =
-    options.baseURL ||
-    process.env.BETTER_AUTH_URL ||
-    "http://localhost:3000";
+  const baseURL = options.baseURL ?? process.env.BETTER_AUTH_URL;
+  if (!baseURL) {
+    throw new Error("BETTER_AUTH_URL is required to initialize authentication engine.");
+  }
 
   return betterAuth({
     database: prismaAdapter(prisma, {

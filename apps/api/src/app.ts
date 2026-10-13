@@ -15,6 +15,7 @@ import {
   branchesRouter,
   auditLogsRouter,
 } from "./routes/index.js";
+import { createWebsiteBuilderRoutes } from "@suite/website-builder/routes";
 import { metricsRegistry } from "./telemetry.js";
 
 export interface AppOptions {
@@ -49,11 +50,12 @@ export function createApp(options: AppOptions = {}) {
     return c.text(metrics);
   });
 
-  // 4. Mount Core Sub-Routers
+  // 4. Mount Core & Module Sub-Routers
   app.route("/api/v1/auth", authRouter);
   app.route("/api/v1/organizations", organizationsRouter);
   app.route("/api/v1/branches", branchesRouter);
   app.route("/api/v1/audit-logs", auditLogsRouter);
+  app.route("/api/v1/cms", createWebsiteBuilderRoutes());
 
   // 5. Environment Guarded OpenAPI 3.1 Documentation & Interactive Scalar UI
   // In production, internal documentation is locked or restricted to authorized internal access.
@@ -77,8 +79,8 @@ export function createApp(options: AppOptions = {}) {
       },
       servers: [
         {
-          url: "http://localhost:3000",
-          description: "Local Development Server",
+          url: process.env.API_URL ?? "/",
+          description: "API Gateway Server",
         },
       ],
     });

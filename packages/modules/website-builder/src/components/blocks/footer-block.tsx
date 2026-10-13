@@ -8,21 +8,21 @@ export interface FooterBlockComponentProps {
 
 export function FooterBlock({ props, styles }: FooterBlockComponentProps) {
   const containerStyle: React.CSSProperties = {
-    backgroundColor: styles?.backgroundColor || "#0f172a",
-    color: styles?.textColor || "#cbd5e1",
+    backgroundColor: styles?.backgroundColor ?? "#0f172a",
+    color: styles?.textColor ?? "#cbd5e1",
   };
 
   return (
     <footer
       data-block-type="footer"
       style={containerStyle}
-      className={`w-full py-12 px-4 sm:px-6 lg:px-8 ${styles?.customClassName || ""}`}
+      className={`w-full py-12 px-4 sm:px-6 lg:px-8 ${styles?.customClassName ?? ""}`}
     >
       <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             {props.logoUrl ? (
-              <img src={props.logoUrl} alt={props.logoText || "Logo"} className="h-8 w-auto" />
+              <img src={props.logoUrl} alt={props.logoText ?? "Logo"} className="h-8 w-auto" />
             ) : null}
             {props.logoText ? (
               <span className="font-bold text-xl text-white tracking-tight">

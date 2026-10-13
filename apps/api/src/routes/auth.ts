@@ -51,6 +51,7 @@ const verifyManagerOverrideSchema = z.object({
   targetEntityId: z.string().min(1, "Target entity ID is required"),
   reason: z.string().min(5).max(255),
   organizationId: z.string().min(1, "Organization ID is required"),
+  managerUserId: z.string().optional(),
 });
 
 const setManagerOverridePinSchema = z.object({
@@ -259,6 +260,7 @@ authRouter.openapi(verifyManagerOverrideRoute, async (c) => {
     targetEntityId: body.targetEntityId,
     reason: body.reason,
     organizationId: body.organizationId,
+    managerUserId: body.managerUserId,
     secretKey,
     prisma,
   });
@@ -267,7 +269,7 @@ authRouter.openapi(verifyManagerOverrideRoute, async (c) => {
     {
       success: true as const,
       data: result,
-      requestId: c.get("requestId") || "req_unknown",
+      requestId: c.get("requestId"),
       timestamp: new Date().toISOString(),
     },
     200
@@ -282,7 +284,7 @@ authRouter.openapi(ssoDiscoverRoute, async (c) => {
     {
       success: true as const,
       data: discovery,
-      requestId: c.get("requestId") || "req_unknown",
+      requestId: c.get("requestId"),
       timestamp: new Date().toISOString(),
     },
     200
@@ -314,7 +316,7 @@ authRouter.post("/terminal/pin-switch", async (c) => {
   return c.json({
     success: true,
     data: result,
-    requestId: c.get("requestId") || "req_unknown",
+    requestId: c.get("requestId"),
     timestamp: new Date().toISOString(),
   });
 });
@@ -343,7 +345,7 @@ authRouter.post("/terminal/pin-set", async (c) => {
   return c.json({
     success: true,
     data: result,
-    requestId: c.get("requestId") || "req_unknown",
+    requestId: c.get("requestId"),
     timestamp: new Date().toISOString(),
   });
 });
@@ -371,7 +373,7 @@ authRouter.post("/manager-override/pin-set", async (c) => {
   return c.json({
     success: true,
     data: result,
-    requestId: c.get("requestId") || "req_unknown",
+    requestId: c.get("requestId"),
     timestamp: new Date().toISOString(),
   });
 });

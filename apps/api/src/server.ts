@@ -16,10 +16,10 @@ const server = serve(
     logger.info(
       {
         port: info.port,
-        docsUrl: `http://localhost:${info.port}/doc`,
-        healthUrl: `http://localhost:${info.port}/health/ready`,
+        docsPath: "/doc",
+        healthPath: "/health/ready",
       },
-      `Platform Core API server successfully running at http://localhost:${info.port}`
+      `Platform Core API server successfully running on port ${info.port}`
     );
   }
 );

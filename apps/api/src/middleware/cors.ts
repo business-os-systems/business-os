@@ -17,7 +17,7 @@ export function corsMiddleware(options: CorsOptions = {}): MiddlewareHandler {
     let isAllowed = false;
     if (allowedOrigins.includes("*")) {
       isAllowed = true;
-      c.header("Access-Control-Allow-Origin", origin || "*");
+      c.header("Access-Control-Allow-Origin", origin ?? "*");
     } else if (origin && allowedOrigins.includes(origin)) {
       isAllowed = true;
       c.header("Access-Control-Allow-Origin", origin);

@@ -7,7 +7,19 @@ export async function GET(
 ) {
   try {
     const { pageId } = await params;
-    const tenantId = request.headers.get("x-tenant-id") || "org_default_tenant";
+    const tenantId = request.headers.get("x-tenant-id");
+    if (!tenantId) {
+      return NextResponse.json(
+        {
+          type: "about:blank",
+          code: "UNAUTHORIZED",
+          title: "Missing Tenant Context",
+          status: 401,
+          detail: "Organization context header (x-tenant-id) is required to view versions.",
+        },
+        { status: 401 }
+      );
+    }
 
     const service = new PageService();
     const versions = await service.listPageVersions(tenantId, pageId);

@@ -397,9 +397,10 @@ export function createAdminPagesRouter(
     } catch (err: unknown) {
       return c.json(
         {
-          type: "https://errors.business-os.com/cms/page-creation-failed",
+          type: "about:blank",
           title: "Page Creation Failed",
           status: 400,
+          code: "CMS_PAGE_CREATION_FAILED",
           detail: err instanceof Error ? err.message : "Failed to create page.",
           instance: c.req.path,
         },
@@ -417,9 +418,10 @@ export function createAdminPagesRouter(
     if (!page) {
       return c.json(
         {
-          type: "https://errors.business-os.com/cms/page-not-found",
+          type: "about:blank",
           title: "Page Not Found",
           status: 404,
+          code: "CMS_PAGE_NOT_FOUND",
           detail: `Page with id ${pageId} does not exist in tenant organization.`,
           instance: c.req.path,
         },
@@ -453,10 +455,11 @@ export function createAdminPagesRouter(
       if (result.errorCode === "CMS_CONCURRENCY_CONFLICT") {
         return c.json(
           {
-            type: "https://errors.business-os.com/cms/concurrency-conflict",
+            type: "about:blank",
             title: "Concurrency Conflict",
             status: 409,
-            detail: result.message || "Page revision conflict.",
+            code: "CMS_CONCURRENCY_CONFLICT",
+            detail: result.message ?? "Page revision conflict.",
             instance: c.req.path,
             activeRevision: result.revision,
           },
@@ -466,10 +469,11 @@ export function createAdminPagesRouter(
 
       return c.json(
         {
-          type: "https://errors.business-os.com/cms/page-not-found",
+          type: "about:blank",
           title: "Page Not Found",
           status: 404,
-          detail: result.message || "Page not found.",
+          code: "CMS_PAGE_NOT_FOUND",
+          detail: result.message ?? "Page not found.",
           instance: c.req.path,
         },
         404
@@ -502,10 +506,11 @@ export function createAdminPagesRouter(
     if (!result.success) {
       return c.json(
         {
-          type: "https://errors.business-os.com/cms/concurrency-conflict",
+          type: "about:blank",
           title: "Concurrency Conflict on Publish",
           status: 409,
-          detail: result.message || "Page revision conflict.",
+          code: "CMS_CONCURRENCY_CONFLICT",
+          detail: result.message ?? "Page revision conflict.",
           instance: c.req.path,
           activeRevision: result.revision,
         },
@@ -550,10 +555,11 @@ export function createAdminPagesRouter(
       if (result.errorCode === "CMS_CONCURRENCY_CONFLICT") {
         return c.json(
           {
-            type: "https://errors.business-os.com/cms/concurrency-conflict",
+            type: "about:blank",
             title: "Concurrency Conflict on Rollback",
             status: 409,
-            detail: result.message || "Page revision conflict.",
+            code: "CMS_CONCURRENCY_CONFLICT",
+            detail: result.message ?? "Page revision conflict.",
             instance: c.req.path,
             activeRevision: result.revision,
           },
@@ -563,10 +569,11 @@ export function createAdminPagesRouter(
 
       return c.json(
         {
-          type: "https://errors.business-os.com/cms/not-found",
+          type: "about:blank",
           title: "Resource Not Found",
           status: 404,
-          detail: result.message || "Version or page not found.",
+          code: "CMS_NOT_FOUND",
+          detail: result.message ?? "Version or page not found.",
           instance: c.req.path,
         },
         404

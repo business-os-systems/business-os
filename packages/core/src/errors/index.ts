@@ -46,7 +46,7 @@ export class AppError extends Error {
     this.code = options.code;
     this.title = options.title;
     this.detail = options.detail;
-    this.type = options.type || `https://errors.business-os.com/codes/${options.code.toLowerCase()}`;
+    this.type = options.type ?? "about:blank";
     this.instance = options.instance;
     this.invalidParams = options.invalidParams;
 
@@ -85,8 +85,8 @@ export class NotFoundError extends AppError {
   constructor(detail = "The requested resource could not be found", options?: Partial<AppErrorOptions>) {
     super({
       status: 404,
-      code: options?.code || "NOT_FOUND",
-      title: options?.title || "Resource Not Found",
+      code: options?.code ?? "NOT_FOUND",
+      title: options?.title ?? "Resource Not Found",
       detail,
       ...options,
     });
@@ -100,8 +100,8 @@ export class UnauthorizedError extends AppError {
   constructor(detail = "Authentication is required to access this resource", options?: Partial<AppErrorOptions>) {
     super({
       status: 401,
-      code: options?.code || "UNAUTHORIZED",
-      title: options?.title || "Unauthorized",
+      code: options?.code ?? "UNAUTHORIZED",
+      title: options?.title ?? "Unauthorized",
       detail,
       ...options,
     });
@@ -115,8 +115,8 @@ export class ForbiddenError extends AppError {
   constructor(detail = "You do not have permission to perform this action", options?: Partial<AppErrorOptions>) {
     super({
       status: 403,
-      code: options?.code || "FORBIDDEN",
-      title: options?.title || "Forbidden",
+      code: options?.code ?? "FORBIDDEN",
+      title: options?.title ?? "Forbidden",
       detail,
       ...options,
     });
@@ -130,8 +130,8 @@ export class ConflictError extends AppError {
   constructor(detail = "The operation could not be completed due to a resource conflict", options?: Partial<AppErrorOptions>) {
     super({
       status: 409,
-      code: options?.code || "CONFLICT",
-      title: options?.title || "Resource Conflict",
+      code: options?.code ?? "CONFLICT",
+      title: options?.title ?? "Resource Conflict",
       detail,
       ...options,
     });
@@ -149,8 +149,8 @@ export class ValidationError extends AppError {
   ) {
     super({
       status: 422,
-      code: options?.code || "VALIDATION_ERROR",
-      title: options?.title || "Validation Failed",
+      code: options?.code ?? "VALIDATION_ERROR",
+      title: options?.title ?? "Validation Failed",
       detail,
       invalidParams,
       ...options,
@@ -168,8 +168,8 @@ export class TenantMismatchError extends AppError {
   ) {
     super({
       status: 403,
-      code: options?.code || "TENANT_MISMATCH",
-      title: options?.title || "Tenant Isolation Violation",
+      code: options?.code ?? "TENANT_MISMATCH",
+      title: options?.title ?? "Tenant Isolation Violation",
       detail,
       ...options,
     });
@@ -189,8 +189,8 @@ export class RateLimitError extends AppError {
   ) {
     super({
       status: 429,
-      code: options?.code || "RATE_LIMIT_EXCEEDED",
-      title: options?.title || "Too Many Requests",
+      code: options?.code ?? "RATE_LIMIT_EXCEEDED",
+      title: options?.title ?? "Too Many Requests",
       detail,
       ...options,
     });
@@ -208,8 +208,8 @@ export class InternalServerError extends AppError {
   ) {
     super({
       status: 500,
-      code: options?.code || "INTERNAL_SERVER_ERROR",
-      title: options?.title || "Internal Server Error",
+      code: options?.code ?? "INTERNAL_SERVER_ERROR",
+      title: options?.title ?? "Internal Server Error",
       detail,
       ...options,
     });

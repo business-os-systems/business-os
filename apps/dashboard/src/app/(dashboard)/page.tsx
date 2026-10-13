@@ -1,9 +1,11 @@
-import React from "react";
+"use client";
+
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { Card, CardHeader, CardTitle, CardContent, Button, Badge } from "@suite/ui";
-import { GlobeIcon, ShoppingCartIcon, BuildingIcon, PackageIcon } from "@suite/ui/icons";
+import { KNOWN_APPS_CATALOG } from "@/lib/app-registry";
 
-interface AppLauncherCard {
+export interface AppLauncherCard {
   title: string;
   code: string;
   desc: string;
@@ -13,45 +15,64 @@ interface AppLauncherCard {
   isAvailable: boolean;
 }
 
-export default function OverviewPage() {
-  const APPS: AppLauncherCard[] = [
-    {
-      title: "Website Builder & Headless CMS",
-      code: "App 01",
-      desc: "Visual canvas studio, section blueprints, responsive device preview, and edge storefront delivery.",
-      href: "/sites",
-      icon: GlobeIcon,
-      status: "Available",
-      isAvailable: true,
-    },
-    {
-      title: "Lodging Property Management (PMS)",
-      code: "App 03",
-      desc: "Multi-property reservation calendar, unit inventory, guest check-in, and night audit rollover.",
-      href: "/pms",
-      icon: BuildingIcon,
-      status: "Coming Soon",
-      isAvailable: false,
-    },
-    {
-      title: "Restaurant POS & KDS",
-      code: "App 04",
-      desc: "Fast touch counter ordering, KOT ticket printing, table management, and shift reconciliation.",
-      href: "/pos",
-      icon: ShoppingCartIcon,
-      status: "Coming Soon",
-      isAvailable: false,
-    },
-    {
-      title: "Central Inventory & Stock Requisitions",
-      code: "App 05",
-      desc: "Multi-warehouse stock balances, inter-branch transfers, wastage logs, and vendor procurement.",
-      href: "/inventory",
-      icon: PackageIcon,
-      status: "Coming Soon",
-      isAvailable: false,
-    },
-  ];
+export interface OverviewPageProps {
+  installedAppIds?: string[];
+  organizationId?: string;
+}
+
+export default function OverviewPage({
+  installedAppIds,
+  organizationId,
+}: OverviewPageProps = {}) {
+  const [activeInstalledIds, setActiveInstalledIds] = useState<string[]>(
+    installedAppIds ?? ["website_builder"]
+  );
+
+  useEffect(() => {
+    if (installedAppIds) {
+      setActiveInstalledIds(installedAppIds);
+      return;
+    }
+
+    if (!organizationId) return;
+
+    let isMounted = true;
+    async function loadInstalled() {
+      try {
+        const res = await fetch(`/api/v1/organizations/${organizationId}/installed-apps`);
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted && Array.isArray(data.installedApps)) {
+            setActiveInstalledIds(data.installedApps.map((a: { appId: string }) => a.appId));
+          }
+        }
+      } catch {
+        // Fallback silently if offline
+      }
+    }
+
+    loadInstalled();
+    return () => {
+      isMounted = false;
+    };
+  }, [installedAppIds, organizationId]);
+
+  const installedSet = new Set(activeInstalledIds);
+
+  // Build dynamic catalog cards matching activation state
+  const catalogEntries = Object.values(KNOWN_APPS_CATALOG);
+  const cards: AppLauncherCard[] = catalogEntries.map((app) => {
+    const isInstalled = installedSet.has(app.appId);
+    return {
+      title: app.title,
+      code: app.code,
+      desc: app.description,
+      href: app.href,
+      icon: app.icon,
+      status: isInstalled ? "Available" : "Coming Soon",
+      isAvailable: isInstalled,
+    };
+  });
 
   return (
     <div className="space-y-8">
@@ -65,7 +86,7 @@ export default function OverviewPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {APPS.map((app) => {
+        {cards.map((app) => {
           const Icon = app.icon;
           return (
             <Card key={app.code} className="hover:shadow-md transition-shadow">

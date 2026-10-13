@@ -12,15 +12,18 @@ import {
 
 export default function SitePagesPage() {
   const params = useParams();
-  const siteId = (params?.["siteId"] as string) || "";
+  const rawSiteId = params?.["siteId"];
+  const siteId = typeof rawSiteId === "string" ? rawSiteId : "";
 
   const [pages, setPages] = useState<PageSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadPages() {
       if (!siteId) return;
+      setError(null);
       try {
         const res = await fetch(`/api/cms/sites/${siteId}/pages`);
         if (res.ok) {
@@ -45,9 +48,11 @@ export default function SitePagesPage() {
             updatedAt: p.updatedAt ? p.updatedAt.replace("T", " ").substring(0, 19) : "Just now",
           }));
           setPages(mapped);
+        } else {
+          setError("Failed to load pages for this site.");
         }
-      } catch {
-        // Fallback to empty on error
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Failed to load pages due to network failure.");
       } finally {
         setIsLoading(false);
       }
@@ -55,18 +60,45 @@ export default function SitePagesPage() {
     loadPages();
   }, [siteId]);
 
-  const handleCreatePage = (data: CreatePageInput) => {
-    const newPage: PageSummary = {
-      id: `page_${Date.now()}`,
-      siteId,
-      name: data.name,
-      slug: data.slug.replace(/^\//, ""),
-      isHome: data.isHome,
-      status: "DRAFT",
-      version: 1,
-      updatedAt: new Date().toISOString().replace("T", " ").substring(0, 19),
-    };
-    setPages((prev) => [...prev, newPage]);
+  const handleCreatePage = async (data: CreatePageInput) => {
+    try {
+      const res = await fetch(`/api/cms/sites/${siteId}/pages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: data.name,
+          slug: data.slug.replace(/^\//, ""),
+          isHome: data.isHome,
+        }),
+      });
+
+      if (res.ok) {
+        const payload = await res.json();
+        const created = payload.page;
+        if (!created?.id) {
+          setError("Malformed server response: page object missing.");
+          return;
+        }
+
+        const newPage: PageSummary = {
+          id: created.id,
+          siteId,
+          name: created.title,
+          slug: created.slug.replace(/^\//, ""),
+          isHome: created.isHomePage,
+          status: created.status,
+          version: created.revision,
+          updatedAt: new Date().toISOString().replace("T", " ").substring(0, 19),
+        };
+        setPages((prev) => [...prev, newPage]);
+        return;
+      }
+
+      const errPayload = await res.json().catch(() => ({}));
+      setError(errPayload.error ?? errPayload.detail ?? "Failed to create page on server.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to create page due to network error.");
+    }
   };
 
   if (isLoading) {
@@ -89,6 +121,12 @@ export default function SitePagesPage() {
         <span>/</span>
         <span>Pages Explorer</span>
       </div>
+
+      {error && (
+        <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-800 text-xs font-medium">
+          {error}
+        </div>
+      )}
 
       <PageExplorerTable
         siteId={siteId}

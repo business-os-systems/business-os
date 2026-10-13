@@ -201,9 +201,10 @@ export function createAdminSitesRouter(
     } catch (err: unknown) {
       return c.json(
         {
-          type: "https://errors.business-os.com/cms/site-creation-failed",
+          type: "about:blank",
           title: "Site Creation Failed",
           status: 400,
+          code: "CMS_SITE_CREATION_FAILED",
           detail: err instanceof Error ? err.message : "Failed to provision site.",
           instance: c.req.path,
         },
@@ -221,9 +222,10 @@ export function createAdminSitesRouter(
     if (!site) {
       return c.json(
         {
-          type: "https://errors.business-os.com/cms/site-not-found",
+          type: "about:blank",
           title: "Site Not Found",
           status: 404,
+          code: "CMS_SITE_NOT_FOUND",
           detail: `Site with id ${siteId} does not exist in tenant organization.`,
           instance: c.req.path,
         },

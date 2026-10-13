@@ -54,8 +54,10 @@ describe("Authoring Studio Management APIs & CAS Concurrency (S1-7)", () => {
       type: string;
       status: number;
       activeRevision: number;
+      code?: string;
     };
-    expect(data.type).toContain("concurrency-conflict");
+    expect(data.type).toBe("about:blank");
+    expect(data.code).toBe("CMS_CONCURRENCY_CONFLICT");
     expect(data.status).toBe(409);
     expect(data.activeRevision).toBe(2);
   });

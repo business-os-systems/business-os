@@ -69,7 +69,7 @@ export function useEditorAutosave(
           onConflict?.(conflict);
         } else {
           setStatus("error");
-          onError?.(new Error(result.message || "Failed to autosave"));
+          onError?.(new Error(result.message ?? "Failed to autosave"));
         }
       } catch (err) {
         setStatus("error");

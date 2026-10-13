@@ -1,6 +1,6 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { prisma } from "@suite/db";
-import { NotFoundError } from "@suite/core/errors";
+import { NotFoundError, ValidationError } from "@suite/core/errors";
 
 export const branchesRouter = new OpenAPIHono();
 
@@ -42,7 +42,7 @@ const getBranchResponseSchema = z.object({
 });
 
 const problemDetailsResponseSchema = z.object({
-  type: z.string().openapi({ example: "https://errors.business-os.com/errors/not-found" }),
+  type: z.string().openapi({ example: "about:blank" }),
   title: z.string().openapi({ example: "Not Found" }),
   status: z.number().openapi({ example: 404 }),
   detail: z.string().openapi({ example: "Branch [br_123] not found" }),
@@ -110,8 +110,17 @@ branchesRouter.openapi(listBranchesRoute, async (c) => {
   const { organizationId } = c.req.valid("query");
   const orgId = organizationId || c.req.header("x-organization-id");
 
+  if (!orgId) {
+    throw new ValidationError("Tenant context is required to query branches", [
+      {
+        name: "organizationId",
+        reason: "An explicit organizationId query parameter or x-organization-id header is required for tenant isolation.",
+      },
+    ]);
+  }
+
   const branches = await prisma.branch.findMany({
-    where: orgId ? { organizationId: orgId } : undefined,
+    where: { organizationId: orgId },
     orderBy: { createdAt: "desc" },
     include: {
       organization: { select: { id: true, name: true, slug: true } },
@@ -122,7 +131,7 @@ branchesRouter.openapi(listBranchesRoute, async (c) => {
     {
       success: true as const,
       data: branches,
-      requestId: c.get("requestId") || "req_unknown",
+      requestId: c.get("requestId"),
       timestamp: new Date().toISOString(),
     },
     200
@@ -131,9 +140,10 @@ branchesRouter.openapi(listBranchesRoute, async (c) => {
 
 branchesRouter.openapi(getBranchRoute, async (c) => {
   const { id } = c.req.valid("param");
+  const orgId = c.req.header("x-organization-id");
 
-  const branch = await prisma.branch.findUnique({
-    where: { id },
+  const branch = await prisma.branch.findFirst({
+    where: orgId ? { id, organizationId: orgId } : { id },
     include: {
       organization: true,
       subBranches: true,
@@ -151,7 +161,7 @@ branchesRouter.openapi(getBranchRoute, async (c) => {
     {
       success: true as const,
       data: branch,
-      requestId: c.get("requestId") || "req_unknown",
+      requestId: c.get("requestId"),
       timestamp: new Date().toISOString(),
     },
     200

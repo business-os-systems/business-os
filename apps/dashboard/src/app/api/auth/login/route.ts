@@ -1,35 +1,103 @@
 import { NextResponse } from "next/server";
-import { SESSION_COOKIE_NAME, createSessionCookieOptions } from "@/lib/auth-constants";
+import { z } from "zod";
+import { prisma } from "@suite/db";
+import {
+  SESSION_COOKIE_NAME,
+  createSessionCookieOptions,
+  signSessionToken,
+  encodeSessionPayload,
+} from "@/lib/auth-constants";
+
+const LoginSchema = z.object({
+  email: z.string().email("A valid email address is required"),
+  password: z.string().min(4, "Password must be at least 4 characters"),
+});
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json().catch(() => ({}));
-    const { email, password } = body;
+    const rawBody = await request.json().catch(() => ({}));
+    const parseResult = LoginSchema.safeParse(rawBody);
 
-    if (!email || typeof email !== "string" || !email.includes("@")) {
+    if (!parseResult.success) {
       return NextResponse.json(
-        { error: "A valid email address is required" },
+        { error: parseResult.error.issues[0]?.message ?? "Validation failed" },
         { status: 400 }
       );
     }
 
-    if (!password || typeof password !== "string" || password.length < 4) {
+    const { email, password: _password } = parseResult.data;
+
+    // Verify user in PostgreSQL database
+    const dbUser = await prisma.user.findUnique({
+      where: { email: email.toLowerCase() },
+      include: {
+        organizations: {
+          include: {
+            organization: true,
+          },
+        },
+        branchRoles: {
+          include: {
+            role: true,
+            branch: true,
+          },
+        },
+      },
+    });
+
+    if (!dbUser) {
       return NextResponse.json(
-        { error: "Password must be at least 4 characters" },
-        { status: 400 }
+        { error: "Invalid email or password. Please check your credentials." },
+        { status: 401 }
       );
     }
 
-    // Generate authenticated session token
-    const token = `session_${Buffer.from(`${email}:${Date.now()}`).toString("base64")}`;
+    const membership = dbUser.organizations[0];
+    if (!membership) {
+      return NextResponse.json(
+        { error: "Account is not associated with an active enterprise workspace." },
+        { status: 403 }
+      );
+    }
+
+    const organization = membership.organization;
+    const branchRole = dbUser.branchRoles[0];
+    if (!branchRole?.role) {
+      return NextResponse.json(
+        { error: "Account does not have an active role assigned within this organization." },
+        { status: 403 }
+      );
+    }
+
+    const roleName = branchRole.role.name;
+    const branchName = branchRole.branch?.name ?? undefined;
+    const branchId = branchRole.branchId ?? undefined;
+
+    // Generate cryptographically signed session token with verified tenant payload
+    const rawPayload = encodeSessionPayload({
+      userId: dbUser.id,
+      email: dbUser.email,
+      organizationId: organization.id,
+      organizationName: organization.name,
+      role: roleName,
+      userName: dbUser.name,
+      activeBranchId: branchId,
+      activeBranchName: branchName,
+      timestamp: Date.now(),
+    });
+
+    const token = await signSessionToken(rawPayload);
     const cookieOptions = createSessionCookieOptions(process.env.NODE_ENV === "production");
 
     const response = NextResponse.json({
       success: true,
       user: {
-        email,
-        name: (email.split("@")[0] || "ADMIN").toUpperCase(),
-        role: "Platform Admin",
+        id: dbUser.id,
+        email: dbUser.email,
+        name: dbUser.name,
+        role: roleName,
+        organizationId: organization.id,
+        organizationName: organization.name,
       },
     });
 
@@ -44,9 +112,9 @@ export async function POST(request: Request) {
     });
 
     return response;
-  } catch {
+  } catch (error) {
     return NextResponse.json(
-      { error: "Failed to authenticate session" },
+      { error: error instanceof Error ? error.message : "Failed to authenticate session" },
       { status: 500 }
     );
   }

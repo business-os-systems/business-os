@@ -13,7 +13,10 @@ const nextConfig = {
     return config;
   },
   async rewrites() {
-    const apiUrl = process.env.API_URL || "http://localhost:3000";
+    const apiUrl = process.env.API_URL;
+    if (!apiUrl) {
+      return [];
+    }
     return [
       {
         source: "/api/v1/:path*",

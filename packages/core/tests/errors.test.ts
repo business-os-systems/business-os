@@ -28,7 +28,7 @@ describe("@suite/core - RFC 7807 Problem Details Error Hierarchy", () => {
 
     const problem = error.toProblemDetails("req_trace_123");
 
-    expect(problem.type).toBe("https://errors.business-os.com/codes/bad_request");
+    expect(problem.type).toBe("about:blank");
     expect(problem.title).toBe("Bad Request");
     expect(problem.status).toBe(400);
     expect(problem.detail).toBe("Malformed input parameters received");

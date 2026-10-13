@@ -1,13 +1,53 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { StudioWorkspace } from "@/components/editor";
+import type { PageAst } from "@suite/website-builder/ast";
 
 export default function StudioEditorPage() {
   const params = useParams();
-  const siteId = (params?.["siteId"] as string) || "site_riverview_main";
-  const pageId = (params?.["pageId"] as string) || "page_home_01";
+  const rawSiteId = params?.["siteId"];
+  const rawPageId = params?.["pageId"];
+  const siteId = typeof rawSiteId === "string" ? rawSiteId : "";
+  const pageId = typeof rawPageId === "string" ? rawPageId : "";
 
-  return <StudioWorkspace siteId={siteId} pageId={pageId} />;
+  const [pageData, setPageData] = useState<{
+    title?: string;
+    revision?: number;
+    status?: "DRAFT" | "PUBLISHED";
+    draftAst?: PageAst;
+  } | null>(null);
+
+  useEffect(() => {
+    async function loadPage() {
+      if (!pageId) return;
+      try {
+        const res = await fetch(`/api/cms/pages/${pageId}/content`);
+        if (res.ok) {
+          const data = await res.json();
+          setPageData({
+            title: data.title,
+            revision: data.revision,
+            status: data.status === "PUBLISHED" ? "PUBLISHED" : "DRAFT",
+            draftAst: data.draftAst,
+          });
+        }
+      } catch {
+        // Fall back to workspace defaults
+      }
+    }
+    loadPage();
+  }, [pageId]);
+
+  return (
+    <StudioWorkspace
+      siteId={siteId}
+      pageId={pageId}
+      pageTitle={pageData?.title}
+      initialRevision={pageData?.revision}
+      status={pageData?.status}
+      initialAst={pageData?.draftAst}
+    />
+  );
 }

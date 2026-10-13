@@ -8,18 +8,19 @@ export interface FeaturesBlockComponentProps {
   styles?: BlockStyleTokens;
 }
 
+const GRID_COLUMNS_MAP: Record<number, string> = {
+  2: "grid-cols-1 md:grid-cols-2",
+  3: "grid-cols-1 md:grid-cols-2 lg:grid-cols-3",
+  4: "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4",
+};
+
 export function FeaturesBlock({ props, styles }: FeaturesBlockComponentProps) {
   const columns = props.columns || 3;
-  const gridColsClass =
-    columns === 2
-      ? "grid-cols-1 md:grid-cols-2"
-      : columns === 4
-      ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"
-      : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3";
+  const gridColsClass = GRID_COLUMNS_MAP[columns] ?? GRID_COLUMNS_MAP[3];
 
   const paddingStyle: React.CSSProperties = {
-    paddingTop: styles?.paddingTop ? `${styles.paddingTop}px` : "64px",
-    paddingBottom: styles?.paddingBottom ? `${styles.paddingBottom}px` : "64px",
+    paddingTop: styles?.paddingTop !== undefined ? `${styles.paddingTop}px` : "64px",
+    paddingBottom: styles?.paddingBottom !== undefined ? `${styles.paddingBottom}px` : "64px",
     backgroundColor: styles?.backgroundColor,
     color: styles?.textColor,
   };

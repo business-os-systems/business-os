@@ -8,17 +8,18 @@ export interface HeroBlockComponentProps {
   styles?: BlockStyleTokens;
 }
 
+const TEXT_ALIGN_MAP: Record<string, string> = {
+  center: "text-center items-center",
+  right: "text-right items-end",
+  left: "text-left items-start",
+};
+
 export function HeroBlock({ props, styles }: HeroBlockComponentProps) {
-  const textAlignClass =
-    styles?.textAlign === "center"
-      ? "text-center items-center"
-      : styles?.textAlign === "right"
-      ? "text-right items-end"
-      : "text-left items-start";
+  const textAlignClass = TEXT_ALIGN_MAP[styles?.textAlign || "left"] || TEXT_ALIGN_MAP["left"];
 
   const paddingStyle: React.CSSProperties = {
-    paddingTop: styles?.paddingTop ? `${styles.paddingTop}px` : "64px",
-    paddingBottom: styles?.paddingBottom ? `${styles.paddingBottom}px` : "64px",
+    paddingTop: styles?.paddingTop !== undefined ? `${styles.paddingTop}px` : "64px",
+    paddingBottom: styles?.paddingBottom !== undefined ? `${styles.paddingBottom}px` : "64px",
     backgroundColor: styles?.backgroundColor,
     color: styles?.textColor,
   };

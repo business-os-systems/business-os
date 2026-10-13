@@ -8,7 +8,7 @@ import { logger } from "@suite/logger";
  * Guarantees zero sensitive internal stack trace leakage on unhandled exceptions.
  */
 export const globalErrorHandler: ErrorHandler = (err, c) => {
-  const requestId = c.get("requestId") || "req_unknown";
+  const requestId = c.get("requestId");
   const instance = c.req.path;
   const timestamp = new Date().toISOString();
 

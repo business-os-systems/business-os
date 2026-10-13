@@ -75,9 +75,10 @@ export const NAVIGATION_APPS: NavigationItem[] = [
 
 interface SidebarNavProps {
   collapsed?: boolean;
+  items?: NavigationItem[];
 }
 
-export function SidebarNav({ collapsed = false }: SidebarNavProps) {
+export function SidebarNav({ collapsed = false, items = NAVIGATION_APPS }: SidebarNavProps) {
   const pathname = usePathname();
 
   return (
@@ -106,13 +107,13 @@ export function SidebarNav({ collapsed = false }: SidebarNavProps) {
         <div className="px-3 pb-2 pt-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
           {!collapsed ? "Installed Apps" : "Apps"}
         </div>
-        {NAVIGATION_APPS.map((item) => {
-          const currentPath = pathname || "/";
+        {items.map((item) => {
+          const currentPath = pathname ?? "/";
           const isActive =
             item.href === "/"
               ? currentPath === "/"
               : currentPath.startsWith(item.href);
-          const IconComponent = APP_ICONS[item.icon] || HomeIcon;
+          const IconComponent = APP_ICONS[item.icon] ?? HomeIcon;
 
           return (
             <Link

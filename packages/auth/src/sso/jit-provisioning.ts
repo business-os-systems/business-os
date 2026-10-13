@@ -1,3 +1,4 @@
+import { z } from "zod";
 import type { PrismaClient } from "@suite/db";
 import { NotFoundError, ValidationError } from "@suite/core/errors";
 
@@ -30,7 +31,8 @@ export async function provisionJitSsoUser(
 ): Promise<JitProvisionedResult> {
   const { email, name, ssoConnectionId, mobile, image, prisma } = params;
 
-  if (!email || !email.includes("@")) {
+  const emailParse = z.string().email("Valid corporate email required").safeParse(email);
+  if (!emailParse.success) {
     throw new ValidationError("Valid corporate email required for JIT provisioning", [
       { name: "email", reason: "Valid corporate email required" },
     ]);
@@ -58,10 +60,11 @@ export async function provisionJitSsoUser(
   });
 
   if (!user) {
+    const resolvedName = name?.trim() ? name.trim() : normalizedEmail;
     user = await prisma.user.create({
       data: {
         email: normalizedEmail,
-        name: name || normalizedEmail.split("@")[0] || "Staff User",
+        name: resolvedName,
         emailVerified: true,
         mobile: mobile || null,
         image: image || null,
