@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, beforeAll } from "vitest";
+import { prisma } from "@suite/db";
 import {
   createFormRouter,
   FormService,
@@ -8,7 +9,26 @@ import {
 describe("Public Form Ingestion Engine & Turnstile Defense (S1-5)", () => {
   const service = new FormService();
   const router = createFormRouter(service);
-  const rootRouter = createWebsiteBuilderRoutes();
+  const rootRouter = createWebsiteBuilderRoutes(undefined, undefined, service);
+
+  beforeAll(async () => {
+    await prisma.organization.upsert({
+      where: { id: "org_forms" },
+      update: {},
+      create: { id: "org_forms", name: "Forms Org", slug: "forms-org" },
+    });
+    await prisma.cmsSite.upsert({
+      where: { id_organizationId: { id: "site_123", organizationId: "org_forms" } },
+      update: { status: "PUBLISHED" },
+      create: {
+        id: "site_123",
+        organizationId: "org_forms",
+        title: "Forms Site",
+        slug: "forms-site",
+        status: "PUBLISHED",
+      },
+    });
+  });
 
   const validSubmissionBody = {
     payload: {
@@ -52,8 +72,9 @@ describe("Public Form Ingestion Engine & Turnstile Defense (S1-5)", () => {
     });
 
     expect(res.status).toBe(400);
-    const data = (await res.json()) as { type: string; status: number };
-    expect(data.type).toContain("bot_detected");
+    const data = (await res.json()) as { type: string; status: number; code?: string };
+    expect(data.type).toBe("about:blank");
+    expect(data.code).toBe("BOT_DETECTED");
   });
 
   it("should reject submission when Turnstile captcha token is missing or invalid", async () => {
@@ -72,8 +93,9 @@ describe("Public Form Ingestion Engine & Turnstile Defense (S1-5)", () => {
     });
 
     expect(res.status).toBe(400);
-    const data = (await res.json()) as { type: string; status: number };
-    expect(data.type).toContain("invalid_captcha");
+    const data = (await res.json()) as { type: string; status: number; code?: string };
+    expect(data.type).toBe("about:blank");
+    expect(data.code).toBe("INVALID_CAPTCHA");
   });
 
   it("should reject payload exceeding 64KB with 413 Payload Too Large", async () => {
@@ -94,8 +116,9 @@ describe("Public Form Ingestion Engine & Turnstile Defense (S1-5)", () => {
     });
 
     expect(res.status).toBe(413);
-    const data = (await res.json()) as { type: string; status: number };
-    expect(data.type).toContain("payload_too_large");
+    const data = (await res.json()) as { type: string; status: number; code?: string };
+    expect(data.type).toBe("about:blank");
+    expect(data.code).toBe("PAYLOAD_TOO_LARGE");
   });
 
   it("should generate a quarantined upload intent for attachments under 10MB", async () => {
@@ -113,7 +136,8 @@ describe("Public Form Ingestion Engine & Turnstile Defense (S1-5)", () => {
 
     expect(res.status).toBe(200);
     const data = (await res.json()) as { uploadUrl: string; storageKey: string };
-    expect(data.uploadUrl).toContain("r2.business-os.site");
+    expect(data.uploadUrl).toContain(data.storageKey);
+    expect(data.uploadUrl).toContain("?signed=true");
     expect(data.storageKey).toContain("quarantine/site_123");
   });
 

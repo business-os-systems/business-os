@@ -74,15 +74,16 @@ export function createStorefrontRouter(
   const router = new OpenAPIHono();
 
   router.openapi(resolveStorefrontRoute, async (c) => {
-    const hostHeader = c.req.header("host") || "";
+    const hostHeader = c.req.header("host");
     const previewToken = c.req.header("x-preview-token");
 
     if (!hostHeader) {
       return c.json(
         {
-          type: "https://errors.business-os.com/cms/missing-host",
+          type: "about:blank",
           title: "Bad Request",
           status: 400,
+          code: "CMS_MISSING_HOST",
           detail: "The Host request header is required for edge storefront resolution.",
           instance: c.req.path,
         },
@@ -95,9 +96,10 @@ export function createStorefrontRouter(
     if (!resolution.resolved) {
       return c.json(
         {
-          type: "https://errors.business-os.com/cms/domain-not-found",
+          type: "about:blank",
           title: "Domain Not Found",
           status: 404,
+          code: "CMS_DOMAIN_NOT_FOUND",
           detail: `No published website found for domain: ${hostHeader}. Reason: ${resolution.reason}`,
           instance: c.req.path,
         },

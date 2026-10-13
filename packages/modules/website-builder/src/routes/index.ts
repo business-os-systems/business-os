@@ -5,12 +5,17 @@ import { createAdminRouter } from "./admin/index.js";
 import { PageService } from "../services/page-service.js";
 import { SiteService } from "../services/site-service.js";
 
+import { StorefrontService } from "../services/storefront-service.js";
+import { FormService } from "../services/form-service.js";
+
 /**
  * Creates module sub-router for public and management website builder routes
  */
 export function createWebsiteBuilderRoutes(
   pageService?: PageService,
-  siteService?: SiteService
+  siteService?: SiteService,
+  formService?: FormService,
+  storefrontService?: StorefrontService
 ): OpenAPIHono {
   const router = new OpenAPIHono();
 
@@ -22,10 +27,10 @@ export function createWebsiteBuilderRoutes(
   });
 
   // Mount Storefront Edge API under /storefront
-  router.route("/storefront", createStorefrontRouter());
+  router.route("/storefront", createStorefrontRouter(storefrontService));
 
   // Mount Storefront Forms API under /storefront/forms
-  router.route("/storefront/forms", createFormRouter());
+  router.route("/storefront/forms", createFormRouter(formService));
 
   // Mount Studio Management Admin API under /admin
   router.route("/admin", createAdminRouter(pageService, siteService));

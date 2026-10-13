@@ -24,7 +24,7 @@ export interface CreateLoggerOptions {
  * ISO timestamps, sensitive data redaction, and environment-aware formatting.
  */
 export function createLogger(options: CreateLoggerOptions = {}): Logger {
-  const env = process.env.NODE_ENV || "development";
+  const env = process.env.NODE_ENV ?? "development";
   const isProduction = env === "production" || env === "staging";
   const isDevelopment = env === "development";
   const isTest = env === "test" || Boolean(process.env.VITEST);
@@ -37,10 +37,10 @@ export function createLogger(options: CreateLoggerOptions = {}): Logger {
   );
 
   const baseConfig: PinoLoggerOptions = {
-    level: options.level || process.env.LOG_LEVEL || (isProduction ? "info" : "debug"),
+    level: options.level ?? process.env.LOG_LEVEL ?? (isProduction ? "info" : "debug"),
     base: {
       env,
-      service: options.serviceName || process.env.SERVICE_NAME || "business-os",
+      service: options.serviceName ?? process.env.SERVICE_NAME ?? "business-os",
     },
     timestamp: pino.stdTimeFunctions.isoTime,
     formatters: {

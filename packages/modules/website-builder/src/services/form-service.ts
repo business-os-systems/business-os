@@ -1,5 +1,7 @@
-import { createHash, createHmac } from "node:crypto";
-import { type IngestFormSubmissionResult } from "../db/functions.js";
+import { createHmac, createHash } from "node:crypto";
+import { z } from "zod";
+import { prisma } from "@suite/db";
+import { type IngestFormSubmissionResult, IngestFormSubmissionResultSchema } from "../db/functions.js";
 
 export interface FormSubmissionInput {
   siteId: string;
@@ -32,16 +34,16 @@ export interface IFormService {
 }
 
 export class FormService implements IFormService {
-  private idempotencyStore = new Map<string, { submissionId: string; createdAt: string }>();
+  constructor(private readonly db = prisma) {}
+
   /**
-   * Ingests a public form submission with honeypot & turnstile validation,
-   * two-tier idempotency, and GDPR-compliant email hashing.
+   * Ingests a public form submission executing public.cms_ingest_form_submission() in PostgreSQL
+   * with honeypot & turnstile validation, two-tier idempotency, and GDPR-compliant email hashing.
    */
   public async submitForm(
     input: FormSubmissionInput
   ): Promise<IngestFormSubmissionResult> {
     // 1. Bot Trap Defense: Honeypot check
-    // If the hidden honeypot field is filled, silently reject or fail bot
     if (input.honeypot && input.honeypot.trim().length > 0) {
       return {
         success: false,
@@ -80,41 +82,36 @@ export class FormService implements IFormService {
     }
 
     // 5. GDPR-compliant key-rotated email hashing if email is present
-    let _emailHash: string | undefined;
+    let emailHash: string | null = null;
     const rawEmail = input.payload["email"];
-    if (typeof rawEmail === "string" && rawEmail.includes("@")) {
-      _emailHash = this.computeEmailHash(rawEmail, "business_os_gdpr_salt");
+    if (typeof rawEmail === "string" && z.string().email().safeParse(rawEmail).success) {
+      const gdprSalt = process.env.GDPR_HMAC_SALT_KEY ?? "business_os_gdpr_salt";
+      emailHash = this.computeEmailHash(rawEmail, gdprSalt);
     }
 
-    // 6. Two-tier idempotency suppression check
-    const dedupKey = `${input.siteId}:${input.idempotencyKey}`;
-    const existing = this.idempotencyStore.get(dedupKey);
-    if (existing) {
-      return {
-        success: true,
-        submissionId: existing.submissionId,
-        isDuplicate: true,
-        createdAt: existing.createdAt,
-      };
+    // 6. Execute atomic PostgreSQL ingestion function
+    const rows = await this.db.$queryRaw<Array<{ res: unknown }>>`
+      SELECT public.cms_ingest_form_submission(
+        ${input.siteId},
+        ${input.blockId},
+        ${input.idempotencyKey},
+        ${JSON.stringify(input.payload)}::jsonb,
+        ${JSON.stringify(input.attachments || [])}::jsonb,
+        ${emailHash}
+      ) as res
+    `;
+
+    const rawResult = rows[0]?.res;
+    const parsed = IngestFormSubmissionResultSchema.safeParse(rawResult);
+
+    if (parsed.success) {
+      return parsed.data;
     }
-
-    // In a live database environment, this executes public.cms_ingest_form_submission()
-    const canonicalId = `csub_${createHash("md5")
-      .update(input.siteId + input.idempotencyKey)
-      .digest("hex")
-      .slice(0, 16)}`;
-
-    const createdAt = new Date().toISOString();
-    this.idempotencyStore.set(dedupKey, {
-      submissionId: canonicalId,
-      createdAt,
-    });
 
     return {
-      success: true,
-      submissionId: canonicalId,
-      isDuplicate: false,
-      createdAt,
+      success: false,
+      errorCode: "INGEST_FAILED",
+      message: "Database ingestion failed or returned invalid response.",
     };
   }
 
@@ -132,12 +129,13 @@ export class FormService implements IFormService {
 
     // Quarantined storage path: uploads/quarantine/:siteId/:fileHash
     const storageKey = `quarantine/${input.siteId}/${Date.now()}_${createHash(
-      "md5"
+      "sha256"
     )
       .update(input.fileName)
       .digest("hex")}`;
 
-    const uploadUrl = `https://r2.business-os.site/${storageKey}?signed=true`;
+    const r2Base = process.env.R2_PUBLIC_URL ?? "/uploads";
+    const uploadUrl = `${r2Base}/${storageKey}?signed=true`;
 
     return {
       uploadUrl,
@@ -147,12 +145,31 @@ export class FormService implements IFormService {
   }
 
   /**
-   * Verifies Turnstile token (mocked for testing, delegates to Cloudflare verify API in prod)
+   * Verifies Turnstile token via Cloudflare siteverify API or test token
    */
   public async verifyTurnstileToken(token?: string): Promise<boolean> {
-    // In test / development, "valid-token" or non-empty in test mode succeeds
     if (!token) return false;
-    return token === "valid-turnstile-token" || token.length > 10;
+    if (token === "valid-turnstile-token") return true;
+
+    const secretKey = process.env.TURNSTILE_SECRET_KEY;
+    if (secretKey) {
+      try {
+        const res = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            secret: secretKey,
+            response: token,
+          }),
+        });
+        const outcome = (await res.json()) as { success: boolean };
+        return outcome.success === true;
+      } catch {
+        return false;
+      }
+    }
+
+    return false;
   }
 
   /**

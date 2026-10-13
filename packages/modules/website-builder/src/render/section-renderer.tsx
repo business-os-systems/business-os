@@ -80,10 +80,10 @@ export function renderBlockComponent(block: BlockAst, isEditor?: boolean): React
     const unknownBlock = block as { id?: string; type?: string };
     return (
       <div
-        key={unknownBlock.id || "unknown"}
+        key={unknownBlock.id ?? "unknown"}
         className="p-4 my-2 border-2 border-dashed border-amber-400 bg-amber-50 text-amber-800 text-sm rounded-lg"
       >
-        Unsupported or custom block type: {unknownBlock.type || "unknown"}
+        Unsupported or custom block type: {unknownBlock.type ?? "unknown"}
       </div>
     );
   }
@@ -91,26 +91,29 @@ export function renderBlockComponent(block: BlockAst, isEditor?: boolean): React
   return null;
 }
 
+function resolveVisibilityClasses(visibility?: SectionRendererProps["section"]["visibility"]): string {
+  if (!visibility) return "";
+  const classes: string[] = [];
+  if (visibility.hideOnMobile) classes.push("hidden", "sm:block");
+  if (visibility.hideOnTablet) classes.push("sm:hidden", "md:block");
+  if (visibility.hideOnDesktop) classes.push("lg:hidden");
+  return classes.join(" ");
+}
+
 export function SectionRenderer({ section, isEditor = false }: SectionRendererProps) {
   const { visibility, styles, blocks } = section;
 
   // Responsive visibility utility classes
-  const visibilityClasses = [
-    visibility?.hideOnMobile ? "hidden sm:block" : "",
-    visibility?.hideOnTablet ? "sm:hidden md:block" : "",
-    visibility?.hideOnDesktop ? "lg:hidden" : "",
-  ]
-    .filter(Boolean)
-    .join(" ");
+  const visibilityClasses = resolveVisibilityClasses(visibility);
 
   // Container max-width mapped from dictionary table
-  const maxWidthClass = (styles?.maxWidth && MAX_WIDTH_CLASS_MAP[styles.maxWidth]) || "max-w-full";
+  const maxWidthClass = (styles?.maxWidth ? MAX_WIDTH_CLASS_MAP[styles.maxWidth] : undefined) ?? "max-w-full";
 
   const sectionStyle: React.CSSProperties = {
     backgroundColor: styles?.backgroundColor,
     backgroundImage: styles?.backgroundImageUrl ? `url(${styles.backgroundImageUrl})` : undefined,
-    backgroundRepeat: styles?.backgroundRepeat || "no-repeat",
-    backgroundSize: styles?.backgroundSize || "cover",
+    backgroundRepeat: styles?.backgroundRepeat ?? "no-repeat",
+    backgroundSize: styles?.backgroundSize ?? "cover",
     paddingTop: styles?.paddingTop !== undefined ? `${styles.paddingTop}px` : undefined,
     paddingBottom: styles?.paddingBottom !== undefined ? `${styles.paddingBottom}px` : undefined,
   };
@@ -120,7 +123,7 @@ export function SectionRenderer({ section, isEditor = false }: SectionRendererPr
       id={section.id}
       data-section-id={section.id}
       style={sectionStyle}
-      className={`relative w-full ${visibilityClasses} ${styles?.customClassName || ""}`}
+      className={`relative w-full ${visibilityClasses} ${styles?.customClassName ?? ""}`}
     >
       {styles?.backgroundOverlayColor ? (
         <div

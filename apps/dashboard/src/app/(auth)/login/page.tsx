@@ -27,7 +27,7 @@ export default function LoginPage() {
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(data.error || "Authentication failed");
+        throw new Error(data.error ?? data.detail ?? "Authentication failed");
       }
 
       // Successful login -> Redirect to Workspace App Launcher

@@ -62,7 +62,7 @@ export default function SitesPage() {
         const resData = await res.json();
         const newSite: SiteSummary = {
           id: resData.site.id,
-          organizationId: "org-1",
+          organizationId: resData.site.organizationId ?? "",
           name: resData.site.title,
           subdomain: resData.site.slug,
           customDomain: null,

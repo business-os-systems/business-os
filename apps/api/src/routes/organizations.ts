@@ -65,7 +65,7 @@ const getOrganizationResponseSchema = z.object({
 });
 
 const problemDetailsResponseSchema = z.object({
-  type: z.string().openapi({ example: "https://errors.business-os.com/errors/not-found" }),
+  type: z.string().openapi({ example: "about:blank" }),
   title: z.string().openapi({ example: "Not Found" }),
   status: z.number().openapi({ example: 404 }),
   detail: z.string().openapi({ example: "Organization [org_123] not found" }),
@@ -173,7 +173,7 @@ organizationsRouter.openapi(listOrganizationsRoute, async (c) => {
     {
       success: true as const,
       data: orgs,
-      requestId: c.get("requestId") || "req_unknown",
+      requestId: c.get("requestId"),
       timestamp: new Date().toISOString(),
     },
     200
@@ -199,7 +199,7 @@ organizationsRouter.openapi(createOrganizationRoute, async (c) => {
     {
       success: true as const,
       data: org,
-      requestId: c.get("requestId") || "req_unknown",
+      requestId: c.get("requestId"),
       timestamp: new Date().toISOString(),
     },
     201
@@ -227,7 +227,7 @@ organizationsRouter.openapi(getOrganizationRoute, async (c) => {
     {
       success: true as const,
       data: org,
-      requestId: c.get("requestId") || "req_unknown",
+      requestId: c.get("requestId"),
       timestamp: new Date().toISOString(),
     },
     200

@@ -16,12 +16,14 @@ export class CmsApiClient implements ICmsApiClient {
   private readonly enableOfflineFallback: boolean;
 
   constructor(options: CmsApiClientOptions = {}) {
-    this.baseUrl =
-      options.baseUrl ||
-      (typeof window !== "undefined"
-        ? ""
-        : process.env.API_URL || "http://localhost:3000");
-    this.enableOfflineFallback = options.enableOfflineFallback ?? true;
+    if (options.baseUrl) {
+      this.baseUrl = options.baseUrl;
+    } else if (typeof window !== "undefined") {
+      this.baseUrl = "";
+    } else {
+      this.baseUrl = process.env.API_URL ?? "";
+    }
+    this.enableOfflineFallback = options.enableOfflineFallback ?? false;
   }
 
   async updateDraftContent({
@@ -49,7 +51,7 @@ export class CmsApiClient implements ICmsApiClient {
         const data = await response.json();
         return {
           success: true,
-          pageId: data.pageId || pageId,
+          pageId: data.pageId ?? pageId,
           revision: data.revision,
           draftAst: data.draftAst,
         };
@@ -62,7 +64,7 @@ export class CmsApiClient implements ICmsApiClient {
           errorCode: "CMS_CONCURRENCY_CONFLICT",
           revision: problem.activeRevision ?? expectedRevision + 1,
           draftAst: problem.draftAst ?? draftAst,
-          message: problem.detail || "Page revision conflict.",
+          message: problem.detail ?? "Page revision conflict.",
         };
       }
 
@@ -71,7 +73,7 @@ export class CmsApiClient implements ICmsApiClient {
         success: false,
         errorCode: "CMS_UPDATE_FAILED",
         revision: expectedRevision,
-        message: errData.detail || errData.message || `HTTP ${response.status}`,
+        message: errData.detail ?? errData.message ?? `HTTP ${response.status}`,
       };
     } catch (error) {
       if (this.enableOfflineFallback) {
@@ -116,7 +118,7 @@ export class CmsApiClient implements ICmsApiClient {
         const data = await response.json();
         return {
           success: true,
-          pageId: data.pageId || pageId,
+          pageId: data.pageId ?? pageId,
           revision: data.revision,
           versionNumber: data.versionNumber,
         };
@@ -128,7 +130,7 @@ export class CmsApiClient implements ICmsApiClient {
           success: false,
           errorCode: "CMS_CONCURRENCY_CONFLICT",
           revision: problem.activeRevision ?? expectedRevision + 1,
-          message: problem.detail || "Revision conflict on publish.",
+          message: problem.detail ?? "Revision conflict on publish.",
         };
       }
 
@@ -137,7 +139,7 @@ export class CmsApiClient implements ICmsApiClient {
         success: false,
         errorCode: "CMS_PUBLISH_FAILED",
         revision: expectedRevision,
-        message: errData.detail || errData.message || `HTTP ${response.status}`,
+        message: errData.detail ?? errData.message ?? `HTTP ${response.status}`,
       };
     } catch (error) {
       if (this.enableOfflineFallback) {

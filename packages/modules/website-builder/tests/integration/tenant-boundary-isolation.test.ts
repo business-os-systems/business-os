@@ -67,8 +67,10 @@ describe("Multi-Tenant Boundary Isolation Integration Suite (S1-8)", () => {
       type: string;
       status: number;
       detail: string;
+      code?: string;
     };
-    expect(problem.type).toContain("page-not-found");
+    expect(problem.type).toBe("about:blank");
+    expect(problem.code).toBe("CMS_PAGE_NOT_FOUND");
     expect(problem.status).toBe(404);
 
     // Verify org_alpha page was NOT modified

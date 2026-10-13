@@ -16,8 +16,8 @@ export function FormBlock({ props, styles, onSubmit }: FormBlockComponentProps) 
   const [error, setError] = useState<string | null>(null);
 
   const paddingStyle: React.CSSProperties = {
-    paddingTop: styles?.paddingTop ? `${styles.paddingTop}px` : "64px",
-    paddingBottom: styles?.paddingBottom ? `${styles.paddingBottom}px` : "64px",
+    paddingTop: styles?.paddingTop !== undefined ? `${styles.paddingTop}px` : "64px",
+    paddingBottom: styles?.paddingBottom !== undefined ? `${styles.paddingBottom}px` : "64px",
     backgroundColor: styles?.backgroundColor,
     color: styles?.textColor,
   };

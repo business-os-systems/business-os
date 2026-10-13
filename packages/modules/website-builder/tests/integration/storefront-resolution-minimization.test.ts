@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, beforeAll } from "vitest";
+import { prisma } from "@suite/db";
 import {
   createStorefrontRouter,
   StorefrontService,
@@ -9,7 +10,96 @@ import {
 describe("Storefront Edge Resolution & Data Minimization Integration Suite (S1-8)", () => {
   const service = new StorefrontService();
   const router = createStorefrontRouter(service);
-  const rootRouter = createWebsiteBuilderRoutes();
+  const rootRouter = createWebsiteBuilderRoutes(undefined, undefined, undefined, service);
+
+  beforeAll(async () => {
+    await prisma.organization.upsert({
+      where: { id: "org_boutique" },
+      update: {},
+      create: { id: "org_boutique", name: "Boutique Hotel Org", slug: "boutique-hotel" },
+    });
+    const site = await prisma.cmsSite.upsert({
+      where: { id_organizationId: { id: "site_boutique", organizationId: "org_boutique" } },
+      update: { status: "PUBLISHED" },
+      create: {
+        id: "site_boutique",
+        organizationId: "org_boutique",
+        title: "Boutique Hotel",
+        slug: "boutique-hotel-example-com",
+        status: "PUBLISHED",
+        primaryLocale: "en",
+        timezone: "Asia/Kolkata",
+      },
+    });
+    await prisma.cmsDomain.upsert({
+      where: { hostname: "boutique-hotel.example.com" },
+      update: { status: "ACTIVE" },
+      create: {
+        id: "dom_boutique_1",
+        organizationId: "org_boutique",
+        siteId: site.id,
+        hostname: "boutique-hotel.example.com",
+        status: "ACTIVE",
+        isPrimary: true,
+        verificationToken: "token_boutique_1",
+      },
+    });
+    await prisma.cmsDomain.upsert({
+      where: { hostname: "storefront.resort.org" },
+      update: { status: "ACTIVE" },
+      create: {
+        id: "dom_boutique_2",
+        organizationId: "org_boutique",
+        siteId: site.id,
+        hostname: "storefront.resort.org",
+        status: "ACTIVE",
+        isPrimary: false,
+        verificationToken: "token_boutique_2",
+      },
+    });
+    await prisma.cmsDomain.upsert({
+      where: { hostname: "stay.luxury-retreat.com" },
+      update: { status: "ACTIVE" },
+      create: {
+        id: "dom_boutique_3",
+        organizationId: "org_boutique",
+        siteId: site.id,
+        hostname: "stay.luxury-retreat.com",
+        status: "ACTIVE",
+        isPrimary: false,
+        verificationToken: "token_boutique_3",
+      },
+    });
+    await prisma.cmsSiteSettings.upsert({
+      where: { siteId_organizationId: { siteId: site.id, organizationId: "org_boutique" } },
+      update: {},
+      create: { siteId: site.id, organizationId: "org_boutique", brandName: "Boutique Hotel" },
+    });
+    const homePage = await prisma.cmsPage.upsert({
+      where: { id_organizationId: { id: "page_boutique_home", organizationId: "org_boutique" } },
+      update: { status: "PUBLISHED", isHomePage: true },
+      create: {
+        id: "page_boutique_home",
+        organizationId: "org_boutique",
+        siteId: site.id,
+        title: "Home",
+        slug: "/",
+        status: "PUBLISHED",
+        isHomePage: true,
+        revision: 1,
+      },
+    });
+    await prisma.cmsPageContent.upsert({
+      where: { pageId_organizationId: { pageId: homePage.id, organizationId: "org_boutique" } },
+      update: { publishedAst: { sections: [] } },
+      create: {
+        pageId: homePage.id,
+        organizationId: "org_boutique",
+        draftAst: { sections: [] },
+        publishedAst: { sections: [] },
+      },
+    });
+  });
 
   it("resolves published domain and verifies strict zero-leakage data minimization", async () => {
     const res = await router.request("/resolve", {
@@ -93,7 +183,7 @@ describe("Storefront Edge Resolution & Data Minimization Integration Suite (S1-8
       detail: string;
     };
 
-    expect(problem.type).toBe("https://errors.business-os.com/cms/missing-host");
+    expect(problem.type).toBe("about:blank");
     expect(problem.status).toBe(400);
     expect(problem.title).toBe("Bad Request");
     expect(problem.detail).toContain("Host request header is required");
@@ -113,7 +203,7 @@ describe("Storefront Edge Resolution & Data Minimization Integration Suite (S1-8
       status: number;
       detail: string;
     };
-    expect(body.type).toBe("https://errors.business-os.com/cms/domain-not-found");
+    expect(body.type).toBe("about:blank");
     expect(body.title).toBe("Domain Not Found");
     expect(body.status).toBe(404);
 

@@ -13,6 +13,7 @@ export interface VerifyManagerOverrideParams {
   organizationId: string;
   secretKey: string;
   prisma: PrismaClient;
+  managerUserId?: string;
 }
 
 export interface ManagerOverrideVerificationResult {
@@ -79,11 +80,12 @@ export async function verifyManagerOverridePin(
     ]);
   }
 
-  // Find all active users in this organization who possess a manager PIN hash
+  // Find active users in this organization who possess a manager PIN hash
   const activeMembersWithPin = await prisma.userOrganization.findMany({
     where: {
       organizationId,
       status: "ACTIVE",
+      ...(params.managerUserId ? { userId: params.managerUserId } : {}),
       user: {
         managerPinHash: { not: null },
       },

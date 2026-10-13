@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, beforeAll } from "vitest";
+import { prisma } from "@suite/db";
 import {
   createFormRouter,
   FormService,
@@ -8,6 +9,28 @@ import {
 describe("Public Form Ingestion & Idempotency Suppression Integration Suite (S1-8)", () => {
   const service = new FormService();
   const router = createFormRouter(service);
+
+  beforeAll(async () => {
+    await prisma.organization.upsert({
+      where: { id: "org_resort" },
+      update: {},
+      create: { id: "org_resort", name: "Resort Org", slug: "resort-org" },
+    });
+    await prisma.cmsSite.upsert({
+      where: { id_organizationId: { id: "site_resort_01", organizationId: "org_resort" } },
+      update: { status: "PUBLISHED" },
+      create: {
+        id: "site_resort_01",
+        organizationId: "org_resort",
+        title: "Resort Site",
+        slug: "resort-site",
+        status: "PUBLISHED",
+      },
+    });
+    await prisma.cmsFormSubmission.deleteMany({
+      where: { siteId: "site_resort_01" },
+    });
+  });
 
   const sharedSubmissionBody = {
     payload: {
@@ -84,8 +107,9 @@ describe("Public Form Ingestion & Idempotency Suppression Integration Suite (S1-
     });
 
     expect(botRes.status).toBe(400);
-    const problem = (await botRes.json()) as { type: string; status: number };
-    expect(problem.type).toContain("bot_detected");
+    const problem = (await botRes.json()) as { type: string; status: number; code?: string };
+    expect(problem.type).toBe("about:blank");
+    expect(problem.code).toBe("BOT_DETECTED");
     expect(problem.status).toBe(400);
   });
 
@@ -106,8 +130,9 @@ describe("Public Form Ingestion & Idempotency Suppression Integration Suite (S1-
     });
 
     expect(res.status).toBe(400);
-    const problem = (await res.json()) as { type: string; status: number };
-    expect(problem.type).toContain("invalid_captcha");
+    const problem = (await res.json()) as { type: string; status: number; code?: string };
+    expect(problem.type).toBe("about:blank");
+    expect(problem.code).toBe("INVALID_CAPTCHA");
     expect(problem.status).toBe(400);
   });
 
@@ -130,8 +155,9 @@ describe("Public Form Ingestion & Idempotency Suppression Integration Suite (S1-
     });
 
     expect(res.status).toBe(413);
-    const problem = (await res.json()) as { type: string; status: number };
-    expect(problem.type).toContain("payload_too_large");
+    const problem = (await res.json()) as { type: string; status: number; code?: string };
+    expect(problem.type).toBe("about:blank");
+    expect(problem.code).toBe("PAYLOAD_TOO_LARGE");
   });
 
   it("validates direct database security definer result schema matching IngestFormSubmissionResult", async () => {
@@ -172,7 +198,8 @@ describe("Public Form Ingestion & Idempotency Suppression Integration Suite (S1-
       maxSizeBytes: number;
     };
     expect(validData.storageKey).toContain("quarantine/site_resort_01");
-    expect(validData.uploadUrl).toContain("https://r2.business-os.site/quarantine");
+    expect(validData.uploadUrl).toContain(validData.storageKey);
+    expect(validData.uploadUrl).toContain("?signed=true");
     expect(validData.maxSizeBytes).toBe(10485760);
 
     // Rejected 15MB file upload intent (> 10MB limit)

@@ -162,9 +162,10 @@ export function createFormRouter(
       const status = result.errorCode === "PAYLOAD_TOO_LARGE" ? 413 : 400;
       return c.json(
         {
-          type: `https://errors.business-os.com/cms/${result.errorCode.toLowerCase()}`,
+          type: "about:blank",
           title: "Form Submission Rejected",
           status,
+          code: result.errorCode,
           detail: result.message,
           instance: c.req.path,
         },
@@ -201,9 +202,10 @@ export function createFormRouter(
       const message = err instanceof Error ? err.message : "Failed to create upload intent";
       return c.json(
         {
-          type: "https://errors.business-os.com/cms/upload-intent-error",
+          type: "about:blank",
           title: "Upload Intent Error",
           status: 400,
+          code: "CMS_UPLOAD_INTENT_ERROR",
           detail: message,
           instance: c.req.path,
         },

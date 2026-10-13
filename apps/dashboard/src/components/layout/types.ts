@@ -12,4 +12,8 @@ export interface TenantContext {
   organizationName: string;
   activeBranchId?: string;
   activeBranchName?: string;
+  userName?: string;
+  userEmail?: string;
+  userRole?: string;
+  userInitials?: string;
 }

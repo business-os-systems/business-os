@@ -19,8 +19,8 @@ const AuditLogItemSchema = z.object({
   recordHash: z.string().openapi({ description: "Cryptographic SHA-256 integrity hash", example: "a3f5b7..." }),
   prevHash: z.string().nullable().optional(),
   timestamp: z.date().or(z.string()).openapi({ example: "2026-10-08T12:00:00.000Z" }),
-  oldData: z.any().nullable().optional(),
-  newData: z.any().nullable().optional(),
+  oldData: z.unknown().nullable().optional(),
+  newData: z.unknown().nullable().optional(),
 });
 
 const listAuditLogsResponseSchema = z.object({
@@ -97,7 +97,7 @@ auditLogsRouter.openapi(listAuditLogsRoute, async (c) => {
         limit,
         totalPages: Math.ceil(total / limit),
       },
-      requestId: c.get("requestId") || "req_unknown",
+      requestId: c.get("requestId"),
       timestamp: new Date().toISOString(),
     },
     200

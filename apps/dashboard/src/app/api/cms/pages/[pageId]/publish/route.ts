@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { PageService } from "@suite/website-builder/services";
+
+const PublishBodySchema = z.object({
+  expectedRevision: z.number().int().positive(),
+  createdByUserId: z.string().optional(),
+});
 
 export async function POST(
   request: Request,
@@ -7,28 +13,57 @@ export async function POST(
 ) {
   try {
     const { pageId } = await params;
-    const body = await request.json().catch(() => ({}));
-    const tenantId = request.headers.get("x-tenant-id") || "org_default_tenant";
-    const expectedRevision = typeof body.expectedRevision === "number" ? body.expectedRevision : 1;
+    const tenantId = request.headers.get("x-tenant-id");
+    if (!tenantId) {
+      return NextResponse.json(
+        {
+          type: "about:blank",
+          code: "UNAUTHORIZED",
+          title: "Missing Tenant Context",
+          status: 401,
+          detail: "Organization context header (x-tenant-id) is required to publish a page.",
+        },
+        { status: 401 }
+      );
+    }
+    const rawBody = await request.json().catch(() => ({}));
+
+    const parsed = PublishBodySchema.safeParse(rawBody);
+    if (!parsed.success) {
+      return NextResponse.json(
+        {
+          type: "about:blank",
+          code: "VALIDATION_ERROR",
+          title: "Invalid Publish Payload",
+          status: 400,
+          detail: parsed.error.issues[0]?.message ?? "expectedRevision must be a positive integer",
+        },
+        { status: 400 }
+      );
+    }
+
+    const { expectedRevision, createdByUserId } = parsed.data;
 
     const service = new PageService();
     const result = await service.publishPage({
       organizationId: tenantId,
       pageId,
       expectedRevision,
-      createdByUserId: body.createdByUserId,
+      createdByUserId,
     });
 
     if (!result.success) {
+      const status = result.errorCode === "CMS_CONCURRENCY_CONFLICT" ? 409 : 400;
       return NextResponse.json(
         {
-          type: "https://errors.business-os.com/cms/concurrency-conflict",
+          type: "about:blank",
+          code: result.errorCode ?? "CMS_PUBLISH_FAILED",
           title: "Publish Failed",
-          status: result.errorCode === "CMS_CONCURRENCY_CONFLICT" ? 409 : 400,
-          detail: result.message || "Failed to publish page",
+          status,
+          detail: result.message ?? "Failed to publish page",
           activeRevision: result.revision,
         },
-        { status: result.errorCode === "CMS_CONCURRENCY_CONFLICT" ? 409 : 400 }
+        { status }
       );
     }
 

@@ -62,8 +62,10 @@ describe("Authoring Studio CAS Concurrency Control Integration Suite (S1-8)", ()
       status: number;
       detail: string;
       activeRevision: number;
+      code?: string;
     };
-    expect(bobConflictData.type).toContain("concurrency-conflict");
+    expect(bobConflictData.type).toBe("about:blank");
+    expect(bobConflictData.code).toBe("CMS_CONCURRENCY_CONFLICT");
     expect(bobConflictData.status).toBe(409);
     expect(bobConflictData.activeRevision).toBe(2);
 

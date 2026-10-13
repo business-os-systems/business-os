@@ -30,6 +30,8 @@ describe("Tenant Navigation Shell & App Launcher Primitives", () => {
           organizationId: "org-test",
           organizationName: "Riverview Hospitality Group",
           activeBranchName: "Flagship Riverside Cafe (Branch #1)",
+          userName: "Rohit Bahuguna",
+          userRole: "Platform Admin",
         }}
       />
     );

@@ -180,15 +180,15 @@ export class SiteService {
       const site = await tx.cmsSite.create({
         data: {
           organizationId: input.organizationId,
-          branchId: input.branchId || null,
+          branchId: input.branchId ?? null,
           title: input.title,
           slug: normalizedSlug,
-          primaryLocale: input.primaryLocale || "en",
-          timezone: input.timezone || "Asia/Kolkata",
+          primaryLocale: input.primaryLocale ?? "en",
+          timezone: input.timezone ?? "Asia/Kolkata",
           status: "DRAFT",
           settings: {
             create: {
-              brandName: input.brandName || input.title,
+              brandName: input.brandName ?? input.title,
             },
           },
           seoSettings: {

@@ -1,5 +1,6 @@
-import { createHash, createHmac } from "node:crypto";
-import { type ResolvedDomain } from "../db/functions.js";
+import { createHmac } from "node:crypto";
+import { prisma } from "@suite/db";
+import { type ResolvedDomain, ResolvedDomainSchema } from "../db/functions.js";
 
 export interface IStorefrontService {
   resolveHostname(hostname: string): Promise<ResolvedDomain>;
@@ -7,6 +8,8 @@ export interface IStorefrontService {
 }
 
 export class StorefrontService implements IStorefrontService {
+  constructor(private readonly db = prisma) {}
+
   /**
    * Normalizes hostname by trimming, lowercasing, and removing port numbers
    */
@@ -14,12 +17,11 @@ export class StorefrontService implements IStorefrontService {
     const trimmed = rawHost.trim().toLowerCase();
     // Strip trailing port if present (e.g. localhost:3000 -> localhost)
     const [cleanHost] = trimmed.split(":");
-    return cleanHost || "";
+    return cleanHost ?? "";
   }
 
   /**
-   * Resolves storefront details for a given hostname
-   * In a live database environment, this executes public.cms_resolve_domain(hostname)
+   * Resolves storefront details for a given hostname executing public.cms_resolve_domain(hostname)
    */
   public async resolveHostname(hostname: string): Promise<ResolvedDomain> {
     const normalized = this.normalizeHostname(hostname);
@@ -31,32 +33,25 @@ export class StorefrontService implements IStorefrontService {
       };
     }
 
-    // Default mock response structure matching DB security definer contract
-    // When connected to Postgres pool, this delegates to:
-    // await prisma.$queryRaw`SELECT public.cms_resolve_domain(${normalized}) as res`
-    return {
-      resolved: true,
-      siteId: `site_${createHash("md5").update(normalized).digest("hex").slice(0, 12)}`,
-      title: "Storefront",
-      slug: normalized.replace(/\./g, "-"),
-      primaryLocale: "en",
-      timezone: "Asia/Kolkata",
-      brand: {
-        brandName: "Storefront",
-        brandLogoUrl: null,
-        faviconUrl: null,
-      },
-      themeTokens: {},
-      headerAst: { blocks: [] },
-      footerAst: { blocks: [] },
-      customCss: null,
-      homePage: {
-        pageId: `page_${createHash("md5").update(normalized + "_home").digest("hex").slice(0, 12)}`,
-        slug: "/",
-        title: "Home",
-        publishedAst: { sections: [] },
-      },
-    };
+    const rows = await this.db.$queryRaw<Array<{ res: unknown }>>`SELECT public.cms_resolve_domain(${normalized}) as res`;
+    const rawResult = rows[0]?.res;
+
+    if (!rawResult) {
+      return {
+        resolved: false,
+        reason: "DOMAIN_NOT_FOUND",
+      };
+    }
+
+    const parsed = ResolvedDomainSchema.safeParse(rawResult);
+    if (!parsed.success) {
+      return {
+        resolved: false,
+        reason: "DOMAIN_NOT_FOUND",
+      };
+    }
+
+    return parsed.data;
   }
 
   /**

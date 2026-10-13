@@ -134,5 +134,31 @@ describe("Integration: Multi-Tenant Leak Defense", () => {
       const leaksTenantB = bodyA.data.branches.some((b) => b.id === BRANCH_B_ID);
       expect(leaksTenantB).toBe(false);
     });
+
+    it("rejects GET /api/v1/branches when organizationId context is missing", async () => {
+      const res = await app.request("/api/v1/branches");
+      expect(res.status).toBe(422);
+    });
+
+    it("scopes GET /api/v1/branches strictly to requesting tenant without leaking foreign branches", async () => {
+      const res = await app.request(`/api/v1/branches?organizationId=${TENANT_A_ID}`);
+      expect(res.status).toBe(200);
+
+      interface BranchListResponse {
+        success: boolean;
+        data: Array<{ id: string; organizationId: string }>;
+      }
+      const body = (await res.json()) as BranchListResponse;
+      expect(body.data.length).toBeGreaterThan(0);
+      expect(body.data.every((b) => b.organizationId === TENANT_A_ID)).toBe(true);
+      expect(body.data.some((b) => b.id === BRANCH_B_ID)).toBe(false);
+    });
+
+    it("returns 404 when requesting a foreign branch with x-organization-id header set", async () => {
+      const res = await app.request(`/api/v1/branches/${BRANCH_B_ID}`, {
+        headers: { "x-organization-id": TENANT_A_ID },
+      });
+      expect(res.status).toBe(404);
+    });
   });
 });

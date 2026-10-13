@@ -1,5 +1,6 @@
 import { createHmac } from "node:crypto";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, beforeAll } from "vitest";
+import { prisma } from "@suite/db";
 import {
   createStorefrontRouter,
   StorefrontService,
@@ -10,7 +11,68 @@ import {
 describe("Public Storefront Edge Delivery API (S1-4)", () => {
   const service = new StorefrontService();
   const router = createStorefrontRouter(service);
-  const rootRouter = createWebsiteBuilderRoutes();
+  const rootRouter = createWebsiteBuilderRoutes(undefined, undefined, undefined, service);
+
+  beforeAll(async () => {
+    await prisma.organization.upsert({
+      where: { id: "org_riverview" },
+      update: {},
+      create: { id: "org_riverview", name: "Riverview", slug: "riverview" },
+    });
+    const site = await prisma.cmsSite.upsert({
+      where: { id_organizationId: { id: "site_riverview", organizationId: "org_riverview" } },
+      update: { status: "PUBLISHED" },
+      create: {
+        id: "site_riverview",
+        organizationId: "org_riverview",
+        title: "Riverview Storefront",
+        slug: "stay-riverview",
+        status: "PUBLISHED",
+      },
+    });
+    await prisma.cmsDomain.upsert({
+      where: { hostname: "stay.riverview.com" },
+      update: { status: "ACTIVE" },
+      create: {
+        id: "dom_riverview",
+        organizationId: "org_riverview",
+        siteId: site.id,
+        hostname: "stay.riverview.com",
+        status: "ACTIVE",
+        isPrimary: true,
+        verificationToken: "token_abc123",
+      },
+    });
+    await prisma.cmsSiteSettings.upsert({
+      where: { siteId_organizationId: { siteId: site.id, organizationId: "org_riverview" } },
+      update: {},
+      create: { siteId: site.id, organizationId: "org_riverview", brandName: "Riverview Stay" },
+    });
+    const homePage = await prisma.cmsPage.upsert({
+      where: { id_organizationId: { id: "page_riverview_home", organizationId: "org_riverview" } },
+      update: { status: "PUBLISHED", isHomePage: true },
+      create: {
+        id: "page_riverview_home",
+        organizationId: "org_riverview",
+        siteId: site.id,
+        title: "Home",
+        slug: "/",
+        status: "PUBLISHED",
+        isHomePage: true,
+        revision: 1,
+      },
+    });
+    await prisma.cmsPageContent.upsert({
+      where: { pageId_organizationId: { pageId: homePage.id, organizationId: "org_riverview" } },
+      update: { publishedAst: { sections: [] } },
+      create: {
+        pageId: homePage.id,
+        organizationId: "org_riverview",
+        draftAst: { sections: [] },
+        publishedAst: { sections: [] },
+      },
+    });
+  });
 
   it("should normalize hostnames correctly (lowercase, strip ports)", () => {
     expect(service.normalizeHostname("Stay.RiverView.COM:8080")).toBe(
@@ -24,7 +86,7 @@ describe("Public Storefront Edge Delivery API (S1-4)", () => {
     expect(res.status).toBe(400);
 
     const data = (await res.json()) as { type: string; status: number };
-    expect(data.type).toBe("https://errors.business-os.com/cms/missing-host");
+    expect(data.type).toBe("about:blank");
     expect(data.status).toBe(400);
   });
 

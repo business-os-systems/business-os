@@ -50,7 +50,8 @@ describe("Live CAS Autosave & API Gateway Proxying (@suite/dashboard)", () => {
       const mockFetch = vi.fn().mockResolvedValue({
         status: 409,
         json: async () => ({
-          type: "https://errors.business-os.com/cms/concurrency-conflict",
+          type: "about:blank",
+          code: "CMS_CONCURRENCY_CONFLICT",
           title: "Concurrency Conflict",
           status: 409,
           detail: "Page revision conflict.",

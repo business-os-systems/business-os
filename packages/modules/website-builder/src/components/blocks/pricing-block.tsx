@@ -10,8 +10,8 @@ export interface PricingBlockComponentProps {
 
 export function PricingBlock({ props, styles }: PricingBlockComponentProps) {
   const paddingStyle: React.CSSProperties = {
-    paddingTop: styles?.paddingTop ? `${styles.paddingTop}px` : "64px",
-    paddingBottom: styles?.paddingBottom ? `${styles.paddingBottom}px` : "64px",
+    paddingTop: styles?.paddingTop !== undefined ? `${styles.paddingTop}px` : "64px",
+    paddingBottom: styles?.paddingBottom !== undefined ? `${styles.paddingBottom}px` : "64px",
     backgroundColor: styles?.backgroundColor,
     color: styles?.textColor,
   };
@@ -20,7 +20,7 @@ export function PricingBlock({ props, styles }: PricingBlockComponentProps) {
     <section
       data-block-type="pricing"
       style={paddingStyle}
-      className={`w-full px-4 sm:px-6 lg:px-8 ${styles?.customClassName || ""}`}
+      className={`w-full px-4 sm:px-6 lg:px-8 ${styles?.customClassName ?? ""}`}
     >
       <div className="max-w-6xl mx-auto">
         {props.headline || props.subheadline ? (

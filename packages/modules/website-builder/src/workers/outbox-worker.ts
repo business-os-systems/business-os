@@ -8,8 +8,32 @@ export interface OutboxProcessingResult {
   isDeadLetter: boolean;
 }
 
+export interface IEventDispatcher {
+  dispatch(record: OutboxRecord): Promise<string[]> | string[];
+}
+
+export const EVENT_DISPATCHERS: Record<string, IEventDispatcher> = {
+  "cms.page.published": {
+    dispatch: () => ["edge_cdn_cache_purge", "sitemap_generator"],
+  },
+  "cms.page.unpublished": {
+    dispatch: () => ["edge_cdn_cache_purge"],
+  },
+  "cms.form.submitted": {
+    dispatch: () => ["crm_lead_pipeline", "notification_dispatcher"],
+  },
+  "cms.domain.verified": {
+    dispatch: () => ["ssl_cert_provisioner"],
+  },
+};
+
 export class OutboxWorker {
   private readonly maxRetries = 5;
+  private readonly dispatchers: Record<string, IEventDispatcher>;
+
+  constructor(dispatchers: Record<string, IEventDispatcher> = EVENT_DISPATCHERS) {
+    this.dispatchers = dispatchers;
+  }
 
   /**
    * Processes an outbox event record, executing domain-specific dispatchers
@@ -20,29 +44,13 @@ export class OutboxWorker {
     const dispatchedTo: string[] = [];
 
     try {
-      switch (record.eventName) {
-        case "cms.page.published":
-          // Dispatch to CDN purge dispatcher & sitemap generator
-          dispatchedTo.push("edge_cdn_cache_purge", "sitemap_generator");
-          break;
-
-        case "cms.page.unpublished":
-          dispatchedTo.push("edge_cdn_cache_purge");
-          break;
-
-        case "cms.form.submitted":
-          // Dispatch to CRM lead pipeline and transactional notification queue
-          dispatchedTo.push("crm_lead_pipeline", "notification_dispatcher");
-          break;
-
-        case "cms.domain.verified":
-          // Dispatch to SSL provisioning edge queue
-          dispatchedTo.push("ssl_cert_provisioner");
-          break;
-
-        default:
-          throw new Error(`Unhandled event type: ${record.eventName}`);
+      const dispatcher = this.dispatchers[record.eventName];
+      if (!dispatcher) {
+        throw new Error(`Unhandled event type: ${record.eventName}`);
       }
+
+      const targets = await dispatcher.dispatch(record);
+      dispatchedTo.push(...targets);
 
       return {
         recordId: record.id,

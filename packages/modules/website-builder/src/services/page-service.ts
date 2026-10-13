@@ -336,17 +336,32 @@ export class PageService {
 
     try {
       await this.db.$transaction(async (tx) => {
-        await tx.cmsPage.update({
+        const updateResult = await tx.cmsPage.updateMany({
           where: {
-            id_organizationId: {
-              id: params.pageId,
-              organizationId: params.organizationId,
-            },
+            id: params.pageId,
+            organizationId: params.organizationId,
+            revision: params.expectedRevision,
           },
           data: {
             revision: page.revision,
           },
         });
+
+        if (updateResult.count === 0) {
+          // Fallback or rollback memory state if another instance advanced the DB revision
+          const currentDb = await tx.cmsPage.findUnique({
+            where: {
+              id_organizationId: {
+                id: params.pageId,
+                organizationId: params.organizationId,
+              },
+            },
+          });
+          if (currentDb && currentDb.revision !== params.expectedRevision) {
+            page.revision = currentDb.revision;
+            this.memoryPages.set(page.id, page);
+          }
+        }
 
         await tx.cmsPageContent.upsert({
           where: {

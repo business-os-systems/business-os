@@ -148,7 +148,7 @@ export default function SiteOnboardingWizard() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "Failed to provision website");
+        throw new Error(data.error ?? data.detail ?? "Failed to provision website");
       }
 
       // Transition smoothly into Studio Canvas

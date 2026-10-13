@@ -8,7 +8,7 @@ import { httpRequestCounter, httpRequestDurationHistogram } from "../telemetry.j
  */
 export function accessLoggerMiddleware(): MiddlewareHandler {
   return async (c, next) => {
-    const requestId = c.get("requestId") || "req_unknown";
+    const requestId = c.get("requestId");
     const startTime = performance.now();
     const method = c.req.method;
     const path = c.req.path;
@@ -30,11 +30,9 @@ export function accessLoggerMiddleware(): MiddlewareHandler {
       );
     }
 
-    const clientIp =
-      c.req.header("cf-connecting-ip") ||
-      c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ||
-      c.req.header("x-real-ip") ||
-      "unknown";
+    const forwardedHeader = c.req.header("x-forwarded-for");
+    const forwardedIp = forwardedHeader ? forwardedHeader.split(",")[0]?.trim() : undefined;
+    const clientIp = c.req.header("cf-connecting-ip") ?? forwardedIp ?? c.req.header("x-real-ip");
 
     const logPayload = {
       method,
@@ -42,7 +40,7 @@ export function accessLoggerMiddleware(): MiddlewareHandler {
       status,
       durationMs,
       clientIp,
-      userAgent: c.req.header("user-agent") || "unknown",
+      userAgent: c.req.header("user-agent"),
       requestId,
     };
 
