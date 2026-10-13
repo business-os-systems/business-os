@@ -24,6 +24,7 @@ describe("Public Form Ingestion & Idempotency Suppression Integration Suite (S1-
         organizationId: "org_resort",
         title: "Resort Site",
         slug: "resort-site",
+        status: "PUBLISHED",
       },
     });
     await prisma.cmsFormSubmission.deleteMany({
