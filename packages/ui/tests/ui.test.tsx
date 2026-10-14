@@ -9,26 +9,27 @@ describe("@suite/ui Component Library Primitives", () => {
     const html = renderToString(<Button type="button">Click Me</Button>);
     expect(html).toContain("Click Me");
     expect(html).toContain("type=\"button\"");
-    expect(html).toContain("bg-slate-900");
+    expect(html).toContain("bg-action");
   });
 
   it("renders Button with secondary and destructive variants", () => {
     const secondaryHtml = renderToString(<Button variant="secondary">Cancel</Button>);
-    expect(secondaryHtml).toContain("bg-slate-100");
+    expect(secondaryHtml).toContain("bg-surface");
+    expect(secondaryHtml).toContain("border-border-strong");
 
     const destructiveHtml = renderToString(<Button variant="destructive">Delete</Button>);
-    expect(destructiveHtml).toContain("bg-red-600");
+    expect(destructiveHtml).toContain("bg-danger");
   });
 
   it("renders Input with error styling", () => {
     const html = renderToString(<Input placeholder="Enter your email" hasError />);
-    expect(html).toContain("border-red-500");
+    expect(html).toContain("border-danger");
     expect(html).toContain("placeholder=\"Enter your email\"");
   });
 
   it("renders Textarea with default attributes", () => {
     const html = renderToString(<Textarea rows={4} placeholder="Your message" />);
-    expect(html).toContain("min-h-[80px]");
+    expect(html).toContain("min-h-[88px]");
     expect(html).toContain("rows=\"4\"");
   });
 
@@ -43,12 +44,12 @@ describe("@suite/ui Component Library Primitives", () => {
     );
     expect(html).toContain("Mountain Villa");
     expect(html).toContain("Luxury accommodations");
-    expect(html).toContain("rounded-xl");
+    expect(html).toContain("rounded-DEFAULT");
   });
 
   it("renders Badge variants correctly", () => {
     const successHtml = renderToString(<Badge variant="success">Active</Badge>);
-    expect(successHtml).toContain("bg-emerald-600");
+    expect(successHtml).toContain("bg-action");
     expect(successHtml).toContain("Active");
   });
 

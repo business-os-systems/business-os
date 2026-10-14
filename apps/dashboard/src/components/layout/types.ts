@@ -7,6 +7,16 @@ export interface NavigationItem {
   description?: string;
 }
 
+export const BASE_NAV_ITEMS: NavigationItem[] = [
+  {
+    id: "home",
+    name: "Overview",
+    href: "/",
+    icon: "home",
+    description: "Executive Business Summary",
+  },
+];
+
 export interface TenantContext {
   organizationId: string;
   organizationName: string;

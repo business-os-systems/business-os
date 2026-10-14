@@ -69,19 +69,19 @@ export function CreateSiteDialog({ isOpen, onClose, onSubmit }: CreateSiteDialog
       role="dialog"
       aria-modal="true"
       aria-labelledby="create-site-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-scrim backdrop-blur-sm p-4"
     >
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
-        <h3 id="create-site-title" className="text-lg font-bold text-slate-900">
+      <div className="w-full max-w-md rounded-2xl bg-surface p-6 shadow-2xl border border-border animate-in fade-in zoom-in-95 duration-200">
+        <h3 id="create-site-title" className="text-lg font-bold text-text">
           Create New Website
         </h3>
-        <p className="text-xs text-slate-500 mt-1">
+        <p className="text-xs text-text-muted mt-1">
           Deploy an edge-rendered multi-page website or storefront.
         </p>
 
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
+            <label className="block text-xs font-semibold text-text mb-1">
               Website Name *
             </label>
             <Input
@@ -101,32 +101,32 @@ export function CreateSiteDialog({ isOpen, onClose, onSubmit }: CreateSiteDialog
               className="w-full"
             />
             {errors["name"] && (
-              <p className="text-[11px] text-red-600 mt-1 font-medium">{errors["name"]}</p>
+              <p className="text-[11px] text-danger mt-1 font-medium">{errors["name"]}</p>
             )}
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
+            <label className="block text-xs font-semibold text-text mb-1">
               Platform Subdomain *
             </label>
-            <div className="flex items-center rounded-lg border border-slate-300 bg-white overflow-hidden focus-within:ring-2 focus-within:ring-blue-500">
+            <div className="flex items-center rounded-lg border border-border-strong bg-surface overflow-hidden focus-within:ring-2 focus-within:ring-focus-ring">
               <input
                 value={subdomain}
                 onChange={(e) => setSubdomain(e.target.value.toLowerCase())}
                 placeholder="acme-corp"
-                className="w-full px-3 py-2 text-sm text-slate-900 outline-none"
+                className="w-full px-3 py-2 text-sm text-text bg-transparent outline-none"
               />
-              <span className="bg-slate-50 px-3 py-2 text-xs font-mono text-slate-500 border-l border-slate-200">
+              <span className="bg-surface-muted px-3 py-2 text-xs font-mono text-text-muted border-l border-border">
                 .business-os.site
               </span>
             </div>
             {errors["subdomain"] && (
-              <p className="text-[11px] text-red-600 mt-1 font-medium">{errors["subdomain"]}</p>
+              <p className="text-[11px] text-danger mt-1 font-medium">{errors["subdomain"]}</p>
             )}
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
+            <label className="block text-xs font-semibold text-text mb-1">
               Custom Domain (Optional)
             </label>
             <Input
@@ -136,11 +136,11 @@ export function CreateSiteDialog({ isOpen, onClose, onSubmit }: CreateSiteDialog
               className="w-full font-mono text-xs"
             />
             {errors["customDomain"] && (
-              <p className="text-[11px] text-red-600 mt-1 font-medium">{errors["customDomain"]}</p>
+              <p className="text-[11px] text-danger mt-1 font-medium">{errors["customDomain"]}</p>
             )}
           </div>
 
-          <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+          <div className="flex justify-end gap-2 pt-2 border-t border-border">
             <Button type="button" variant="outline" size="sm" onClick={onClose}>
               Cancel
             </Button>

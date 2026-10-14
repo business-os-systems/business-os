@@ -63,19 +63,19 @@ export function CreatePageDialog({ isOpen, onClose, onSubmit }: CreatePageDialog
       role="dialog"
       aria-modal="true"
       aria-labelledby="create-page-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-scrim backdrop-blur-sm p-4"
     >
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
-        <h3 id="create-page-title" className="text-lg font-bold text-slate-900">
+      <div className="w-full max-w-md rounded-2xl bg-surface p-6 shadow-2xl border border-border animate-in fade-in zoom-in-95 duration-200">
+        <h3 id="create-page-title" className="text-lg font-bold text-text">
           Create New Page
         </h3>
-        <p className="text-xs text-slate-500 mt-1">
+        <p className="text-xs text-text-muted mt-1">
           Add an AST-powered landing page, about page, or promotional showcase.
         </p>
 
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
+            <label className="block text-xs font-semibold text-text mb-1">
               Page Title *
             </label>
             <Input
@@ -95,16 +95,16 @@ export function CreatePageDialog({ isOpen, onClose, onSubmit }: CreatePageDialog
               className="w-full"
             />
             {errors["name"] && (
-              <p className="text-[11px] text-red-600 mt-1 font-medium">{errors["name"]}</p>
+              <p className="text-[11px] text-danger mt-1 font-medium">{errors["name"]}</p>
             )}
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
+            <label className="block text-xs font-semibold text-text mb-1">
               URL Slug *
             </label>
-            <div className="flex items-center rounded-lg border border-slate-300 bg-white overflow-hidden focus-within:ring-2 focus-within:ring-blue-500">
-              <span className="bg-slate-50 px-3 py-2 text-xs font-mono text-slate-500 border-r border-slate-200">
+            <div className="flex items-center rounded-lg border border-border-strong bg-surface overflow-hidden focus-within:ring-2 focus-within:ring-focus-ring">
+              <span className="bg-surface-muted px-3 py-2 text-xs font-mono text-text-muted border-r border-border">
                 /
               </span>
               <input
@@ -112,11 +112,11 @@ export function CreatePageDialog({ isOpen, onClose, onSubmit }: CreatePageDialog
                 value={isHome ? "index (Root)" : slug}
                 onChange={(e) => setSlug(e.target.value.toLowerCase())}
                 placeholder="about-us"
-                className="w-full px-3 py-2 text-sm text-slate-900 outline-none disabled:bg-slate-50 disabled:text-slate-400 font-mono text-xs"
+                className="w-full px-3 py-2 text-sm text-text bg-transparent outline-none disabled:bg-surface-muted disabled:text-text-disabled font-mono text-xs"
               />
             </div>
             {errors["slug"] && (
-              <p className="text-[11px] text-red-600 mt-1 font-medium">{errors["slug"]}</p>
+              <p className="text-[11px] text-danger mt-1 font-medium">{errors["slug"]}</p>
             )}
           </div>
 
@@ -129,7 +129,7 @@ export function CreatePageDialog({ isOpen, onClose, onSubmit }: CreatePageDialog
             />
           </div>
 
-          <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+          <div className="flex justify-end gap-2 pt-2 border-t border-border">
             <Button type="button" variant="outline" size="sm" onClick={onClose}>
               Cancel
             </Button>

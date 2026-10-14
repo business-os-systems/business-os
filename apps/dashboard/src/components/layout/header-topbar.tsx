@@ -3,6 +3,7 @@
 import React from "react";
 import { Badge, Button } from "@suite/ui";
 import { MenuIcon, BuildingIcon, LogOutIcon } from "@suite/ui/icons";
+import { ThemeToggle } from "./theme-toggle";
 import type { TenantContext } from "./types";
 
 interface HeaderTopbarProps {
@@ -91,11 +92,13 @@ export function HeaderTopbar({
           </div>
         )}
 
+        <ThemeToggle />
+
         <Button
           variant="ghost"
           size="sm"
           onClick={handleSignOut}
-          className="text-slate-500 hover:text-red-600 hover:bg-red-50 text-xs gap-1.5 px-2"
+          className="text-text-muted hover:text-danger hover:bg-danger/10 text-xs gap-1.5 px-2"
           title="Sign out of workspace"
         >
           <LogOutIcon className="h-4 w-4" />

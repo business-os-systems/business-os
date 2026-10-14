@@ -8,6 +8,13 @@
 
 ---
 
+## 0. Rule 0: Pre-Change Rule Verification Gate (APPLY RULES FIRST BEFORE MAKING ANY CHANGES)
+- **Before making ANY code, design, configuration, or architectural change, AI agents MUST explicitly review, verify, and apply ALL operational directives and architectural rules FIRST.**
+- AI agents are **STRICTLY PROHIBITED** from taking shortcuts, introducing temporary workarounds, using mock/static data fallbacks, or writing code before validating all repository rules.
+- Every turn begins with a rule compliance check: If an action would violate ANY directive in this document (e.g., issue-first policy, zero static data, DESIGN.md primacy, branch hierarchy, human approval gates, core immutability), the agent **MUST NOT** proceed with the violation.
+
+---
+
 ## 1. Identity & Git Committer Configuration
 All Git actions, commits, and PRs in this repository **MUST** use this developer identity:
 - **Author Name:** `Rohit Bahuguna`
@@ -85,6 +92,21 @@ You are **STRICTLY PROHIBITED** from:
   3. Modular schemas MUST live strictly in their own dedicated file: `packages/db/prisma/schema/<app-name>.prisma`.
   4. Multi-tenancy in modular apps is established strictly via scalar IDs (`organizationId String`, `branchId String?`) without declaring reverse Prisma relations in core models.
 - ❌ **Orphan / Un-Namespaced Database Tables:** Every table belonging to a modular app MUST use its mandatory application namespace prefix in PostgreSQL (e.g. `cms_*`, `pos_*`, `pms_*`). Generic table names (`pages`, `orders`, `forms`) are strictly forbidden.
+- ❌ **Hardcoded Styles & Off-Spec Design (DESIGN.md Primacy Law):**
+  `DESIGN.md` (`/home/rohit-bahuguna/RB/Composable_Business_Operating_System/DESIGN.md`) is the **SINGLE SOURCE OF TRUTH** for all visual design, tokens, typography, layout, radii, motion, and theming.
+  1. You are **STRICTLY FORBIDDEN** from hardcoding color names or arbitrary hex values (e.g. `text-slate-900`, `bg-indigo-600`, `border-blue-500`, `#ffffff`) in UI components or pages. Always reference semantic design tokens (`text-text`, `text-secondary`, `bg-surface`, `bg-action`, `border-border`, etc.).
+  2. All global design tokens MUST live in `apps/dashboard/src/app/globals.css` (`:root`) and be mapped in `packages/ui/tailwind.preset.cjs`.
+  3. Dark mode MUST strictly implement `colors-dark` from `DESIGN.md` §9.
+  4. Per-app customizations MUST live exclusively in single-file app-scoped overrides (`[data-app="<app-name>"]`).
+- ❌ **Static Mock Data & In-Memory Fallback Stores (Zero Static Data Law):**
+  You are **STRICTLY FORBIDDEN** from introducing static mock data, hardcoded fallback entity arrays (such as hardcoded app lists, fake sites, mock tenants, demo templates, or dummy credentials), or in-memory mutable state stores (`new Map()`, module-scoped mock variables) anywhere in runtime production code.
+  1. All domain entities, installed modular apps, navigation items, and tenant records **MUST** be fetched dynamically from the PostgreSQL database (`@suite/db`) or official REST/RPC APIs.
+  2. If data is absent or an error occurs, UI components MUST render genuine empty states or RFC 7807 problem details—**NEVER** fall back to hardcoded mock datasets or fake in-memory fixtures.
+- ❌ **Autonomous Database Seeding or Data Mutation (Human Seeding Gate):**
+  AI agents are **STRICTLY FORBIDDEN** from running `prisma db seed`, executing destructive database resets (`prisma migrate reset`), or executing database mutation scripts without explicit written user approval. Seeding introduces unexpected state resets and disrupts live development databases.
+- ❌ **Exporting Shared Constants/Data from Client Components (RSC Boundary Law):**
+  AI agents MUST NEVER define or export shared constants, default arrays, configurations, or schemas from files containing the `"use client"` directive if they are consumed by React Server Components (`layout.tsx`, `page.tsx`).
+  All shared constants, fallback anchors (e.g. `BASE_NAV_ITEMS`), and data structures MUST reside in pure TypeScript modules (`types.ts`, `constants.ts`) without the `"use client"` directive to prevent runtime `undefined` bundle proxy errors.
 
 ---
 
@@ -98,6 +120,7 @@ Before asking human approval to start ANY issue, the agent MUST explicitly state
 
 ## 6. Specification References
 Before implementing domain features, you **MUST** consult the authoritative specifications in `/home/rohit-bahuguna/RB/Composable_Business_Operating_System/`:
+- **Design System & Visual Tokens (Single Source of Truth):** `DESIGN.md`
 - **Architecture & Scaling:** `02-architecture-and-tech-stack/TECH_STACK_HLD_AND_SCALING_BLUEPRINT.md`
 - **Platform Core DB Schema:** `03-platform-core/CORE_DATABASE_LLD_AND_ERD.md`
 - **API & Event Contracts:** `03-platform-core/CORE_API_AND_EVENT_CONTRACTS.md`

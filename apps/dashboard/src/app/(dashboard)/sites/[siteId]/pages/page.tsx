@@ -103,7 +103,7 @@ export default function SitePagesPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-64 items-center justify-center text-xs font-medium text-slate-400">
+      <div className="flex h-64 items-center justify-center text-xs font-medium text-text-muted">
         Loading pages...
       </div>
     );
@@ -112,18 +112,18 @@ export default function SitePagesPage() {
   return (
     <div className="space-y-6">
       {/* Breadcrumb Header */}
-      <div className="flex items-center gap-2 text-xs text-slate-500">
-        <Link href="/sites" className="hover:text-slate-900 transition-colors">
+      <div className="flex items-center gap-2 text-xs text-text-muted">
+        <Link href="/sites" className="hover:text-text transition-colors">
           Websites
         </Link>
         <span>/</span>
-        <span className="font-mono text-slate-900 font-medium">{siteId}</span>
+        <span className="font-mono text-text font-medium">{siteId}</span>
         <span>/</span>
         <span>Pages Explorer</span>
       </div>
 
       {error && (
-        <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-800 text-xs font-medium">
+        <div className="p-3 rounded-lg bg-danger/10 border border-danger/30 text-danger text-xs font-medium">
           {error}
         </div>
       )}

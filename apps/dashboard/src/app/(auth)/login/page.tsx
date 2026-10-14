@@ -43,28 +43,28 @@ export default function LoginPage() {
   return (
     <div className="w-full max-w-md space-y-6">
       <div className="text-center space-y-2">
-        <div className="inline-flex items-center justify-center h-12 w-12 rounded-xl bg-primary-container text-white shadow-lg shadow-primary-container/25 mb-2">
+        <div className="inline-flex items-center justify-center h-12 w-12 rounded-xl bg-brand-tint text-brand shadow-sm mb-2">
           <LayersIcon className="h-6 w-6" />
         </div>
-        <h1 className="text-2xl font-bold tracking-tight text-white">
+        <h1 className="text-2xl font-bold tracking-tight text-text">
           Business OS
         </h1>
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-text-muted">
           Composable Operating System &amp; Modular App Suite
         </p>
       </div>
 
-      <Card className="border-slate-800 bg-slate-950/90 text-white shadow-2xl backdrop-blur-sm">
+      <Card className="border-border bg-surface text-text shadow-xl">
         <CardHeader className="space-y-1 pb-4">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg font-semibold text-white">
+            <CardTitle className="text-lg font-semibold text-text">
               Sign In to Workspace
             </CardTitle>
-            <Badge variant="secondary" className="bg-slate-800 text-slate-300 text-[10px]">
+            <Badge variant="secondary" className="bg-surface-muted text-text-secondary text-[10px]">
               Enterprise SSO
             </Badge>
           </div>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-text-muted">
             Enter your employee credentials to access your installed apps.
           </p>
         </CardHeader>
@@ -72,7 +72,7 @@ export default function LoginPage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="p-3 rounded-lg bg-red-950/50 border border-red-800 text-red-200 text-xs font-medium">
+              <div className="p-3 rounded-lg bg-danger/10 border border-danger/30 text-danger text-xs font-medium">
                 {error}
               </div>
             )}
@@ -80,7 +80,7 @@ export default function LoginPage() {
             <div className="space-y-1.5">
               <label
                 htmlFor="email"
-                className="block text-xs font-medium text-slate-300"
+                className="block text-xs font-medium text-text"
               >
                 Work Email
               </label>
@@ -91,14 +91,14 @@ export default function LoginPage() {
                 placeholder="operator@company.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="bg-slate-900 border-slate-700 text-white placeholder:text-slate-500 focus:border-blue-500 text-sm h-10"
+                className="h-10 text-sm"
               />
             </div>
 
             <div className="space-y-1.5">
               <label
                 htmlFor="password"
-                className="block text-xs font-medium text-slate-300"
+                className="block text-xs font-medium text-text"
               >
                 Password
               </label>
@@ -109,14 +109,15 @@ export default function LoginPage() {
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="bg-slate-900 border-slate-700 text-white placeholder:text-slate-500 focus:border-blue-500 text-sm h-10"
+                className="h-10 text-sm"
               />
             </div>
 
             <Button
               type="submit"
+              variant="default"
               disabled={isLoading}
-              className="w-full bg-primary hover:bg-brand-hover text-white font-medium h-10 text-sm mt-2 transition-colors"
+              className="w-full font-medium h-10 text-sm mt-2 transition-colors"
             >
               {isLoading ? "Authenticating..." : "Sign In to Workspace"}
             </Button>
@@ -124,7 +125,7 @@ export default function LoginPage() {
         </CardContent>
       </Card>
 
-      <div className="flex items-center justify-center gap-1.5 text-[11px] text-slate-500 text-center">
+      <div className="flex items-center justify-center gap-1.5 text-[11px] text-text-muted text-center">
         <LockIcon className="w-3 h-3" />
         <span>TLS Encrypted &bull; Tenant Kernel Isolated &bull; Zero-Trust Gate</span>
       </div>

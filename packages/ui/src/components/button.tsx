@@ -1,8 +1,7 @@
 import React from "react";
 import { cn } from "../lib/utils.js";
 
-export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?:
     | "default"
     | "secondary"
@@ -26,25 +25,25 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       disabled,
       ...props
     },
-    ref
+    ref,
   ) => {
     const baseStyles =
       "inline-flex items-center justify-center font-medium rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none select-none cursor-pointer";
 
     const variantStyles: Record<NonNullable<ButtonProps["variant"]>, string> = {
       default:
-        "bg-slate-900 text-white hover:bg-slate-800 focus-visible:ring-slate-900",
+        "bg-action text-on-action hover:bg-action-hover focus-visible:ring-focus-ring",
       secondary:
-        "bg-slate-100 text-slate-900 hover:bg-slate-200 focus-visible:ring-slate-400",
+        "bg-surface text-text border border-border-strong hover:bg-surface-muted focus-visible:ring-focus-ring",
       tertiary:
-        "bg-tertiary text-white hover:bg-tertiary-container hover:text-on-tertiary-container focus-visible:ring-tertiary",
+        "bg-surface-muted text-text hover:bg-surface-sunken focus-visible:ring-focus-ring",
       destructive:
-        "bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-600",
+        "bg-danger text-text-inverse hover:opacity-90 focus-visible:ring-danger",
       outline:
-        "border border-slate-300 bg-transparent hover:bg-slate-100 text-slate-900 focus-visible:ring-slate-400",
+        "border border-border-strong bg-surface hover:bg-surface-muted text-text focus-visible:ring-focus-ring",
       ghost:
-        "bg-transparent hover:bg-slate-100 text-slate-900 focus-visible:ring-slate-400",
-      link: "text-slate-900 underline-offset-4 hover:underline focus-visible:ring-slate-400",
+        "bg-transparent hover:bg-surface-muted text-text-secondary focus-visible:ring-focus-ring",
+      link: "text-action underline-offset-4 hover:underline focus-visible:ring-focus-ring",
     };
 
     const sizeStyles: Record<NonNullable<ButtonProps["size"]>, string> = {
@@ -62,7 +61,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           baseStyles,
           variantStyles[variant],
           sizeStyles[size],
-          className
+          className,
         )}
         {...props}
       >
@@ -72,7 +71,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         {children}
       </button>
     );
-  }
+  },
 );
 
 Button.displayName = "Button";

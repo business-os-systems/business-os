@@ -28,10 +28,10 @@ export function PageExplorerTable({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-slate-900 tracking-tight">
+          <h2 className="text-xl font-bold text-text tracking-tight">
             Site Pages
           </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <p className="text-xs text-text-muted mt-0.5">
             Create and edit AST-driven landing pages, hero layouts, and subpaths.
           </p>
         </div>
@@ -40,7 +40,7 @@ export function PageExplorerTable({
             variant="default"
             size="sm"
             onClick={onCreatePage}
-            className="gap-1.5 bg-primary hover:bg-brand-hover text-white"
+            className="gap-1.5"
           >
             <PlusIcon className="w-4 h-4" />
             New Page
@@ -49,12 +49,12 @@ export function PageExplorerTable({
       </div>
 
       {pages.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border-subtle bg-surface-container-lowest p-12 text-center shadow-sm">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-surface-brand-tint text-primary mb-4">
+        <div className="rounded-xl border border-dashed border-border bg-surface p-12 text-center shadow-sm">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-brand-tint text-brand mb-4">
             <PlusIcon className="h-7 w-7" />
           </div>
-          <h3 className="text-lg font-bold text-on-surface tracking-tight">No Pages Found</h3>
-          <p className="mt-1.5 text-xs text-on-surface-variant max-w-sm mx-auto">
+          <h3 className="text-lg font-bold text-text tracking-tight">No Pages Found</h3>
+          <p className="mt-1.5 text-xs text-text-secondary max-w-sm mx-auto">
             This website does not have any pages created yet. Create a Home landing page or subpath to begin authoring in the Visual Studio.
           </p>
           {onCreatePage && (
@@ -63,7 +63,7 @@ export function PageExplorerTable({
                 variant="default"
                 size="sm"
                 onClick={onCreatePage}
-                className="gap-1.5 bg-primary hover:bg-brand-hover text-white"
+                className="gap-1.5"
               >
                 <PlusIcon className="w-4 h-4" />
                 Create First Page
@@ -72,9 +72,9 @@ export function PageExplorerTable({
           )}
         </div>
       ) : (
-        <div className="rounded-xl border border-border-hairline bg-surface-container-lowest overflow-hidden shadow-sm">
-          <table className="w-full text-left text-sm text-on-surface-variant">
-            <thead className="bg-surface-container text-xs font-semibold uppercase tracking-wider text-outline border-b border-border-hairline">
+        <div className="rounded-xl border border-border bg-surface overflow-hidden shadow-sm">
+          <table className="w-full text-left text-sm text-text-secondary">
+            <thead className="bg-surface-muted text-xs font-semibold uppercase tracking-wider text-text-secondary border-b border-border">
               <tr>
                 <th className="py-3 px-4">Page Title</th>
                 <th className="py-3 px-4">Route Path</th>
@@ -84,10 +84,10 @@ export function PageExplorerTable({
                 <th className="py-3 px-4 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border-hairline">
+            <tbody className="divide-y divide-border">
               {pages.map((page) => (
-                <tr key={page.id} className="hover:bg-surface-container/60 transition-colors">
-                  <td className="py-3.5 px-4 font-semibold text-on-surface">
+                <tr key={page.id} className="hover:bg-surface-hover transition-colors">
+                  <td className="py-3.5 px-4 font-semibold text-text">
                     <div className="flex items-center gap-2">
                       <span>{page.name}</span>
                       {page.isHome && (
@@ -97,7 +97,7 @@ export function PageExplorerTable({
                       )}
                     </div>
                   </td>
-                  <td className="py-3.5 px-4 font-mono text-xs text-slate-700">
+                  <td className="py-3.5 px-4 font-mono text-xs text-text">
                     {`/${page.slug}`}
                   </td>
                   <td className="py-3.5 px-4">
@@ -105,10 +105,10 @@ export function PageExplorerTable({
                       {page.status}
                     </Badge>
                   </td>
-                  <td className="py-3.5 px-4 text-xs font-mono text-slate-500">
+                  <td className="py-3.5 px-4 text-xs font-mono text-text-muted">
                     {`v${page.version}`}
                   </td>
-                  <td className="py-3.5 px-4 text-xs text-slate-500">
+                  <td className="py-3.5 px-4 text-xs text-text-muted">
                     {page.updatedAt}
                   </td>
                   <td className="py-3.5 px-4 text-right">
@@ -117,7 +117,7 @@ export function PageExplorerTable({
                         <Button
                           variant="outline"
                           size="sm"
-                          className="gap-1 border-tertiary/30 text-tertiary hover:bg-tertiary-container/20"
+                          className="gap-1"
                         >
                           <EyeIcon className="w-3.5 h-3.5" />
                           Preview
@@ -127,7 +127,7 @@ export function PageExplorerTable({
                         <Button
                           variant="default"
                           size="sm"
-                          className="gap-1 bg-primary hover:bg-brand-hover text-white"
+                          className="gap-1"
                         >
                           Edit in Studio
                           <ArrowRightIcon className="w-3.5 h-3.5" />

@@ -6,81 +6,215 @@
 
 :root {
   /* =========================================================================
-     GLOBAL THEME CONFIGURATION (Single-File Platform Theme Controller)
-     Edit values in :root to change colors and typography across the whole OS.
+     ENTERPRISE BUSINESS OS — DESIGN.md v2.0.0 SPECIFICATION
+     Single source of truth for global typography and colors.
+     Edit values below to shift theme across the entire operating system.
      ========================================================================= */
 
+  /* Foundations - Canvas & Structure (Light) */
+  --bos-bg: #faf3ef;
+  --bos-surface: #ffffff;
+  --bos-surface-muted: #f3efec;
+  --bos-surface-sunken: #ede6e1;
+  --bos-surface-hover: #f7f0ec;
+  --bos-border: #e9e2de;
+  --bos-border-strong: #8c7e78;
+  --bos-border-hover: #d8cfc9;
+  --bos-scrim: rgba(30, 27, 25, 0.45);
+
+  /* Foundations - Content */
+  --bos-text: #1e1b19;
+  --bos-text-secondary: #5c504b;
+  --bos-text-muted: #6e625d;
+  --bos-text-disabled: #a89c96;
+  --bos-text-inverse: #ffffff;
+
+  /* Foundations - Brand (Terracotta Identity) */
+  --bos-brand: #a43a2b;
+  --bos-brand-hover: #8f3024;
+  --bos-brand-active: #7a281d;
+  --bos-brand-tint: #f8e5de;
+  --bos-brand-text: #a43a2b;
+  --bos-on-brand: #ffffff;
+
+  /* Foundations - Action (Teal Primary Action) */
+  --bos-action: #0f766e;
+  --bos-action-hover: #115e59;
+  --bos-action-active: #134e4a;
+  --bos-action-tint: rgba(15, 118, 110, 0.12);
+  --bos-on-action: #ffffff;
+  --bos-focus-ring: #0d9488;
+
+  /* Foundations - Status */
+  --bos-success: #0f766e;
+  --bos-warning: #b45309;
+  --bos-warning-fill: #f59e0b;
+  --bos-warning-text: #92400e;
+  --bos-danger: #b91c1c;
+  --bos-info: #5c504b;
+
   /* Typography */
-  --font-sans:
-    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-heading:
-    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-mono: "JetBrains Mono", monospace;
+  --bos-font-sans:
+    "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    sans-serif;
+  --bos-font-heading:
+    "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    sans-serif;
+  --bos-font-mono:
+    "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  /* Surfaces & Backgrounds */
-  --background: #fff8f4;
-  --foreground: #1e1b19;
+  /* Compatibility Bridges for Material & Semantic Tokens */
+  --background: var(--bos-bg);
+  --foreground: var(--bos-text);
+  --surface: var(--bos-surface);
+  --surface-dim: var(--bos-surface-muted);
+  --surface-bright: var(--bos-surface);
+  --surface-container-lowest: var(--bos-surface);
+  --surface-container-low: var(--bos-surface-muted);
+  --surface-container: var(--bos-surface-muted);
+  --surface-container-high: var(--bos-surface-sunken);
+  --surface-container-highest: var(--bos-surface-sunken);
+  --on-surface: var(--bos-text);
+  --on-surface-variant: var(--bos-text-secondary);
+  --inverse-surface: #24201e;
+  --inverse-on-surface: var(--bos-text-inverse);
+  --outline: var(--bos-border-strong);
+  --outline-variant: var(--bos-border);
+  --surface-tint: var(--bos-brand-tint);
 
-  /* Material-3 & Enterprise Theme Tokens */
-  --surface: #fff8f4;
-  --surface-dim: #dfd9d5;
-  --surface-bright: #fff8f4;
-  --surface-container-lowest: #ffffff;
-  --surface-container-low: #f9f2ee;
-  --surface-container: #f3ede9;
-  --surface-container-high: #eee7e3;
-  --surface-container-highest: #e8e1dd;
-  --on-surface: #1e1b19;
-  --on-surface-variant: #57423e;
-  --inverse-surface: #33302d;
-  --inverse-on-surface: #f6efeb;
-  --outline: #8a716d;
-  --outline-variant: #dec0bb;
-  --surface-tint: #a53b2c;
+  --primary: var(--bos-brand);
+  --on-primary: var(--bos-on-brand);
+  --primary-container: var(--bos-brand);
+  --on-primary-container: var(--bos-brand-tint);
+  --inverse-primary: #c4503f;
 
-  --primary: #842316;
-  --on-primary: #ffffff;
-  --primary-container: #a43a2b;
-  --on-primary-container: #ffccc3;
-  --inverse-primary: #ffb4a7;
+  --secondary: var(--bos-action);
+  --on-secondary: var(--bos-on-action);
+  --secondary-container: var(--bos-action-tint);
+  --on-secondary-container: var(--bos-action);
 
-  --secondary: #006a61;
-  --on-secondary: #ffffff;
-  --secondary-container: #86f2e4;
-  --on-secondary-container: #006f66;
-
-  --tertiary: #004e58;
+  --tertiary: var(--bos-text-secondary);
   --on-tertiary: #ffffff;
-  --tertiary-container: #006874;
-  --on-tertiary-container: #97e4f2;
+  --tertiary-container: var(--bos-surface-muted);
+  --on-tertiary-container: var(--bos-text);
 
-  --error: #ba1a1a;
+  --error: var(--bos-danger);
   --on-error: #ffffff;
-  --error-container: #ffdad6;
-  --on-error-container: #93000a;
+  --error-container: rgba(185, 28, 28, 0.1);
+  --on-error-container: var(--bos-danger);
 
-  --canvas-base: #faf3ef;
-  --surface-white: #ffffff;
-  --surface-muted: #f3efec;
-  --surface-brand-tint: #f8e5de;
-  --border-hairline: #e9e2de;
-  --border-subtle: #d8cfc9;
+  --canvas-base: var(--bos-bg);
+  --surface-white: var(--bos-surface);
+  --surface-muted: var(--bos-surface-muted);
+  --surface-brand-tint: var(--bos-brand-tint);
+  --border-hairline: var(--bos-border);
+  --border-subtle: var(--bos-border-hover);
 
-  --text-primary: #111827;
-  --text-secondary: #596579;
-  --text-muted: #737c8c;
+  --text-primary: var(--bos-text);
+  --text-secondary: var(--bos-text-secondary);
+  --text-muted: var(--bos-text-muted);
 
-  --brand-hover: #8f3024;
-  --teal-hover: #0f766e;
-  --teal-active: #115e59;
-  --status-warning: #f59e0b;
-  --status-danger: #dc2626;
+  --brand-hover: var(--bos-brand-hover);
+  --teal-hover: var(--bos-action-hover);
+  --teal-active: var(--bos-action-active);
+  --status-warning: var(--bos-warning-fill);
+  --status-danger: var(--bos-danger);
+
+  --font-sans: var(--bos-font-sans);
+  --font-heading: var(--bos-font-heading);
+  --font-mono: var(--bos-font-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bos-bg: #1a1715;
+    --bos-surface: #24201e;
+    --bos-surface-muted: #2e2926;
+    --bos-surface-sunken: #14110f;
+    --bos-surface-hover: #2a2522;
+    --bos-border: #3d3633;
+    --bos-border-strong: #7a6d67;
+    --bos-border-hover: #544a45;
+    --bos-scrim: rgba(0, 0, 0, 0.6);
+
+    --bos-text: #f3ece8;
+    --bos-text-secondary: #c4b8b2;
+    --bos-text-muted: #a09089;
+    --bos-text-disabled: #6b5f59;
+    --bos-text-inverse: #1a1715;
+
+    --bos-brand: #c4503f;
+    --bos-brand-hover: #d4604f;
+    --bos-brand-active: #b24433;
+    --bos-brand-tint: #4a2a24;
+    --bos-brand-text: #e0705f;
+    --bos-on-brand: #ffffff;
+
+    --bos-action: #2dd4bf;
+    --bos-action-hover: #5eead4;
+    --bos-action-active: #14b8a6;
+    --bos-action-tint: rgba(45, 212, 191, 0.16);
+    --bos-on-action: #04201d;
+    --bos-focus-ring: #5eead4;
+
+    --bos-success: #2dd4bf;
+    --bos-warning: #fbbf24;
+    --bos-warning-fill: #fbbf24;
+    --bos-warning-text: #fbbf24;
+    --bos-danger: #f87171;
+    --bos-info: #c4b8b2;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bos-bg: #1a1715;
+  --bos-surface: #24201e;
+  --bos-surface-muted: #2e2926;
+  --bos-surface-sunken: #14110f;
+  --bos-surface-hover: #2a2522;
+  --bos-border: #3d3633;
+  --bos-border-strong: #7a6d67;
+  --bos-border-hover: #544a45;
+  --bos-scrim: rgba(0, 0, 0, 0.6);
+
+  --bos-text: #f3ece8;
+  --bos-text-secondary: #c4b8b2;
+  --bos-text-muted: #a09089;
+  --bos-text-disabled: #6b5f59;
+  --bos-text-inverse: #1a1715;
+
+  --bos-brand: #c4503f;
+  --bos-brand-hover: #d4604f;
+  --bos-brand-active: #b24433;
+  --bos-brand-tint: #4a2a24;
+  --bos-brand-text: #e0705f;
+  --bos-on-brand: #ffffff;
+
+  --bos-action: #2dd4bf;
+  --bos-action-hover: #5eead4;
+  --bos-action-active: #14b8a6;
+  --bos-action-tint: rgba(45, 212, 191, 0.16);
+  --bos-on-action: #04201d;
+  --bos-focus-ring: #5eead4;
+
+  --bos-success: #2dd4bf;
+  --bos-warning: #fbbf24;
+  --bos-warning-fill: #fbbf24;
+  --bos-warning-text: #fbbf24;
+  --bos-danger: #f87171;
+  --bos-info: #c4b8b2;
 }
 
 body {
-  color: var(--on-surface);
-  background: var(--surface);
-  font-family: var(--font-sans);
+  color: var(--bos-text);
+  background: var(--bos-bg);
+  font-family: var(--bos-font-sans);
+}
+
+.bos-num {
+  font-feature-settings:
+    "tnum" on,
+    "cv01" on;
 }
 
 /* =========================================================================
@@ -90,7 +224,7 @@ body {
    ========================================================================= */
 [data-app="website-builder"] {
   /* To customize Website Builder only, override any token here:
-     --font-heading: 'Playfair Display', serif;
-     --primary: #006a61;
+     --bos-font-heading: 'Playfair Display', serif;
+     --bos-action: #0F766E;
   */
 }

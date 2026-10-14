@@ -31,25 +31,25 @@ export function PreviewHeader({
   onDeviceChange,
 }: PreviewHeaderProps) {
   return (
-    <header className="h-14 border-b border-slate-800 bg-slate-900 px-4 flex items-center justify-between text-white select-none z-30">
+    <header className="h-14 border-b border-border bg-surface px-4 flex items-center justify-between text-text select-none z-30">
       {/* Left: Navigation & Preview Indicator */}
       <div className="flex items-center gap-3">
         <Link
           href={`/sites/${siteId}/pages`}
-          className="text-xs font-medium text-slate-400 hover:text-white transition-colors flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg hover:bg-slate-800"
+          className="text-xs font-medium text-text-secondary hover:text-text transition-colors flex items-center gap-1.5 px-2.5 py-1.5 rounded-DEFAULT hover:bg-surface-hover"
         >
           <span>&larr;</span>
           <span>Exit Preview</span>
         </Link>
 
-        <div className="h-4 w-px bg-slate-800" />
+        <div className="h-4 w-px bg-border" />
 
         <div className="flex items-center gap-2">
-          <span className="font-mono text-xs text-slate-400 max-w-[120px] truncate">
+          <span className="font-mono text-xs text-text-muted max-w-[120px] truncate">
             {siteId}
           </span>
-          <span className="text-slate-600">/</span>
-          <span className="text-xs font-semibold text-slate-200">{pageTitle}</span>
+          <span className="text-text-disabled">/</span>
+          <span className="text-xs font-semibold text-text">{pageTitle}</span>
           <Badge variant="secondary" className="text-[10px] ml-1">
             Live Preview
           </Badge>
@@ -57,7 +57,7 @@ export function PreviewHeader({
       </div>
 
       {/* Center: Device Viewport Simulation Selector */}
-      <div className="flex items-center bg-slate-800/80 p-1 rounded-xl border border-slate-700/60">
+      <div className="flex items-center bg-surface-muted p-1 rounded-DEFAULT border border-border">
         {DEVICE_BUTTONS.map((btn) => {
           const Icon = btn.icon;
           const isActive = device === btn.id;
@@ -67,10 +67,10 @@ export function PreviewHeader({
               key={btn.id}
               type="button"
               onClick={() => onDeviceChange(btn.id)}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-DEFAULT text-xs font-medium transition-all ${
                 isActive
-                  ? "bg-tertiary text-white shadow-sm"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-700/50"
+                  ? "bg-brand-tint text-brand shadow-xs"
+                  : "text-text-secondary hover:text-text hover:bg-surface-hover"
               }`}
             >
               <Icon className="w-3.5 h-3.5" />
@@ -87,7 +87,7 @@ export function PreviewHeader({
             type="button"
             size="sm"
             variant="default"
-            className="h-8 gap-1.5 bg-primary hover:bg-brand-hover text-white text-xs"
+            className="h-8 gap-1.5 text-xs"
           >
             <span>Edit in Studio</span>
             <ArrowRightIcon className="w-3.5 h-3.5" />

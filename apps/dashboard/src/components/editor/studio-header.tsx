@@ -25,33 +25,33 @@ const AUTOSAVE_CONFIG: Record<
 > = {
   saved: {
     label: "Saved",
-    dotClass: "bg-emerald-400",
-    badgeClass: "text-emerald-300 border-emerald-800/60 bg-emerald-950/40",
+    dotClass: "bg-success",
+    badgeClass: "text-success border-success/30 bg-success/10",
   },
   saving: {
     label: "Saving...",
-    dotClass: "bg-amber-400 animate-pulse",
-    badgeClass: "text-amber-300 border-amber-800/60 bg-amber-950/40",
+    dotClass: "bg-warning-fill animate-pulse",
+    badgeClass: "text-warning border-warning/30 bg-warning/10",
   },
   dirty: {
     label: "Unsaved changes",
-    dotClass: "bg-sky-400",
-    badgeClass: "text-sky-300 border-sky-800/60 bg-sky-950/40",
+    dotClass: "bg-action",
+    badgeClass: "text-action border-action/30 bg-action-tint",
   },
   conflict: {
     label: "Conflict",
-    dotClass: "bg-red-400 animate-ping",
-    badgeClass: "text-red-300 border-red-800/60 bg-red-950/40",
+    dotClass: "bg-danger animate-ping",
+    badgeClass: "text-danger border-danger/30 bg-danger/10",
   },
   error: {
     label: "Save error",
-    dotClass: "bg-rose-400",
-    badgeClass: "text-rose-300 border-rose-800/60 bg-rose-950/40",
+    dotClass: "bg-danger",
+    badgeClass: "text-danger border-danger/30 bg-danger/10",
   },
   idle: {
     label: "Ready",
-    dotClass: "bg-slate-400",
-    badgeClass: "text-slate-300 border-slate-700/60 bg-slate-800/80",
+    dotClass: "bg-text-disabled",
+    badgeClass: "text-text-muted border-border bg-surface-muted",
   },
 };
 
@@ -75,30 +75,30 @@ export function StudioHeader({
   const currentAutosave = AUTOSAVE_CONFIG[autosaveStatus] || AUTOSAVE_CONFIG.idle;
 
   return (
-    <header className="h-14 border-b border-slate-800 bg-slate-900 px-4 flex items-center justify-between text-white select-none z-30">
+    <header className="h-14 border-b border-border bg-surface px-4 flex items-center justify-between text-text select-none z-30">
       {/* Left: Navigation & Page Identity */}
       <div className="flex items-center gap-3">
         <Link
           href={`/sites/${siteId}/pages`}
-          className="text-xs font-medium text-slate-400 hover:text-white transition-colors flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg hover:bg-slate-800"
+          className="text-xs font-medium text-text-secondary hover:text-text transition-colors flex items-center gap-1.5 px-2.5 py-1.5 rounded-DEFAULT hover:bg-surface-hover"
         >
           <span>&larr;</span>
           <span>Exit Studio</span>
         </Link>
 
-        <div className="h-4 w-px bg-slate-800" />
+        <div className="h-4 w-px bg-border" />
 
         <div className="flex items-center gap-2">
-          <span className="font-mono text-xs text-slate-400 max-w-[120px] truncate">
+          <span className="font-mono text-xs text-text-muted max-w-[120px] truncate">
             {siteId}
           </span>
-          <span className="text-slate-600">/</span>
-          <span className="text-xs font-semibold text-slate-200">{pageTitle}</span>
+          <span className="text-text-disabled">/</span>
+          <span className="text-xs font-semibold text-text">{pageTitle}</span>
           <Badge variant={STATUS_VARIANTS[status]} className="text-[10px] ml-1">
             {status}
           </Badge>
           {typeof versionsCount === "number" && versionsCount > 0 && (
-            <span className="text-[10px] font-mono text-slate-400 bg-slate-800 px-1.5 py-0.5 rounded">
+            <span className="text-[10px] font-mono text-text-muted bg-surface-muted border border-border px-1.5 py-0.5 rounded">
               {`v${versionsCount} snapshots`}
             </span>
           )}
@@ -107,8 +107,8 @@ export function StudioHeader({
 
       {/* Center: Concurrency & Autosave Status */}
       <div className="flex items-center gap-2.5">
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-800/80 border border-slate-700/60 text-[11px] font-mono text-slate-300">
-          <span className="h-2 w-2 rounded-full bg-blue-400" />
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-muted border border-border text-[11px] font-mono text-text-secondary">
+          <span className="h-2 w-2 rounded-full bg-action" />
           <span>{`CAS Revision: v${revision}`}</span>
         </span>
 
@@ -129,7 +129,7 @@ export function StudioHeader({
             variant="outline"
             onClick={onFlushSave}
             disabled={autosaveStatus === "saving" || autosaveStatus === "saved"}
-            className="h-8 gap-1.5 border-slate-700 text-slate-200 hover:bg-slate-800 hover:text-white text-xs disabled:opacity-40"
+            className="h-8 gap-1.5 text-xs disabled:opacity-40"
           >
             <span>Save</span>
           </Button>
@@ -142,7 +142,7 @@ export function StudioHeader({
             variant="default"
             onClick={onPublish}
             disabled={isPublishing}
-            className="h-8 gap-1.5 bg-secondary hover:bg-teal-hover text-white font-medium text-xs disabled:opacity-50"
+            className="h-8 gap-1.5 font-medium text-xs disabled:opacity-50"
           >
             <span>{isPublishing ? "Publishing..." : "Publish"}</span>
           </Button>
@@ -153,7 +153,7 @@ export function StudioHeader({
           size="sm"
           variant="outline"
           onClick={onOpenAddDrawer}
-          className="h-8 gap-1.5 border-slate-700 text-slate-200 hover:bg-slate-800 hover:text-white text-xs"
+          className="h-8 gap-1.5 text-xs"
         >
           <PlusIcon className="w-3.5 h-3.5" />
           <span>Add Block</span>
@@ -164,24 +164,24 @@ export function StudioHeader({
             type="button"
             size="sm"
             variant="outline"
-            className="h-8 gap-1.5 border-tertiary/40 bg-tertiary-container/20 text-on-tertiary-container hover:bg-tertiary-container/40 text-xs"
+            className="h-8 gap-1.5 text-xs"
           >
             <EyeIcon className="w-3.5 h-3.5" />
             <span>Preview</span>
           </Button>
         </Link>
 
-        <div className="h-4 w-px bg-slate-800" />
+        <div className="h-4 w-px bg-border" />
 
         <Button
           type="button"
           size="sm"
-          variant={isLayersOpen ? "default" : "outline"}
+          variant="outline"
           onClick={onToggleLayers}
           className={`h-8 gap-1.5 text-xs ${
             isLayersOpen
-              ? "bg-primary text-white hover:bg-brand-hover"
-              : "border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white"
+              ? "border-brand bg-brand-tint text-brand font-medium"
+              : "border-border-strong text-text hover:bg-surface-hover"
           }`}
           title="Toggle Layers Sidebar"
         >
@@ -192,12 +192,12 @@ export function StudioHeader({
         <Button
           type="button"
           size="sm"
-          variant={isInspectorOpen ? "default" : "outline"}
+          variant="outline"
           onClick={onToggleInspector}
           className={`h-8 gap-1.5 text-xs ${
             isInspectorOpen
-              ? "bg-primary text-white hover:bg-brand-hover"
-              : "border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white"
+              ? "border-brand bg-brand-tint text-brand font-medium"
+              : "border-border-strong text-text hover:bg-surface-hover"
           }`}
           title="Toggle Property Inspector"
         >

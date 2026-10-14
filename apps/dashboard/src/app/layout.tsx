@@ -12,8 +12,22 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className="min-h-screen bg-surface text-on-surface antialiased font-sans">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                const t = localStorage.getItem("business-os-theme");
+                if (t === "dark" || t === "light") {
+                  document.documentElement.setAttribute("data-theme", t);
+                }
+              } catch (_) {}
+            `,
+          }}
+        />
+      </head>
+      <body className="min-h-screen bg-background text-text antialiased font-sans">
         {children}
       </body>
     </html>
