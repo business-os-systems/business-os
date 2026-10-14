@@ -1,14 +1,71 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
+  --background: #fff8f4;
+  --foreground: #1e1b19;
+
+  /* Material-3 & Enterprise Theme Tokens */
+  --surface: #fff8f4;
+  --surface-dim: #dfd9d5;
+  --surface-bright: #fff8f4;
+  --surface-container-lowest: #ffffff;
+  --surface-container-low: #f9f2ee;
+  --surface-container: #f3ede9;
+  --surface-container-high: #eee7e3;
+  --surface-container-highest: #e8e1dd;
+  --on-surface: #1e1b19;
+  --on-surface-variant: #57423e;
+  --inverse-surface: #33302d;
+  --inverse-on-surface: #f6efeb;
+  --outline: #8a716d;
+  --outline-variant: #dec0bb;
+  --surface-tint: #a53b2c;
+
+  --primary: #842316;
+  --on-primary: #ffffff;
+  --primary-container: #a43a2b;
+  --on-primary-container: #ffccc3;
+  --inverse-primary: #ffb4a7;
+
+  --secondary: #006a61;
+  --on-secondary: #ffffff;
+  --secondary-container: #86f2e4;
+  --on-secondary-container: #006f66;
+
+  --tertiary: #004e58;
+  --on-tertiary: #ffffff;
+  --tertiary-container: #006874;
+  --on-tertiary-container: #97e4f2;
+
+  --error: #ba1a1a;
+  --on-error: #ffffff;
+  --error-container: #ffdad6;
+  --on-error-container: #93000a;
+
+  --canvas-base: #FAF3EF;
+  --surface-white: #FFFFFF;
+  --surface-muted: #F3EFEC;
+  --surface-brand-tint: #F8E5DE;
+  --border-hairline: #E9E2DE;
+  --border-subtle: #D8CFC9;
+
+  --text-primary: #111827;
+  --text-secondary: #596579;
+  --text-muted: #737C8C;
+
+  --brand-hover: #8F3024;
+  --teal-hover: #0F766E;
+  --teal-active: #115E59;
+  --status-warning: #F59E0B;
+  --status-danger: #DC2626;
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: var(--on-surface);
+  background: var(--surface);
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }

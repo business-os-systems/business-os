@@ -5,3 +5,4 @@ export * from "./components/textarea.js";
 export * from "./components/card.js";
 export * from "./components/badge.js";
 export * from "./components/checkbox.js";
+export * from "./tokens.js";

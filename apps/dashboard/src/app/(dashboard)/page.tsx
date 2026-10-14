@@ -20,6 +20,7 @@ export interface AppLauncherCard {
   icon: React.ComponentType<{ className?: string }>;
   status: "Available" | "Coming Soon";
   isAvailable: boolean;
+  accent?: "primary" | "secondary" | "tertiary";
 }
 
 export interface OverviewPageProps {
@@ -108,18 +109,18 @@ export default function OverviewPage({
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+        <h1 className="text-2xl font-bold font-heading tracking-tight text-on-surface">
           Executive App Launcher
         </h1>
-        <p className="text-sm text-slate-500 mt-1">
+        <p className="text-sm text-on-surface-variant mt-1">
           Welcome to your Business OS workspace. Select an installed module to
           launch its environment.
         </p>
       </div>
 
       {apps.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-slate-200 p-8 text-center">
-          <p className="text-sm text-slate-500">
+        <div className="rounded-lg border border-dashed border-border-hairline p-8 text-center">
+          <p className="text-sm text-on-surface-variant">
             {loading
               ? "Loading installed applications..."
               : "No applications installed for this workspace."}
@@ -132,39 +133,43 @@ export default function OverviewPage({
             return (
               <Card
                 key={app.code}
-                className="hover:shadow-md transition-shadow"
+                className="hover:shadow-md transition-shadow border-border-hairline bg-surface-container-lowest"
               >
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <div className="flex items-center gap-3">
                     <div
-                      className={`p-2 rounded-lg ${
+                      className={`p-2.5 rounded-lg ${
                         app.isAvailable
-                          ? "bg-blue-50 text-blue-600"
-                          : "bg-slate-100 text-slate-400"
+                          ? "bg-surface-brand-tint text-primary"
+                          : "bg-surface-container text-outline"
                       }`}
                     >
                       <Icon className="h-6 w-6" />
                     </div>
                     <div>
-                      <CardTitle className="text-base font-semibold">
+                      <CardTitle className="text-base font-semibold font-heading text-on-surface">
                         {app.title}
                       </CardTitle>
                     </div>
                   </div>
                   <Badge
                     variant={app.isAvailable ? "default" : "secondary"}
-                    className="text-xs"
+                    className="text-xs font-semibold"
                   >
                     {app.status}
                   </Badge>
                 </CardHeader>
                 <CardContent className="space-y-4 pt-2">
-                  <p className="text-xs text-slate-600 leading-relaxed">
+                  <p className="text-xs text-on-surface-variant leading-relaxed">
                     {app.desc}
                   </p>
                   {app.isAvailable ? (
                     <Link href={app.href} className="inline-block">
-                      <Button variant="default" size="sm">
+                      <Button
+                        variant="default"
+                        size="sm"
+                        className="bg-primary hover:bg-brand-hover text-white text-xs font-medium"
+                      >
                         Open Application
                       </Button>
                     </Link>
@@ -173,7 +178,7 @@ export default function OverviewPage({
                       variant="outline"
                       size="sm"
                       disabled
-                      className="opacity-60 cursor-not-allowed"
+                      className="opacity-60 cursor-not-allowed text-xs"
                     >
                       Coming Soon
                     </Button>

@@ -43,7 +43,7 @@ export default function LoginPage() {
   return (
     <div className="w-full max-w-md space-y-6">
       <div className="text-center space-y-2">
-        <div className="inline-flex items-center justify-center h-12 w-12 rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-500/25 mb-2">
+        <div className="inline-flex items-center justify-center h-12 w-12 rounded-xl bg-primary-container text-white shadow-lg shadow-primary-container/25 mb-2">
           <LayersIcon className="h-6 w-6" />
         </div>
         <h1 className="text-2xl font-bold tracking-tight text-white">
@@ -116,12 +116,10 @@ export default function LoginPage() {
             <Button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium h-10 text-sm mt-2 transition-colors"
+              className="w-full bg-primary hover:bg-brand-hover text-white font-medium h-10 text-sm mt-2 transition-colors"
             >
               {isLoading ? "Authenticating..." : "Sign In to Workspace"}
             </Button>
-
-
           </form>
         </CardContent>
       </Card>

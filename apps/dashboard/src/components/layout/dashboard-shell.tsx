@@ -59,7 +59,7 @@ export function DashboardShell({ tenant, children }: DashboardShellProps) {
   }, [tenant?.organizationId]);
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-slate-50">
+    <div className="flex h-screen w-full overflow-hidden bg-surface text-on-surface">
       <SidebarNav collapsed={collapsed} items={navItems} />
       <div className="flex flex-1 flex-col overflow-hidden">
         <HeaderTopbar

@@ -34,9 +34,9 @@ export function CanvasBlockWrapper({
 
   // State-driven outline styles
   const outlineClass = isSelected
-    ? "ring-2 ring-blue-600 ring-offset-1 shadow-sm"
+    ? "ring-2 ring-primary ring-offset-1 shadow-sm"
     : isHovered
-    ? "ring-1 ring-blue-400 ring-offset-1"
+    ? "ring-1 ring-primary-container ring-offset-1"
     : "ring-0";
 
   return (
@@ -57,8 +57,8 @@ export function CanvasBlockWrapper({
         <div
           className={`absolute -top-6 left-2 z-30 px-2 py-0.5 text-[11px] font-medium font-mono uppercase tracking-wider rounded-t shadow-sm pointer-events-none ${
             isSelected
-              ? "bg-blue-600 text-white"
-              : "bg-blue-100 text-blue-800 border border-blue-300"
+              ? "bg-primary text-white"
+              : "bg-surface-brand-tint text-primary border border-outline-variant"
           }`}
         >
           {block.type}

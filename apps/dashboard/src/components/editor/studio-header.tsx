@@ -13,10 +13,10 @@ import type { StudioHeaderProps, AutosaveStatus } from "./types";
 
 const STATUS_VARIANTS: Record<
   StudioHeaderProps["status"],
-  "default" | "secondary"
+  "default" | "secondary" | "tertiary"
 > = {
-  PUBLISHED: "default",
-  DRAFT: "secondary",
+  PUBLISHED: "secondary",
+  DRAFT: "tertiary",
 };
 
 const AUTOSAVE_CONFIG: Record<
@@ -142,7 +142,7 @@ export function StudioHeader({
             variant="default"
             onClick={onPublish}
             disabled={isPublishing}
-            className="h-8 gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs disabled:opacity-50"
+            className="h-8 gap-1.5 bg-secondary hover:bg-teal-hover text-white font-medium text-xs disabled:opacity-50"
           >
             <span>{isPublishing ? "Publishing..." : "Publish"}</span>
           </Button>
@@ -164,7 +164,7 @@ export function StudioHeader({
             type="button"
             size="sm"
             variant="outline"
-            className="h-8 gap-1.5 border-slate-700 text-slate-200 hover:bg-slate-800 hover:text-white text-xs"
+            className="h-8 gap-1.5 border-tertiary/40 bg-tertiary-container/20 text-on-tertiary-container hover:bg-tertiary-container/40 text-xs"
           >
             <EyeIcon className="w-3.5 h-3.5" />
             <span>Preview</span>
@@ -180,7 +180,7 @@ export function StudioHeader({
           onClick={onToggleLayers}
           className={`h-8 gap-1.5 text-xs ${
             isLayersOpen
-              ? "bg-blue-600 text-white hover:bg-blue-500"
+              ? "bg-primary text-white hover:bg-brand-hover"
               : "border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white"
           }`}
           title="Toggle Layers Sidebar"
@@ -196,7 +196,7 @@ export function StudioHeader({
           onClick={onToggleInspector}
           className={`h-8 gap-1.5 text-xs ${
             isInspectorOpen
-              ? "bg-blue-600 text-white hover:bg-blue-500"
+              ? "bg-primary text-white hover:bg-brand-hover"
               : "border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white"
           }`}
           title="Toggle Property Inspector"

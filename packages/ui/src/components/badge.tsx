@@ -2,7 +2,7 @@ import React from "react";
 import { cn } from "../lib/utils.js";
 
 export interface BadgeProps extends React.HTMLAttributes<HTMLDivElement> {
-  variant?: "default" | "secondary" | "destructive" | "outline" | "success";
+  variant?: "default" | "primary" | "secondary" | "tertiary" | "destructive" | "outline" | "success";
 }
 
 export function Badge({
@@ -11,12 +11,15 @@ export function Badge({
   ...props
 }: BadgeProps) {
   const variantStyles = {
-    default: "border-transparent bg-slate-900 text-white hover:bg-slate-800",
+    default: "border-transparent bg-primary text-white hover:bg-brand-hover",
+    primary: "border-transparent bg-primary text-white hover:bg-brand-hover",
     secondary:
-      "border-transparent bg-slate-100 text-slate-900 hover:bg-slate-200",
+      "border-transparent bg-secondary-container text-on-secondary-container hover:bg-secondary hover:text-white",
+    tertiary:
+      "border-transparent bg-tertiary-container text-on-tertiary-container hover:bg-tertiary hover:text-white",
     destructive:
-      "border-transparent bg-red-600 text-white hover:bg-red-700",
-    outline: "text-slate-950 border border-slate-200",
+      "border-transparent bg-error text-on-error hover:bg-red-700",
+    outline: "text-on-surface border border-outline-variant",
     success:
       "border-transparent bg-emerald-600 text-white hover:bg-emerald-700",
   };

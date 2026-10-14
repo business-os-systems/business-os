@@ -97,7 +97,7 @@ export function AddBlockDrawer({
               onClick={() => setSelectedCategory(tab.id)}
               className={`py-2.5 px-3 text-xs font-semibold border-b-2 transition-colors whitespace-nowrap ${
                 selectedCategory === tab.id
-                  ? "border-blue-600 text-blue-600"
+                  ? "border-primary text-primary"
                   : "border-transparent text-slate-600 hover:text-slate-900"
               }`}
             >
@@ -113,14 +113,14 @@ export function AddBlockDrawer({
               key={blueprint.type}
               data-blueprint-type={blueprint.type}
               onClick={() => handleSelectBlueprint(blueprint)}
-              className="p-4 rounded-lg border border-slate-200 hover:border-blue-500 hover:shadow-md transition-all cursor-pointer bg-white group flex flex-col justify-between"
+              className="p-4 rounded-lg border border-slate-200 hover:border-primary hover:shadow-md transition-all cursor-pointer bg-white group flex flex-col justify-between"
             >
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <h4 className="text-sm font-semibold text-slate-800 group-hover:text-blue-600 transition-colors">
+                  <h4 className="text-sm font-semibold text-slate-800 group-hover:text-primary transition-colors">
                     {blueprint.title}
                   </h4>
-                  <Badge variant="outline" className="text-[10px] uppercase font-mono">
+                  <Badge variant="secondary" className="text-[10px] uppercase font-mono">
                     {blueprint.category}
                   </Badge>
                 </div>
@@ -129,7 +129,7 @@ export function AddBlockDrawer({
                 </p>
               </div>
 
-              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-end text-xs font-medium text-blue-600 gap-1 group-hover:translate-x-0.5 transition-transform">
+              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-end text-xs font-medium text-primary gap-1 group-hover:translate-x-0.5 transition-transform">
                 <PlusIcon size={14} />
                 <span>Insert Block</span>
               </div>

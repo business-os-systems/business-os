@@ -50,7 +50,7 @@ export function PreviewHeader({
           </span>
           <span className="text-slate-600">/</span>
           <span className="text-xs font-semibold text-slate-200">{pageTitle}</span>
-          <Badge variant="default" className="text-[10px] bg-emerald-600 hover:bg-emerald-500 ml-1">
+          <Badge variant="secondary" className="text-[10px] ml-1">
             Live Preview
           </Badge>
         </div>
@@ -69,7 +69,7 @@ export function PreviewHeader({
               onClick={() => onDeviceChange(btn.id)}
               className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium transition-all ${
                 isActive
-                  ? "bg-blue-600 text-white shadow-sm"
+                  ? "bg-tertiary text-white shadow-sm"
                   : "text-slate-400 hover:text-slate-200 hover:bg-slate-700/50"
               }`}
             >
@@ -87,7 +87,7 @@ export function PreviewHeader({
             type="button"
             size="sm"
             variant="default"
-            className="h-8 gap-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs"
+            className="h-8 gap-1.5 bg-primary hover:bg-brand-hover text-white text-xs"
           >
             <span>Edit in Studio</span>
             <ArrowRightIcon className="w-3.5 h-3.5" />

@@ -65,7 +65,7 @@ export function BlockTreeSidebar({
                 data-layer-section-id={section.id}
                 className={`rounded-lg border transition-all duration-150 ${
                   isSectionSelected
-                    ? "border-blue-500 bg-blue-50/40 shadow-sm"
+                    ? "border-tertiary bg-tertiary-container/20 shadow-sm"
                     : "border-slate-200 bg-white hover:border-slate-300"
                 }`}
               >
@@ -141,13 +141,13 @@ export function BlockTreeSidebar({
                           onClick={() => onSelectBlock(block.id, section.id)}
                           className={`px-2 py-1 rounded text-xs flex items-center justify-between cursor-pointer transition-colors ${
                             isBlockSelected
-                              ? "bg-blue-600 text-white font-medium"
+                              ? "bg-primary text-white font-medium"
                               : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                           }`}
                         >
                           <span className="truncate">{block.type}</span>
                           <Badge
-                            variant={isBlockSelected ? "default" : "outline"}
+                            variant={isBlockSelected ? "secondary" : "outline"}
                             className="text-[9px] uppercase px-1 py-0 h-4"
                           >
                             block
