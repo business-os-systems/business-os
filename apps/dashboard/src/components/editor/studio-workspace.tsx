@@ -20,143 +20,21 @@ import { defaultCmsClient } from "../../lib/api";
 import { StudioHeader } from "./studio-header";
 import type { StudioWorkspaceProps } from "./types";
 
-const DEFAULT_SEED_AST: PageAst = {
+const EMPTY_PAGE_AST: PageAst = {
   version: 1,
   schemaVersion: "2026-03",
-  meta: {
-    title: "Flagship Bistro & Wine Bar",
-    description: "Artisanal seasonal dining and private reservations",
-  },
-  globalStyles: {
-    fontFamily: "Inter, sans-serif",
-    backgroundColor: "#ffffff",
-    textColor: "#0f172a",
-  },
-  sections: [
-    {
-      id: "sec_hero",
-      name: "Hero Showcase",
-      styles: { maxWidth: "xl", paddingTop: 40, paddingBottom: 40 },
-      blocks: [
-        {
-          id: "b_hero_1",
-          type: "hero",
-          props: {
-            headline: "Artisanal Dining by the Waterfront",
-            subheadline:
-              "Handcrafted farm-to-table cuisine, natural wines, and panoramic river vistas.",
-            badge: "Now Accepting Spring Reservations",
-            primaryCta: {
-              label: "Book a Table",
-              target: { url: "/reservations" },
-            },
-            secondaryCta: {
-              label: "Explore Menu",
-              target: { url: "/menu" },
-            },
-          },
-        },
-      ],
-    },
-    {
-      id: "sec_features",
-      name: "Core Highlights",
-      styles: { maxWidth: "xl", paddingTop: 32, paddingBottom: 32 },
-      blocks: [
-        {
-          id: "b_feat_1",
-          type: "features",
-          props: {
-            headline: "The Culinary Experience",
-            subheadline: "Every dish crafted with obsessive dedication to local provenance.",
-            columns: 3,
-            features: [
-              {
-                id: "feat_1",
-                title: "Seasonal Harvest",
-                description: "Organic ingredients sourced within 40 miles every morning.",
-              },
-              {
-                id: "feat_2",
-                title: "Curated Cellar",
-                description: "Over 200 biodynamic and low-intervention vintage wines.",
-              },
-              {
-                id: "feat_3",
-                title: "Private Dining",
-                description: "Dedicated tasting room for intimate celebrations and events.",
-              },
-            ],
-          },
-        },
-      ],
-    },
-    {
-      id: "sec_pricing",
-      name: "Tasting Menus",
-      styles: { maxWidth: "xl", paddingTop: 32, paddingBottom: 40 },
-      blocks: [
-        {
-          id: "b_pricing_1",
-          type: "pricing",
-          props: {
-            headline: "Chef's Tasting Menus",
-            subheadline: "Five-course and seven-course journeys with optional pairings.",
-            tiers: [
-              {
-                id: "tier_5",
-                name: "Five-Course Tasting",
-                description: "Seasonal Chef selection",
-                priceAmount: 125,
-                currency: "$",
-                interval: "one-time",
-                isFeatured: false,
-                cta: {
-                  label: "Reserve Experience",
-                  target: { url: "/reservations" },
-                },
-                features: [
-                  { text: "Seasonal amuse-bouche", included: true },
-                  { text: "Prime local meats", included: true },
-                  { text: "Signature dessert", included: true },
-                ],
-              },
-              {
-                id: "tier_7",
-                name: "Grand Seven-Course",
-                description: "Full culinary immersion",
-                priceAmount: 185,
-                currency: "$",
-                interval: "one-time",
-                isFeatured: true,
-                badge: "Most Popular",
-                cta: {
-                  label: "Reserve Experience",
-                  target: { url: "/reservations" },
-                },
-                features: [
-                  { text: "Full Chef immersion", included: true },
-                  { text: "Rare reserve pairings", included: true },
-                  { text: "Tableside preparation", included: true },
-                ],
-              },
-            ],
-          },
-        },
-      ],
-    },
-  ],
+  sections: [],
 };
 
 export function StudioWorkspace({
-  organizationId = "org_demo",
+  organizationId = "",
   siteId,
   pageId,
-  pageTitle = "Homepage & Welcome Hero",
-  initialAst = DEFAULT_SEED_AST,
-  initialRevision = 4,
+  pageTitle = "Untitled Page",
+  initialAst = EMPTY_PAGE_AST,
+  initialRevision = 1,
   revision,
-  status = "PUBLISHED",
+  status = "DRAFT",
   cmsClient = defaultCmsClient,
 }: StudioWorkspaceProps) {
   const startingRevision = revision ?? initialRevision;
@@ -183,8 +61,8 @@ export function StudioWorkspace({
   );
 
   const [selection, setSelection] = useState<CanvasSelectionState>({
-    selectedBlockId: "b_hero_1",
-    selectedSectionId: "sec_hero",
+    selectedBlockId: null,
+    selectedSectionId: null,
     hoveredBlockId: null,
   });
 
@@ -194,7 +72,7 @@ export function StudioWorkspace({
   const [targetSectionIdForAdd, setTargetSectionIdForAdd] = useState<string | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
   const [pageStatus, setPageStatus] = useState<"DRAFT" | "PUBLISHED">(status);
-  const [versionsCount, setVersionsCount] = useState<number>(1);
+  const [versionsCount, setVersionsCount] = useState<number>(startingRevision);
 
   // Publish page handler
   const handlePublish = useCallback(async () => {

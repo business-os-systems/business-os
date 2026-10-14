@@ -239,6 +239,6 @@ describe("Platform Core Database & Multi-Tenant Isolation (@suite/db)", () => {
     });
     expect(riverview).toBeDefined();
     expect(riverview?.branches.length).toBe(3);
-    expect(riverview?.installedApps.length).toBe(3);
+    expect(riverview?.installedApps.length).toBe(4);
   });
 });

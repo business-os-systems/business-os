@@ -1,21 +1,29 @@
 import { describe, it, expect } from "vitest";
 import React from "react";
 import { renderToString } from "react-dom/server";
-import { SidebarNav, NAVIGATION_APPS } from "../src/components/layout/sidebar-nav";
+import { SidebarNav } from "../src/components/layout/sidebar-nav";
 import { HeaderTopbar } from "../src/components/layout/header-topbar";
 import OverviewPage from "../src/app/(dashboard)/page";
 
 describe("Tenant Navigation Shell & App Launcher Primitives", () => {
-  it("defines navigation apps including Website Builder, POS, PMS, and Inventory", () => {
-    expect(NAVIGATION_APPS.length).toBeGreaterThanOrEqual(5);
-    const siteItem = NAVIGATION_APPS.find((i) => i.id === "sites");
-    expect(siteItem).toBeDefined();
-    expect(siteItem?.name).toBe("Website Builder");
-    expect(siteItem?.href).toBe("/sites");
+  it("renders dynamic navigation items in SidebarNav", () => {
+    const items = [
+      { id: "home", name: "Overview", href: "/", icon: "home" },
+      { id: "settings", name: "Settings", href: "/settings", icon: "settings" },
+    ];
+    const html = renderToString(<SidebarNav items={items} />);
+    expect(html).toContain("Overview");
+    expect(html).toContain("Settings");
   });
 
-  it("renders SidebarNav with brand identity and installed app items", () => {
-    const html = renderToString(<SidebarNav />);
+  it("renders SidebarNav with brand identity and dynamic installed app items", () => {
+    const testItems = [
+      { id: "home", name: "Overview", href: "/", icon: "home" },
+      { id: "sites", name: "Website Builder", href: "/sites", icon: "sites", badge: "App 01" },
+      { id: "pos", name: "Restaurant POS", href: "/pos", icon: "pos", badge: "App 04" },
+      { id: "inventory", name: "Central Stock", href: "/inventory", icon: "inventory", badge: "App 05" },
+    ];
+    const html = renderToString(<SidebarNav items={testItems} />);
     expect(html).toContain("Business OS");
     expect(html).toContain("Website Builder");
     expect(html).toContain("Restaurant POS");
@@ -41,7 +49,21 @@ describe("Tenant Navigation Shell & App Launcher Primitives", () => {
   });
 
   it("renders OverviewPage launcher cards with action buttons", () => {
-    const html = renderToString(<OverviewPage />);
+    const html = renderToString(
+      <OverviewPage
+        initialApps={[
+          {
+            title: "Website Builder & Headless CMS",
+            code: "App 01",
+            desc: "Visual canvas studio and storefront delivery.",
+            href: "/sites",
+            icon: () => null,
+            status: "Available",
+            isAvailable: true,
+          },
+        ]}
+      />
+    );
     expect(html).toContain("Executive App Launcher");
     expect(html).toContain("Website Builder &amp; Headless CMS");
     expect(html).toContain("Open Application");

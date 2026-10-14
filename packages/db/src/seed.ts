@@ -432,9 +432,54 @@ export async function seed() {
   // 6. Seed Installed Apps & Branch Configs
   console.log("  • Seeding modular app suite activations...");
   const apps = [
-    { appId: "lodging_pms", version: "1.0.0" },
-    { appId: "restaurant_pos", version: "1.0.0" },
-    { appId: "stock_inventory", version: "1.0.0" },
+    {
+      appId: "website_builder",
+      version: "1.0.0",
+      settings: {
+        name: "Website Builder",
+        title: "Website Builder & Headless CMS",
+        code: "App 01",
+        description: "Visual canvas studio, section blueprints, responsive device preview, and edge storefront delivery.",
+        href: "/sites",
+        iconName: "sites",
+      },
+    },
+    {
+      appId: "lodging_pms",
+      version: "1.0.0",
+      settings: {
+        name: "Lodging PMS",
+        title: "Lodging Property Management (PMS)",
+        code: "App 03",
+        description: "Multi-property reservation calendar, unit inventory, guest check-in, and night audit rollover.",
+        href: "/pms",
+        iconName: "pms",
+      },
+    },
+    {
+      appId: "restaurant_pos",
+      version: "1.0.0",
+      settings: {
+        name: "Restaurant POS",
+        title: "Restaurant POS & KDS",
+        code: "App 04",
+        description: "Fast touch counter ordering, KOT ticket printing, table management, and shift reconciliation.",
+        href: "/pos",
+        iconName: "pos",
+      },
+    },
+    {
+      appId: "stock_inventory",
+      version: "1.0.0",
+      settings: {
+        name: "Central Stock",
+        title: "Central Inventory & Stock Requisitions",
+        code: "App 05",
+        description: "Multi-warehouse stock balances, inter-branch transfers, wastage logs, and vendor procurement.",
+        href: "/inventory",
+        iconName: "inventory",
+      },
+    },
   ];
 
   for (const app of apps) {
@@ -445,12 +490,83 @@ export async function seed() {
           appId: app.appId,
         },
       },
-      update: { isEnabled: true, version: app.version },
+      update: { isEnabled: true, version: app.version, settings: app.settings },
       create: {
         organizationId: tenantOrg.id,
         appId: app.appId,
         version: app.version,
         isEnabled: true,
+        settings: app.settings,
+      },
+    });
+  }
+
+  // 6.1 Seed Global CMS Starter Templates
+  console.log("  • Seeding CMS starter templates...");
+  const starterTemplates = [
+    {
+      id: "tpl_hero_starter",
+      name: "Curated Hero Starter",
+      category: "general",
+      blueprintJson: {
+        id: "hero_starter",
+        title: "Curated Hero Starter (Recommended)",
+        description: "Pre-configured with a responsive Hero section, call-to-action banner, and brand header.",
+        badge: "Fastest Setup",
+        ast: {
+          root: {
+            id: "root-section-1",
+            type: "section",
+            children: [
+              {
+                id: "hero-block-1",
+                type: "hero",
+                props: {
+                  heading: "Welcome to our website",
+                  subheading: "Designed with Business OS Visual Studio.",
+                  ctaText: "Explore Now",
+                  ctaLink: "/#services",
+                },
+              },
+            ],
+          },
+        },
+      },
+    },
+    {
+      id: "tpl_blank",
+      name: "Blank Canvas",
+      category: "general",
+      blueprintJson: {
+        id: "blank",
+        title: "Blank Canvas",
+        description: "Start with an empty section tree and compose custom layouts.",
+        badge: "Clean Slate",
+        ast: {
+          root: {
+            id: "root-section-1",
+            type: "section",
+            children: [],
+          },
+        },
+      },
+    },
+  ];
+
+  for (const tpl of starterTemplates) {
+    await prisma.cmsTemplate.upsert({
+      where: { id: tpl.id },
+      update: {
+        name: tpl.name,
+        category: tpl.category,
+        blueprintJson: tpl.blueprintJson,
+      },
+      create: {
+        id: tpl.id,
+        organizationId: null,
+        name: tpl.name,
+        category: tpl.category,
+        blueprintJson: tpl.blueprintJson,
       },
     });
   }

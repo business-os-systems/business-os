@@ -46,7 +46,7 @@ export function FeaturesBlock({ props, styles }: FeaturesBlockComponentProps) {
         ) : null}
 
         <div className={`grid gap-8 ${gridColsClass}`}>
-          {props.features.map((feature) => (
+          {(props.features || []).map((feature) => (
             <Card key={feature.id} className="hover:shadow-md transition-shadow">
               <CardHeader className="pb-3">
                 <div className="h-10 w-10 rounded-lg bg-slate-100 flex items-center justify-center text-slate-900 mb-2">

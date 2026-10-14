@@ -39,11 +39,6 @@ export default function LoginPage() {
     }
   };
 
-  const fillDemoCredentials = () => {
-    setEmail("admin@business-os.com");
-    setPassword("password123");
-    setError(null);
-  };
 
   return (
     <div className="w-full max-w-md space-y-6">
@@ -126,15 +121,7 @@ export default function LoginPage() {
               {isLoading ? "Authenticating..." : "Sign In to Workspace"}
             </Button>
 
-            <div className="pt-2 border-t border-slate-800 text-center">
-              <button
-                type="button"
-                onClick={fillDemoCredentials}
-                className="text-[11px] text-blue-400 hover:text-blue-300 font-medium underline underline-offset-4 cursor-pointer"
-              >
-                Auto-fill demo credentials
-              </button>
-            </div>
+
           </form>
         </CardContent>
       </Card>

@@ -24,61 +24,12 @@ const APP_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   settings: SettingsIcon,
 };
 
-export const NAVIGATION_APPS: NavigationItem[] = [
-  {
-    id: "home",
-    name: "Overview",
-    href: "/",
-    icon: "home",
-    description: "Executive Business Summary",
-  },
-  {
-    id: "sites",
-    name: "Website Builder",
-    href: "/sites",
-    icon: "sites",
-    badge: "App 01",
-    description: "Storefronts & Headless CMS",
-  },
-  {
-    id: "pos",
-    name: "Restaurant POS",
-    href: "/pos",
-    icon: "pos",
-    badge: "App 04",
-    description: "Counter & Kitchen Terminal",
-  },
-  {
-    id: "pms",
-    name: "Lodging PMS",
-    href: "/pms",
-    icon: "pms",
-    badge: "App 03",
-    description: "Rooms & Front Desk",
-  },
-  {
-    id: "inventory",
-    name: "Central Stock",
-    href: "/inventory",
-    icon: "inventory",
-    badge: "App 05",
-    description: "Warehouses & Requisitions",
-  },
-  {
-    id: "settings",
-    name: "Settings",
-    href: "/settings",
-    icon: "settings",
-    description: "Tenant & Branch Config",
-  },
-];
-
 interface SidebarNavProps {
   collapsed?: boolean;
   items?: NavigationItem[];
 }
 
-export function SidebarNav({ collapsed = false, items = NAVIGATION_APPS }: SidebarNavProps) {
+export function SidebarNav({ collapsed = false, items = [] }: SidebarNavProps) {
   const pathname = usePathname();
 
   return (

@@ -37,6 +37,7 @@
     "@node-rs/argon2": "^2.0.2",
     "@suite/core": "workspace:*",
     "@suite/db": "workspace:*",
+    "@suite/redis": "workspace:*",
     "better-auth": "^1.1.0",
     "zod": "^3.24.2"
   },

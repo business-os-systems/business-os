@@ -37,7 +37,7 @@ export function PricingBlock({ props, styles }: PricingBlockComponentProps) {
         ) : null}
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-stretch">
-          {props.tiers.map((tier) => (
+          {(props.tiers || []).map((tier) => (
             <Card
               key={tier.id}
               className={`flex flex-col justify-between ${

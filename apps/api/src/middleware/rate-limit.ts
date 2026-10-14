@@ -8,20 +8,24 @@ export interface RateLimitOptions {
   keyPrefix?: string;
 }
 
-// In-memory fallback if Redis is unavailable or in unit test mode
-interface WindowCounter {
-  count: number;
-  resetTime: number;
+export async function clearRateLimitStore(keyPrefix = "test:rl"): Promise<void> {
+  try {
+    const keys = await redis.keys(`${keyPrefix}:*`);
+    if (keys.length > 0) {
+      await redis.del(...keys);
+    }
+  } catch {
+    // no-op if redis is disconnected
+  }
 }
-const memoryRateLimitStore = new Map<string, WindowCounter>();
 
-export function clearMemoryRateLimitStore(): void {
-  memoryRateLimitStore.clear();
+export async function clearMemoryRateLimitStore(): Promise<void> {
+  await clearRateLimitStore();
 }
 
 /**
  * Sliding window rate limiting middleware.
- * Uses @suite/redis for distributed multi-instance token tracking, with in-memory fallback.
+ * Uses @suite/redis for distributed multi-instance token tracking without in-memory state.
  */
 export function rateLimitMiddleware(options: RateLimitOptions = {}): MiddlewareHandler {
   const { limit = 60, windowSeconds = 60, keyPrefix = "rl:global" } = options;
@@ -40,43 +44,34 @@ export function rateLimitMiddleware(options: RateLimitOptions = {}): MiddlewareH
       "127.0.0.1";
 
     const key = `${keyPrefix}:${clientIp}`;
-    const now = Date.now();
     let currentCount = 0;
     let resetSeconds = windowSeconds;
 
     try {
-      if (redis.status === "ready") {
-        const pipeline = redis.pipeline();
-        pipeline.incr(key);
-        pipeline.ttl(key);
-        const results = await pipeline.exec();
+      const pipeline = redis.pipeline();
+      pipeline.incr(key);
+      pipeline.ttl(key);
+      const results = await pipeline.exec();
 
-        const countResult = results?.[0]?.[1];
-        const ttlResult = results?.[1]?.[1];
+      const countResult = results?.[0]?.[1];
+      const ttlResult = results?.[1]?.[1];
 
-        currentCount = typeof countResult === "number" ? countResult : 1;
-        const ttl = typeof ttlResult === "number" ? ttlResult : -1;
+      currentCount = typeof countResult === "number" ? countResult : 1;
+      const ttl = typeof ttlResult === "number" ? ttlResult : -1;
 
-        if (ttl === -1) {
-          await redis.expire(key, windowSeconds);
-          resetSeconds = windowSeconds;
-        } else {
-          resetSeconds = ttl > 0 ? ttl : windowSeconds;
-        }
+      if (ttl === -1) {
+        await redis.expire(key, windowSeconds);
+        resetSeconds = windowSeconds;
       } else {
-        throw new Error("Redis not ready, use in-memory fallback");
+        resetSeconds = ttl > 0 ? ttl : windowSeconds;
       }
-    } catch {
-      // In-memory fallback
-      let record = memoryRateLimitStore.get(key);
-      if (!record || record.resetTime <= now) {
-        record = { count: 1, resetTime: now + windowSeconds * 1000 };
-      } else {
-        record.count += 1;
-      }
-      memoryRateLimitStore.set(key, record);
-      currentCount = record.count;
-      resetSeconds = Math.max(1, Math.ceil((record.resetTime - now) / 1000));
+    } catch (error) {
+      console.warn(
+        `[RateLimit] Redis unavailable, bypassing rate limiting without in-memory state: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+      return next();
     }
 
     const remaining = Math.max(0, limit - currentCount);

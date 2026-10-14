@@ -22,10 +22,12 @@ export function createSessionCookieOptions(
   };
 }
 
-const DEFAULT_SECRET = "suite-auth-session-signing-secret-key-32ch";
-
 function getSecretKey(): string {
-  return process.env.BETTER_AUTH_SECRET || DEFAULT_SECRET;
+  const secret = process.env.BETTER_AUTH_SECRET;
+  if (!secret) {
+    throw new Error("BETTER_AUTH_SECRET is required to sign or verify session tokens.");
+  }
+  return secret;
 }
 
 function bufferToBase64Url(buffer: ArrayBuffer): string {

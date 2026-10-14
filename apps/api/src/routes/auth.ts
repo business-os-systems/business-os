@@ -250,9 +250,12 @@ authRouter.openapi(switchBranchRoute, async (c) => {
 
 authRouter.openapi(verifyManagerOverrideRoute, async (c) => {
   const body = c.req.valid("json");
-  const secretKey =
-    process.env.BETTER_AUTH_SECRET ||
-    "suite-default-manager-override-secret-key-32-chars";
+  const secretKey = process.env.BETTER_AUTH_SECRET;
+  if (!secretKey) {
+    throw new UnauthorizedError(
+      "BETTER_AUTH_SECRET environment variable is required to verify manager override PIN."
+    );
+  }
 
   const result = await verifyManagerOverridePin({
     managerPin: body.managerPin,

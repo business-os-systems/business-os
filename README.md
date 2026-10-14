@@ -22,7 +22,7 @@ pnpm dev:dashboard
 ```
 👉 **Open in browser:** **[http://localhost:3001](http://localhost:3001)**
 
-> **💡 Note:** The dashboard runs completely standalone with built-in mock data and in-memory autosave fallbacks! You can immediately create sites, edit pages on the visual canvas, add blocks, inspect properties, and test responsive preview sandboxes without needing any database or backend running.
+> **💡 Note:** The dashboard integrates directly with PostgreSQL database services and API endpoints. Create sites, manage pages in the Studio canvas, inspect properties, and test responsive preview sandboxes with full tenant isolation.
 
 ---
 

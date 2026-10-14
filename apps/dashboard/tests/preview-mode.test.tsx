@@ -55,11 +55,52 @@ describe("Live Full-Screen Preview & Viewport Sandbox (@suite/dashboard)", () =>
 
     devices.forEach((device) => {
       it(`mounts preview frame with clean AstRenderer for device: ${device}`, () => {
+        const testAst = {
+          version: 1 as const,
+          schemaVersion: "2026-03" as const,
+          sections: [
+            {
+              id: "sec_hero",
+              name: "Hero Showcase",
+              blocks: [
+                {
+                  id: "b_hero_1",
+                  type: "hero" as const,
+                  props: { headline: "Artisanal Dining by the Waterfront" },
+                },
+              ],
+            },
+            {
+              id: "sec_features",
+              name: "Core Highlights",
+              blocks: [
+                {
+                  id: "b_feat_1",
+                  type: "features" as const,
+                  props: { headline: "The Culinary Experience", features: [] },
+                },
+              ],
+            },
+            {
+              id: "sec_pricing",
+              name: "Tasting Menus",
+              blocks: [
+                {
+                  id: "b_pricing_1",
+                  type: "pricing" as const,
+                  props: { headline: "Chef's Tasting Menus", tiers: [] },
+                },
+              ],
+            },
+          ],
+        };
+
         const html = renderToString(
           <PreviewWorkspace
             siteId="site_riverview"
             pageId="page_home"
             pageTitle="Waterfront Bistro"
+            initialAst={testAst}
           />
         );
 

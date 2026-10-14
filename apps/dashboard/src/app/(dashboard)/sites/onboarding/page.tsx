@@ -21,65 +21,50 @@ import {
   LayersIcon,
 } from "@suite/ui/icons";
 
-interface StepOption {
+export interface StarterTemplateItem {
   id: string;
   title: string;
   desc: string;
-  icon?: string;
+  badge: string;
 }
-
-const BUSINESS_GOALS: StepOption[] = [
-  {
-    id: "ACCEPT_BOOKINGS",
-    title: "Hospitality & Bookings",
-    desc: "Direct reservation engine, guest room showcase, and contact inquiries.",
-  },
-  {
-    id: "SHOWCASE_MENU",
-    title: "Restaurant & Cafe Dining",
-    desc: "Digital menu, table reservations, operating hours, and location map.",
-  },
-  {
-    id: "CAPTURE_LEADS",
-    title: "Services & Lead Generation",
-    desc: "Consultation booking, quotation forms, customer reviews, and FAQ.",
-  },
-  {
-    id: "GENERAL_PRESENCE",
-    title: "Corporate & Brand Presence",
-    desc: "Company story, service offerings, leadership team, and news updates.",
-  },
-];
-
-const TEMPLATE_PRESETS = [
-  {
-    id: "hero_starter",
-    title: "Curated Hero Starter (Recommended)",
-    desc: "Pre-configured with a responsive Hero section, call-to-action banner, and brand header.",
-    badge: "Fastest Setup",
-  },
-  {
-    id: "blank",
-    title: "Blank Canvas",
-    desc: "Start with an empty section tree and compose custom layouts using the block catalog.",
-    badge: "Clean Slate",
-  },
-];
 
 export default function SiteOnboardingWizard() {
   const router = useRouter();
 
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
   const [title, setTitle] = useState("");
   const [subdomain, setSubdomain] = useState("");
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isSubdomainAvailable, setIsSubdomainAvailable] = useState<boolean | null>(null);
   const [isCheckingSubdomain, setIsCheckingSubdomain] = useState(false);
 
-  const [selectedGoal, setSelectedGoal] = useState("ACCEPT_BOOKINGS");
+  const [templates, setTemplates] = useState<StarterTemplateItem[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState("hero_starter");
   const [isProvisioning, setIsProvisioning] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Dynamically load starter blueprints from database API
+  useEffect(() => {
+    let isMounted = true;
+    async function loadTemplates() {
+      try {
+        const res = await fetch("/api/cms/templates");
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted && Array.isArray(data.templates) && data.templates.length > 0) {
+            setTemplates(data.templates);
+            setSelectedTemplate(data.templates[0].id);
+          }
+        }
+      } catch {
+        // Silently handled
+      }
+    }
+    loadTemplates();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Auto-generate kebab-case subdomain when title changes
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -131,7 +116,7 @@ export default function SiteOnboardingWizard() {
 
     setIsProvisioning(true);
     setErrorMsg(null);
-    setStep(4);
+    setStep(3);
 
     try {
       const res = await fetch("/api/cms/sites", {
@@ -159,7 +144,7 @@ export default function SiteOnboardingWizard() {
       }, 1000);
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : "Provisioning failed");
-      setStep(3);
+      setStep(2);
       setIsProvisioning(false);
     }
   };
@@ -170,10 +155,10 @@ export default function SiteOnboardingWizard() {
       <div className="mb-8">
         <div className="flex items-center justify-between text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
           <span>Website Onboarding Wizard</span>
-          <span>{`Step ${step} of 4`}</span>
+          <span>{`Step ${step} of 3`}</span>
         </div>
-        <div className="grid grid-cols-4 gap-2">
-          {[1, 2, 3, 4].map((s) => (
+        <div className="grid grid-cols-3 gap-2">
+          {[1, 2, 3].map((s) => (
             <div
               key={s}
               className={`h-1.5 rounded-full transition-all duration-300 ${
@@ -212,7 +197,7 @@ export default function SiteOnboardingWizard() {
                 Website or Brand Name
               </label>
               <Input
-                placeholder="e.g. River View Boutique Resort"
+                placeholder="e.g. Acme Corporation"
                 value={title}
                 onChange={handleTitleChange}
                 autoFocus
@@ -225,7 +210,7 @@ export default function SiteOnboardingWizard() {
               </label>
               <div className="flex items-center gap-2">
                 <Input
-                  placeholder="river-view-resort"
+                  placeholder="acme-corp"
                   value={subdomain}
                   onChange={(e) => setSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
                 />
@@ -275,67 +260,14 @@ export default function SiteOnboardingWizard() {
               onClick={() => setStep(2)}
               className="bg-indigo-600 hover:bg-indigo-700 text-white"
             >
-              Next: Business Goal <ArrowRightIcon className="ml-1.5 h-4 w-4" />
-            </Button>
-          </CardFooter>
-        </Card>
-      )}
-
-      {/* STEP 2: Primary Business Goal */}
-      {step === 2 && (
-        <Card className="border-slate-200 shadow-sm">
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
-                <SparklesIcon className="h-5 w-5" />
-              </div>
-              <div>
-                <CardTitle className="text-xl">Select Your Primary Business Goal</CardTitle>
-                <CardDescription>
-                  This fine-tunes your component blueprints and default call-to-actions.
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3 pt-4">
-            {BUSINESS_GOALS.map((goal) => (
-              <div
-                key={goal.id}
-                onClick={() => setSelectedGoal(goal.id)}
-                className={`cursor-pointer rounded-lg border p-4 transition-all duration-150 ${
-                  selectedGoal === goal.id
-                    ? "border-indigo-600 bg-indigo-50/40 ring-1 ring-indigo-600"
-                    : "border-slate-200 hover:border-slate-300 bg-white"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="font-semibold text-slate-900">{goal.title}</div>
-                  {selectedGoal === goal.id && (
-                    <Badge variant="default" className="bg-indigo-600 text-white">
-                      Selected
-                    </Badge>
-                  )}
-                </div>
-                <p className="mt-1 text-xs text-slate-600">{goal.desc}</p>
-              </div>
-            ))}
-          </CardContent>
-          <CardFooter className="flex justify-between border-t border-slate-100 pt-4">
-            <Button variant="outline" onClick={() => setStep(1)}>
-              Back
-            </Button>
-            <Button
-              onClick={() => setStep(3)}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white"
-            >
               Next: Starter Template <ArrowRightIcon className="ml-1.5 h-4 w-4" />
             </Button>
           </CardFooter>
         </Card>
       )}
 
-      {/* STEP 3: Starter Template Blueprint */}
-      {step === 3 && (
+      {/* STEP 2: Starter Template Blueprint */}
+      {step === 2 && (
         <Card className="border-slate-200 shadow-sm">
           <CardHeader>
             <div className="flex items-center gap-3">
@@ -351,28 +283,34 @@ export default function SiteOnboardingWizard() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4 pt-4">
-            {TEMPLATE_PRESETS.map((tpl) => (
-              <div
-                key={tpl.id}
-                onClick={() => setSelectedTemplate(tpl.id)}
-                className={`cursor-pointer rounded-lg border p-4 transition-all duration-150 ${
-                  selectedTemplate === tpl.id
-                    ? "border-indigo-600 bg-indigo-50/40 ring-1 ring-indigo-600"
-                    : "border-slate-200 hover:border-slate-300 bg-white"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="font-semibold text-slate-900">{tpl.title}</div>
-                  <Badge variant="secondary" className="bg-slate-100 text-slate-700">
-                    {tpl.badge}
-                  </Badge>
-                </div>
-                <p className="mt-1 text-xs text-slate-600">{tpl.desc}</p>
+            {templates.length === 0 ? (
+              <div className="py-8 text-center text-xs text-slate-500">
+                Loading available blueprints from catalog...
               </div>
-            ))}
+            ) : (
+              templates.map((tpl) => (
+                <div
+                  key={tpl.id}
+                  onClick={() => setSelectedTemplate(tpl.id)}
+                  className={`cursor-pointer rounded-lg border p-4 transition-all duration-150 ${
+                    selectedTemplate === tpl.id
+                      ? "border-indigo-600 bg-indigo-50/40 ring-1 ring-indigo-600"
+                      : "border-slate-200 hover:border-slate-300 bg-white"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="font-semibold text-slate-900">{tpl.title}</div>
+                    <Badge variant="secondary" className="bg-slate-100 text-slate-700">
+                      {tpl.badge}
+                    </Badge>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-600">{tpl.desc}</p>
+                </div>
+              ))
+            )}
           </CardContent>
           <CardFooter className="flex justify-between border-t border-slate-100 pt-4">
-            <Button variant="outline" onClick={() => setStep(2)}>
+            <Button variant="outline" onClick={() => setStep(1)}>
               Back
             </Button>
             <Button
@@ -386,8 +324,8 @@ export default function SiteOnboardingWizard() {
         </Card>
       )}
 
-      {/* STEP 4: Atomic DB Provisioning Progress */}
-      {step === 4 && (
+      {/* STEP 3: Atomic DB Provisioning Progress */}
+      {step === 3 && (
         <Card className="border-slate-200 shadow-sm text-center py-12">
           <CardContent className="space-y-4">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-indigo-50 text-indigo-600 animate-pulse">

@@ -24,7 +24,7 @@ describe("Live CAS Autosave & API Gateway Proxying (@suite/dashboard)", () => {
       });
       global.fetch = mockFetch;
 
-      const client = new CmsApiClient({ baseUrl: "http://api.test", enableOfflineFallback: false });
+      const client = new CmsApiClient({ baseUrl: "http://api.test" });
       const result = await client.updateDraftContent({
         organizationId: "org_1",
         pageId: "page_123",
@@ -61,7 +61,7 @@ describe("Live CAS Autosave & API Gateway Proxying (@suite/dashboard)", () => {
       });
       global.fetch = mockFetch;
 
-      const client = new CmsApiClient({ baseUrl: "http://api.test", enableOfflineFallback: false });
+      const client = new CmsApiClient({ baseUrl: "http://api.test" });
       const result = await client.updateDraftContent({
         organizationId: "org_1",
         pageId: "page_123",
@@ -87,7 +87,7 @@ describe("Live CAS Autosave & API Gateway Proxying (@suite/dashboard)", () => {
       });
       global.fetch = mockFetch;
 
-      const client = new CmsApiClient({ baseUrl: "http://api.test", enableOfflineFallback: false });
+      const client = new CmsApiClient({ baseUrl: "http://api.test" });
       const result = await client.publishPage({
         organizationId: "org_1",
         pageId: "page_123",
@@ -99,11 +99,11 @@ describe("Live CAS Autosave & API Gateway Proxying (@suite/dashboard)", () => {
       expect(result.versionNumber).toBe(2);
     });
 
-    it("falls back gracefully in offline/standalone simulation mode", async () => {
+    it("reports network error on connection failure", async () => {
       const mockFetch = vi.fn().mockRejectedValue(new Error("Connection refused"));
       global.fetch = mockFetch;
 
-      const client = new CmsApiClient({ enableOfflineFallback: true });
+      const client = new CmsApiClient();
       const result = await client.updateDraftContent({
         organizationId: "org_1",
         pageId: "page_123",
@@ -111,8 +111,8 @@ describe("Live CAS Autosave & API Gateway Proxying (@suite/dashboard)", () => {
         draftAst: {},
       });
 
-      expect(result.success).toBe(true);
-      expect(result.revision).toBe(4);
+      expect(result.success).toBe(false);
+      expect(result.errorCode).toBe("NETWORK_ERROR");
     });
   });
 
@@ -165,7 +165,7 @@ describe("Live CAS Autosave & API Gateway Proxying (@suite/dashboard)", () => {
       expect(html).toContain("CAS Revision: v4");
       expect(html).toContain("Ready");
       expect(html).toContain("Page Layers");
-      expect(html).toContain("Hero Showcase");
+      expect(html).toContain("No sections on page");
       expect(html).toContain("Publish");
     });
   });
@@ -183,7 +183,7 @@ describe("Live CAS Autosave & API Gateway Proxying (@suite/dashboard)", () => {
       });
       global.fetch = mockFetch;
 
-      const client = new CmsApiClient({ baseUrl: "http://api.test", enableOfflineFallback: false });
+      const client = new CmsApiClient({ baseUrl: "http://api.test" });
       const result = await client.publishPage({
         organizationId: "org_1",
         pageId: "page_publish_1",
@@ -225,7 +225,7 @@ describe("Live CAS Autosave & API Gateway Proxying (@suite/dashboard)", () => {
       });
       global.fetch = mockFetch;
 
-      const client = new CmsApiClient({ baseUrl: "http://api.test", enableOfflineFallback: false });
+      const client = new CmsApiClient({ baseUrl: "http://api.test" });
       const result = await client.listPageVersions("org_1", "page_1");
 
       expect(result.success).toBe(true);

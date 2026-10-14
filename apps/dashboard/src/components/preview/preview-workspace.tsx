@@ -2,137 +2,8 @@
 
 import React, { useState } from "react";
 import { AstRenderer } from "@suite/website-builder/render";
-import type { PageAst } from "@suite/website-builder/ast";
 import { PreviewHeader } from "./preview-header";
 import type { PreviewWorkspaceProps, PreviewDevice } from "./types";
-
-const DEFAULT_PREVIEW_AST: PageAst = {
-  version: 1,
-  schemaVersion: "2026-03",
-  meta: {
-    title: "Flagship Bistro & Wine Bar",
-    description: "Artisanal seasonal dining and private reservations",
-  },
-  globalStyles: {
-    fontFamily: "Inter, sans-serif",
-    backgroundColor: "#ffffff",
-    textColor: "#0f172a",
-  },
-  sections: [
-    {
-      id: "sec_hero",
-      name: "Hero Showcase",
-      styles: { maxWidth: "xl", paddingTop: 40, paddingBottom: 40 },
-      blocks: [
-        {
-          id: "b_hero_1",
-          type: "hero",
-          props: {
-            headline: "Artisanal Dining by the Waterfront",
-            subheadline:
-              "Handcrafted farm-to-table cuisine, natural wines, and panoramic river vistas.",
-            badge: "Now Accepting Spring Reservations",
-            primaryCta: {
-              label: "Book a Table",
-              target: { url: "/reservations" },
-            },
-            secondaryCta: {
-              label: "Explore Menu",
-              target: { url: "/menu" },
-            },
-          },
-        },
-      ],
-    },
-    {
-      id: "sec_features",
-      name: "Core Highlights",
-      styles: { maxWidth: "xl", paddingTop: 32, paddingBottom: 32 },
-      blocks: [
-        {
-          id: "b_feat_1",
-          type: "features",
-          props: {
-            headline: "The Culinary Experience",
-            subheadline: "Every dish crafted with obsessive dedication to local provenance.",
-            columns: 3,
-            features: [
-              {
-                id: "feat_1",
-                title: "Seasonal Harvest",
-                description: "Organic ingredients sourced within 40 miles every morning.",
-              },
-              {
-                id: "feat_2",
-                title: "Curated Cellar",
-                description: "Over 200 biodynamic and low-intervention vintage wines.",
-              },
-              {
-                id: "feat_3",
-                title: "Private Dining",
-                description: "Dedicated tasting room for intimate celebrations and events.",
-              },
-            ],
-          },
-        },
-      ],
-    },
-    {
-      id: "sec_pricing",
-      name: "Tasting Menus",
-      styles: { maxWidth: "xl", paddingTop: 32, paddingBottom: 40 },
-      blocks: [
-        {
-          id: "b_pricing_1",
-          type: "pricing",
-          props: {
-            headline: "Chef's Tasting Menus",
-            subheadline: "Five-course and seven-course journeys with optional pairings.",
-            tiers: [
-              {
-                id: "tier_5",
-                name: "Five-Course Tasting",
-                description: "Seasonal Chef selection",
-                priceAmount: 125,
-                currency: "$",
-                interval: "one-time",
-                isFeatured: false,
-                cta: {
-                  label: "Reserve Experience",
-                  target: { url: "/reservations" },
-                },
-                features: [
-                  { text: "Seasonal amuse-bouche", included: true },
-                  { text: "Prime local meats", included: true },
-                  { text: "Signature dessert", included: true },
-                ],
-              },
-              {
-                id: "tier_7",
-                name: "Grand Seven-Course",
-                description: "Full culinary immersion",
-                priceAmount: 185,
-                currency: "$",
-                interval: "one-time",
-                isFeatured: true,
-                badge: "Most Popular",
-                cta: {
-                  label: "Reserve Experience",
-                  target: { url: "/reservations" },
-                },
-                features: [
-                  { text: "Full Chef immersion", included: true },
-                  { text: "Rare reserve pairings", included: true },
-                  { text: "Tableside preparation", included: true },
-                ],
-              },
-            ],
-          },
-        },
-      ],
-    },
-  ],
-};
 
 const VIEWPORT_STYLES: Record<
   PreviewDevice,
@@ -166,8 +37,8 @@ const VIEWPORT_STYLES: Record<
 export function PreviewWorkspace({
   siteId,
   pageId,
-  pageTitle = "Homepage & Welcome Hero",
-  initialAst = DEFAULT_PREVIEW_AST,
+  pageTitle = "Untitled Page",
+  initialAst,
 }: PreviewWorkspaceProps) {
   const [device, setDevice] = useState<PreviewDevice>("desktop");
 
@@ -204,7 +75,14 @@ export function PreviewWorkspace({
             </div>
           )}
 
-          <AstRenderer ast={initialAst} isEditor={false} />
+          {initialAst && initialAst.sections && initialAst.sections.length > 0 ? (
+            <AstRenderer ast={initialAst} isEditor={false} />
+          ) : (
+            <div className="flex flex-col items-center justify-center p-16 text-center text-slate-400">
+              <p className="text-sm font-medium text-slate-600">No page content to preview</p>
+              <p className="text-xs text-slate-400 mt-1">This page has no sections or content published yet.</p>
+            </div>
+          )}
         </div>
       </div>
     </div>

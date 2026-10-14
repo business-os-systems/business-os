@@ -8,12 +8,10 @@ import type {
 
 export interface CmsApiClientOptions {
   baseUrl?: string;
-  enableOfflineFallback?: boolean;
 }
 
 export class CmsApiClient implements ICmsApiClient {
   private readonly baseUrl: string;
-  private readonly enableOfflineFallback: boolean;
 
   constructor(options: CmsApiClientOptions = {}) {
     if (options.baseUrl) {
@@ -23,7 +21,6 @@ export class CmsApiClient implements ICmsApiClient {
     } else {
       this.baseUrl = process.env.API_URL ?? "";
     }
-    this.enableOfflineFallback = options.enableOfflineFallback ?? false;
   }
 
   async updateDraftContent({
@@ -76,16 +73,6 @@ export class CmsApiClient implements ICmsApiClient {
         message: errData.detail ?? errData.message ?? `HTTP ${response.status}`,
       };
     } catch (error) {
-      if (this.enableOfflineFallback) {
-        // Optimistic offline simulated success when backend is unreachable in standalone UI mode
-        return {
-          success: true,
-          pageId,
-          revision: expectedRevision + 1,
-          draftAst,
-        };
-      }
-
       return {
         success: false,
         errorCode: "NETWORK_ERROR",
@@ -142,15 +129,6 @@ export class CmsApiClient implements ICmsApiClient {
         message: errData.detail ?? errData.message ?? `HTTP ${response.status}`,
       };
     } catch (error) {
-      if (this.enableOfflineFallback) {
-        return {
-          success: true,
-          pageId,
-          revision: expectedRevision + 1,
-          versionNumber: 1,
-        };
-      }
-
       return {
         success: false,
         errorCode: "NETWORK_ERROR",
@@ -189,24 +167,6 @@ export class CmsApiClient implements ICmsApiClient {
         message: `HTTP ${response.status}`,
       };
     } catch (error) {
-      if (this.enableOfflineFallback) {
-        return {
-          success: true,
-          versions: [
-            {
-              id: `ver_demo_${pageId}`,
-              organizationId,
-              pageId,
-              versionNumber: 1,
-              label: "Release v1",
-              astSnapshot: {},
-              createdByUserId: "user_owner",
-              createdAt: new Date().toISOString(),
-            },
-          ],
-        };
-      }
-
       return {
         success: false,
         versions: [],

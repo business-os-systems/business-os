@@ -31,11 +31,13 @@ export default function SitePreviewPage() {
           });
         }
       } catch {
-        // Fall back to workspace defaults
+        // Leave unpopulated
       }
     }
     loadPage();
   }, [pageId]);
+
+
 
   return (
     <PreviewWorkspace
