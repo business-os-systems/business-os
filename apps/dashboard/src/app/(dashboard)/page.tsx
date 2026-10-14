@@ -2,8 +2,15 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { Card, CardHeader, CardTitle, CardContent, Button, Badge } from "@suite/ui";
-import { KNOWN_APPS_CATALOG } from "@/lib/app-registry";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  Button,
+  Badge,
+} from "@suite/ui";
+import { resolveAppIcon } from "@/lib/app-registry";
 
 export interface AppLauncherCard {
   title: string;
@@ -16,38 +23,79 @@ export interface AppLauncherCard {
 }
 
 export interface OverviewPageProps {
+  initialApps?: AppLauncherCard[];
   installedAppIds?: string[];
   organizationId?: string;
 }
 
+const DEFAULT_APPS: AppLauncherCard[] = [];
+
 export default function OverviewPage({
+  initialApps = DEFAULT_APPS,
   installedAppIds,
   organizationId,
 }: OverviewPageProps = {}) {
-  const [activeInstalledIds, setActiveInstalledIds] = useState<string[]>(
-    installedAppIds ?? ["website_builder"]
-  );
+  const [apps, setApps] = useState<AppLauncherCard[]>(initialApps);
+  const [loading, setLoading] = useState(initialApps.length === 0);
+
+  const installedIdsKey = installedAppIds ? installedAppIds.join(",") : "";
 
   useEffect(() => {
-    if (installedAppIds) {
-      setActiveInstalledIds(installedAppIds);
+    if (initialApps.length > 0) {
+      setApps(initialApps);
+      setLoading(false);
       return;
     }
-
-    if (!organizationId) return;
 
     let isMounted = true;
     async function loadInstalled() {
       try {
-        const res = await fetch(`/api/v1/organizations/${organizationId}/installed-apps`);
+        const endpoint = organizationId
+          ? `/api/v1/organizations/${organizationId}/installed-apps`
+          : "/api/v1/installed-apps";
+        const res = await fetch(endpoint);
         if (res.ok) {
           const data = await res.json();
-          if (isMounted && Array.isArray(data.installedApps)) {
-            setActiveInstalledIds(data.installedApps.map((a: { appId: string }) => a.appId));
+          const list = Array.isArray(data.apps)
+            ? data.apps
+            : data.installedApps || [];
+          if (isMounted && Array.isArray(list)) {
+            const installedSet = installedIdsKey
+              ? new Set(installedIdsKey.split(","))
+              : null;
+            setApps(
+              list.map(
+                (a: {
+                  appId: string;
+                  title: string;
+                  code: string;
+                  description: string;
+                  href: string;
+                  iconName?: string;
+                }) => {
+                  const isAvailable = installedSet
+                    ? installedSet.has(a.appId)
+                    : true;
+                  return {
+                    title: a.title,
+                    code: a.code,
+                    desc: a.description,
+                    href: a.href,
+                    icon: resolveAppIcon(a.iconName || a.appId),
+                    status: isAvailable
+                      ? ("Available" as const)
+                      : ("Coming Soon" as const),
+                    isAvailable,
+                  };
+                },
+              ),
+            );
           }
         }
       } catch {
         // Fallback silently if offline
+      } finally {
+        if (isMounted) setLoading(false);
       }
     }
 
@@ -55,24 +103,7 @@ export default function OverviewPage({
     return () => {
       isMounted = false;
     };
-  }, [installedAppIds, organizationId]);
-
-  const installedSet = new Set(activeInstalledIds);
-
-  // Build dynamic catalog cards matching activation state
-  const catalogEntries = Object.values(KNOWN_APPS_CATALOG);
-  const cards: AppLauncherCard[] = catalogEntries.map((app) => {
-    const isInstalled = installedSet.has(app.appId);
-    return {
-      title: app.title,
-      code: app.code,
-      desc: app.description,
-      href: app.href,
-      icon: app.icon,
-      status: isInstalled ? "Available" : "Coming Soon",
-      isAvailable: isInstalled,
-    };
-  });
+  }, [initialApps, installedIdsKey, organizationId]);
 
   return (
     <div className="space-y-8">
@@ -81,58 +112,78 @@ export default function OverviewPage({
           Executive App Launcher
         </h1>
         <p className="text-sm text-slate-500 mt-1">
-          Welcome to your Business OS workspace. Select an installed module to launch its environment.
+          Welcome to your Business OS workspace. Select an installed module to
+          launch its environment.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {cards.map((app) => {
-          const Icon = app.icon;
-          return (
-            <Card key={app.code} className="hover:shadow-md transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`p-2 rounded-lg ${
-                      app.isAvailable
-                        ? "bg-blue-50 text-blue-600"
-                        : "bg-slate-100 text-slate-400"
-                    }`}
+      {apps.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-slate-200 p-8 text-center">
+          <p className="text-sm text-slate-500">
+            {loading
+              ? "Loading installed applications..."
+              : "No applications installed for this workspace."}
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {apps.map((app) => {
+            const Icon = app.icon;
+            return (
+              <Card
+                key={app.code}
+                className="hover:shadow-md transition-shadow"
+              >
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`p-2 rounded-lg ${
+                        app.isAvailable
+                          ? "bg-blue-50 text-blue-600"
+                          : "bg-slate-100 text-slate-400"
+                      }`}
+                    >
+                      <Icon className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base font-semibold">
+                        {app.title}
+                      </CardTitle>
+                    </div>
+                  </div>
+                  <Badge
+                    variant={app.isAvailable ? "default" : "secondary"}
+                    className="text-xs"
                   >
-                    <Icon className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-base font-semibold">{app.title}</CardTitle>
-                    <Badge variant="secondary" className="text-[10px] mt-0.5">
-                      {app.code}
-                    </Badge>
-                  </div>
-                </div>
-                <Badge
-                  variant={app.isAvailable ? "default" : "secondary"}
-                  className="text-xs"
-                >
-                  {app.status}
-                </Badge>
-              </CardHeader>
-              <CardContent className="space-y-4 pt-2">
-                <p className="text-xs text-slate-600 leading-relaxed">{app.desc}</p>
-                {app.isAvailable ? (
-                  <Link href={app.href} className="inline-block">
-                    <Button variant="default" size="sm">
-                      Open Application
+                    {app.status}
+                  </Badge>
+                </CardHeader>
+                <CardContent className="space-y-4 pt-2">
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    {app.desc}
+                  </p>
+                  {app.isAvailable ? (
+                    <Link href={app.href} className="inline-block">
+                      <Button variant="default" size="sm">
+                        Open Application
+                      </Button>
+                    </Link>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled
+                      className="opacity-60 cursor-not-allowed"
+                    >
+                      Coming Soon
                     </Button>
-                  </Link>
-                ) : (
-                  <Button variant="outline" size="sm" disabled className="opacity-60 cursor-not-allowed">
-                    Coming Soon
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

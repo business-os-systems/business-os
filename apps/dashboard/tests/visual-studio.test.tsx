@@ -43,6 +43,40 @@ describe("Website Builder Visual Studio & Live Canvas Mounting (@suite/dashboard
 
   describe("StudioWorkspace Full Layout & Multi-Pane Mounting", () => {
     it("mounts VisualCanvas, BlockTreeSidebar, and BlockPropertyInspector", () => {
+      const testAst = {
+        version: 1 as const,
+        schemaVersion: "2026-03" as const,
+        sections: [
+          {
+            id: "sec_hero",
+            name: "Hero Showcase",
+            blocks: [
+              {
+                id: "b_hero_1",
+                type: "hero" as const,
+                props: { headline: "Artisanal Dining by the Waterfront" },
+              },
+            ],
+          },
+          {
+            id: "sec_features",
+            name: "Core Highlights",
+            blocks: [
+              {
+                id: "b_feat_1",
+                type: "features" as const,
+                props: { headline: "The Culinary Experience", features: [] },
+              },
+            ],
+          },
+          {
+            id: "sec_pricing",
+            name: "Tasting Menus",
+            blocks: [],
+          },
+        ],
+      };
+
       const html = renderToString(
         <StudioWorkspace
           siteId="site_riverview"
@@ -50,6 +84,7 @@ describe("Website Builder Visual Studio & Live Canvas Mounting (@suite/dashboard
           pageTitle="Main Storefront"
           revision={3}
           status="DRAFT"
+          initialAst={testAst}
         />
       );
 
@@ -65,8 +100,7 @@ describe("Website Builder Visual Studio & Live Canvas Mounting (@suite/dashboard
       expect(html).toContain("The Culinary Experience");
 
       // Verify Right Inspector (BlockPropertyInspector)
-      expect(html).toContain("Block inspector for hero");
-      expect(html).toContain("b_hero_1");
+      expect(html).toContain("No Block Selected");
 
       // Verify Header
       expect(html).toContain("CAS Revision: v3");

@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, beforeAll, afterAll } from "vitest";
+import { prisma } from "@suite/db";
 import {
   createAdminRouter,
   SiteService,
@@ -9,6 +10,41 @@ describe("Live Database CRUD API for Sites & Pages (S4-2)", () => {
   const pageService = new PageService();
   const siteService = new SiteService();
   const router = createAdminRouter(pageService, siteService);
+
+  beforeAll(async () => {
+    await prisma.organization.upsert({
+      where: { id: "org_alpha" },
+      update: {},
+      create: { id: "org_alpha", name: "Alpha Org", slug: "alpha-org" },
+    });
+    await prisma.cmsSite.upsert({
+      where: { id_organizationId: { id: "site_alpha", organizationId: "org_alpha" } },
+      update: {},
+      create: {
+        id: "site_alpha",
+        organizationId: "org_alpha",
+        title: "Alpha Site",
+        slug: "alpha-site",
+      },
+    });
+    const existing = await pageService.getPage("org_alpha", "page_crud_test_1");
+    if (!existing) {
+      await pageService.createPage({
+        id: "page_crud_test_1",
+        organizationId: "org_alpha",
+        siteId: "site_alpha",
+        slug: "/about-us",
+        title: "About Us",
+        draftAst: { sections: [{ id: "sec_1", type: "hero" }] },
+      });
+    }
+  });
+
+  afterAll(async () => {
+    await prisma.cmsPage.deleteMany({
+      where: { organizationId: "org_alpha" },
+    });
+  });
 
   it("should check subdomain availability and return phonetic suggestions when occupied", async () => {
     const res = await router.request("/subdomain/check?subdomain=my-new-company", {

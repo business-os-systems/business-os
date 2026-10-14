@@ -1,64 +1,82 @@
 import type { PrismaClient } from "@suite/db";
 import { UnauthorizedError, ValidationError, RateLimitError } from "@suite/core/errors";
+import { redis } from "@suite/redis";
 import { hashPin, verifyPin } from "./pin-engine.js";
 
 /**
  * Terminal Rate Limiter configuration:
  * - Max 5 attempts
- * - 15 minutes lockout window (900,000 ms)
+ * - 15 minutes lockout window (900 seconds)
  */
 const MAX_FAILED_ATTEMPTS = 5;
-const LOCKOUT_WINDOW_MS = 15 * 60 * 1000;
+const LOCKOUT_WINDOW_SECONDS = 15 * 60; // 900 seconds
 
-interface AttemptRecord {
-  count: number;
-  lockedUntil?: number;
-}
-
-const terminalAttemptStore = new Map<string, AttemptRecord>();
-
-export function clearTerminalRateLimit(key: string): void {
-  terminalAttemptStore.delete(key);
-}
-
-export function clearAllTerminalRateLimits(): void {
-  terminalAttemptStore.clear();
-}
-
-function checkAndRecordRateLimit(key: string): void {
-  const now = Date.now();
-  const record = terminalAttemptStore.get(key);
-
-  if (record?.lockedUntil && record.lockedUntil > now) {
-    const remainingSeconds = Math.ceil((record.lockedUntil - now) / 1000);
-    throw new RateLimitError(
-      `Terminal PIN switch locked due to excessive failed attempts. Try again in ${remainingSeconds} seconds.`,
-      remainingSeconds,
-      {
-        code: "AUTH_PIN_LOCKED",
-      }
-    );
+export async function clearTerminalRateLimit(key: string): Promise<void> {
+  try {
+    await redis.del(`rl:terminal:attempts:${key}`, `rl:terminal:locked:${key}`);
+  } catch {
+    // Graceful no-op if redis is disconnected
   }
 }
 
-function recordFailedAttempt(key: string): void {
-  const now = Date.now();
-  const record = terminalAttemptStore.get(key) || { count: 0 };
-  record.count += 1;
+export async function clearAllTerminalRateLimits(): Promise<void> {
+  try {
+    const keys = await redis.keys("rl:terminal:*");
+    if (keys.length > 0) {
+      await redis.del(...keys);
+    }
+  } catch {
+    // Graceful no-op if redis is disconnected
+  }
+}
 
-  if (record.count >= MAX_FAILED_ATTEMPTS) {
-    record.lockedUntil = now + LOCKOUT_WINDOW_MS;
-    terminalAttemptStore.set(key, record);
-    const retrySeconds = Math.ceil(LOCKOUT_WINDOW_MS / 1000);
-    throw new RateLimitError(
-      "Terminal PIN switch locked after 5 failed attempts. Please wait 15 minutes or contact an administrator.",
-      retrySeconds,
-      {
-        code: "AUTH_PIN_LOCKED",
-      }
-    );
-  } else {
-    terminalAttemptStore.set(key, record);
+async function checkAndRecordRateLimit(key: string): Promise<void> {
+  try {
+    const lockedTtl = await redis.ttl(`rl:terminal:locked:${key}`);
+    if (lockedTtl > 0) {
+      throw new RateLimitError(
+        `Terminal PIN switch locked due to excessive failed attempts. Try again in ${lockedTtl} seconds.`,
+        lockedTtl,
+        {
+          code: "AUTH_PIN_LOCKED",
+        }
+      );
+    }
+  } catch (error) {
+    if (error instanceof RateLimitError) throw error;
+  }
+}
+
+async function recordFailedAttempt(key: string): Promise<void> {
+  try {
+    const attemptsKey = `rl:terminal:attempts:${key}`;
+    const lockedKey = `rl:terminal:locked:${key}`;
+
+    const pipeline = redis.pipeline();
+    pipeline.incr(attemptsKey);
+    pipeline.ttl(attemptsKey);
+    const results = await pipeline.exec();
+
+    const count = typeof results?.[0]?.[1] === "number" ? results[0][1] : 1;
+    const ttl = typeof results?.[1]?.[1] === "number" ? results[1][1] : -1;
+
+    if (ttl === -1) {
+      await redis.expire(attemptsKey, LOCKOUT_WINDOW_SECONDS);
+    }
+
+    if (count >= MAX_FAILED_ATTEMPTS) {
+      await redis.set(lockedKey, "1", "EX", LOCKOUT_WINDOW_SECONDS);
+      await redis.del(attemptsKey);
+      throw new RateLimitError(
+        "Terminal PIN switch locked after 5 failed attempts. Please wait 15 minutes or contact an administrator.",
+        LOCKOUT_WINDOW_SECONDS,
+        {
+          code: "AUTH_PIN_LOCKED",
+        }
+      );
+    }
+  } catch (error) {
+    if (error instanceof RateLimitError) throw error;
   }
 }
 
@@ -95,7 +113,7 @@ export async function verifyTerminalPin(
   }
 
   const rateLimitKey = `${organizationId}:${terminalKey}`;
-  checkAndRecordRateLimit(rateLimitKey);
+  await checkAndRecordRateLimit(rateLimitKey);
 
   // Fetch all active members in this organization who have configured a terminal PIN
   const members = await prisma.userOrganization.findMany({
@@ -133,7 +151,7 @@ export async function verifyTerminalPin(
   for (const member of members) {
     if (member.terminalPinHash && (await verifyPin(pin, member.terminalPinHash))) {
       // Successful authentication: clear rate limit
-      clearTerminalRateLimit(rateLimitKey);
+      await clearTerminalRateLimit(rateLimitKey);
 
       const roles = new Set<string>();
       const permissions = new Set<string>();
@@ -160,7 +178,7 @@ export async function verifyTerminalPin(
   }
 
   // No match found: record failure and throw
-  recordFailedAttempt(rateLimitKey);
+  await recordFailedAttempt(rateLimitKey);
   throw new UnauthorizedError("Incorrect terminal PIN entered", {
     code: "PIN_INVALID",
   });

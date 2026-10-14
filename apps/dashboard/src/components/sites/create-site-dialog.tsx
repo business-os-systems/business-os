@@ -97,7 +97,7 @@ export function CreateSiteDialog({ isOpen, onClose, onSubmit }: CreateSiteDialog
                   );
                 }
               }}
-              placeholder="e.g. Flagship Riverside Bistro"
+              placeholder="e.g. Acme Corporation"
               className="w-full"
             />
             {errors["name"] && (
@@ -113,7 +113,7 @@ export function CreateSiteDialog({ isOpen, onClose, onSubmit }: CreateSiteDialog
               <input
                 value={subdomain}
                 onChange={(e) => setSubdomain(e.target.value.toLowerCase())}
-                placeholder="riverside-bistro"
+                placeholder="acme-corp"
                 className="w-full px-3 py-2 text-sm text-slate-900 outline-none"
               />
               <span className="bg-slate-50 px-3 py-2 text-xs font-mono text-slate-500 border-l border-slate-200">

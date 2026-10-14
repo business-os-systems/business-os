@@ -19,8 +19,8 @@ jobs:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_USER: devpulse_admin
-          POSTGRES_PASSWORD: devpulse_password123
+          POSTGRES_USER: businessos_admin
+          POSTGRES_PASSWORD: businessos_password
           POSTGRES_DB: business_os_dev
         ports:
           - 5432:5432
@@ -41,7 +41,7 @@ jobs:
           --health-retries 5
 
     env:
-      DATABASE_URL: postgresql://devpulse_admin:devpulse_password123@localhost:5432/business_os_dev
+      DATABASE_URL: postgresql://businessos_admin:businessos_password@localhost:5432/business_os_dev
       REDIS_URL: redis://localhost:6379
 
     steps:

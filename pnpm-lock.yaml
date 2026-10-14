@@ -175,6 +175,9 @@ importers:
       '@suite/db':
         specifier: workspace:*
         version: link:../db
+      '@suite/redis':
+        specifier: workspace:*
+        version: link:../redis
       better-auth:
         specifier: ^1.1.0
         version: 1.7.7(@opentelemetry/api@1.9.1)(@prisma/client@6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3))(next@15.5.27(@opentelemetry/api@1.9.1)(@types/node@20.19.43)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(prisma@6.19.3(typescript@5.9.3))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(vitest@2.1.9(@types/node@20.19.43)(jsdom@30.1.2(@noble/hashes@2.4.0))(supports-color@7.2.0))

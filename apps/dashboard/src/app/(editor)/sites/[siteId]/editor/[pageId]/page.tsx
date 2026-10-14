@@ -34,11 +34,13 @@ export default function StudioEditorPage() {
           });
         }
       } catch {
-        // Fall back to workspace defaults
+        // Leave unpopulated
       }
     }
     loadPage();
   }, [pageId]);
+
+
 
   return (
     <StudioWorkspace

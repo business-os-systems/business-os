@@ -32,8 +32,6 @@ export interface SubdomainAvailabilityResult {
   suggestions: string[];
 }
 
-const PHONETIC_SUFFIXES = ["sigma", "zenith", "orbit", "apex", "pulse", "nova"];
-
 /**
  * Service for multi-tenant CmsSite domain operations backed by PostgreSQL via Prisma.
  */
@@ -97,7 +95,7 @@ export class SiteService {
 
   /**
    * Checks subdomain availability across the entire platform.
-   * If claimed, provides phonetic fallback alternatives.
+   * If claimed, dynamically queries DB to find available alternatives.
    */
   public async checkSubdomainAvailability(
     subdomain: string
@@ -118,16 +116,17 @@ export class SiteService {
     }
 
     const suggestions: string[] = [];
-    for (const suffix of PHONETIC_SUFFIXES) {
-      const candidate = `${normalized}-${suffix}`;
+    let counter = 1;
+    while (suggestions.length < 3 && counter <= 10) {
+      const candidate = `${normalized}-${counter}`;
       const candidateHost = `${candidate}.business-os.site`;
       const conflict = await this.db.cmsDomain.findUnique({
         where: { hostname: candidateHost },
       });
       if (!conflict) {
         suggestions.push(candidate);
-        if (suggestions.length >= 3) break;
       }
+      counter++;
     }
 
     return {
@@ -145,34 +144,40 @@ export class SiteService {
     const normalizedSlug = input.slug.toLowerCase().trim().replace(/[^a-z0-9-]/g, "-");
     const stagingHostname = `${normalizedSlug}.business-os.site`;
 
-    // Define initial hero AST based on chosen template
-    const initialHomeAst =
-      input.initialTemplate === "hero_starter"
-        ? {
-            root: {
-              id: "root-section-1",
-              type: "section",
-              children: [
-                {
-                  id: "hero-block-1",
-                  type: "hero",
-                  props: {
-                    heading: `Welcome to ${input.title}`,
-                    subheading: "Designed with Business OS Visual Studio.",
-                    ctaText: "Explore Now",
-                    ctaLink: "/#services",
-                  },
-                },
-              ],
-            },
+    // Retrieve initial page AST from dynamic database-backed CMS templates
+    let initialHomeAst: Record<string, unknown> = {
+      root: {
+        id: "root-section-1",
+        type: "section",
+        children: [],
+      },
+    };
+
+    if (input.initialTemplate) {
+      const template = await this.db.cmsTemplate.findFirst({
+        where: {
+          OR: [
+            { id: input.initialTemplate },
+            { id: `tpl_${input.initialTemplate}` },
+          ],
+        },
+      });
+
+      if (template?.blueprintJson && typeof template.blueprintJson === "object") {
+        const bp = template.blueprintJson as Record<string, unknown>;
+        if (bp.ast && typeof bp.ast === "object") {
+          initialHomeAst = JSON.parse(JSON.stringify(bp.ast));
+          const rootObj = initialHomeAst.root as Record<string, unknown> | undefined;
+          if (rootObj && Array.isArray(rootObj.children)) {
+            const children = rootObj.children as Array<Record<string, unknown>>;
+            const heroBlock = children.find((c) => c.type === "hero");
+            if (heroBlock && heroBlock.props && typeof heroBlock.props === "object") {
+              (heroBlock.props as Record<string, unknown>).heading = `Welcome to ${input.title}`;
+            }
           }
-        : {
-            root: {
-              id: "root-section-1",
-              type: "section",
-              children: [],
-            },
-          };
+        }
+      }
+    }
 
     // Execute atomic provisioning transaction
     return this.db.$transaction(async (tx) => {

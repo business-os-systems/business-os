@@ -58,79 +58,44 @@ export interface CreatePageInput {
 }
 
 export class PageService {
-  // In-memory backing cache for high-speed deterministic test suites and instant authoring
-  private memoryPages: Map<string, PageRecord> = new Map();
-  private memoryVersions: Map<string, PageVersionRecord[]> = new Map();
-
-  constructor(private readonly db = prisma) {
-    // Seed initial demo page for testing
-    this.memoryPages.set("page_demo_1", {
-      id: "page_demo_1",
-      organizationId: "org_alpha",
-      siteId: "site_alpha",
-      slug: "/about-us",
-      title: "About Us",
-      status: "DRAFT",
-      revision: 1,
-      isHomePage: false,
-      orderIndex: 0,
-      draftAst: { sections: [{ id: "sec_1", type: "hero" }] },
-      publishedAst: null,
-      publishedAt: null,
-    });
-  }
+  constructor(private readonly db = prisma) {}
 
   /**
-   * Lists pages scoped strictly to tenant and site
+   * Lists pages scoped strictly to tenant and site from PostgreSQL
    */
   public async listPages(
     organizationId: string,
     siteId: string
   ): Promise<PageRecord[]> {
-    // Check in-memory store first
-    const memResults: PageRecord[] = [];
-    for (const page of this.memoryPages.values()) {
-      if (page.organizationId === organizationId && page.siteId === siteId) {
-        memResults.push(page);
-      }
-    }
-    if (memResults.length > 0) {
-      return memResults;
-    }
+    const pages = await this.db.cmsPage.findMany({
+      where: {
+        organizationId,
+        siteId,
+      },
+      include: {
+        content: true,
+      },
+      orderBy: [{ isHomePage: "desc" }, { orderIndex: "asc" }, { createdAt: "asc" }],
+    });
 
-    try {
-      const pages = await this.db.cmsPage.findMany({
-        where: {
-          organizationId,
-          siteId,
-        },
-        include: {
-          content: true,
-        },
-        orderBy: [{ isHomePage: "desc" }, { orderIndex: "asc" }, { createdAt: "asc" }],
-      });
-
-      return pages.map((p) => ({
-        id: p.id,
-        organizationId: p.organizationId,
-        siteId: p.siteId,
-        title: p.title,
-        slug: p.slug,
-        status: p.status,
-        revision: p.revision,
-        isHomePage: p.isHomePage,
-        orderIndex: p.orderIndex,
-        draftAst: (p.content?.draftAst as Record<string, unknown>) || {},
-        publishedAst: (p.content?.publishedAst as Record<string, unknown>) || null,
-        publishedAt: p.content?.publishedAt ? p.content.publishedAt.toISOString() : null,
-      }));
-    } catch {
-      return memResults;
-    }
+    return pages.map((p) => ({
+      id: p.id,
+      organizationId: p.organizationId,
+      siteId: p.siteId,
+      title: p.title,
+      slug: p.slug,
+      status: p.status,
+      revision: p.revision,
+      isHomePage: p.isHomePage,
+      orderIndex: p.orderIndex,
+      draftAst: (p.content?.draftAst as Record<string, unknown>) || {},
+      publishedAst: (p.content?.publishedAst as Record<string, unknown>) || null,
+      publishedAt: p.content?.publishedAt ? p.content.publishedAt.toISOString() : null,
+    }));
   }
 
   /**
-   * Creates a page scoped to tenant and site
+   * Creates a page scoped to tenant and site in PostgreSQL
    */
   public async createPage(input: CreatePageInput): Promise<PageRecord> {
     const pageId = input.id || `page_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
@@ -143,129 +108,90 @@ export class PageService {
       },
     };
 
-    const record: PageRecord = {
-      id: pageId,
-      organizationId: input.organizationId,
-      siteId: input.siteId,
-      title: input.title,
-      slug: normalizedSlug,
-      isHomePage: input.isHomePage || false,
-      orderIndex: input.orderIndex || 0,
-      status: "DRAFT",
-      revision: 1,
-      draftAst: initialAst,
-      publishedAst: null,
-      publishedAt: null,
-    };
-
-    // Keep in-memory store updated
-    this.memoryPages.set(pageId, record);
-
-    try {
-      await this.db.cmsPage.create({
-        data: {
-          id: pageId,
-          organizationId: input.organizationId,
-          siteId: input.siteId,
-          title: input.title,
-          slug: normalizedSlug,
-          isHomePage: input.isHomePage || false,
-          orderIndex: input.orderIndex || 0,
-          status: "DRAFT",
-          revision: 1,
-          content: {
-            create: {
-              draftAst: initialAst as unknown as Prisma.InputJsonValue,
-            },
+    const created = await this.db.cmsPage.create({
+      data: {
+        id: pageId,
+        organizationId: input.organizationId,
+        siteId: input.siteId,
+        title: input.title,
+        slug: normalizedSlug,
+        isHomePage: input.isHomePage || false,
+        orderIndex: input.orderIndex || 0,
+        status: "DRAFT",
+        revision: 1,
+        content: {
+          create: {
+            draftAst: initialAst as unknown as Prisma.InputJsonValue,
           },
         },
-      });
-    } catch {
-      // Prisma persistence is best-effort when running in disconnected test environments
-    }
+      },
+      include: {
+        content: true,
+      },
+    });
 
-    return record;
+    return {
+      id: created.id,
+      organizationId: created.organizationId,
+      siteId: created.siteId,
+      title: created.title,
+      slug: created.slug,
+      status: created.status,
+      revision: created.revision,
+      isHomePage: created.isHomePage,
+      orderIndex: created.orderIndex,
+      draftAst: (created.content?.draftAst as Record<string, unknown>) || initialAst,
+      publishedAst: (created.content?.publishedAst as Record<string, unknown>) || null,
+      publishedAt: created.content?.publishedAt ? created.content.publishedAt.toISOString() : null,
+    };
   }
 
   /**
-   * Retrieves a page with strict tenant isolation check
+   * Retrieves a page with strict tenant isolation check from PostgreSQL
    */
   public async getPage(
     organizationId: string,
     pageId: string
   ): Promise<PageRecord | null> {
-    const memPage = this.memoryPages.get(pageId);
-    if (memPage) {
-      if (memPage.organizationId !== organizationId) {
-        return null;
-      }
-      return memPage;
-    }
-
-    try {
-      const page = await this.db.cmsPage.findUnique({
-        where: {
-          id_organizationId: {
-            id: pageId,
-            organizationId,
-          },
+    const page = await this.db.cmsPage.findUnique({
+      where: {
+        id_organizationId: {
+          id: pageId,
+          organizationId,
         },
-        include: {
-          content: true,
-        },
-      });
+      },
+      include: {
+        content: true,
+      },
+    });
 
-      if (!page) {
-        return null;
-      }
-
-      return {
-        id: page.id,
-        organizationId: page.organizationId,
-        siteId: page.siteId,
-        title: page.title,
-        slug: page.slug,
-        status: page.status,
-        revision: page.revision,
-        isHomePage: page.isHomePage,
-        orderIndex: page.orderIndex,
-        draftAst: (page.content?.draftAst as Record<string, unknown>) || {},
-        publishedAst: (page.content?.publishedAst as Record<string, unknown>) || null,
-        publishedAt: page.content?.publishedAt ? page.content.publishedAt.toISOString() : null,
-      };
-    } catch {
+    if (!page) {
       return null;
     }
+
+    return {
+      id: page.id,
+      organizationId: page.organizationId,
+      siteId: page.siteId,
+      title: page.title,
+      slug: page.slug,
+      status: page.status,
+      revision: page.revision,
+      isHomePage: page.isHomePage,
+      orderIndex: page.orderIndex,
+      draftAst: (page.content?.draftAst as Record<string, unknown>) || {},
+      publishedAst: (page.content?.publishedAst as Record<string, unknown>) || null,
+      publishedAt: page.content?.publishedAt ? page.content.publishedAt.toISOString() : null,
+    };
   }
 
   /**
-   * Deletes a page with strict tenant isolation check
+   * Deletes a page with strict tenant isolation check in PostgreSQL
    */
   public async deletePage(
     organizationId: string,
     pageId: string
   ): Promise<boolean> {
-    const memPage = this.memoryPages.get(pageId);
-    if (memPage) {
-      if (memPage.organizationId !== organizationId) {
-        return false;
-      }
-      this.memoryPages.delete(pageId);
-      try {
-        await this.db.cmsPage.delete({
-          where: {
-            id_organizationId: {
-              id: pageId,
-              organizationId,
-            },
-          },
-        });
-      } catch {
-        // Ignored in offline memory test mode
-      }
-      return true;
-    }
-
     try {
       const page = await this.db.cmsPage.findUnique({
         where: {
@@ -296,7 +222,7 @@ export class PageService {
   }
 
   /**
-   * Updates draft AST with atomic Compare-and-Swap (CAS) Concurrency Control
+   * Updates draft AST with atomic Compare-and-Swap (CAS) Concurrency Control in PostgreSQL
    */
   public async updateDraftContent(params: {
     organizationId: string;
@@ -329,10 +255,7 @@ export class PageService {
       };
     }
 
-    // Advance revision
-    page.revision += 1;
-    page.draftAst = params.draftAst;
-    this.memoryPages.set(page.id, page);
+    const nextRevision = page.revision + 1;
 
     try {
       await this.db.$transaction(async (tx) => {
@@ -343,24 +266,12 @@ export class PageService {
             revision: params.expectedRevision,
           },
           data: {
-            revision: page.revision,
+            revision: nextRevision,
           },
         });
 
         if (updateResult.count === 0) {
-          // Fallback or rollback memory state if another instance advanced the DB revision
-          const currentDb = await tx.cmsPage.findUnique({
-            where: {
-              id_organizationId: {
-                id: params.pageId,
-                organizationId: params.organizationId,
-              },
-            },
-          });
-          if (currentDb && currentDb.revision !== params.expectedRevision) {
-            page.revision = currentDb.revision;
-            this.memoryPages.set(page.id, page);
-          }
+          throw new Error("CMS_CONCURRENCY_CONFLICT");
         }
 
         await tx.cmsPageContent.upsert({
@@ -380,21 +291,29 @@ export class PageService {
           },
         });
       });
-    } catch {
-      // Memory state preserved
-    }
 
-    return {
-      success: true,
-      pageId: page.id,
-      revision: page.revision,
-      draftAst: page.draftAst,
-      publishedAst: page.publishedAst,
-    };
+      return {
+        success: true,
+        pageId: page.id,
+        revision: nextRevision,
+        draftAst: params.draftAst,
+        publishedAst: page.publishedAst,
+      };
+    } catch (err: unknown) {
+      const activePage = await this.getPage(params.organizationId, params.pageId);
+      return {
+        success: false,
+        pageId: page.id,
+        revision: activePage?.revision ?? page.revision,
+        draftAst: activePage?.draftAst ?? page.draftAst,
+        errorCode: "CMS_CONCURRENCY_CONFLICT",
+        message: err instanceof Error ? err.message : "Page revision conflict.",
+      };
+    }
   }
 
   /**
-   * Publishes page by promoting draftAst -> publishedAst and creating version checkpoint
+   * Publishes page by promoting draftAst -> publishedAst and creating version checkpoint in PostgreSQL
    */
   public async publishPage(params: {
     organizationId: string;
@@ -429,41 +348,32 @@ export class PageService {
       };
     }
 
-    page.publishedAst = { ...page.draftAst };
-    page.status = "PUBLISHED";
-    page.publishedAt = new Date().toISOString();
-    page.revision += 1;
-    this.memoryPages.set(page.id, page);
-
-    // Record in-memory version snapshot
-    const versionNumber = (this.memoryVersions.get(page.id)?.length || 0) + 1;
-    const versionRecord: PageVersionRecord = {
-      id: `ver_${Date.now()}_${versionNumber}`,
-      organizationId: params.organizationId,
-      pageId: page.id,
-      versionNumber,
-      label: `Release v${versionNumber}`,
-      astSnapshot: { ...page.draftAst },
-      createdByUserId: params.createdByUserId || null,
-      createdAt: new Date().toISOString(),
-    };
-    const currentVersions = this.memoryVersions.get(page.id) || [];
-    this.memoryVersions.set(page.id, [versionRecord, ...currentVersions]);
+    const nextRevision = page.revision + 1;
+    const existingVersionsCount = await this.db.cmsPageVersion.count({
+      where: {
+        organizationId: params.organizationId,
+        pageId: params.pageId,
+      },
+    });
+    const versionNumber = existingVersionsCount + 1;
 
     try {
       await this.db.$transaction(async (tx) => {
-        await tx.cmsPage.update({
+        const updateResult = await tx.cmsPage.updateMany({
           where: {
-            id_organizationId: {
-              id: params.pageId,
-              organizationId: params.organizationId,
-            },
+            id: params.pageId,
+            organizationId: params.organizationId,
+            revision: params.expectedRevision,
           },
           data: {
-            revision: page.revision,
+            revision: nextRevision,
             status: "PUBLISHED",
           },
         });
+
+        if (updateResult.count === 0) {
+          throw new Error("CMS_CONCURRENCY_CONFLICT");
+        }
 
         await tx.cmsPageContent.update({
           where: {
@@ -483,64 +393,65 @@ export class PageService {
             organizationId: params.organizationId,
             pageId: params.pageId,
             versionNumber,
+            label: `Release v${versionNumber}`,
             astSnapshot: page.draftAst as unknown as Prisma.InputJsonValue,
             createdByUserId: params.createdByUserId || null,
           },
         });
       });
-    } catch {
-      // Memory state preserved
-    }
 
-    return {
-      success: true,
-      pageId: page.id,
-      revision: page.revision,
-      publishedAst: page.publishedAst,
-      versionNumber,
-    };
+      return {
+        success: true,
+        pageId: page.id,
+        revision: nextRevision,
+        publishedAst: page.draftAst,
+        versionNumber,
+      };
+    } catch (err: unknown) {
+      const activePage = await this.getPage(params.organizationId, params.pageId);
+      return {
+        success: false,
+        pageId: page.id,
+        revision: activePage?.revision ?? page.revision,
+        publishedAst: activePage?.publishedAst ?? {},
+        versionNumber: 0,
+        errorCode: "CMS_CONCURRENCY_CONFLICT",
+        message: err instanceof Error ? err.message : "Revision conflict on publish.",
+      };
+    }
   }
 
   /**
-   * Lists immutable version snapshots for a page
+   * Lists immutable version snapshots for a page from PostgreSQL
    */
   public async listPageVersions(
     organizationId: string,
     pageId: string
   ): Promise<PageVersionRecord[]> {
-    const memVersions = this.memoryVersions.get(pageId);
-    if (memVersions && memVersions.length > 0) {
-      return memVersions.filter((v) => v.organizationId === organizationId);
-    }
+    const versions = await this.db.cmsPageVersion.findMany({
+      where: {
+        organizationId,
+        pageId,
+      },
+      orderBy: {
+        versionNumber: "desc",
+      },
+    });
 
-    try {
-      const versions = await this.db.cmsPageVersion.findMany({
-        where: {
-          organizationId,
-          pageId,
-        },
-        orderBy: {
-          versionNumber: "desc",
-        },
-      });
-
-      return versions.map((v) => ({
-        id: v.id,
-        organizationId: v.organizationId,
-        pageId: v.pageId,
-        versionNumber: v.versionNumber,
-        label: v.label,
-        astSnapshot: v.astSnapshot as Record<string, unknown>,
-        createdByUserId: v.createdByUserId,
-        createdAt: v.createdAt.toISOString(),
-      }));
-    } catch {
-      return memVersions || [];
-    }
+    return versions.map((v) => ({
+      id: v.id,
+      organizationId: v.organizationId,
+      pageId: v.pageId,
+      versionNumber: v.versionNumber,
+      label: v.label,
+      astSnapshot: v.astSnapshot as Record<string, unknown>,
+      createdByUserId: v.createdByUserId,
+      createdAt: v.createdAt.toISOString(),
+    }));
   }
 
   /**
-   * Rolls back a page's draft and published state to a prior immutable version snapshot
+   * Rolls back a page's draft and published state to a prior immutable version snapshot in PostgreSQL
    */
   public async rollbackPageVersion(params: {
     organizationId: string;
@@ -596,25 +507,24 @@ export class PageService {
       };
     }
 
-    // Apply restored AST snapshot
-    page.draftAst = { ...targetVersion.astSnapshot };
-    page.publishedAst = { ...targetVersion.astSnapshot };
-    page.revision += 1;
-    this.memoryPages.set(page.id, page);
+    const nextRevision = page.revision + 1;
 
     try {
       await this.db.$transaction(async (tx) => {
-        await tx.cmsPage.update({
+        const updateResult = await tx.cmsPage.updateMany({
           where: {
-            id_organizationId: {
-              id: params.pageId,
-              organizationId: params.organizationId,
-            },
+            id: params.pageId,
+            organizationId: params.organizationId,
+            revision: params.expectedRevision,
           },
           data: {
-            revision: page.revision,
+            revision: nextRevision,
           },
         });
+
+        if (updateResult.count === 0) {
+          throw new Error("CMS_CONCURRENCY_CONFLICT");
+        }
 
         await tx.cmsPageContent.update({
           where: {
@@ -630,16 +540,25 @@ export class PageService {
           },
         });
       });
-    } catch {
-      // Memory state preserved
-    }
 
-    return {
-      success: true,
-      pageId: page.id,
-      revision: page.revision,
-      restoredVersion: targetVersion.versionNumber,
-      draftAst: page.draftAst,
-    };
+      return {
+        success: true,
+        pageId: page.id,
+        revision: nextRevision,
+        restoredVersion: targetVersion.versionNumber,
+        draftAst: targetVersion.astSnapshot,
+      };
+    } catch (err: unknown) {
+      const activePage = await this.getPage(params.organizationId, params.pageId);
+      return {
+        success: false,
+        pageId: page.id,
+        revision: activePage?.revision ?? page.revision,
+        restoredVersion: 0,
+        draftAst: activePage?.draftAst ?? page.draftAst,
+        errorCode: "CMS_CONCURRENCY_CONFLICT",
+        message: err instanceof Error ? err.message : "Revision conflict on rollback.",
+      };
+    }
   }
 }

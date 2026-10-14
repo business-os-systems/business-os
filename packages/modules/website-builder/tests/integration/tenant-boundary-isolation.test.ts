@@ -1,10 +1,73 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, beforeAll, afterAll } from "vitest";
+import { prisma } from "@suite/db";
 import {
   createAdminPagesRouter,
   PageService,
 } from "../../src/index.js";
 
 describe("Multi-Tenant Boundary Isolation Integration Suite (S1-8)", () => {
+  beforeAll(async () => {
+    const orgs = [
+      "org_alpha",
+      "org_beta",
+      "org_gamma",
+      "org_intruder",
+      "org_hostile",
+      "org_1",
+      "org_2",
+      "org_3",
+    ];
+    for (const orgId of orgs) {
+      await prisma.organization.upsert({
+        where: { id: orgId },
+        update: {},
+        create: { id: orgId, name: orgId, slug: orgId },
+      });
+    }
+
+    await prisma.cmsSite.upsert({
+      where: { id_organizationId: { id: "site_alpha_01", organizationId: "org_alpha" } },
+      update: {},
+      create: {
+        id: "site_alpha_01",
+        organizationId: "org_alpha",
+        title: "Alpha Site",
+        slug: "site-alpha-01",
+      },
+    });
+
+    await prisma.cmsSite.upsert({
+      where: { id_organizationId: { id: "site_shared_1", organizationId: "org_1" } },
+      update: {},
+      create: {
+        id: "site_shared_1",
+        organizationId: "org_1",
+        title: "Site Shared 1",
+        slug: "site-shared-slug",
+      },
+    });
+
+    await prisma.cmsSite.upsert({
+      where: { id_organizationId: { id: "site_shared_2", organizationId: "org_2" } },
+      update: {},
+      create: {
+        id: "site_shared_2",
+        organizationId: "org_2",
+        title: "Site Shared 2",
+        slug: "site-shared-slug",
+      },
+    });
+  });
+
+  afterAll(async () => {
+    await prisma.cmsPage.deleteMany({
+      where: {
+        organizationId: {
+          in: ["org_alpha", "org_beta", "org_gamma", "org_intruder", "org_hostile", "org_1", "org_2", "org_3"],
+        },
+      },
+    });
+  });
   it("strictly denies cross-tenant read access between distinct organizations", async () => {
     const service = new PageService();
 
@@ -147,11 +210,11 @@ describe("Multi-Tenant Boundary Isolation Integration Suite (S1-8)", () => {
   it("guarantees listPages isolation across multiple tenants on identical site slugs", async () => {
     const service = new PageService();
 
-    // org_1 creates 2 pages under site "site_shared_name"
+    // org_1 creates 2 pages under site "site_shared_1"
     await service.createPage({
       id: "p1_org1",
       organizationId: "org_1",
-      siteId: "site_shared_name",
+      siteId: "site_shared_1",
       slug: "/home",
       title: "Org 1 Home",
       isHomePage: true,
@@ -160,18 +223,18 @@ describe("Multi-Tenant Boundary Isolation Integration Suite (S1-8)", () => {
     await service.createPage({
       id: "p2_org1",
       organizationId: "org_1",
-      siteId: "site_shared_name",
+      siteId: "site_shared_1",
       slug: "/about",
       title: "Org 1 About",
       isHomePage: false,
       draftAst: {},
     });
 
-    // org_2 creates 1 page under site "site_shared_name"
+    // org_2 creates 1 page under site "site_shared_2" (with identical slug "site-shared-slug")
     await service.createPage({
       id: "p1_org2",
       organizationId: "org_2",
-      siteId: "site_shared_name",
+      siteId: "site_shared_2",
       slug: "/home",
       title: "Org 2 Home",
       isHomePage: true,
@@ -179,17 +242,21 @@ describe("Multi-Tenant Boundary Isolation Integration Suite (S1-8)", () => {
     });
 
     // Query pages for org_1
-    const org1Pages = await service.listPages("org_1", "site_shared_name");
+    const org1Pages = await service.listPages("org_1", "site_shared_1");
     expect(org1Pages).toHaveLength(2);
     expect(org1Pages.map((p) => p.id)).toEqual(["p1_org1", "p2_org1"]);
 
-    // Query pages for org_2
-    const org2Pages = await service.listPages("org_2", "site_shared_name");
+    // Query pages for org_2 on org_1's site (must be empty due to tenant isolation)
+    const org2IntruderPages = await service.listPages("org_2", "site_shared_1");
+    expect(org2IntruderPages).toHaveLength(0);
+
+    // Query pages for org_2 on org_2's own site
+    const org2Pages = await service.listPages("org_2", "site_shared_2");
     expect(org2Pages).toHaveLength(1);
     expect(org2Pages.map((p) => p.id)).toEqual(["p1_org2"]);
 
     // Query pages for non-existent org_3
-    const org3Pages = await service.listPages("org_3", "site_shared_name");
+    const org3Pages = await service.listPages("org_3", "site_shared_1");
     expect(org3Pages).toHaveLength(0);
   });
 });

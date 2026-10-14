@@ -11,12 +11,12 @@ export const BLOCK_BLUEPRINTS: Record<BlockType, BlockBlueprint> = {
       id,
       type: "hero",
       props: {
-        badge: "Welcome",
-        headline: "Transform Your Business with Composable OS",
-        subheadline: "Empowering modern enterprises with modular speed and edge delivery.",
+        badge: "Announcement",
+        headline: "Engaging Headline Goes Here",
+        subheadline: "Provide a concise summary of your service or value proposition.",
         primaryCta: {
-          label: "Get Started Free",
-          target: { url: "/signup" },
+          label: "Call to Action",
+          target: { url: "#" },
         },
       },
       styles: {
@@ -35,13 +35,13 @@ export const BLOCK_BLUEPRINTS: Record<BlockType, BlockBlueprint> = {
       id,
       type: "features",
       props: {
-        headline: "Powerful Core Features",
-        subheadline: "Engineered from the ground up for maximum reliability.",
+        headline: "Key Capabilities",
+        subheadline: "Highlight core benefits and operational strengths.",
         columns: 3,
         features: [
-          { id: `${id}_f1`, title: "Lightning Fast", description: "Edge-cached delivery under 50ms globally." },
-          { id: `${id}_f2`, title: "Multi-Tenant Safe", description: "Row-level database kernel isolation." },
-          { id: `${id}_f3`, title: "Headless Extensible", description: "Full REST & GraphQL headless publishing API." },
+          { id: `${id}_f1`, title: "Feature One", description: "Clear explanation of the first capability." },
+          { id: `${id}_f2`, title: "Feature Two", description: "Clear explanation of the second capability." },
+          { id: `${id}_f3`, title: "Feature Three", description: "Clear explanation of the third capability." },
         ],
       },
       styles: {
@@ -59,35 +59,35 @@ export const BLOCK_BLUEPRINTS: Record<BlockType, BlockBlueprint> = {
       id,
       type: "pricing",
       props: {
-        headline: "Simple, Predictable Pricing",
-        subheadline: "No hidden fees. Scale as your business grows.",
+        headline: "Transparent Plans",
+        subheadline: "Select the option that matches your operational requirements.",
         tiers: [
           {
             id: `${id}_t1`,
-            name: "Starter",
-            priceAmount: 49,
+            name: "Standard",
+            priceAmount: 0,
             currency: "USD",
             interval: "month",
-            cta: { label: "Start Free Trial", target: { url: "/signup?plan=starter" } },
+            cta: { label: "Get Started", target: { url: "#" } },
             features: [
-              { text: "Up to 5 Team Members", included: true },
-              { text: "Unlimited CMS Pages", included: true },
-              { text: "Custom Domain Support", included: false },
+              { text: "Included Feature A", included: true },
+              { text: "Included Feature B", included: true },
+              { text: "Optional Feature C", included: false },
             ],
           },
           {
             id: `${id}_t2`,
-            name: "Enterprise",
-            priceAmount: 199,
+            name: "Premium",
+            priceAmount: 0,
             currency: "USD",
             interval: "month",
             isFeatured: true,
-            badge: "Most Popular",
-            cta: { label: "Upgrade Now", target: { url: "/signup?plan=pro" } },
+            badge: "Recommended",
+            cta: { label: "Contact Us", target: { url: "#" } },
             features: [
-              { text: "Unlimited Team Members", included: true },
-              { text: "Priority Edge Delivery", included: true },
-              { text: "Dedicated 24/7 Support", included: true },
+              { text: "Included Feature A", included: true },
+              { text: "Included Feature B", included: true },
+              { text: "Included Feature C", included: true },
             ],
           },
         ],
@@ -132,17 +132,17 @@ export const BLOCK_BLUEPRINTS: Record<BlockType, BlockBlueprint> = {
       id,
       type: "faq",
       props: {
-        headline: "Frequently Asked Questions",
+        headline: "Common Questions",
         items: [
           {
             id: `${id}_q1`,
-            question: "How does the composable architecture work?",
-            answer: "Each business application operates independently while sharing the core database kernel and authentication layer.",
+            question: "Question one headline",
+            answer: "Comprehensive answer addressing customer inquiry.",
           },
           {
             id: `${id}_q2`,
-            question: "Can I connect custom domains?",
-            answer: "Yes, custom domains can be attached with automatic SSL certification at edge CDN edges.",
+            question: "Question two headline",
+            answer: "Comprehensive answer addressing customer inquiry.",
           },
         ],
       },
@@ -161,7 +161,7 @@ export const BLOCK_BLUEPRINTS: Record<BlockType, BlockBlueprint> = {
       id,
       type: "rich-text",
       props: {
-        contentHtml: "<h2>Editorial Insights</h2><p>Deliver rich editorial storytelling with seamless CMS integrations.</p>",
+        contentHtml: "<h2>Article Heading</h2><p>Enter descriptive editorial content and paragraphs here.</p>",
       },
       styles: {
         paddingTop: 32,
@@ -178,15 +178,14 @@ export const BLOCK_BLUEPRINTS: Record<BlockType, BlockBlueprint> = {
       id,
       type: "navbar",
       props: {
-        logoText: "Business OS",
+        logoText: "Brand",
         items: [
-          { id: `${id}_n1`, label: "Products", target: { url: "/products" } },
-          { id: `${id}_n2`, label: "Pricing", target: { url: "/pricing" } },
-          { id: `${id}_n3`, label: "Docs", target: { url: "/docs" } },
+          { id: `${id}_n1`, label: "Home", target: { url: "/" } },
+          { id: `${id}_n2`, label: "About", target: { url: "/about" } },
         ],
         ctaButton: {
-          label: "Dashboard",
-          target: { url: "/dashboard" },
+          label: "Contact",
+          target: { url: "/contact" },
         },
       },
       styles: {
@@ -204,23 +203,15 @@ export const BLOCK_BLUEPRINTS: Record<BlockType, BlockBlueprint> = {
       id,
       type: "footer",
       props: {
-        logoText: "Business OS",
-        copyrightText: `© ${new Date().getFullYear()} Business OS. All rights reserved.`,
+        logoText: "Brand",
+        copyrightText: "© All rights reserved.",
         columns: [
           {
             id: `${id}_c1`,
-            title: "Product",
+            title: "Navigation",
             links: [
-              { id: `${id}_l1`, label: "Features", target: { url: "/features" } },
-              { id: `${id}_l2`, label: "Roadmap", target: { url: "/roadmap" } },
-            ],
-          },
-          {
-            id: `${id}_c2`,
-            title: "Legal",
-            links: [
-              { id: `${id}_l3`, label: "Privacy Policy", target: { url: "/privacy" } },
-              { id: `${id}_l4`, label: "Terms of Service", target: { url: "/terms" } },
+              { id: `${id}_l1`, label: "Home", target: { url: "/" } },
+              { id: `${id}_l2`, label: "Contact", target: { url: "/contact" } },
             ],
           },
         ],

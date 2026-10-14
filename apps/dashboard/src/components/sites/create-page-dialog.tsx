@@ -91,7 +91,7 @@ export function CreatePageDialog({ isOpen, onClose, onSubmit }: CreatePageDialog
                   );
                 }
               }}
-              placeholder="e.g. Summer Tasting Menu"
+              placeholder="e.g. About Us"
               className="w-full"
             />
             {errors["name"] && (
@@ -111,7 +111,7 @@ export function CreatePageDialog({ isOpen, onClose, onSubmit }: CreatePageDialog
                 disabled={isHome}
                 value={isHome ? "index (Root)" : slug}
                 onChange={(e) => setSlug(e.target.value.toLowerCase())}
-                placeholder="summer-menu"
+                placeholder="about-us"
                 className="w-full px-3 py-2 text-sm text-slate-900 outline-none disabled:bg-slate-50 disabled:text-slate-400 font-mono text-xs"
               />
             </div>

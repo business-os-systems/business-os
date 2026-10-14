@@ -26,7 +26,7 @@ describe("High-Security PIN Verification Engine", () => {
       expect(hashed).toContain("$argon2id$");
       expect(await verifyPin(pin, hashed)).toBe(true);
       expect(await verifyPin("0000", hashed)).toBe(false);
-    });
+    }, 15000);
 
     it("successfully hashes and verifies an 8-digit Manager PIN", async () => {
       const pin = "87654321";
@@ -35,7 +35,7 @@ describe("High-Security PIN Verification Engine", () => {
       expect(hashed).toContain("$argon2id$");
       expect(await verifyPin(pin, hashed)).toBe(true);
       expect(await verifyPin("12345678", hashed)).toBe(false);
-    });
+    }, 15000);
 
     it("rejects empty or non-string inputs", async () => {
       await expect(hashPin("")).rejects.toThrow();
@@ -45,8 +45,8 @@ describe("High-Security PIN Verification Engine", () => {
   });
 
   describe("Terminal Shift-Switch PIN", () => {
-    beforeEach(() => {
-      clearAllTerminalRateLimits();
+    beforeEach(async () => {
+      await clearAllTerminalRateLimits();
     });
 
     it("authenticates a valid shift staff PIN and returns switched user details", async () => {

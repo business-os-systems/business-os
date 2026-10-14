@@ -11,8 +11,8 @@ import {
 import { globalErrorHandler } from "../src/middleware/error-handler.js";
 
 describe("Middleware Suite", () => {
-  beforeEach(() => {
-    clearMemoryRateLimitStore();
+  beforeEach(async () => {
+    await clearMemoryRateLimitStore();
   });
 
   describe("Request ID Middleware", () => {

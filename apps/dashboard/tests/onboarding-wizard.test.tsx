@@ -14,16 +14,17 @@ describe("Step-by-Step Site Onboarding Wizard (S4-3)", () => {
     const html = renderToString(<SiteOnboardingWizard />);
 
     expect(html).toContain("Website Onboarding Wizard");
-    expect(html).toContain("Step 1 of 4");
+    expect(html).toContain("Step 1 of 3");
     expect(html).toContain("Name Your Website &amp; Subdomain");
     expect(html).toContain(".business-os.site");
-    expect(html).toContain("Next: Business Goal");
+    expect(html).toContain("Next: Starter Template");
   });
 
-  it("renders business goal options in component configuration", () => {
+  it("renders website title and subdomain configuration", () => {
     const html = renderToString(<SiteOnboardingWizard />);
 
     expect(html).toContain("Website or Brand Name");
     expect(html).toContain("Staging Subdomain");
+    expect(html).toContain("acme-corp");
   });
 });

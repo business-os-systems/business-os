@@ -11,9 +11,10 @@ describe("Integration: Manager Override PIN & Anti-Theft Mechanics", () => {
   const TEST_ORG_ID = "org_override_test_01";
   const MANAGER_USER_ID = "user_mgr_test_01";
   const MANAGER_RAW_PIN = "849201";
-  const SECRET_KEY =
-    process.env.BETTER_AUTH_SECRET ||
-    "suite-default-manager-override-secret-key-32-chars";
+  if (!process.env.BETTER_AUTH_SECRET) {
+    process.env.BETTER_AUTH_SECRET = "suite-test-manager-override-secret-key-32ch";
+  }
+  const SECRET_KEY = process.env.BETTER_AUTH_SECRET;
 
   beforeEach(async () => {
     // Clean up

@@ -15,6 +15,12 @@ import {
   SiteListTable,
   PageExplorerTable,
 } from "../src/components/sites";
+import {
+  GlobeIcon,
+  ShoppingCartIcon,
+  BuildingIcon,
+  PackageIcon,
+} from "@suite/ui/icons";
 
 vi.mock("next/navigation", () => ({
   useParams: () => ({
@@ -39,14 +45,54 @@ describe("Automated E2E Integration Suite: Complete Authoring Lifecycle (@suite/
       expect(html).toContain("Business OS");
       expect(html).toContain("Sign In to Workspace");
       expect(html).toContain("operator@company.com");
-      expect(html).toContain("Auto-fill demo credentials");
       expect(html).toContain("TLS Encrypted");
     });
   });
 
   describe("Lifecycle Step 1: Executive Launcher & Tenant Overview", () => {
     it("renders executive app launcher with all installed business applications", () => {
-      const html = renderToString(<OverviewPage />);
+      const html = renderToString(
+        <OverviewPage
+          initialApps={[
+            {
+              title: "Website Builder & Headless CMS",
+              code: "App 01",
+              desc: "Visual canvas studio and storefront delivery.",
+              href: "/sites",
+              icon: GlobeIcon,
+              status: "Available",
+              isAvailable: true,
+            },
+            {
+              title: "Lodging Property Management (PMS)",
+              code: "App 03",
+              desc: "Multi-property reservation calendar.",
+              href: "/pms",
+              icon: BuildingIcon,
+              status: "Coming Soon",
+              isAvailable: false,
+            },
+            {
+              title: "Restaurant POS & KDS",
+              code: "App 04",
+              desc: "Touch ordering and shift reconciliation.",
+              href: "/pos",
+              icon: ShoppingCartIcon,
+              status: "Coming Soon",
+              isAvailable: false,
+            },
+            {
+              title: "Central Inventory & Stock Requisitions",
+              code: "App 05",
+              desc: "Multi-warehouse stock balances.",
+              href: "/inventory",
+              icon: PackageIcon,
+              status: "Coming Soon",
+              isAvailable: false,
+            },
+          ]}
+        />
+      );
 
       expect(html).toContain("Executive App Launcher");
       expect(html).toContain("Website Builder &amp; Headless CMS");
@@ -58,14 +104,14 @@ describe("Automated E2E Integration Suite: Complete Authoring Lifecycle (@suite/
   });
 
   describe("Lifecycle Step 2: Step-by-Step Site Onboarding Wizard", () => {
-    it("renders step 1 of 4 onboarding wizard with name and subdomain inputs", () => {
+    it("renders step 1 of 3 onboarding wizard with name and subdomain inputs", () => {
       const html = renderToString(<SiteOnboardingWizard />);
 
       expect(html).toContain("Website Onboarding Wizard");
-      expect(html).toContain("Step 1 of 4");
+      expect(html).toContain("Step 1 of 3");
       expect(html).toContain("Name Your Website &amp; Subdomain");
       expect(html).toContain(".business-os.site");
-      expect(html).toContain("Next: Business Goal");
+      expect(html).toContain("Next: Starter Template");
     });
   });
 
@@ -202,24 +248,18 @@ describe("Automated E2E Integration Suite: Complete Authoring Lifecycle (@suite/
       // Cockpit Header
       expect(html).toContain("Exit Studio");
       expect(html).toContain("site_riverview_main");
-      expect(html).toContain("CAS Revision: v4");
+      expect(html).toContain("CAS Revision: v1");
       expect(html).toContain("Ready");
 
       // Left Layers Drawer
       expect(html).toContain("Page Layers");
-      expect(html).toContain("Hero Showcase");
-      expect(html).toContain("Core Highlights");
-      expect(html).toContain("Tasting Menus");
+      expect(html).toContain("No sections on page");
 
       // Center Visual Canvas
       expect(html).toContain("data-canvas-workspace=\"true\"");
-      expect(html).toContain("Artisanal Dining by the Waterfront");
-      expect(html).toContain("The Culinary Experience");
-      expect(html).toContain("Chef&#x27;s Tasting Menus");
 
       // Right Property Inspector
-      expect(html).toContain("Block inspector for hero");
-      expect(html).toContain("b_hero_1");
+      expect(html).toContain("No Block Selected");
     });
   });
 
@@ -236,7 +276,7 @@ describe("Automated E2E Integration Suite: Complete Authoring Lifecycle (@suite/
       });
       global.fetch = mockFetch;
 
-      const client = new CmsApiClient({ baseUrl: "http://gateway.test", enableOfflineFallback: false });
+      const client = new CmsApiClient({ baseUrl: "http://gateway.test" });
       const result = await client.updateDraftContent({
         organizationId: "org_riverside",
         pageId: "page_home_01",
@@ -271,7 +311,7 @@ describe("Automated E2E Integration Suite: Complete Authoring Lifecycle (@suite/
       });
       global.fetch = mockFetch;
 
-      const client = new CmsApiClient({ baseUrl: "http://gateway.test", enableOfflineFallback: false });
+      const client = new CmsApiClient({ baseUrl: "http://gateway.test" });
       const result = await client.updateDraftContent({
         organizationId: "org_riverside",
         pageId: "page_home_01",
@@ -301,11 +341,8 @@ describe("Automated E2E Integration Suite: Complete Authoring Lifecycle (@suite/
       expect(html).toContain("Mobile");
       expect(html).toContain("Fluid");
 
-      // Sandbox AST Rendering Parity
-      expect(html).toContain("data-cms-page=\"true\"");
-      expect(html).toContain("Artisanal Dining by the Waterfront");
-      expect(html).toContain("The Culinary Experience");
-      expect(html).toContain("Chef&#x27;s Tasting Menus");
+      // Empty State Preview
+      expect(html).toContain("No page content to preview");
 
       // Cleanliness Check: Zero editor artifacts in guest preview
       expect(html).not.toContain("Page Layers");
@@ -326,7 +363,7 @@ describe("Automated E2E Integration Suite: Complete Authoring Lifecycle (@suite/
       });
       global.fetch = mockFetch;
 
-      const client = new CmsApiClient({ baseUrl: "http://gateway.test", enableOfflineFallback: false });
+      const client = new CmsApiClient({ baseUrl: "http://gateway.test" });
       const result = await client.publishPage({
         organizationId: "org_riverside",
         pageId: "page_home_01",
@@ -376,7 +413,7 @@ describe("Automated E2E Integration Suite: Complete Authoring Lifecycle (@suite/
       });
       global.fetch = mockFetch;
 
-      const client = new CmsApiClient({ baseUrl: "http://gateway.test", enableOfflineFallback: false });
+      const client = new CmsApiClient({ baseUrl: "http://gateway.test" });
       const result = await client.listPageVersions("org_riverside", "page_home_01");
 
       expect(result.success).toBe(true);

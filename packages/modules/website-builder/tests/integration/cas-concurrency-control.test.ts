@@ -1,15 +1,61 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, beforeAll, beforeEach, afterAll } from "vitest";
+import { prisma } from "@suite/db";
 import {
   createAdminPagesRouter,
   PageService,
 } from "../../src/index.js";
 
 describe("Authoring Studio CAS Concurrency Control Integration Suite (S1-8)", () => {
+  const pageService = new PageService();
+
+  beforeAll(async () => {
+    await prisma.organization.upsert({
+      where: { id: "org_cas_concurrency" },
+      update: {},
+      create: { id: "org_cas_concurrency", name: "CAS Concurrency Org", slug: "cas-concurrency-org" },
+    });
+    await prisma.cmsSite.upsert({
+      where: { id_organizationId: { id: "site_cas_concurrency", organizationId: "org_cas_concurrency" } },
+      update: {},
+      create: {
+        id: "site_cas_concurrency",
+        organizationId: "org_cas_concurrency",
+        title: "Alpha Site",
+        slug: "site-alpha-01",
+      },
+    });
+  });
+
+  beforeEach(async () => {
+    await prisma.cmsPageVersion.deleteMany({
+      where: { organizationId: "org_cas_concurrency", pageId: "page_cas_concurrency_1" },
+    });
+    await prisma.cmsPageContent.deleteMany({
+      where: { organizationId: "org_cas_concurrency", pageId: "page_cas_concurrency_1" },
+    });
+    await prisma.cmsPage.deleteMany({
+      where: { organizationId: "org_cas_concurrency", id: "page_cas_concurrency_1" },
+    });
+    await pageService.createPage({
+      id: "page_cas_concurrency_1",
+      organizationId: "org_cas_concurrency",
+      siteId: "site_cas_concurrency",
+      slug: "/about-us",
+      title: "About Us",
+      draftAst: { sections: [{ id: "sec_1", type: "hero" }] },
+    });
+  });
+
+  afterAll(async () => {
+    await prisma.cmsPage.deleteMany({
+      where: { organizationId: "org_cas_concurrency", id: "page_cas_concurrency_1" },
+    });
+  });
   it("orchestrates multi-editor optimistic locking race condition and prevents lost updates", async () => {
     const pageService = new PageService();
     const router = createAdminPagesRouter(pageService);
 
-    // Initial state: page_demo_1 has revision: 1
+    // Initial state: page_cas_concurrency_1 has revision: 1
     // Editor Alice reads page at revision 1
     const aliceExpectedRevision = 1;
 
@@ -17,11 +63,11 @@ describe("Authoring Studio CAS Concurrency Control Integration Suite (S1-8)", ()
     const bobExpectedRevision = 1;
 
     // 1. Editor Alice performs autosave draft update first
-    const aliceRes = await router.request("/pages/page_demo_1/content", {
+    const aliceRes = await router.request("/pages/page_cas_concurrency_1/content", {
       method: "PATCH",
       headers: {
         "content-type": "application/json",
-        "x-tenant-id": "org_alpha",
+        "x-tenant-id": "org_cas_concurrency",
       },
       body: JSON.stringify({
         expectedRevision: aliceExpectedRevision,
@@ -39,11 +85,11 @@ describe("Authoring Studio CAS Concurrency Control Integration Suite (S1-8)", ()
     expect(aliceData.revision).toBe(2); // Revision bumped to 2
 
     // 2. Editor Bob attempts to save his changes without having refreshed, expecting revision 1
-    const bobConflictRes = await router.request("/pages/page_demo_1/content", {
+    const bobConflictRes = await router.request("/pages/page_cas_concurrency_1/content", {
       method: "PATCH",
       headers: {
         "content-type": "application/json",
-        "x-tenant-id": "org_alpha",
+        "x-tenant-id": "org_cas_concurrency",
       },
       body: JSON.stringify({
         expectedRevision: bobExpectedRevision, // Stale revision 1!
@@ -70,11 +116,11 @@ describe("Authoring Studio CAS Concurrency Control Integration Suite (S1-8)", ()
     expect(bobConflictData.activeRevision).toBe(2);
 
     // 3. Bob's client receives 409, merges Alice's changes, updates expectedRevision to 2, and retries
-    const bobResolvedRes = await router.request("/pages/page_demo_1/content", {
+    const bobResolvedRes = await router.request("/pages/page_cas_concurrency_1/content", {
       method: "PATCH",
       headers: {
         "content-type": "application/json",
-        "x-tenant-id": "org_alpha",
+        "x-tenant-id": "org_cas_concurrency",
       },
       body: JSON.stringify({
         expectedRevision: 2, // Updated to latest revision
@@ -98,11 +144,11 @@ describe("Authoring Studio CAS Concurrency Control Integration Suite (S1-8)", ()
     const router = createAdminPagesRouter(pageService);
 
     // 1. Client tries to publish page expecting revision 99 (mismatched)
-    const stalePublishRes = await router.request("/pages/page_demo_1/publish", {
+    const stalePublishRes = await router.request("/pages/page_cas_concurrency_1/publish", {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "x-tenant-id": "org_alpha",
+        "x-tenant-id": "org_cas_concurrency",
       },
       body: JSON.stringify({
         expectedRevision: 99,
@@ -114,11 +160,11 @@ describe("Authoring Studio CAS Concurrency Control Integration Suite (S1-8)", ()
     expect(conflictBody.activeRevision).toBe(1);
 
     // 2. Client publishes with accurate active revision 1
-    const publishRes = await router.request("/pages/page_demo_1/publish", {
+    const publishRes = await router.request("/pages/page_cas_concurrency_1/publish", {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "x-tenant-id": "org_alpha",
+        "x-tenant-id": "org_cas_concurrency",
       },
       body: JSON.stringify({
         expectedRevision: 1,
@@ -136,11 +182,11 @@ describe("Authoring Studio CAS Concurrency Control Integration Suite (S1-8)", ()
     expect(publishData.versionNumber).toBe(1);
 
     // 3. Repeating publish with previous revision 1 fails now that revision is 2
-    const secondPublishRes = await router.request("/pages/page_demo_1/publish", {
+    const secondPublishRes = await router.request("/pages/page_cas_concurrency_1/publish", {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "x-tenant-id": "org_alpha",
+        "x-tenant-id": "org_cas_concurrency",
       },
       body: JSON.stringify({
         expectedRevision: 1,
