@@ -1,5 +1,13 @@
 import React from "react";
-import { Button, Badge, Card, CardHeader, CardTitle, CardContent, CardFooter } from "@suite/ui";
+import {
+  Button,
+  Badge,
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  CardFooter,
+} from "@suite/ui";
 import { CheckIcon } from "@suite/ui/icons";
 import type { PricingBlockProps, BlockStyleTokens } from "../../ast/types.js";
 
@@ -10,8 +18,12 @@ export interface PricingBlockComponentProps {
 
 export function PricingBlock({ props, styles }: PricingBlockComponentProps) {
   const paddingStyle: React.CSSProperties = {
-    paddingTop: styles?.paddingTop !== undefined ? `${styles.paddingTop}px` : "64px",
-    paddingBottom: styles?.paddingBottom !== undefined ? `${styles.paddingBottom}px` : "64px",
+    paddingTop:
+      styles?.paddingTop !== undefined ? `${styles.paddingTop}px` : "64px",
+    paddingBottom:
+      styles?.paddingBottom !== undefined
+        ? `${styles.paddingBottom}px`
+        : "64px",
     backgroundColor: styles?.backgroundColor,
     color: styles?.textColor,
   };
@@ -26,12 +38,14 @@ export function PricingBlock({ props, styles }: PricingBlockComponentProps) {
         {props.headline || props.subheadline ? (
           <div className="text-center max-w-3xl mx-auto mb-12">
             {props.headline ? (
-              <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+              <h2 className="text-3xl font-bold font-heading tracking-tight text-on-surface sm:text-4xl">
                 {props.headline}
               </h2>
             ) : null}
             {props.subheadline ? (
-              <p className="mt-4 text-lg text-slate-600">{props.subheadline}</p>
+              <p className="mt-4 text-lg text-on-surface-variant">
+                {props.subheadline}
+              </p>
             ) : null}
           </div>
         ) : null}
@@ -42,8 +56,8 @@ export function PricingBlock({ props, styles }: PricingBlockComponentProps) {
               key={tier.id}
               className={`flex flex-col justify-between ${
                 tier.isFeatured
-                  ? "border-2 border-slate-900 shadow-xl relative"
-                  : "border border-slate-200"
+                  ? "border-2 border-primary shadow-xl relative"
+                  : "border border-hairline"
               }`}
             >
               <CardHeader>
@@ -55,15 +69,19 @@ export function PricingBlock({ props, styles }: PricingBlockComponentProps) {
                     {tier.badge}
                   </Badge>
                 ) : null}
-                <CardTitle className="text-2xl">{tier.name}</CardTitle>
+                <CardTitle className="text-2xl font-heading">
+                  {tier.name}
+                </CardTitle>
                 {tier.description ? (
-                  <p className="text-sm text-slate-500 mt-1">{tier.description}</p>
+                  <p className="text-sm text-on-surface-variant mt-1">
+                    {tier.description}
+                  </p>
                 ) : null}
                 <div className="mt-4 flex items-baseline">
-                  <span className="text-4xl font-extrabold text-slate-900">
+                  <span className="text-4xl font-extrabold text-on-surface">
                     {`${tier.currency} ${tier.priceAmount}`}
                   </span>
-                  <span className="ml-1 text-sm text-slate-500">
+                  <span className="ml-1 text-sm text-on-surface-variant">
                     {`/${tier.interval}`}
                   </span>
                 </div>
@@ -72,17 +90,24 @@ export function PricingBlock({ props, styles }: PricingBlockComponentProps) {
               <CardContent className="flex-1">
                 <ul className="space-y-3 mt-4">
                   {tier.features.map((feat, idx) => (
-                    <li key={idx} className="flex items-center text-sm text-slate-700">
+                    <li
+                      key={idx}
+                      className="flex items-center text-sm text-on-surface"
+                    >
                       <span
                         className={`mr-3 inline-flex h-5 w-5 items-center justify-center rounded-full ${
                           feat.included
-                            ? "bg-emerald-100 text-emerald-600"
-                            : "bg-slate-100 text-slate-400 opacity-50"
+                            ? "bg-secondary-container text-on-secondary-container"
+                            : "bg-surface-container text-outline opacity-50"
                         }`}
                       >
                         <CheckIcon size={14} />
                       </span>
-                      <span className={feat.included ? "" : "line-through text-slate-400"}>
+                      <span
+                        className={
+                          feat.included ? "" : "line-through text-outline"
+                        }
+                      >
                         {feat.text}
                       </span>
                     </li>

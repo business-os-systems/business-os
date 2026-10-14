@@ -6,7 +6,10 @@ export default function EditorLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="h-screen w-screen overflow-hidden flex flex-col bg-slate-900">
+    <div
+      data-app="website-builder"
+      className="h-screen w-screen overflow-hidden flex flex-col bg-inverse-surface"
+    >
       {children}
     </div>
   );

@@ -4,17 +4,29 @@ import React, { useState, useEffect } from "react";
 import { SidebarNav } from "./sidebar-nav";
 import { HeaderTopbar } from "./header-topbar";
 import type { TenantContext, NavigationItem } from "./types";
+import { BASE_NAV_ITEMS } from "./types";
 
 interface DashboardShellProps {
   tenant?: TenantContext;
+  initialNavItems?: NavigationItem[];
   children: React.ReactNode;
 }
 
-export function DashboardShell({ tenant, children }: DashboardShellProps) {
+export function DashboardShell({
+  tenant,
+  initialNavItems,
+  children,
+}: DashboardShellProps) {
   const [collapsed, setCollapsed] = useState(false);
-  const [navItems, setNavItems] = useState<NavigationItem[] | undefined>(
-    undefined,
+  const [navItems, setNavItems] = useState<NavigationItem[]>(
+    initialNavItems && initialNavItems.length > 0 ? initialNavItems : BASE_NAV_ITEMS,
   );
+
+  useEffect(() => {
+    if (initialNavItems && initialNavItems.length > 0) {
+      setNavItems(initialNavItems);
+    }
+  }, [initialNavItems]);
 
   useEffect(() => {
     async function fetchApps() {
@@ -25,41 +37,41 @@ export function DashboardShell({ tenant, children }: DashboardShellProps) {
         );
         if (res.ok) {
           const data = await res.json();
-          const items: NavigationItem[] = [
-            {
-              id: "home",
-              name: "Overview",
-              href: "/",
-              icon: "home",
-              description: "Executive Business Summary",
-            },
-          ];
-
           const rawApps = Array.isArray(data.apps)
             ? data.apps
             : data.installedApps || [];
-          for (const app of rawApps) {
-            items.push({
+
+          const items: NavigationItem[] = [
+            ...BASE_NAV_ITEMS,
+            ...rawApps.map((app: {
+              appId: string;
+              name?: string;
+              title?: string;
+              href?: string;
+              iconName?: string;
+              code?: string;
+              description?: string;
+            }) => ({
               id: app.appId,
-              name: app.name,
-              href: app.href,
-              icon: app.iconName,
+              name: app.name || app.title || app.appId,
+              href: app.href || `/${app.appId}`,
+              icon: app.iconName || app.appId,
               badge: app.code,
-              description: app.description,
-            });
-          }
+              description: app.description || "",
+            })),
+          ];
 
           setNavItems(items);
         }
       } catch {
-        // Handled silently
+        // Retain existing navItems gracefully
       }
     }
     fetchApps();
   }, [tenant?.organizationId]);
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-slate-50">
+    <div className="flex h-screen w-full overflow-hidden bg-background text-text">
       <SidebarNav collapsed={collapsed} items={navItems} />
       <div className="flex flex-1 flex-col overflow-hidden">
         <HeaderTopbar

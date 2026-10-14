@@ -105,7 +105,7 @@ describe("Visual Canvas & Viewport Simulation Shell", () => {
 
     expect(selectedHtml).toContain("data-canvas-block-id=\"b_hero_test\"");
     expect(selectedHtml).toContain("data-selected=\"true\"");
-    expect(selectedHtml).toContain("ring-2 ring-blue-600");
+    expect(selectedHtml).toContain("ring-2 ring-primary");
     expect(selectedHtml).toContain("hero");
 
     const unselectedHtml = renderToString(

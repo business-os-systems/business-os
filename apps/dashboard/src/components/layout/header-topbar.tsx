@@ -3,6 +3,7 @@
 import React from "react";
 import { Badge, Button } from "@suite/ui";
 import { MenuIcon, BuildingIcon, LogOutIcon } from "@suite/ui/icons";
+import { ThemeToggle } from "./theme-toggle";
 import type { TenantContext } from "./types";
 
 interface HeaderTopbarProps {
@@ -36,14 +37,14 @@ export function HeaderTopbar({
     : "");
 
   return (
-    <header className="flex h-16 w-full items-center justify-between border-b border-slate-200 bg-white px-6">
+    <header className="flex h-16 w-full items-center justify-between border-b border-border-hairline bg-surface-container-lowest px-6">
       <div className="flex items-center gap-4">
         {onToggleSidebar && (
           <Button
             variant="ghost"
             size="icon"
             onClick={onToggleSidebar}
-            className="text-slate-500 hover:text-slate-900"
+            className="text-on-surface-variant hover:text-on-surface"
             aria-label="Toggle Navigation"
           >
             <MenuIcon className="h-5 w-5" />
@@ -51,7 +52,7 @@ export function HeaderTopbar({
         )}
         <div className="flex items-center gap-2">
           {tenant?.organizationName && (
-            <span className="text-sm font-semibold text-slate-900">
+            <span className="text-sm font-semibold text-on-surface">
               {tenant.organizationName}
             </span>
           )}
@@ -63,27 +64,27 @@ export function HeaderTopbar({
 
       <div className="flex items-center gap-4">
         {tenant?.activeBranchName && (
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 border border-slate-200 text-xs font-medium text-slate-700">
-            <BuildingIcon className="h-4 w-4 text-slate-500" />
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-tertiary-container/20 border border-tertiary/20 text-xs font-semibold text-tertiary">
+            <BuildingIcon className="h-4 w-4 text-tertiary" />
             <span>{tenant.activeBranchName}</span>
           </div>
         )}
 
         {(tenant?.userName || userInitials) && (
-          <div className="flex items-center gap-3 pl-2 border-l border-slate-200">
+          <div className="flex items-center gap-3 pl-2 border-l border-border-hairline">
             {userInitials && (
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 text-xs font-semibold text-white">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-container text-xs font-semibold text-white">
                 {userInitials}
               </div>
             )}
             <div className="hidden md:flex flex-col text-left">
               {tenant?.userName && (
-                <span className="text-xs font-semibold text-slate-900">
+                <span className="text-xs font-semibold text-on-surface">
                   {tenant.userName}
                 </span>
               )}
               {tenant?.userRole && (
-                <span className="text-[10px] text-slate-500 font-medium">
+                <span className="text-[10px] text-on-surface-variant font-medium">
                   {tenant.userRole}
                 </span>
               )}
@@ -91,11 +92,13 @@ export function HeaderTopbar({
           </div>
         )}
 
+        <ThemeToggle />
+
         <Button
           variant="ghost"
           size="sm"
           onClick={handleSignOut}
-          className="text-slate-500 hover:text-red-600 hover:bg-red-50 text-xs gap-1.5 px-2"
+          className="text-text-muted hover:text-danger hover:bg-danger/10 text-xs gap-1.5 px-2"
           title="Sign out of workspace"
         >
           <LogOutIcon className="h-4 w-4" />

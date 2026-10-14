@@ -85,7 +85,7 @@ export function DesignTokenEditor({
             step={4}
             value={styles.paddingTop ?? 0}
             onChange={(e) => updateStyle("paddingTop", Number(e.target.value))}
-            className="w-full accent-blue-600"
+            className="w-full accent-primary"
           />
         </div>
 
@@ -101,7 +101,7 @@ export function DesignTokenEditor({
             step={4}
             value={styles.paddingBottom ?? 0}
             onChange={(e) => updateStyle("paddingBottom", Number(e.target.value))}
-            className="w-full accent-blue-600"
+            className="w-full accent-primary"
           />
         </div>
       </div>

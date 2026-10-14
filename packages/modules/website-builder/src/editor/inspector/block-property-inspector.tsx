@@ -80,7 +80,7 @@ export function BlockPropertyInspector({
           onClick={() => setActiveTab("content")}
           className={`flex-1 py-2 text-xs font-semibold text-center border-b-2 transition-colors ${
             activeTab === "content"
-              ? "border-blue-600 text-blue-600 bg-blue-50/50"
+              ? "border-primary text-primary bg-surface-brand-tint"
               : "border-transparent text-slate-600 hover:text-slate-900"
           }`}
         >
@@ -93,7 +93,7 @@ export function BlockPropertyInspector({
           onClick={() => setActiveTab("style")}
           className={`flex-1 py-2 text-xs font-semibold text-center border-b-2 transition-colors ${
             activeTab === "style"
-              ? "border-blue-600 text-blue-600 bg-blue-50/50"
+              ? "border-primary text-primary bg-surface-brand-tint"
               : "border-transparent text-slate-600 hover:text-slate-900"
           }`}
         >

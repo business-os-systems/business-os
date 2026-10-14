@@ -80,7 +80,7 @@ export default function SitesPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-64 items-center justify-center text-xs font-medium text-slate-400">
+      <div className="flex h-64 items-center justify-center text-xs font-medium text-text-muted">
         Loading websites...
       </div>
     );

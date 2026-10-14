@@ -323,7 +323,7 @@ export function StudioWorkspace({
   );
 
   return (
-    <div className="h-screen w-screen overflow-hidden flex flex-col bg-slate-900">
+    <div className="h-screen w-screen overflow-hidden flex flex-col bg-background">
       {/* Studio Header Bar with Live CAS & Autosave Indicators */}
       <StudioHeader
         siteId={siteId}
@@ -371,7 +371,7 @@ export function StudioWorkspace({
         )}
 
         {/* Center: Live Scaled Visual Canvas */}
-        <div className="flex-1 h-full min-w-0 overflow-hidden relative bg-slate-100">
+        <div className="flex-1 h-full min-w-0 overflow-hidden relative bg-surface-sunken">
           <VisualCanvas
             ast={currentAst}
             selection={selection}

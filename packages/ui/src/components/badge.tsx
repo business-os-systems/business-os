@@ -2,7 +2,14 @@ import React from "react";
 import { cn } from "../lib/utils.js";
 
 export interface BadgeProps extends React.HTMLAttributes<HTMLDivElement> {
-  variant?: "default" | "secondary" | "destructive" | "outline" | "success";
+  variant?:
+    | "default"
+    | "primary"
+    | "secondary"
+    | "tertiary"
+    | "destructive"
+    | "outline"
+    | "success";
 }
 
 export function Badge({
@@ -11,22 +18,25 @@ export function Badge({
   ...props
 }: BadgeProps) {
   const variantStyles = {
-    default: "border-transparent bg-slate-900 text-white hover:bg-slate-800",
+    default: "border-transparent bg-brand text-on-brand hover:bg-brand-hover",
+    primary: "border-transparent bg-brand text-on-brand hover:bg-brand-hover",
     secondary:
-      "border-transparent bg-slate-100 text-slate-900 hover:bg-slate-200",
+      "border-transparent bg-brand-tint text-brand hover:bg-brand hover:text-on-brand",
+    tertiary:
+      "border-transparent bg-surface-muted text-text-secondary hover:bg-surface-sunken",
     destructive:
-      "border-transparent bg-red-600 text-white hover:bg-red-700",
-    outline: "text-slate-950 border border-slate-200",
+      "border-transparent bg-danger text-text-inverse hover:opacity-90",
+    outline: "text-text border border-border-strong",
     success:
-      "border-transparent bg-emerald-600 text-white hover:bg-emerald-700",
+      "border-transparent bg-action text-on-action hover:bg-action-hover",
   };
 
   return (
     <div
       className={cn(
-        "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-slate-950 focus:ring-offset-2",
+        "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-focus-ring focus:ring-offset-2",
         variantStyles[variant],
-        className
+        className,
       )}
       {...props}
     />

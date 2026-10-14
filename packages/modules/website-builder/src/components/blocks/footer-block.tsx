@@ -22,22 +22,27 @@ export function FooterBlock({ props, styles }: FooterBlockComponentProps) {
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             {props.logoUrl ? (
-              <img src={props.logoUrl} alt={props.logoText ?? "Logo"} className="h-8 w-auto" />
+              <img
+                src={props.logoUrl}
+                alt={props.logoText ?? "Logo"}
+                className="h-8 w-auto"
+              />
             ) : null}
             {props.logoText ? (
-              <span className="font-bold text-xl text-white tracking-tight">
+              <span className="font-bold font-heading text-xl text-on-surface tracking-tight">
                 {props.logoText}
               </span>
             ) : null}
           </div>
-          <p className="text-xs text-slate-400">
-            {props.copyrightText || `© ${new Date().getFullYear()} All rights reserved.`}
+          <p className="text-xs text-on-surface-variant">
+            {props.copyrightText ||
+              `© ${new Date().getFullYear()} All rights reserved.`}
           </p>
         </div>
 
         {props.columns.map((col) => (
           <div key={col.id} className="space-y-3">
-            <h4 className="text-sm font-semibold text-white tracking-wider uppercase">
+            <h4 className="text-sm font-semibold font-heading text-on-surface tracking-wider uppercase">
               {col.title}
             </h4>
             <ul className="space-y-2">
@@ -45,7 +50,7 @@ export function FooterBlock({ props, styles }: FooterBlockComponentProps) {
                 <li key={link.id}>
                   <a
                     href={link.target.url}
-                    className="text-sm text-slate-400 hover:text-white transition-colors"
+                    className="text-sm text-on-surface-variant hover:text-on-surface transition-colors"
                   >
                     {link.label}
                   </a>

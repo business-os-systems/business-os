@@ -9,8 +9,12 @@ export interface RichTextBlockComponentProps {
 
 export function RichTextBlock({ props, styles }: RichTextBlockComponentProps) {
   const paddingStyle: React.CSSProperties = {
-    paddingTop: styles?.paddingTop !== undefined ? `${styles.paddingTop}px` : "48px",
-    paddingBottom: styles?.paddingBottom !== undefined ? `${styles.paddingBottom}px` : "48px",
+    paddingTop:
+      styles?.paddingTop !== undefined ? `${styles.paddingTop}px` : "48px",
+    paddingBottom:
+      styles?.paddingBottom !== undefined
+        ? `${styles.paddingBottom}px`
+        : "48px",
     backgroundColor: styles?.backgroundColor,
     color: styles?.textColor,
   };
