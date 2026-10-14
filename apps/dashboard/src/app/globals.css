@@ -1,10 +1,23 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap");
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
+  /* =========================================================================
+     GLOBAL THEME CONFIGURATION (Single-File Platform Theme Controller)
+     Edit values in :root to change colors and typography across the whole OS.
+     ========================================================================= */
+
+  /* Typography */
+  --font-sans:
+    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-heading:
+    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  /* Surfaces & Backgrounds */
   --background: #fff8f4;
   --foreground: #1e1b19;
 
@@ -46,26 +59,38 @@
   --error-container: #ffdad6;
   --on-error-container: #93000a;
 
-  --canvas-base: #FAF3EF;
-  --surface-white: #FFFFFF;
-  --surface-muted: #F3EFEC;
-  --surface-brand-tint: #F8E5DE;
-  --border-hairline: #E9E2DE;
-  --border-subtle: #D8CFC9;
+  --canvas-base: #faf3ef;
+  --surface-white: #ffffff;
+  --surface-muted: #f3efec;
+  --surface-brand-tint: #f8e5de;
+  --border-hairline: #e9e2de;
+  --border-subtle: #d8cfc9;
 
   --text-primary: #111827;
   --text-secondary: #596579;
-  --text-muted: #737C8C;
+  --text-muted: #737c8c;
 
-  --brand-hover: #8F3024;
-  --teal-hover: #0F766E;
-  --teal-active: #115E59;
-  --status-warning: #F59E0B;
-  --status-danger: #DC2626;
+  --brand-hover: #8f3024;
+  --teal-hover: #0f766e;
+  --teal-active: #115e59;
+  --status-warning: #f59e0b;
+  --status-danger: #dc2626;
 }
 
 body {
   color: var(--on-surface);
   background: var(--surface);
-  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-sans);
+}
+
+/* =========================================================================
+   PER-APP THEME OVERRIDES (Single-File App Scope)
+   Define or remove app-specific CSS variable overrides below.
+   If an app has no rules defined here, it inherits global :root completely.
+   ========================================================================= */
+[data-app="website-builder"] {
+  /* To customize Website Builder only, override any token here:
+     --font-heading: 'Playfair Display', serif;
+     --primary: #006a61;
+  */
 }

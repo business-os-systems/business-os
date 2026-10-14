@@ -1,5 +1,13 @@
 import React, { useState } from "react";
-import { Button, Input, Textarea, Card, CardHeader, CardTitle, CardContent } from "@suite/ui";
+import {
+  Button,
+  Input,
+  Textarea,
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+} from "@suite/ui";
 import { ShieldCheckIcon } from "@suite/ui/icons";
 import type { FormBlockProps, BlockStyleTokens } from "../../ast/types.js";
 
@@ -9,15 +17,23 @@ export interface FormBlockComponentProps {
   onSubmit?: (values: Record<string, unknown>) => Promise<boolean>;
 }
 
-export function FormBlock({ props, styles, onSubmit }: FormBlockComponentProps) {
+export function FormBlock({
+  props,
+  styles,
+  onSubmit,
+}: FormBlockComponentProps) {
   const [formValues, setFormValues] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const paddingStyle: React.CSSProperties = {
-    paddingTop: styles?.paddingTop !== undefined ? `${styles.paddingTop}px` : "64px",
-    paddingBottom: styles?.paddingBottom !== undefined ? `${styles.paddingBottom}px` : "64px",
+    paddingTop:
+      styles?.paddingTop !== undefined ? `${styles.paddingTop}px` : "64px",
+    paddingBottom:
+      styles?.paddingBottom !== undefined
+        ? `${styles.paddingBottom}px`
+        : "64px",
     backgroundColor: styles?.backgroundColor,
     color: styles?.textColor,
   };
@@ -33,7 +49,9 @@ export function FormBlock({ props, styles, onSubmit }: FormBlockComponentProps) 
         if (ok) {
           setSubmitted(true);
         } else {
-          setError(props.errorMessage || "Failed to submit form. Please retry.");
+          setError(
+            props.errorMessage || "Failed to submit form. Please retry.",
+          );
         }
       } else {
         setSubmitted(true);
@@ -52,26 +70,30 @@ export function FormBlock({ props, styles, onSubmit }: FormBlockComponentProps) 
       className={`w-full px-4 sm:px-6 lg:px-8 ${styles?.customClassName || ""}`}
     >
       <div className="max-w-2xl mx-auto">
-        <Card className="shadow-lg border border-slate-200">
+        <Card className="shadow-lg border border-hairline">
           <CardHeader className="text-center">
             {props.headline ? (
-              <CardTitle className="text-2xl sm:text-3xl font-bold">
+              <CardTitle className="text-2xl sm:text-3xl font-bold font-heading">
                 {props.headline}
               </CardTitle>
             ) : null}
             {props.subheadline ? (
-              <p className="text-sm text-slate-500 mt-2">{props.subheadline}</p>
+              <p className="text-sm text-on-surface-variant mt-2">
+                {props.subheadline}
+              </p>
             ) : null}
           </CardHeader>
 
           <CardContent>
             {submitted ? (
               <div className="text-center py-8">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 mb-4">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-secondary-container text-on-secondary-container mb-4">
                   <ShieldCheckIcon size={28} />
                 </div>
-                <h3 className="text-lg font-semibold text-slate-900">Thank you!</h3>
-                <p className="mt-2 text-sm text-slate-600">
+                <h3 className="text-lg font-semibold font-heading text-on-surface">
+                  Thank you!
+                </h3>
+                <p className="mt-2 text-sm text-on-surface-variant">
                   {props.successMessage || "Your submission has been received."}
                 </p>
               </div>
@@ -81,10 +103,12 @@ export function FormBlock({ props, styles, onSubmit }: FormBlockComponentProps) 
                   <div key={field.id} className="space-y-1">
                     <label
                       htmlFor={field.name}
-                      className="block text-sm font-medium text-slate-700"
+                      className="block text-sm font-medium text-on-surface"
                     >
                       {field.label}
-                      {field.required ? <span className="text-red-500 ml-1">*</span> : null}
+                      {field.required ? (
+                        <span className="text-red-500 ml-1">*</span>
+                      ) : null}
                     </label>
 
                     {field.type === "textarea" ? (

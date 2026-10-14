@@ -19,8 +19,12 @@ export function FeaturesBlock({ props, styles }: FeaturesBlockComponentProps) {
   const gridColsClass = GRID_COLUMNS_MAP[columns] ?? GRID_COLUMNS_MAP[3];
 
   const paddingStyle: React.CSSProperties = {
-    paddingTop: styles?.paddingTop !== undefined ? `${styles.paddingTop}px` : "64px",
-    paddingBottom: styles?.paddingBottom !== undefined ? `${styles.paddingBottom}px` : "64px",
+    paddingTop:
+      styles?.paddingTop !== undefined ? `${styles.paddingTop}px` : "64px",
+    paddingBottom:
+      styles?.paddingBottom !== undefined
+        ? `${styles.paddingBottom}px`
+        : "64px",
     backgroundColor: styles?.backgroundColor,
     color: styles?.textColor,
   };
@@ -35,33 +39,40 @@ export function FeaturesBlock({ props, styles }: FeaturesBlockComponentProps) {
         {props.headline || props.subheadline ? (
           <div className="text-center max-w-3xl mx-auto mb-12">
             {props.headline ? (
-              <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+              <h2 className="text-3xl font-bold font-heading tracking-tight text-on-surface sm:text-4xl">
                 {props.headline}
               </h2>
             ) : null}
             {props.subheadline ? (
-              <p className="mt-4 text-lg text-slate-600">{props.subheadline}</p>
+              <p className="mt-4 text-lg text-on-surface-variant">
+                {props.subheadline}
+              </p>
             ) : null}
           </div>
         ) : null}
 
         <div className={`grid gap-8 ${gridColsClass}`}>
           {(props.features || []).map((feature) => (
-            <Card key={feature.id} className="hover:shadow-md transition-shadow">
+            <Card
+              key={feature.id}
+              className="hover:shadow-md transition-shadow"
+            >
               <CardHeader className="pb-3">
-                <div className="h-10 w-10 rounded-lg bg-slate-100 flex items-center justify-center text-slate-900 mb-2">
+                <div className="h-10 w-10 rounded-lg bg-surface-container flex items-center justify-center text-on-surface mb-2">
                   <SparklesIcon size={20} />
                 </div>
-                <CardTitle className="text-xl">{feature.title}</CardTitle>
+                <CardTitle className="text-xl font-heading">
+                  {feature.title}
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-slate-600 text-sm leading-relaxed">
+                <p className="text-on-surface-variant text-sm leading-relaxed">
                   {feature.description}
                 </p>
                 {feature.link ? (
                   <a
                     href={feature.link.url}
-                    className="inline-flex items-center text-sm font-medium text-slate-900 hover:underline mt-4 gap-1"
+                    className="inline-flex items-center text-sm font-medium text-primary hover:underline mt-4 gap-1"
                   >
                     Learn more <ArrowRightIcon size={14} />
                   </a>

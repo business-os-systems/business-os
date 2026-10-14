@@ -17,15 +17,19 @@ export function NavbarBlock({ props, styles }: NavbarBlockComponentProps) {
     <header
       data-block-type="navbar"
       style={containerStyle}
-      className={`w-full border-b border-slate-100 sticky top-0 z-50 shadow-sm ${styles?.customClassName || ""}`}
+      className={`w-full border-b border-hairline sticky top-0 z-50 shadow-sm ${styles?.customClassName || ""}`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         <div className="flex items-center gap-3">
           {props.logoUrl ? (
-            <img src={props.logoUrl} alt={props.logoText || "Logo"} className="h-8 w-auto" />
+            <img
+              src={props.logoUrl}
+              alt={props.logoText || "Logo"}
+              className="h-8 w-auto"
+            />
           ) : null}
           {props.logoText ? (
-            <span className="font-bold text-lg tracking-tight text-slate-900">
+            <span className="font-bold font-heading text-lg tracking-tight text-on-surface">
               {props.logoText}
             </span>
           ) : null}
@@ -36,7 +40,7 @@ export function NavbarBlock({ props, styles }: NavbarBlockComponentProps) {
             <a
               key={item.id}
               href={item.target.url}
-              className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
+              className="text-sm font-medium text-on-surface-variant hover:text-on-surface transition-colors"
             >
               {item.label}
             </a>
