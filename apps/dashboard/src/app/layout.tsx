@@ -21,6 +21,9 @@ export default function RootLayout({
                 const t = localStorage.getItem("business-os-theme");
                 if (t === "dark" || t === "light") {
                   document.documentElement.setAttribute("data-theme", t);
+                } else {
+                  const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+                  document.documentElement.setAttribute("data-theme", prefersDark ? "dark" : "light");
                 }
               } catch (_) {}
             `,

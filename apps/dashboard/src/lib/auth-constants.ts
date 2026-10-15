@@ -1,4 +1,14 @@
+import { isProduction as defaultIsProduction, getBetterAuthSecret } from "./env";
+
 export const SESSION_COOKIE_NAME = "suite_session";
+
+// Ephemeral default: 24 hours rolling expiration (maxAge: 86400)
+export const SESSION_EPHEMERAL_MAX_AGE_SECONDS =
+  Number(process.env.SESSION_EPHEMERAL_MAX_AGE_SECONDS) || 86400;
+
+// Persistent default ("Keep me signed in"): 30 days (maxAge: 2592000)
+export const SESSION_PERSISTENT_MAX_AGE_SECONDS =
+  Number(process.env.SESSION_PERSISTENT_MAX_AGE_SECONDS) || 2592000;
 
 export interface SessionCookieOptions {
   name: string;
@@ -9,25 +19,31 @@ export interface SessionCookieOptions {
   maxAge: number;
 }
 
+/**
+ * Creates session cookie options with configurable ephemeral vs persistent lifetimes.
+ * Enforces HttpOnly, Lax, Path=/, and Secure in production.
+ */
 export function createSessionCookieOptions(
-  isProduction = process.env.NODE_ENV === "production"
+  isProduction = defaultIsProduction,
+  keepSignedIn = false,
+  customMaxAgeSeconds?: number
 ): SessionCookieOptions {
+  let maxAge = keepSignedIn
+    ? SESSION_PERSISTENT_MAX_AGE_SECONDS
+    : SESSION_EPHEMERAL_MAX_AGE_SECONDS;
+
+  if (typeof customMaxAgeSeconds === "number" && customMaxAgeSeconds > 0) {
+    maxAge = customMaxAgeSeconds;
+  }
+
   return {
     name: SESSION_COOKIE_NAME,
     httpOnly: true,
     secure: isProduction,
     sameSite: "lax",
     path: "/",
-    maxAge: 7 * 24 * 60 * 60, // 7 days in seconds
+    maxAge,
   };
-}
-
-function getSecretKey(): string {
-  const secret = process.env.BETTER_AUTH_SECRET;
-  if (!secret) {
-    throw new Error("BETTER_AUTH_SECRET is required to sign or verify session tokens.");
-  }
-  return secret;
 }
 
 function bufferToBase64Url(buffer: ArrayBuffer): string {
@@ -71,6 +87,10 @@ export interface SessionPayload {
   activeBranchId?: string;
   activeBranchName?: string;
   timestamp: number;
+  expiresAt?: number;
+  isSuperAdmin?: boolean;
+  permissions?: string[];
+  themePreference?: "system" | "light" | "dark";
 }
 
 export function encodeSessionPayload(payload: SessionPayload): string {
@@ -109,7 +129,7 @@ export function decodeSessionPayload(token: string): SessionPayload | null {
 }
 
 export async function signSessionToken(payload: string): Promise<string> {
-  const secret = getSecretKey();
+  const secret = getBetterAuthSecret();
   const hmac = await computeHmacSha256(payload, secret);
   return `${payload}.${hmac}`;
 }
@@ -122,7 +142,7 @@ export async function verifySessionToken(token: string): Promise<boolean> {
   if (!payload || !sig) return false;
 
   try {
-    const secret = getSecretKey();
+    const secret = getBetterAuthSecret();
     const expectedSig = await computeHmacSha256(payload, secret);
 
     // Constant-time comparison

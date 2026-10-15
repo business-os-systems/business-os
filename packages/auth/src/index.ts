@@ -36,14 +36,21 @@ export {
   switchActiveBranch,
   getActiveBranchSession,
   DEFAULT_SESSION_COOKIE_NAME,
+  SESSION_EPHEMERAL_MAX_AGE_SECONDS,
+  SESSION_PERSISTENT_MAX_AGE_SECONDS,
   createSessionCookieOptions,
   extractTokenFromHeader,
   extractTokenFromCookie,
+  signSessionToken,
+  verifySessionToken,
+  encodeSessionPayload,
+  decodeSessionPayload,
   type SwitchBranchParams,
   type BranchContextData,
   type SwitchBranchResult,
   type ActiveSessionDetails,
   type SessionCookieOptions,
+  type SessionPayload,
 } from "./session/index.js";
 
 export {
@@ -56,3 +63,11 @@ export {
   type ProvisionJitUserParams,
   type JitProvisionedResult,
 } from "./sso/index.js";
+
+export {
+  isProduction,
+  isDevelopment,
+  isTest,
+  getBetterAuthSecret,
+} from "./env.js";
+

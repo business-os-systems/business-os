@@ -46,3 +46,6 @@ coverage/
 
 
 .archify
+.specify
+.agents
+skills-lock.json
