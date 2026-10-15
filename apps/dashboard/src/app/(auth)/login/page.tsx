@@ -7,7 +7,26 @@ import { AuthCard } from "@/components/auth/auth-card";
 import { OAuthProviders } from "@/components/auth/oauth-providers";
 import { EmailPasswordForm } from "@/components/auth/email-password-form";
 import { PasskeyButton } from "@/components/auth/passkey-button";
+import { resolvePostLoginRoute } from "@/lib/route-dispatcher";
 import { isBrowser } from "@/lib/env";
+
+export function sanitizeRedirect(
+  queryRedirect: string | null,
+  onboardingStatus?: string
+): string | null {
+  const isSafe =
+    queryRedirect !== null &&
+    queryRedirect.startsWith("/") &&
+    !queryRedirect.startsWith("//") &&
+    !queryRedirect.startsWith("/\\") &&
+    !queryRedirect.startsWith("/login") &&
+    !queryRedirect.startsWith("/signup") &&
+    !queryRedirect.startsWith("/forgot-password") &&
+    !queryRedirect.startsWith("/reset-password") &&
+    (!onboardingStatus || onboardingStatus === "COMPLETED");
+
+  return isSafe ? queryRedirect : null;
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -56,8 +75,25 @@ export default function LoginPage() {
         }
       }
 
-      // Route user to resolved post-login destination
-      const targetUrl = result.redirectUrl || "/dashboard";
+      // Route user using resolvePostLoginRoute dispatcher handshake
+      const user = result.user;
+      const dispatcherRoute = resolvePostLoginRoute({
+        permissions: user?.permissions,
+        onboardingStatus: user?.onboardingStatus,
+        currentOnboardingStep: user?.currentOnboardingStep,
+        assignedAppIds: user?.assignedAppIds,
+        assignedAppCodes: user?.assignedAppCodes,
+      });
+
+      // Safe query redirect (?redirect=...) takes precedence only if onboarding is complete
+      const queryRedirect = isBrowser
+        ? new URLSearchParams(window.location.search).get("redirect")
+        : null;
+      const safeRedirect = sanitizeRedirect(queryRedirect, user?.onboardingStatus);
+
+      const targetUrl =
+        safeRedirect || result.redirectUrl || dispatcherRoute || "/dashboard";
+
       router.push(targetUrl);
       router.refresh();
     } catch (err) {

@@ -9,6 +9,7 @@ export {
 
 export {
   DEFAULT_SESSION_COOKIE_NAME,
+  SESSION_COOKIE_NAME,
   SESSION_EPHEMERAL_MAX_AGE_SECONDS,
   SESSION_PERSISTENT_MAX_AGE_SECONDS,
   createSessionCookieOptions,
@@ -16,6 +17,7 @@ export {
   extractTokenFromCookie,
   signSessionToken,
   verifySessionToken,
+  isSessionPayloadExpired,
   encodeSessionPayload,
   decodeSessionPayload,
   type SessionCookieOptions,
@@ -25,4 +27,5 @@ export {
   type SessionAuthorizationContext,
   type SessionLifecycleContext,
   type SessionPreferencesContext,
+  type SessionOnboardingContext,
 } from "./session-token.js";

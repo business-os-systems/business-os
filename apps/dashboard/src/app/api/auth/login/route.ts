@@ -62,13 +62,23 @@ export async function POST(request: Request) {
       include: {
         accounts: true,
         organizations: {
+          orderBy: { createdAt: "asc" },
           include: {
             organization: true,
           },
         },
         branchRoles: {
+          orderBy: { createdAt: "asc" },
           include: {
-            role: true,
+            role: {
+              include: {
+                permissions: {
+                  include: {
+                    permission: true,
+                  },
+                },
+              },
+            },
             branch: true,
           },
         },
@@ -87,21 +97,31 @@ export async function POST(request: Request) {
       );
     }
 
-    // Verify password if credential account exists
+    // Verify credential account and password exist
     const credentialAccount = dbUser.accounts.find((a) => a.providerId === "credential");
-    if (credentialAccount?.password) {
-      const isPasswordValid = await verifyPassword(password, credentialAccount.password);
-      if (!isPasswordValid) {
-        return NextResponse.json(
-          {
-            type: "/errors/invalid-credentials",
-            title: "Unauthorized",
-            status: 401,
-            detail: "Invalid email or password. Please check your credentials.",
-          },
-          { status: 401, headers: { "Content-Type": "application/problem+json" } }
-        );
-      }
+    if (!credentialAccount || !credentialAccount.password) {
+      return NextResponse.json(
+        {
+          type: "/errors/invalid-credentials",
+          title: "Unauthorized",
+          status: 401,
+          detail: "Invalid email or password. Please check your credentials.",
+        },
+        { status: 401, headers: { "Content-Type": "application/problem+json" } }
+      );
+    }
+
+    const isPasswordValid = await verifyPassword(password, credentialAccount.password);
+    if (!isPasswordValid) {
+      return NextResponse.json(
+        {
+          type: "/errors/invalid-credentials",
+          title: "Unauthorized",
+          status: 401,
+          detail: "Invalid email or password. Please check your credentials.",
+        },
+        { status: 401, headers: { "Content-Type": "application/problem+json" } }
+      );
     }
 
     const metadata = (dbUser.metadata || {}) as Record<string, unknown>;
@@ -134,9 +154,24 @@ export async function POST(request: Request) {
       );
     }
 
-    // Resolve post-login route based on user state
+    // Extract dynamic permissions scoped to the active branch or organization-wide assignments
+    const permissionsSet = new Set<string>();
+    for (const br of dbUser.branchRoles) {
+      if (br.branchId === branchId || br.branchId === null || !branchId) {
+        if (br.role?.permissions) {
+          for (const rp of br.role.permissions) {
+            if (rp.permission?.action) {
+              permissionsSet.add(rp.permission.action);
+            }
+          }
+        }
+      }
+    }
+    const userPermissions = Array.from(permissionsSet);
+
+    // Resolve post-login route based on dynamic permissions and lifecycle state
     const redirectUrl = resolvePostLoginRoute({
-      roleSlug,
+      permissions: userPermissions,
       onboardingStatus,
       currentOnboardingStep,
     });
@@ -148,11 +183,14 @@ export async function POST(request: Request) {
       organizationId: organization?.id,
       organizationName: organization?.name,
       role: roleName,
+      permissions: userPermissions,
       userName: dbUser.name,
       activeBranchId: branchId,
       activeBranchName: branchName,
       themePreference,
       timestamp: Date.now(),
+      onboardingStatus,
+      currentOnboardingStep,
     });
 
     const token = await signSessionToken(rawPayload);
@@ -167,9 +205,12 @@ export async function POST(request: Request) {
         email: dbUser.email,
         name: dbUser.name,
         role: roleName,
+        roleSlug: roleSlug || roleName,
+        permissions: userPermissions,
         organizationId: organization?.id,
         organizationName: organization?.name,
         onboardingStatus,
+        currentOnboardingStep,
       },
     });
 

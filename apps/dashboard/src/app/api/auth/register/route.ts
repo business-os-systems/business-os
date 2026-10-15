@@ -132,8 +132,11 @@ export async function POST(request: Request) {
       email: newUser.email,
       userName: newUser.name,
       role: "owner",
+      permissions: [],
       themePreference: "system",
       timestamp: Date.now(),
+      onboardingStatus: "IN_PROGRESS",
+      currentOnboardingStep: 1,
     });
 
     const token = await signSessionToken(rawPayload);
@@ -148,6 +151,7 @@ export async function POST(request: Request) {
           email: newUser.email,
           name: newUser.name,
           emailVerified: false,
+          permissions: [],
           onboardingStatus: "IN_PROGRESS",
           currentOnboardingStep: 1,
         },

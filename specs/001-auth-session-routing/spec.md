@@ -32,7 +32,6 @@
 - Q: What occurs upon password reset completion? → A: Dedicated `/auth/reset-password?token=...` card enforces password complexity, updates password hash, and immediately invalidates all active sessions in the `sessions` table across all devices.
 - Q: How is the OAuth account collision challenge presented? → A: Rendered on `/auth/link-account?ticket=...` in a 400px card prompting for the existing password to verify ownership before linking the provider.
 - Q: How is a newly registered user established as Admin of their specific organization without cross-tenant bleed? → A: During Onboarding Step 1, creating an `Organization` triggers an atomic transaction creating `UserOrganization`, an immutable `Role` (`organizationId: org.id`, `slug: "owner"`, `isSystem: true`) bound to all core platform permissions, and a `UserBranchRole` with `branchId: null` (granting organization-wide master authority strictly scoped to that tenant).
-- Q: Are the Tenant Dashboard login and Super Dashboard login different? → A: Yes, fundamentally separated. Tenant login (`/login`) is strictly tenant-scoped (`Role.organizationId === tenant.id`). Super Dashboard login (`/super-admin/login` → `/super-admin`) is platform-wide, requires a global system role (`Role.organizationId === null`, `slug: "platform-super-admin"`), enforces mandatory MFA/TOTP, and rejects regular tenant users with HTTP 403.
 
 ---
 
@@ -148,20 +147,6 @@ The application supports three theme modes: `system`, `light`, and `dark`.
 * **Tenant Isolation Guarantee:** All session payloads, route handlers, and database queries strictly constrain access using `where: { organizationId: session.activeOrganizationId }`. An Owner of Organization A cannot access, query, or mutate any data belonging to Organization B.
 * **Delegated Employee Permissions:** When the Owner invites additional team members, they select from predefined or custom roles (`Manager`, `Cashier`, `Intern`) and assign specific branches (`branchId`). Invited members only inherit the narrow permissions explicitly mapped to their assigned role.
 
-#### Platform Super Dashboard Portal Separation (`/super-admin`)
-* **Strict Separation of Concerns:** Tenant operations and platform operator governance are separated into two distinct portals:
-  - **Tenant Dashboard (`/dashboard`):** Scoped strictly to an individual tenant (`Role.organizationId === tenant.id`). For business owners and employees.
-  - **Super Dashboard (`/super-admin`):** Platform-wide administrative console for Business OS operators, DevOps engineers, and platform billing admins.
-* **Global Security & Authentication Requirements:**
-  - Login entry point is isolated at `/super-admin/login`.
-  - Access strictly requires a global role record in PostgreSQL where **`Role.organizationId === null`** and **`Role.slug === "platform-super-admin"`**.
-  - **Mandatory MFA:** Super admin sessions require verified Multi-Factor Authentication (TOTP authenticator app or WebAuthn hardware security key). Passwords alone cannot access the Super Dashboard.
-* **Edge Route Protection:**
-  - Next.js Edge middleware intercepts all requests targeting `/super-admin/*`.
-  - Unauthenticated requests redirect to `/super-admin/login`.
-  - Authenticated tenant users (including tenant Organization Owners) attempting to access `/super-admin/*` are rejected with `HTTP 403 Forbidden` (`{"code": "SUPER_ADMIN_REQUIRED"}`).
-* **Super Admin Capabilities:** Global cross-tenant metrics, tenant suspension/activation, platform audit logs, global marketplace application catalog releases, and database health telemetry. Super Admins do not participate in routine tenant-level operational shifts.
-
 ### 5.2 Account Linking & Collision Defense (`/auth/link-account`)
 * **Collision Detection:** If a user initiates third-party OAuth (Google, Microsoft, GitHub) using an email address that already belongs to an existing credential account in `accounts`, automatic silent merging is strictly prohibited to prevent account takeover.
 * **Challenge Gate (`/auth/link-account?ticket=...`):** The OAuth callback intercepts the collision, issues a short-lived cryptographically signed ticket (valid 5 minutes), and redirects the browser to `/auth/link-account`.
@@ -186,7 +171,6 @@ The application supports three theme modes: `system`, `light`, and `dark`.
    - If belonging to a single workspace (or active tenant is selected): execute `resolvePostLoginRoute(userRole, userPermissions)`.
      - Multi-app users & Admins/Managers: route to `/dashboard` (rendering role-filtered view).
      - Single-app users: route directly to designated application root (e.g., `/pos`).
-5. **Platform Super Admin Routes (`/super-admin/*`):** Next.js Edge middleware validates that the session user holds a global Super Admin role (`Role.organizationId === null` and `Role.slug === "platform-super-admin"`) and has completed mandatory MFA verification. Unauthenticated requests redirect to `/super-admin/login`. Authenticated tenant users (including Organization Owners) are rejected with `HTTP 403 Forbidden` (`{"code": "SUPER_ADMIN_REQUIRED"}`).
 
 ### 6.2 Route Guard Rules
 
@@ -309,7 +293,4 @@ The application supports three theme modes: `system`, `light`, and `dark`.
 | **User completes password reset** | Web / App | Guest | Submit `/auth/reset-password` | Update hash; invalidate all active user sessions globally; issue new session cookie. |
 | **Desktop OAuth execution** | Desktop | Unauthenticated | Clicks "Sign in with Google" | Launch default browser; capture token on local callback loopback. |
 | **App launches offline** | Desktop / Mobile | Any | App launch | Render offline screen with `"Retry connection"` CTA. |
-| **Platform super admin signs in** | Web | Authenticated (MFA verified) | `/super-admin/login` | Verify TOTP/passkey; route to `/super-admin` global console. |
-| **Tenant user accesses super admin** | All | Authenticated (Tenant role) | `/super-admin/*` | Intercept; reject with HTTP 403 Forbidden (`SUPER_ADMIN_REQUIRED`). |
-| **Guest visits super admin** | Web | Unauthenticated | `/super-admin/*` | Intercept; redirect to `/super-admin/login?redirect=${target}`. |
 | **Explicit sign-out** | All | Authenticated | Invokes Logout | Purge cookies/keychain; invalidate server session; redirect to `/login`. |

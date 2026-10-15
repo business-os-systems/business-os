@@ -1,6 +1,7 @@
 import { isProduction as defaultIsProduction, getBetterAuthSecret } from "../env.js";
 
 export const DEFAULT_SESSION_COOKIE_NAME = "suite_session";
+export const SESSION_COOKIE_NAME = DEFAULT_SESSION_COOKIE_NAME;
 
 // Ephemeral default: 24 hours rolling expiration (maxAge: 86400)
 export const SESSION_EPHEMERAL_MAX_AGE_SECONDS =
@@ -45,8 +46,7 @@ export interface TenantSessionContext {
  * Determines authorization matrix and administrative elevation.
  */
 export interface SessionAuthorizationContext {
-  role: string;
-  isSuperAdmin?: boolean;
+  role?: string;
   permissions?: string[];
 }
 
@@ -67,6 +67,14 @@ export interface SessionPreferencesContext {
 }
 
 /**
+ * Onboarding lifecycle state context (ISP & SRP).
+ */
+export interface SessionOnboardingContext {
+  onboardingStatus?: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED";
+  currentOnboardingStep?: number | null;
+}
+
+/**
  * Consolidated Session Payload.
  * Composed via Interface Segregation Principle from discrete domain contexts.
  */
@@ -75,7 +83,8 @@ export interface SessionPayload
     Partial<TenantSessionContext>,
     SessionAuthorizationContext,
     SessionLifecycleContext,
-    SessionPreferencesContext {}
+    SessionPreferencesContext,
+    SessionOnboardingContext {}
 
 /**
  * Creates standardized enterprise cookie security attributes for session tokens.
@@ -175,6 +184,14 @@ export async function signSessionToken(payload: string): Promise<string> {
   const secret = getBetterAuthSecret();
   const hmac = await computeHmacSha256(payload, secret);
   return `${payload}.${hmac}`;
+}
+
+export function isSessionPayloadExpired(payload: SessionPayload): boolean {
+  if (!payload || !payload.timestamp) return true;
+  const maxAgeMs = payload.expiresAt
+    ? payload.expiresAt - payload.timestamp
+    : SESSION_PERSISTENT_MAX_AGE_SECONDS * 1000;
+  return Date.now() - payload.timestamp > maxAgeMs;
 }
 
 export async function verifySessionToken(token: string): Promise<boolean> {

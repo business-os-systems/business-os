@@ -109,9 +109,6 @@ apps/dashboard/
 │   │   │   ├── step-1/page.tsx     # Step 1: Workspace & Organization Setup
 │   │   │   ├── step-2/page.tsx     # Step 2: Primary Branch & Operating Location
 │   │   │   └── step-3/page.tsx     # Step 3: Application Selection & Activation
-│   │   ├── (super-admin)/
-│   │   │   ├── login/page.tsx      # Super Admin MFA login portal
-│   │   │   └── page.tsx            # Global platform management console
 │   │   └── api/
 │   │       ├── auth/
 │   │       │   ├── login/route.ts
@@ -123,8 +120,6 @@ apps/dashboard/
 │   │       │   └── verify-email/
 │   │       │       ├── request/route.ts
 │   │       │       └── confirm/route.ts
-│   │       ├── super-admin/
-│   │       │   └── auth/login/route.ts # Super admin MFA authentication endpoint
 │   │       └── v1/
 │   │           ├── user/preferences/route.ts
 │   │           ├── auth/switch-tenant/route.ts
