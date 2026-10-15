@@ -134,6 +134,9 @@ export async function POST(request: Request) {
       role: "owner",
       themePreference: "system",
       timestamp: Date.now(),
+      onboardingStatus: "IN_PROGRESS",
+      currentOnboardingStep: 1,
+      isSuperAdmin: false,
     });
 
     const token = await signSessionToken(rawPayload);

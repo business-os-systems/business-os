@@ -67,12 +67,12 @@
 **Independent Test**: Scenario 2 & Scenario 6 in [quickstart.md](./quickstart.md). Navigating to `/login` as authenticated user redirects to `/dashboard` or `/onboarding/step-N`; signing out blocks back-navigation.
 
 ### Tests for User Story 2
-- [ ] T019 [P] [US2] Integration tests for route guard rules (Guest Guard, Onboarding Guard, Super Admin Guard) in `apps/dashboard/tests/auth-gate.test.tsx`
+- [x] T019 [P] [US2] Integration tests for route guard rules (Guest Guard, Onboarding Guard, Super Admin Guard) in `apps/dashboard/tests/auth-gate.test.tsx`
 
 ### Implementation for User Story 2
-- [ ] T020 [US2] Implement Next.js Edge Middleware route guard in `apps/dashboard/src/middleware.ts` enforcing Rule 1 (Guest exclusion from `/login`, `/signup`), Rule 4 (Onboarding guard bouncing incomplete users to `/onboarding/step-N`), and Super Admin isolation
-- [ ] T021 [US2] Integrate `resolvePostLoginRoute` dispatcher into post-login client handshake in `apps/dashboard/src/app/(auth)/login/page.tsx`
-- [ ] T022 [US2] Build offline detection boundary with "Retry connection" CTA in `apps/dashboard/src/components/layout/offline-view.tsx`
+- [x] T020 [US2] Implement Next.js Edge Middleware route guard in `apps/dashboard/src/middleware.ts` enforcing Rule 1 (Guest exclusion from `/login`, `/signup`), Rule 4 (Onboarding guard bouncing incomplete users to `/onboarding/step-N`), and Super Admin isolation
+- [x] T021 [US2] Integrate `resolvePostLoginRoute` dispatcher into post-login client handshake in `apps/dashboard/src/app/(auth)/login/page.tsx`
+- [x] T022 [US2] Build offline detection boundary with "Retry connection" CTA in `apps/dashboard/src/components/layout/offline-view.tsx`
 
 **Checkpoint**: User Story 2 is fully functional; route transitions and protections operate server-side.
 

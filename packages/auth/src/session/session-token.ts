@@ -67,6 +67,14 @@ export interface SessionPreferencesContext {
 }
 
 /**
+ * Onboarding lifecycle state context (ISP & SRP).
+ */
+export interface SessionOnboardingContext {
+  onboardingStatus?: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED";
+  currentOnboardingStep?: number | null;
+}
+
+/**
  * Consolidated Session Payload.
  * Composed via Interface Segregation Principle from discrete domain contexts.
  */
@@ -75,7 +83,8 @@ export interface SessionPayload
     Partial<TenantSessionContext>,
     SessionAuthorizationContext,
     SessionLifecycleContext,
-    SessionPreferencesContext {}
+    SessionPreferencesContext,
+    SessionOnboardingContext {}
 
 /**
  * Creates standardized enterprise cookie security attributes for session tokens.

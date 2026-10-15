@@ -56,6 +56,7 @@ export {
   type SessionAuthorizationContext,
   type SessionLifecycleContext,
   type SessionPreferencesContext,
+  type SessionOnboardingContext,
 } from "./session/index.js";
 
 export {

@@ -25,4 +25,5 @@ export {
   type SessionAuthorizationContext,
   type SessionLifecycleContext,
   type SessionPreferencesContext,
+  type SessionOnboardingContext,
 } from "./session-token.js";

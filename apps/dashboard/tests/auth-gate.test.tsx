@@ -456,5 +456,294 @@ describe("Platform Auth Gate & Login Route (@suite/dashboard)", () => {
       expect(deriveNameFromEmail("alice-smith@corp.net")).toBe("Alice Smith");
     });
   });
+
+  describe("Edge Middleware Route Guard State Machine (T019 & T020)", () => {
+    it("redirects unauthenticated user from protected route to /login?redirect=...", async () => {
+      const { middleware } = await import("../src/middleware");
+      const { NextRequest } = await import("next/server");
+
+      const req = new NextRequest("http://localhost:3000/dashboard");
+      const res = await middleware(req);
+
+      expect(res.status).toBe(307);
+      expect(res.headers.get("location")).toBe("http://localhost:3000/login?redirect=%2Fdashboard");
+    });
+
+    it("allows unauthenticated user to access auth routes (/login, /signup, /forgot-password)", async () => {
+      const { middleware } = await import("../src/middleware");
+      const { NextRequest } = await import("next/server");
+
+      const req = new NextRequest("http://localhost:3000/login");
+      const res = await middleware(req);
+
+      expect(res.status).toBe(200);
+    });
+
+    it("Rule 1 (Guest Guard): redirects authenticated user with COMPLETED onboarding away from /login to /dashboard", async () => {
+      const { middleware } = await import("../src/middleware");
+      const { NextRequest } = await import("next/server");
+      const { encodeSessionPayload, signSessionToken, SESSION_COOKIE_NAME } = await import(
+        "../src/lib/auth-constants"
+      );
+
+      const token = await signSessionToken(
+        encodeSessionPayload({
+          userId: "usr_1",
+          email: "owner@company.com",
+          userName: "Owner",
+          role: "owner",
+          organizationId: "org_1",
+          organizationName: "Company",
+          onboardingStatus: "COMPLETED",
+          timestamp: Date.now(),
+        })
+      );
+
+      const req = new NextRequest("http://localhost:3000/login", {
+        headers: { cookie: `${SESSION_COOKIE_NAME}=${token}` },
+      });
+      const res = await middleware(req);
+
+      expect(res.status).toBe(307);
+      expect(res.headers.get("location")).toBe("http://localhost:3000/dashboard");
+    });
+
+    it("Rule 1 (Guest Guard): redirects authenticated user with IN_PROGRESS onboarding away from /login to /onboarding/step-N", async () => {
+      const { middleware } = await import("../src/middleware");
+      const { NextRequest } = await import("next/server");
+      const { encodeSessionPayload, signSessionToken, SESSION_COOKIE_NAME } = await import(
+        "../src/lib/auth-constants"
+      );
+
+      const token = await signSessionToken(
+        encodeSessionPayload({
+          userId: "usr_2",
+          email: "new@company.com",
+          userName: "New User",
+          role: "owner",
+          onboardingStatus: "IN_PROGRESS",
+          currentOnboardingStep: 2,
+          timestamp: Date.now(),
+        })
+      );
+
+      const req = new NextRequest("http://localhost:3000/login", {
+        headers: { cookie: `${SESSION_COOKIE_NAME}=${token}` },
+      });
+      const res = await middleware(req);
+
+      expect(res.status).toBe(307);
+      expect(res.headers.get("location")).toBe("http://localhost:3000/onboarding/step-2");
+    });
+
+    it("Rule 4 (Onboarding Guard): bounces incomplete user from /dashboard to /onboarding/step-N", async () => {
+      const { middleware } = await import("../src/middleware");
+      const { NextRequest } = await import("next/server");
+      const { encodeSessionPayload, signSessionToken, SESSION_COOKIE_NAME } = await import(
+        "../src/lib/auth-constants"
+      );
+
+      const token = await signSessionToken(
+        encodeSessionPayload({
+          userId: "usr_3",
+          email: "incomplete@company.com",
+          userName: "Incomplete User",
+          role: "owner",
+          onboardingStatus: "IN_PROGRESS",
+          currentOnboardingStep: 1,
+          timestamp: Date.now(),
+        })
+      );
+
+      const req = new NextRequest("http://localhost:3000/dashboard", {
+        headers: { cookie: `${SESSION_COOKIE_NAME}=${token}` },
+      });
+      const res = await middleware(req);
+
+      expect(res.status).toBe(307);
+      expect(res.headers.get("location")).toBe("http://localhost:3000/onboarding/step-1");
+    });
+
+    it("Rule 4 (Onboarding Guard): allows incomplete user to access /onboarding/step-N", async () => {
+      const { middleware } = await import("../src/middleware");
+      const { NextRequest } = await import("next/server");
+      const { encodeSessionPayload, signSessionToken, SESSION_COOKIE_NAME } = await import(
+        "../src/lib/auth-constants"
+      );
+
+      const token = await signSessionToken(
+        encodeSessionPayload({
+          userId: "usr_3",
+          email: "incomplete@company.com",
+          userName: "Incomplete User",
+          role: "owner",
+          onboardingStatus: "IN_PROGRESS",
+          currentOnboardingStep: 1,
+          timestamp: Date.now(),
+        })
+      );
+
+      const req = new NextRequest("http://localhost:3000/onboarding/step-1", {
+        headers: { cookie: `${SESSION_COOKIE_NAME}=${token}` },
+      });
+      const res = await middleware(req);
+
+      expect(res.status).toBe(200);
+    });
+
+    it("redirects completed user trying to re-access /onboarding to /dashboard", async () => {
+      const { middleware } = await import("../src/middleware");
+      const { NextRequest } = await import("next/server");
+      const { encodeSessionPayload, signSessionToken, SESSION_COOKIE_NAME } = await import(
+        "../src/lib/auth-constants"
+      );
+
+      const token = await signSessionToken(
+        encodeSessionPayload({
+          userId: "usr_1",
+          email: "owner@company.com",
+          userName: "Owner",
+          role: "owner",
+          organizationId: "org_1",
+          organizationName: "Company",
+          onboardingStatus: "COMPLETED",
+          timestamp: Date.now(),
+        })
+      );
+
+      const req = new NextRequest("http://localhost:3000/onboarding/step-1", {
+        headers: { cookie: `${SESSION_COOKIE_NAME}=${token}` },
+      });
+      const res = await middleware(req);
+
+      expect(res.status).toBe(307);
+      expect(res.headers.get("location")).toBe("http://localhost:3000/dashboard");
+    });
+
+    it("Super Admin Guard: redirects unauthenticated request to /super-admin/login", async () => {
+      const { middleware } = await import("../src/middleware");
+      const { NextRequest } = await import("next/server");
+
+      const req = new NextRequest("http://localhost:3000/super-admin/tenants");
+      const res = await middleware(req);
+
+      expect(res.status).toBe(307);
+      expect(res.headers.get("location")).toBe(
+        "http://localhost:3000/super-admin/login?redirect=%2Fsuper-admin%2Ftenants"
+      );
+    });
+
+    it("Super Admin Guard: rejects non-super-admin tenant user with HTTP 403 problem details", async () => {
+      const { middleware } = await import("../src/middleware");
+      const { NextRequest } = await import("next/server");
+      const { encodeSessionPayload, signSessionToken, SESSION_COOKIE_NAME } = await import(
+        "../src/lib/auth-constants"
+      );
+
+      const token = await signSessionToken(
+        encodeSessionPayload({
+          userId: "usr_owner",
+          email: "owner@company.com",
+          userName: "Tenant Owner",
+          role: "owner",
+          organizationId: "org_1",
+          organizationName: "Company",
+          isSuperAdmin: false,
+          timestamp: Date.now(),
+        })
+      );
+
+      const req = new NextRequest("http://localhost:3000/super-admin/tenants", {
+        headers: { cookie: `${SESSION_COOKIE_NAME}=${token}` },
+      });
+      const res = await middleware(req);
+
+      expect(res.status).toBe(403);
+      const json = await res.json();
+      expect(json.code).toBe("SUPER_ADMIN_REQUIRED");
+      expect(json.type).toBe("/errors/forbidden");
+    });
+
+    it("Super Admin Guard: allows verified super admin access to /super-admin", async () => {
+      const { middleware } = await import("../src/middleware");
+      const { NextRequest } = await import("next/server");
+      const { encodeSessionPayload, signSessionToken, SESSION_COOKIE_NAME } = await import(
+        "../src/lib/auth-constants"
+      );
+
+      const token = await signSessionToken(
+        encodeSessionPayload({
+          userId: "usr_admin",
+          email: "admin@businessos.internal",
+          userName: "Platform Super Admin",
+          role: "platform-super-admin",
+          isSuperAdmin: true,
+          timestamp: Date.now(),
+        })
+      );
+
+      const req = new NextRequest("http://localhost:3000/super-admin/tenants", {
+        headers: { cookie: `${SESSION_COOKIE_NAME}=${token}` },
+      });
+      const res = await middleware(req);
+
+      expect(res.status).toBe(200);
+      expect(res.headers.get("x-is-super-admin")).toBe("true");
+    });
+
+    it("Super Admin Guard: redirects super admin visiting /super-admin/login to /super-admin", async () => {
+      const { middleware } = await import("../src/middleware");
+      const { NextRequest } = await import("next/server");
+      const { encodeSessionPayload, signSessionToken, SESSION_COOKIE_NAME } = await import(
+        "../src/lib/auth-constants"
+      );
+
+      const token = await signSessionToken(
+        encodeSessionPayload({
+          userId: "usr_admin",
+          email: "admin@businessos.internal",
+          userName: "Platform Super Admin",
+          role: "platform-super-admin",
+          isSuperAdmin: true,
+          timestamp: Date.now(),
+        })
+      );
+
+      const req = new NextRequest("http://localhost:3000/super-admin/login", {
+        headers: { cookie: `${SESSION_COOKIE_NAME}=${token}` },
+      });
+      const res = await middleware(req);
+
+      expect(res.status).toBe(307);
+      expect(res.headers.get("location")).toBe("http://localhost:3000/super-admin");
+    });
+  });
+
+  describe("OfflineView Connectivity Component (T022)", async () => {
+    const { OfflineView } = await import("../src/components/layout/offline-view");
+
+    it("renders offline status alert with 'Retry connection' CTA", () => {
+      const html = renderToString(<OfflineView />);
+
+      expect(html).toContain("You are currently offline");
+      expect(html).toContain("Retry connection");
+      expect(html).toContain("role=\"status\"");
+      expect(html).toContain("aria-live=\"polite\"");
+    });
+
+    it("renders custom title and description when provided", () => {
+      const html = renderToString(
+        <OfflineView
+          title="Connection Dropped"
+          description="Failed to reach the server gateway."
+          retryLabel="Reconnect Now"
+        />
+      );
+
+      expect(html).toContain("Connection Dropped");
+      expect(html).toContain("Failed to reach the server gateway.");
+      expect(html).toContain("Reconnect Now");
+    });
+  });
 });
 

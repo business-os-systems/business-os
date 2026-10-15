@@ -134,11 +134,17 @@ export async function POST(request: Request) {
       );
     }
 
+    const isSuperAdmin =
+      roleSlug === "platform-super-admin" ||
+      roleName.toLowerCase() === "platform-super-admin" ||
+      Boolean(metadata.is_super_admin);
+
     // Resolve post-login route based on user state
     const redirectUrl = resolvePostLoginRoute({
-      roleSlug,
+      roleSlug: roleSlug || roleName,
       onboardingStatus,
       currentOnboardingStep,
+      isSuperAdmin,
     });
 
     // Generate cryptographically signed session token with verified tenant payload
@@ -153,6 +159,9 @@ export async function POST(request: Request) {
       activeBranchName: branchName,
       themePreference,
       timestamp: Date.now(),
+      onboardingStatus,
+      currentOnboardingStep,
+      isSuperAdmin,
     });
 
     const token = await signSessionToken(rawPayload);
@@ -167,9 +176,12 @@ export async function POST(request: Request) {
         email: dbUser.email,
         name: dbUser.name,
         role: roleName,
+        roleSlug: roleSlug || roleName,
         organizationId: organization?.id,
         organizationName: organization?.name,
         onboardingStatus,
+        currentOnboardingStep,
+        isSuperAdmin,
       },
     });
 

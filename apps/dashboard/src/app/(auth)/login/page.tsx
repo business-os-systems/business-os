@@ -7,6 +7,7 @@ import { AuthCard } from "@/components/auth/auth-card";
 import { OAuthProviders } from "@/components/auth/oauth-providers";
 import { EmailPasswordForm } from "@/components/auth/email-password-form";
 import { PasskeyButton } from "@/components/auth/passkey-button";
+import { resolvePostLoginRoute } from "@/lib/route-dispatcher";
 import { isBrowser } from "@/lib/env";
 
 export default function LoginPage() {
@@ -56,8 +57,32 @@ export default function LoginPage() {
         }
       }
 
-      // Route user to resolved post-login destination
-      const targetUrl = result.redirectUrl || "/dashboard";
+      // Route user using resolvePostLoginRoute dispatcher handshake
+      const user = result.user;
+      const dispatcherRoute = resolvePostLoginRoute({
+        roleSlug: user?.roleSlug || user?.role,
+        permissions: user?.permissions,
+        isSuperAdmin: user?.isSuperAdmin,
+        onboardingStatus: user?.onboardingStatus,
+        currentOnboardingStep: user?.currentOnboardingStep,
+        assignedAppIds: user?.assignedAppIds,
+        assignedAppCodes: user?.assignedAppCodes,
+      });
+
+      // Safe query redirect (?redirect=...) takes precedence only if onboarding is complete
+      const queryRedirect = isBrowser
+        ? new URLSearchParams(window.location.search).get("redirect")
+        : null;
+      const isSafeRedirect =
+        queryRedirect &&
+        queryRedirect.startsWith("/") &&
+        !queryRedirect.startsWith("//") &&
+        (!user?.onboardingStatus || user.onboardingStatus === "COMPLETED");
+
+      const targetUrl = isSafeRedirect
+        ? queryRedirect
+        : result.redirectUrl || dispatcherRoute || "/dashboard";
+
       router.push(targetUrl);
       router.refresh();
     } catch (err) {
