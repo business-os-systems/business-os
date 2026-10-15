@@ -8,6 +8,10 @@ import {
   verifyManagerOverridePin,
   setManagerOverridePin,
   resolveSsoProviderByEmail,
+  listUserTenants,
+  switchActiveTenant,
+  verifySessionToken,
+  decodeSessionPayload,
   extractTokenFromHeader,
   extractTokenFromCookie,
   UnauthorizedError,
@@ -272,6 +276,83 @@ export const ssoLoginRoute = createRoute({
   },
 });
 
+export const listTenantsRoute = createRoute({
+  method: "get",
+  path: "/tenants",
+  tags: ["Identity, Sessions & Auth"],
+  summary: "List user workspace memberships",
+  description: "Returns all active organizations and roles for the authenticated user.",
+  responses: {
+    200: {
+      content: {
+        "application/json": {
+          schema: z.object({
+            tenants: z.array(
+              z.object({
+                organizationId: z.string(),
+                name: z.string(),
+                slug: z.string(),
+                role: z.string(),
+                logoUrl: z.string().nullable(),
+              })
+            ),
+          }),
+        },
+      },
+      description: "List of user workspace memberships",
+    },
+    401: {
+      content: {
+        "application/problem+json": {
+          schema: problemDetailsResponseSchema,
+        },
+      },
+      description: "Authentication required",
+    },
+  },
+});
+
+export const switchTenantRoute = createRoute({
+  method: "post",
+  path: "/switch-tenant",
+  tags: ["Identity, Sessions & Auth"],
+  summary: "Switch active organization context",
+  description: "Validates tenant membership and issues updated tenant context.",
+  request: {
+    body: {
+      content: {
+        "application/json": {
+          schema: z.object({
+            organizationId: z.string().openapi({ description: "Target organization ID to switch into" }),
+          }),
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      content: {
+        "application/json": {
+          schema: z.object({
+            success: z.boolean(),
+            redirectUrl: z.string(),
+          }),
+        },
+      },
+      description: "Active tenant context updated",
+    },
+    403: {
+      content: {
+        "application/problem+json": {
+          schema: problemDetailsResponseSchema,
+        },
+      },
+      description: "Forbidden: user does not belong to target organization",
+    },
+  },
+});
+
+
 
 authRouter.openapi(switchBranchRoute, async (c) => {
   const token = getSessionToken(c);
@@ -390,6 +471,49 @@ authRouter.openapi(ssoLoginRoute, async (c) => {
     501
   );
 });
+
+authRouter.openapi(listTenantsRoute, async (c) => {
+  const token = getSessionToken(c);
+  const isValid = await verifySessionToken(token);
+  if (!isValid) {
+    throw new UnauthorizedError("Authentication required. Invalid session token.");
+  }
+  const payload = decodeSessionPayload(token);
+  if (!payload?.userId) {
+    throw new UnauthorizedError("Authentication required. Missing user identity.");
+  }
+
+  const tenants = await listUserTenants(payload.userId, prisma);
+  return c.json({ tenants }, 200);
+});
+
+authRouter.openapi(switchTenantRoute, async (c) => {
+  const token = getSessionToken(c);
+  const isValid = await verifySessionToken(token);
+  if (!isValid) {
+    throw new UnauthorizedError("Authentication required. Invalid session token.");
+  }
+  const payload = decodeSessionPayload(token);
+  if (!payload?.userId) {
+    throw new UnauthorizedError("Authentication required. Missing user identity.");
+  }
+
+  const { organizationId } = c.req.valid("json");
+  const _tenantContext = await switchActiveTenant({
+    userId: payload.userId,
+    targetOrganizationId: organizationId,
+    prisma,
+  });
+
+  return c.json(
+    {
+      success: true,
+      redirectUrl: "/dashboard",
+    },
+    200
+  );
+});
+
 
 authRouter.post("/terminal/pin-switch", async (c) => {
   const rawBody = await c.req.json().catch(() => ({}));

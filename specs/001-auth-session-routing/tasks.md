@@ -126,12 +126,12 @@
 **Independent Test**: Scenario 5 in [quickstart.md](./quickstart.md). Multi-tenant users land on `/auth/choose-tenant`; selecting organization updates session cookie context.
 
 ### Tests for User Story 5
-- [ ] T036 [P] [US5] Unit tests for tenant disambiguation and context switching in `packages/auth/tests/branch-context.test.ts`
+- [x] T036 [P] [US5] Unit tests for tenant disambiguation and context switching in `packages/auth/tests/branch-context.test.ts`
 
 ### Implementation for User Story 5
-- [ ] T037 [US5] Implement tenant list endpoint `GET /api/v1/auth/tenants` in `apps/dashboard/src/app/api/v1/auth/tenants/route.ts` returning user's organizations and branch roles
-- [ ] T038 [US5] Implement tenant switch endpoint `POST /api/v1/auth/switch-tenant` in `apps/dashboard/src/app/api/v1/auth/switch-tenant/route.ts` setting active organization and branch in session cookie
-- [ ] T039 [US5] Build workspace disambiguation screen in `apps/dashboard/src/app/(auth)/choose-tenant/page.tsx` displaying organization cards with slugs, roles, and avatar
+- [x] T037 [US5] Implement tenant list endpoint `GET /api/v1/auth/tenants` in `apps/dashboard/src/app/api/v1/auth/tenants/route.ts` returning user's organizations and branch roles
+- [x] T038 [US5] Implement tenant switch endpoint `POST /api/v1/auth/switch-tenant` in `apps/dashboard/src/app/api/v1/auth/switch-tenant/route.ts` setting active organization and branch in session cookie
+- [x] T039 [US5] Build workspace disambiguation screen in `apps/dashboard/src/app/(auth)/choose-tenant/page.tsx` displaying organization cards with slugs, roles, and avatar
 
 **Checkpoint**: User Story 5 provides seamless multi-organization navigation.
 
