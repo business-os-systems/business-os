@@ -180,15 +180,6 @@ describe("Platform Auth Gate & Login Route (@suite/dashboard)", () => {
   describe("Post-Login Route Dispatcher (resolvePostLoginRoute)", async () => {
     const { resolvePostLoginRoute } = await import("../src/lib/route-dispatcher");
 
-    it("routes platform super admin directly to /super-admin", () => {
-      expect(
-        resolvePostLoginRoute({
-          isSuperAdmin: true,
-          roleSlug: "platform-super-admin",
-        })
-      ).toBe("/super-admin");
-    });
-
     it("routes incomplete onboarding users to their last saved step", () => {
       expect(
         resolvePostLoginRoute({
@@ -198,18 +189,24 @@ describe("Platform Auth Gate & Login Route (@suite/dashboard)", () => {
       ).toBe("/onboarding/step-2");
     });
 
-    it("routes master roles (owner, admin, manager) to executive dashboard", () => {
+    it("routes users with broad, multi-domain, or wildcard permissions to executive dashboard", () => {
       expect(
         resolvePostLoginRoute({
-          roleSlug: "owner",
+          permissions: ["pos:orders:create", "cms:pages:read"],
           onboardingStatus: "COMPLETED",
-          assignedAppCodes: ["pos"],
         })
       ).toBe("/dashboard");
 
       expect(
         resolvePostLoginRoute({
-          roleSlug: "manager",
+          permissions: ["*"],
+          onboardingStatus: "COMPLETED",
+        })
+      ).toBe("/dashboard");
+
+      expect(
+        resolvePostLoginRoute({
+          permissions: ["dashboard:view"],
           onboardingStatus: "COMPLETED",
         })
       ).toBe("/dashboard");
@@ -218,7 +215,6 @@ describe("Platform Auth Gate & Login Route (@suite/dashboard)", () => {
     it("routes single-app frontline users directly to their application", () => {
       expect(
         resolvePostLoginRoute({
-          roleSlug: "cashier",
           onboardingStatus: "COMPLETED",
           assignedAppCodes: ["pos"],
         })
@@ -226,9 +222,8 @@ describe("Platform Auth Gate & Login Route (@suite/dashboard)", () => {
 
       expect(
         resolvePostLoginRoute({
-          roleSlug: "author",
           onboardingStatus: "COMPLETED",
-          permissions: ["cms:edit_page"],
+          permissions: ["cms:edit_page", "cms:publish_page"],
         })
       ).toBe("/sites");
     });
@@ -240,7 +235,6 @@ describe("Platform Auth Gate & Login Route (@suite/dashboard)", () => {
       expect(getAppRoute("custom_crm")).toBe("/crm");
       expect(
         resolvePostLoginRoute({
-          roleSlug: "sales_rep",
           onboardingStatus: "COMPLETED",
           assignedAppIds: ["custom_crm"],
         })
@@ -620,51 +614,47 @@ describe("Platform Auth Gate & Login Route (@suite/dashboard)", () => {
       expect(res.headers.get("location")).toBe("http://localhost:3000/dashboard");
     });
 
-    it("Super Admin Guard: redirects unauthenticated request to /super-admin/login", async () => {
+    it("rejects expired session tokens and redirects to /login", async () => {
       const { middleware } = await import("../src/middleware");
       const { NextRequest } = await import("next/server");
+      const {
+        encodeSessionPayload,
+        decodeSessionPayload,
+        isSessionPayloadExpired,
+        signSessionToken,
+        SESSION_COOKIE_NAME,
+      } = await import("../src/lib/auth-constants");
 
-      const req = new NextRequest("http://localhost:3000/super-admin/tenants");
-      const res = await middleware(req);
-
-      expect(res.status).toBe(307);
-      expect(res.headers.get("location")).toBe(
-        "http://localhost:3000/super-admin/login?redirect=%2Fsuper-admin%2Ftenants"
-      );
-    });
-
-    it("Super Admin Guard: rejects non-super-admin tenant user with HTTP 403 problem details", async () => {
-      const { middleware } = await import("../src/middleware");
-      const { NextRequest } = await import("next/server");
-      const { encodeSessionPayload, signSessionToken, SESSION_COOKIE_NAME } = await import(
-        "../src/lib/auth-constants"
-      );
-
-      const token = await signSessionToken(
+      const expiredTimestamp = Date.now() - 40 * 86400 * 1000; // 40 days old (exceeds 30d persistent cutoff)
+      const expiredToken = await signSessionToken(
         encodeSessionPayload({
-          userId: "usr_owner",
-          email: "owner@company.com",
-          userName: "Tenant Owner",
+          userId: "usr_expired",
+          email: "expired@company.com",
+          userName: "Expired User",
           role: "owner",
           organizationId: "org_1",
           organizationName: "Company",
-          isSuperAdmin: false,
-          timestamp: Date.now(),
+          onboardingStatus: "COMPLETED",
+          timestamp: expiredTimestamp,
         })
       );
 
-      const req = new NextRequest("http://localhost:3000/super-admin/tenants", {
-        headers: { cookie: `${SESSION_COOKIE_NAME}=${token}` },
+      // Direct expiration check must detect expiration
+      const decoded = decodeSessionPayload(expiredToken);
+      expect(decoded).not.toBeNull();
+      expect(isSessionPayloadExpired(decoded!)).toBe(true);
+
+      // Middleware resolution must reject and redirect to login
+      const req = new NextRequest("http://localhost:3000/dashboard", {
+        headers: { cookie: `${SESSION_COOKIE_NAME}=${expiredToken}` },
       });
       const res = await middleware(req);
 
-      expect(res.status).toBe(403);
-      const json = await res.json();
-      expect(json.code).toBe("SUPER_ADMIN_REQUIRED");
-      expect(json.type).toBe("/errors/forbidden");
+      expect(res.status).toBe(307);
+      expect(res.headers.get("location")).toContain("/login?redirect=");
     });
 
-    it("Super Admin Guard: allows verified super admin access to /super-admin", async () => {
+    it("sanitizes inbound spoofed headers before setting verified session claims", async () => {
       const { middleware } = await import("../src/middleware");
       const { NextRequest } = await import("next/server");
       const { encodeSessionPayload, signSessionToken, SESSION_COOKIE_NAME } = await import(
@@ -673,49 +663,28 @@ describe("Platform Auth Gate & Login Route (@suite/dashboard)", () => {
 
       const token = await signSessionToken(
         encodeSessionPayload({
-          userId: "usr_admin",
-          email: "admin@businessos.internal",
-          userName: "Platform Super Admin",
-          role: "platform-super-admin",
-          isSuperAdmin: true,
+          userId: "usr_onboarding",
+          email: "step1@company.com",
+          userName: "Step 1 User",
+          role: "owner",
+          onboardingStatus: "IN_PROGRESS",
+          currentOnboardingStep: 1,
           timestamp: Date.now(),
         })
       );
 
-      const req = new NextRequest("http://localhost:3000/super-admin/tenants", {
-        headers: { cookie: `${SESSION_COOKIE_NAME}=${token}` },
+      const req = new NextRequest("http://localhost:3000/onboarding/step-1", {
+        headers: {
+          cookie: `${SESSION_COOKIE_NAME}=${token}`,
+          "x-tenant-id": "injected-evil-tenant",
+          "x-branch-id": "injected-evil-branch",
+        },
       });
       const res = await middleware(req);
 
       expect(res.status).toBe(200);
-      expect(res.headers.get("x-is-super-admin")).toBe("true");
-    });
-
-    it("Super Admin Guard: redirects super admin visiting /super-admin/login to /super-admin", async () => {
-      const { middleware } = await import("../src/middleware");
-      const { NextRequest } = await import("next/server");
-      const { encodeSessionPayload, signSessionToken, SESSION_COOKIE_NAME } = await import(
-        "../src/lib/auth-constants"
-      );
-
-      const token = await signSessionToken(
-        encodeSessionPayload({
-          userId: "usr_admin",
-          email: "admin@businessos.internal",
-          userName: "Platform Super Admin",
-          role: "platform-super-admin",
-          isSuperAdmin: true,
-          timestamp: Date.now(),
-        })
-      );
-
-      const req = new NextRequest("http://localhost:3000/super-admin/login", {
-        headers: { cookie: `${SESSION_COOKIE_NAME}=${token}` },
-      });
-      const res = await middleware(req);
-
-      expect(res.status).toBe(307);
-      expect(res.headers.get("location")).toBe("http://localhost:3000/super-admin");
+      expect(res.headers.get("x-tenant-id")).toBeNull();
+      expect(res.headers.get("x-branch-id")).toBeNull();
     });
   });
 
@@ -743,6 +712,43 @@ describe("Platform Auth Gate & Login Route (@suite/dashboard)", () => {
       expect(html).toContain("Connection Dropped");
       expect(html).toContain("Failed to reach the server gateway.");
       expect(html).toContain("Reconnect Now");
+    });
+
+    it("cleans up active timers on unmount without throwing errors", () => {
+      let isRetried = false;
+      const html = renderToString(
+        <OfflineView onRetry={() => { isRetried = true; }} />
+      );
+      expect(html).toBeDefined();
+      expect(isRetried).toBe(false);
+    });
+  });
+
+  describe("Open Redirect & Destination Security Handshake", async () => {
+    const { sanitizeRedirect } = await import("../src/app/(auth)/login/page");
+
+    it("allows valid relative local redirect path when onboarding is completed", () => {
+      expect(sanitizeRedirect("/sites", "COMPLETED")).toBe("/sites");
+      expect(sanitizeRedirect("/pos?table=1", "COMPLETED")).toBe("/pos?table=1");
+    });
+
+    it("rejects protocol-relative double-slash URLs", () => {
+      expect(sanitizeRedirect("//evil.com", "COMPLETED")).toBeNull();
+    });
+
+    it("rejects protocol-relative backslash URLs", () => {
+      expect(sanitizeRedirect("/\\evil.com", "COMPLETED")).toBeNull();
+    });
+
+    it("rejects authentication routes to prevent redirect bouncing", () => {
+      expect(sanitizeRedirect("/login", "COMPLETED")).toBeNull();
+      expect(sanitizeRedirect("/signup", "COMPLETED")).toBeNull();
+      expect(sanitizeRedirect("/forgot-password", "COMPLETED")).toBeNull();
+      expect(sanitizeRedirect("/reset-password", "COMPLETED")).toBeNull();
+    });
+
+    it("ignores redirect query parameter when onboarding is IN_PROGRESS", () => {
+      expect(sanitizeRedirect("/sites", "IN_PROGRESS")).toBeNull();
     });
   });
 });

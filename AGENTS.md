@@ -11,7 +11,7 @@
 ## 0. Rule 0: Pre-Change Rule Verification Gate (APPLY RULES FIRST BEFORE MAKING ANY CHANGES)
 - **Before making ANY code, design, configuration, or architectural change, AI agents MUST explicitly review, verify, and apply ALL operational directives and architectural rules FIRST.**
 - AI agents are **STRICTLY PROHIBITED** from taking shortcuts, introducing temporary workarounds, using mock/static data fallbacks, or writing code before validating all repository rules.
-- Every turn begins with a rule compliance check: If an action would violate ANY directive in this document (e.g., issue-first policy, zero static data, DESIGN.md primacy, branch hierarchy, human approval gates, core immutability), the agent **MUST NOT** proceed with the violation.
+- Every turn begins with a rule compliance check: If an action would violate ANY directive in this document (e.g., issue-first policy, zero static data, DESIGN.md primacy, branch hierarchy, human issue approval gate, human commit & PR approval gate, human merge approval gate, core immutability), the agent **MUST NOT** proceed with the violation.
 
 ---
 
@@ -60,17 +60,27 @@ All Git actions, commits, and PRs in this repository **MUST** use this developer
 
 ---
 
-## 4. THE MANDATORY HUMAN MERGE APPROVAL GATE
-- **AI AGENTS ARE STRICTLY FORBIDDEN FROM MERGING PULL REQUESTS AUTONOMOUSLY.**
-- When you finish coding a ticket:
+## 4. MANDATORY HUMAN COMMIT, PR & MERGE APPROVAL GATES
+
+### 4.1 THE MANDATORY HUMAN COMMIT & PR APPROVAL GATE (NO AUTONOMOUS COMMITS OR PRS)
+- **AI AGENTS ARE STRICTLY FORBIDDEN FROM COMMITTING CODE, PUSHING BRANCHES, OR RAISING/CREATING PULL REQUESTS AUTONOMOUSLY.**
+- When you finish coding a ticket or task:
   1. Run local gates: `pnpm turbo run lint && pnpm turbo run typecheck && pnpm turbo run test`.
-  2. Commit with Conventional Commits: `type(scope): description (closes #X)`.
-  3. Push branch: `git push -u origin <branch-name>`.
-  4. Open Pull Request targeting `dev`: `gh pr create --base dev ...`.
-  5. Verify GitHub Actions CI turns **Green ✅**.
-  6. **STOP. Present the PR link to the user, explain the changes, and WAIT FOR EXPLICIT WRITTEN APPROVAL (e.g. "Merge it" or "Approved").**
-  7. Only execute `gh pr merge <num> --squash --delete-branch` AFTER human approval is given.
-  8. **Post-Merge Integration Gate (P0 Stop-the-Line):** Immediately after merging, monitor and verify that `dev`'s post-merge GitHub Actions CI run turns **Green ✅**. If `dev` turns Red, **STOP ALL NEW WORK IMMEDIATELY** — resolving `dev` is P0 priority before picking up any new issue, creating any new branch, or writing any code.
+  2. **STOP. DO NOT COMMIT OR PUSH.** Present a pre-commit report to the user specifying:
+     - Exact modified and newly created files
+     - Proposed Conventional Commit message: `type(scope): description (closes #X)`
+     - Proposed Pull Request title and structured description
+     - Local test and verification gate results
+  3. **WAIT FOR EXPLICIT WRITTEN APPROVAL** from the user (e.g. "Commit and raise PR" or "Approved to commit").
+  4. **Only execute `git commit`, `git push`, and `gh pr create` AFTER written approval is explicitly given.**
+
+### 4.2 THE MANDATORY HUMAN MERGE APPROVAL GATE (NO AUTONOMOUS MERGES)
+- **AI AGENTS ARE STRICTLY FORBIDDEN FROM MERGING PULL REQUESTS AUTONOMOUSLY.**
+- After the Pull Request is created:
+  1. Verify GitHub Actions CI turns **Green ✅** (unless user explicitly requests not to wait/track).
+  2. **STOP. Present the PR link to the user, explain the changes, and WAIT FOR EXPLICIT WRITTEN APPROVAL (e.g. "Merge it" or "Approved").**
+  3. Only execute `gh pr merge <num> --squash --delete-branch` AFTER explicit written human approval is given.
+  4. **Post-Merge Integration Gate (P0 Stop-the-Line):** Immediately after merging, monitor and verify that `dev`'s post-merge GitHub Actions CI run turns **Green ✅**. If `dev` turns Red, **STOP ALL NEW WORK IMMEDIATELY** — resolving `dev` is P0 priority before picking up any new issue, creating any new branch, or writing any code.
 
 ---
 

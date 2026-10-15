@@ -67,10 +67,10 @@
 **Independent Test**: Scenario 2 & Scenario 6 in [quickstart.md](./quickstart.md). Navigating to `/login` as authenticated user redirects to `/dashboard` or `/onboarding/step-N`; signing out blocks back-navigation.
 
 ### Tests for User Story 2
-- [x] T019 [P] [US2] Integration tests for route guard rules (Guest Guard, Onboarding Guard, Super Admin Guard) in `apps/dashboard/tests/auth-gate.test.tsx`
+- [x] T019 [P] [US2] Integration tests for route guard rules (Guest Guard, Onboarding Guard, API route protections) in `apps/dashboard/tests/auth-gate.test.tsx`
 
 ### Implementation for User Story 2
-- [x] T020 [US2] Implement Next.js Edge Middleware route guard in `apps/dashboard/src/middleware.ts` enforcing Rule 1 (Guest exclusion from `/login`, `/signup`), Rule 4 (Onboarding guard bouncing incomplete users to `/onboarding/step-N`), and Super Admin isolation
+- [x] T020 [US2] Implement Next.js Edge Middleware route guard in `apps/dashboard/src/middleware.ts` enforcing Rule 1 (Guest exclusion from `/login`, `/signup`), Rule 4 (Onboarding guard bouncing incomplete users to `/onboarding/step-N`), and header propagation
 - [x] T021 [US2] Integrate `resolvePostLoginRoute` dispatcher into post-login client handshake in `apps/dashboard/src/app/(auth)/login/page.tsx`
 - [x] T022 [US2] Build offline detection boundary with "Retry connection" CTA in `apps/dashboard/src/components/layout/offline-view.tsx`
 
@@ -177,32 +177,13 @@
 
 ---
 
-## Phase 10: User Story 8 - Platform Super Dashboard Separation (Priority: P3)
-
-**Goal**: Provide an isolated platform management console (`/super-admin`) requiring global super admin role (`Role.organizationId === null`, `Role.slug === "platform-super-admin"`) and mandatory MFA.
-
-**Independent Test**: Scenario 9 in [quickstart.md](./quickstart.md). Tenant user accessing `/super-admin/*` receives HTTP 403 `SUPER_ADMIN_REQUIRED`; super admin with TOTP accesses console.
-
-### Tests for User Story 8
-- [ ] T052 [P] [US8] Unit and integration tests for Super Admin authentication and middleware isolation in `apps/dashboard/tests/super-admin-gate.test.tsx`
-
-### Implementation for User Story 8
-- [ ] T053 [US8] Build Super Admin MFA login portal in `apps/dashboard/src/app/(super-admin)/login/page.tsx` accepting email, password, and 6-digit TOTP code
-- [ ] T054 [US8] Implement Super Admin authentication endpoint `POST /api/super-admin/auth/login` in `apps/dashboard/src/app/api/super-admin/auth/login/route.ts` validating global role (`Role.organizationId === null` && `Role.slug === "platform-super-admin"`) and TOTP verification
-- [ ] T055 [US8] Build Super Admin global console layout in `apps/dashboard/src/app/(super-admin)/layout.tsx` and dashboard view in `apps/dashboard/src/app/(super-admin)/page.tsx`
-- [ ] T056 [US8] Enforce Super Admin middleware guard in `apps/dashboard/src/middleware.ts` intercepting `/super-admin/*` and rejecting tenant users with HTTP 403 `SUPER_ADMIN_REQUIRED`
-
-**Checkpoint**: User Story 8 separates tenant operations from platform operator governance.
-
----
-
-## Phase 11: Polish & Cross-Cutting Concerns
+## Phase 10: Polish & Cross-Cutting Concerns
 
 **Purpose**: Cross-cutting quality checks, accessibility validation, and documentation.
 
 - [ ] T057 [P] Accessibility and keyboard navigation audit across all auth forms (`aria-invalid`, `focus-ring`, 44x44px touch targets)
 - [ ] T058 [P] Documentation updates in `docs/auth-session-routing.md` detailing architecture, security model, and API contracts
-- [ ] T059 Run quickstart validation runbook (`quickstart.md` Scenarios 1–9) and verify all Vitest suites pass
+- [ ] T059 Run quickstart validation runbook (`quickstart.md` Scenarios 1–8) and verify all Vitest suites pass
 
 ---
 
@@ -219,8 +200,7 @@
   - Phase 7 (US5 - Multi-Tenancy): Depends on US3 (requires organization records).
   - Phase 8 (US6 - Email Verification): Can run after US1 and US3.
   - Phase 9 (US7 - Account Security): Can run after US1.
-  - Phase 10 (US8 - Super Admin): Can run after US2 (requires Edge middleware).
-- **Polish (Phase 11)**: Depends on all user stories being complete.
+- **Polish (Phase 10)**: Depends on all user stories being complete.
 
 ---
 
@@ -257,8 +237,7 @@ Task: "T029 [P] [US3] Build Step 3 UI in apps/dashboard/src/app/(onboarding)/ste
 1. Add Phase 4 (US2): Edge middleware route guards and back-navigation guards.
 2. Add Phase 5 (US3): 3-step onboarding pipeline and Tenant-Owner bootstrapping.
 3. Add Phases 6–9 (US4–US7): Enterprise SSO, multi-tenancy, deferred email verification, password reset.
-4. Add Phase 10 (US8): Platform Super Admin portal.
-5. Execute Phase 11: Polish, accessibility audit, and full quickstart validation.
+4. Execute Phase 10: Polish, accessibility audit, and full quickstart validation.
 
 
 ---

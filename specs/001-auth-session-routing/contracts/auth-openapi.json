@@ -588,55 +588,6 @@
           }
         }
       }
-    },
-    "/api/super-admin/auth/login": {
-      "post": {
-        "summary": "Authenticate platform super administrator with mandatory MFA",
-        "description": "Authenticates platform operators holding global role (Role.organizationId === null && Role.slug === 'platform-super-admin') with MFA challenge.",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": ["email", "password", "totpCode"],
-                "properties": {
-                  "email": { "type": "string", "format": "email" },
-                  "password": { "type": "string" },
-                  "totpCode": { "type": "string", "pattern": "^[0-9]{6}$" },
-                  "turnstileToken": { "type": "string" }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Platform super admin authenticated successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": { "type": "boolean" },
-                    "redirectUrl": { "type": "string", "example": "/super-admin" },
-                    "user": { "$ref": "#/components/schemas/UserSummary" }
-                  }
-                }
-              }
-            }
-          },
-          "401": { "$ref": "#/components/responses/ProblemDetails" },
-          "403": {
-            "description": "User lacks platform super admin role or MFA failed",
-            "content": {
-              "application/json": {
-                "schema": { "$ref": "#/components/schemas/ProblemDetails" }
-              }
-            }
-          }
-        }
-      }
     }
   },
   "components": {

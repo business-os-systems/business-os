@@ -10,6 +10,24 @@ import { PasskeyButton } from "@/components/auth/passkey-button";
 import { resolvePostLoginRoute } from "@/lib/route-dispatcher";
 import { isBrowser } from "@/lib/env";
 
+export function sanitizeRedirect(
+  queryRedirect: string | null,
+  onboardingStatus?: string
+): string | null {
+  const isSafe =
+    queryRedirect !== null &&
+    queryRedirect.startsWith("/") &&
+    !queryRedirect.startsWith("//") &&
+    !queryRedirect.startsWith("/\\") &&
+    !queryRedirect.startsWith("/login") &&
+    !queryRedirect.startsWith("/signup") &&
+    !queryRedirect.startsWith("/forgot-password") &&
+    !queryRedirect.startsWith("/reset-password") &&
+    (!onboardingStatus || onboardingStatus === "COMPLETED");
+
+  return isSafe ? queryRedirect : null;
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -60,9 +78,7 @@ export default function LoginPage() {
       // Route user using resolvePostLoginRoute dispatcher handshake
       const user = result.user;
       const dispatcherRoute = resolvePostLoginRoute({
-        roleSlug: user?.roleSlug || user?.role,
         permissions: user?.permissions,
-        isSuperAdmin: user?.isSuperAdmin,
         onboardingStatus: user?.onboardingStatus,
         currentOnboardingStep: user?.currentOnboardingStep,
         assignedAppIds: user?.assignedAppIds,
@@ -73,15 +89,10 @@ export default function LoginPage() {
       const queryRedirect = isBrowser
         ? new URLSearchParams(window.location.search).get("redirect")
         : null;
-      const isSafeRedirect =
-        queryRedirect &&
-        queryRedirect.startsWith("/") &&
-        !queryRedirect.startsWith("//") &&
-        (!user?.onboardingStatus || user.onboardingStatus === "COMPLETED");
+      const safeRedirect = sanitizeRedirect(queryRedirect, user?.onboardingStatus);
 
-      const targetUrl = isSafeRedirect
-        ? queryRedirect
-        : result.redirectUrl || dispatcherRoute || "/dashboard";
+      const targetUrl =
+        safeRedirect || result.redirectUrl || dispatcherRoute || "/dashboard";
 
       router.push(targetUrl);
       router.refresh();

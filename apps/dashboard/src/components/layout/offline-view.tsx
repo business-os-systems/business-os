@@ -35,6 +35,9 @@ export interface OfflineViewProps extends OfflineViewMetadata, OfflineViewAction
  * Displays an accessible, centered offline indicator with a 'Retry connection' CTA
  * when network connection drops or on native launch.
  */
+const RETRY_FEEDBACK_DELAY_MS = 600;
+const OFFLINE_PROBE_DELAY_MS = 500;
+
 export function OfflineView({
   title = "You are currently offline",
   description = "Your network connection was lost. Please check your internet connectivity to resume working in Business OS.",
@@ -48,6 +51,7 @@ export function OfflineView({
     return isBrowser ? navigator.onLine : true;
   });
   const [isRetrying, setIsRetrying] = useState(false);
+  const retryTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleOnline = useCallback(() => {
     setIsOnline(true);
@@ -68,15 +72,23 @@ export function OfflineView({
     return () => {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
+      if (retryTimerRef.current) {
+        clearTimeout(retryTimerRef.current);
+      }
     };
   }, [handleOnline, handleOffline]);
 
   const handleRetry = useCallback(() => {
+    if (retryTimerRef.current) {
+      clearTimeout(retryTimerRef.current);
+    }
     setIsRetrying(true);
 
     if (onRetry) {
       onRetry();
-      setTimeout(() => setIsRetrying(false), 600);
+      retryTimerRef.current = setTimeout(() => {
+        setIsRetrying(false);
+      }, RETRY_FEEDBACK_DELAY_MS);
       return;
     }
 
@@ -85,7 +97,9 @@ export function OfflineView({
         setIsOnline(true);
         window.location.reload();
       } else {
-        setTimeout(() => setIsRetrying(false), 500);
+        retryTimerRef.current = setTimeout(() => {
+          setIsRetrying(false);
+        }, OFFLINE_PROBE_DELAY_MS);
       }
     }
   }, [onRetry]);
