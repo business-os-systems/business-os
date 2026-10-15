@@ -11,7 +11,11 @@ export async function middleware(request: NextRequest) {
   const sessionToken = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   const isAuthenticated = Boolean(sessionToken && (await verifySessionToken(sessionToken)));
 
-  const isAuthRoute = pathname.startsWith("/login");
+  const isAuthRoute =
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/signup") ||
+    pathname.startsWith("/forgot-password") ||
+    pathname.startsWith("/reset-password");
   const isApiAuthRoute = pathname.startsWith("/api/auth");
   const STATIC_ASSET_REGEX = /\.(ico|png|jpg|jpeg|svg|css|js|woff|woff2|ttf|eot)$/i;
   const isPublicAsset =
@@ -41,8 +45,10 @@ export async function middleware(request: NextRequest) {
   if (sessionToken) {
     const payload = decodeSessionPayload(sessionToken);
     if (payload) {
-      requestHeaders.set("x-tenant-id", payload.organizationId);
-      requestHeaders.set("x-organization-id", payload.organizationId);
+      if (payload.organizationId) {
+        requestHeaders.set("x-tenant-id", payload.organizationId);
+        requestHeaders.set("x-organization-id", payload.organizationId);
+      }
       requestHeaders.set("x-user-id", payload.userId);
       requestHeaders.set("x-user-role", payload.role);
       requestHeaders.set("x-user-name", encodeURIComponent(payload.userName));

@@ -51,6 +51,11 @@ export {
   type ActiveSessionDetails,
   type SessionCookieOptions,
   type SessionPayload,
+  type UserIdentityContext,
+  type TenantSessionContext,
+  type SessionAuthorizationContext,
+  type SessionLifecycleContext,
+  type SessionPreferencesContext,
 } from "./session/index.js";
 
 export {
@@ -70,4 +75,12 @@ export {
   isTest,
   getBetterAuthSecret,
 } from "./env.js";
+
+export {
+  hashPassword,
+  verifyPassword,
+  validatePasswordComplexity,
+  ARGON2ID_PASSWORD_OPTIONS,
+  type PasswordComplexityResult,
+} from "./password/password-engine.js";
 

@@ -29,7 +29,7 @@ describe("Platform Auth Gate & Login Route (@suite/dashboard)", () => {
       expect(html).toContain("Business OS");
       expect(html).toContain("Sign In to Workspace");
       expect(html).toContain("operator@company.com");
-      expect(html).toContain("TLS Encrypted");
+      expect(html).toContain("Sign up");
     });
   });
 
@@ -312,4 +312,149 @@ describe("Platform Auth Gate & Login Route (@suite/dashboard)", () => {
       expect(getBetterAuthSecret()).toBe("test-secret-value-32-chars-long!");
     });
   });
+
+  describe("AuthCard Component (DESIGN.md modal-sm)", async () => {
+    const { AuthCard } = await import("../src/components/auth/auth-card");
+
+    it("renders title, subtitle, badge, and content in 400px card", () => {
+      const html = renderToString(
+        <AuthCard
+          title="Sign in to your account"
+          subtitle="Welcome back"
+          badge="Secure Gate"
+          footer={<span>Footer Link</span>}
+        >
+          <div data-testid="card-child">Form Content</div>
+        </AuthCard>
+      );
+
+      expect(html).toContain("Sign in to your account");
+      expect(html).toContain("Welcome back");
+      expect(html).toContain("Secure Gate");
+      expect(html).toContain("Form Content");
+      expect(html).toContain("Footer Link");
+      expect(html).toContain("max-w-[400px]");
+    });
+  });
+
+  describe("EmailPasswordForm Component (Complexity & Mode Handling)", async () => {
+    const { EmailPasswordForm } = await import(
+      "../src/components/auth/email-password-form"
+    );
+
+    it("renders login mode with keep me signed in checkbox and forgot password link", () => {
+      const html = renderToString(
+        <EmailPasswordForm
+          mode="login"
+          onSubmit={() => {}}
+          onForgotPassword={() => {}}
+        />
+      );
+
+      expect(html).toContain("Email Address");
+      expect(html).toContain("Password");
+      expect(html).toContain("Keep me signed in for 30 days");
+      expect(html).toContain("Forgot password?");
+      expect(html).toContain("Sign In with Password");
+    });
+
+    it("renders signup mode without Full Name field and with Create Account CTA", () => {
+      const html = renderToString(
+        <EmailPasswordForm
+          mode="signup"
+          onSubmit={() => {}}
+        />
+      );
+
+      expect(html).not.toContain("Full Name");
+      expect(html).toContain("Email Address");
+      expect(html).toContain("Password");
+      expect(html).not.toContain("Keep me signed in for 30 days");
+      expect(html).toContain("Create Account");
+    });
+
+    it("renders error alert message when provided", () => {
+      const html = renderToString(
+        <EmailPasswordForm
+          mode="login"
+          onSubmit={() => {}}
+          errorMessage="Invalid credentials provided"
+        />
+      );
+
+      expect(html).toContain("Invalid credentials provided");
+      expect(html).toContain("role=\"alert\"");
+    });
+  });
+
+  describe("User Registration & Login API Contracts", () => {
+    it("rejects invalid registration payload with 400 problem details", async () => {
+      const { POST: registerPost } = await import(
+        "../src/app/api/auth/register/route"
+      );
+
+      const invalidReq = new Request("http://localhost/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: "invalid-email", password: "short" }),
+      });
+
+      const res = await registerPost(invalidReq);
+      expect(res.status).toBe(400);
+
+      const json = await res.json();
+      expect(json.type).toBe("/errors/validation-failed");
+    });
+
+    it("rejects weak passwords with 400 problem details", async () => {
+      const { POST: registerPost } = await import(
+        "../src/app/api/auth/register/route"
+      );
+
+      const weakReq = new Request("http://localhost/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: "valid@enterprise.com",
+          name: "Test User",
+          password: "alllowercasepassword",
+        }),
+      });
+
+      const res = await weakReq ? await registerPost(weakReq) : null;
+      expect(res?.status).toBe(400);
+
+      const json = await res?.json();
+      expect(json.type).toBe("/errors/weak-password");
+    });
+
+    it("rejects login request with missing password with 400 problem details", async () => {
+      const { POST: loginPost } = await import(
+        "../src/app/api/auth/login/route"
+      );
+
+      const invalidLogin = new Request("http://localhost/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: "user@enterprise.com", password: "" }),
+      });
+
+      const res = await loginPost(invalidLogin);
+      expect(res.status).toBe(400);
+
+      const json = await res.json();
+      expect(json.type).toBe("/errors/validation-failed");
+    });
+
+    it("dynamically derives clean name from email address when name is omitted", async () => {
+      const { deriveNameFromEmail } = await import(
+        "../src/app/api/auth/register/route"
+      );
+      expect(deriveNameFromEmail("rohit.bahuguna@example.com")).toBe("Rohit Bahuguna");
+      expect(deriveNameFromEmail("operator@company.com")).toBe("Operator");
+      expect(deriveNameFromEmail("jane_doe@test.org")).toBe("Jane Doe");
+      expect(deriveNameFromEmail("alice-smith@corp.net")).toBe("Alice Smith");
+    });
+  });
 });
+

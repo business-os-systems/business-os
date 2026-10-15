@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@suite/db";
+import { verifyPassword } from "@suite/auth/password";
 import {
   SESSION_COOKIE_NAME,
   createSessionCookieOptions,
@@ -8,10 +9,14 @@ import {
   encodeSessionPayload,
 } from "@/lib/auth-constants";
 import { isProduction } from "@/lib/env";
+import { verifyTurnstileToken } from "@/lib/turnstile";
+import { resolvePostLoginRoute } from "@/lib/route-dispatcher";
 
 const LoginSchema = z.object({
   email: z.string().email("A valid email address is required"),
-  password: z.string().min(4, "Password must be at least 4 characters"),
+  password: z.string().min(1, "Password is required"),
+  keepSignedIn: z.boolean().optional().default(false),
+  turnstileToken: z.string().optional().nullable(),
 });
 
 export async function POST(request: Request) {
@@ -21,17 +26,41 @@ export async function POST(request: Request) {
 
     if (!parseResult.success) {
       return NextResponse.json(
-        { error: parseResult.error.issues[0]?.message ?? "Validation failed" },
-        { status: 400 }
+        {
+          type: "/errors/validation-failed",
+          title: "Bad Request",
+          status: 400,
+          detail: parseResult.error.issues[0]?.message ?? "Validation failed",
+        },
+        { status: 400, headers: { "Content-Type": "application/problem+json" } }
       );
     }
 
-    const { email, password: _password } = parseResult.data;
+    const { email, password, keepSignedIn, turnstileToken } = parseResult.data;
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Verify Cloudflare Turnstile bot token in production or when token provided
+    if (isProduction || turnstileToken) {
+      const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+      const turnstileResult = await verifyTurnstileToken(turnstileToken, clientIp);
+      if (!turnstileResult.success) {
+        return NextResponse.json(
+          {
+            type: "/errors/bot-verification-failed",
+            title: "Forbidden",
+            status: 403,
+            detail: "Security verification failed. Please complete the security check and try again.",
+          },
+          { status: 403, headers: { "Content-Type": "application/problem+json" } }
+        );
+      }
+    }
 
     // Verify user in PostgreSQL database
     const dbUser = await prisma.user.findUnique({
-      where: { email: email.toLowerCase() },
+      where: { email: normalizedEmail },
       include: {
+        accounts: true,
         organizations: {
           include: {
             organization: true,
@@ -48,57 +77,99 @@ export async function POST(request: Request) {
 
     if (!dbUser) {
       return NextResponse.json(
-        { error: "Invalid email or password. Please check your credentials." },
-        { status: 401 }
+        {
+          type: "/errors/invalid-credentials",
+          title: "Unauthorized",
+          status: 401,
+          detail: "Invalid email or password. Please check your credentials.",
+        },
+        { status: 401, headers: { "Content-Type": "application/problem+json" } }
       );
     }
+
+    // Verify password if credential account exists
+    const credentialAccount = dbUser.accounts.find((a) => a.providerId === "credential");
+    if (credentialAccount?.password) {
+      const isPasswordValid = await verifyPassword(password, credentialAccount.password);
+      if (!isPasswordValid) {
+        return NextResponse.json(
+          {
+            type: "/errors/invalid-credentials",
+            title: "Unauthorized",
+            status: 401,
+            detail: "Invalid email or password. Please check your credentials.",
+          },
+          { status: 401, headers: { "Content-Type": "application/problem+json" } }
+        );
+      }
+    }
+
+    const metadata = (dbUser.metadata || {}) as Record<string, unknown>;
+    const rawStatus = metadata.onboarding_status;
+    const onboardingStatus =
+      rawStatus === "IN_PROGRESS" || rawStatus === "COMPLETED" || rawStatus === "NOT_STARTED"
+        ? (rawStatus as "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED")
+        : undefined;
+    const currentOnboardingStep = (metadata.current_onboarding_step as number) || undefined;
+    const themePreference = (metadata.theme_preference as "system" | "light" | "dark") || "system";
 
     const membership = dbUser.organizations[0];
-    if (!membership) {
-      return NextResponse.json(
-        { error: "Account is not associated with an active enterprise workspace." },
-        { status: 403 }
-      );
-    }
-
-    const organization = membership.organization;
+    const organization = membership?.organization;
     const branchRole = dbUser.branchRoles[0];
-    if (!branchRole?.role) {
+    const roleName = branchRole?.role?.name || (onboardingStatus === "IN_PROGRESS" ? "owner" : "member");
+    const roleSlug = branchRole?.role?.slug;
+    const branchName = branchRole?.branch?.name ?? undefined;
+    const branchId = branchRole?.branchId ?? undefined;
+
+    // Check workspace membership if onboarding is completed
+    if (onboardingStatus !== "IN_PROGRESS" && !organization) {
       return NextResponse.json(
-        { error: "Account does not have an active role assigned within this organization." },
-        { status: 403 }
+        {
+          type: "/errors/workspace-access-denied",
+          title: "Forbidden",
+          status: 403,
+          detail: "Account is not associated with an active enterprise workspace.",
+        },
+        { status: 403, headers: { "Content-Type": "application/problem+json" } }
       );
     }
 
-    const roleName = branchRole.role.name;
-    const branchName = branchRole.branch?.name ?? undefined;
-    const branchId = branchRole.branchId ?? undefined;
+    // Resolve post-login route based on user state
+    const redirectUrl = resolvePostLoginRoute({
+      roleSlug,
+      onboardingStatus,
+      currentOnboardingStep,
+    });
 
     // Generate cryptographically signed session token with verified tenant payload
     const rawPayload = encodeSessionPayload({
       userId: dbUser.id,
       email: dbUser.email,
-      organizationId: organization.id,
-      organizationName: organization.name,
+      organizationId: organization?.id,
+      organizationName: organization?.name,
       role: roleName,
       userName: dbUser.name,
       activeBranchId: branchId,
       activeBranchName: branchName,
+      themePreference,
       timestamp: Date.now(),
     });
 
     const token = await signSessionToken(rawPayload);
-    const cookieOptions = createSessionCookieOptions(isProduction);
+    const cookieOptions = createSessionCookieOptions(isProduction, keepSignedIn);
 
     const response = NextResponse.json({
       success: true,
+      redirectUrl,
+      themePreference,
       user: {
         id: dbUser.id,
         email: dbUser.email,
         name: dbUser.name,
         role: roleName,
-        organizationId: organization.id,
-        organizationName: organization.name,
+        organizationId: organization?.id,
+        organizationName: organization?.name,
+        onboardingStatus,
       },
     });
 
@@ -115,8 +186,13 @@ export async function POST(request: Request) {
     return response;
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to authenticate session" },
-      { status: 500 }
+      {
+        type: "/errors/internal-error",
+        title: "Internal Server Error",
+        status: 500,
+        detail: error instanceof Error ? error.message : "Failed to authenticate session",
+      },
+      { status: 500, headers: { "Content-Type": "application/problem+json" } }
     );
   }
 }

@@ -25,6 +25,16 @@
       "types": "./src/session/index.ts",
       "import": "./src/session/index.ts",
       "default": "./src/session/index.ts"
+    },
+    "./rules": {
+      "types": "./src/password/password-rules.ts",
+      "import": "./src/password/password-rules.ts",
+      "default": "./src/password/password-rules.ts"
+    },
+    "./password": {
+      "types": "./src/password/password-engine.ts",
+      "import": "./src/password/password-engine.ts",
+      "default": "./src/password/password-engine.ts"
     }
   },
   "scripts": {

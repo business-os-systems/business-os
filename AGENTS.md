@@ -107,6 +107,23 @@ You are **STRICTLY PROHIBITED** from:
 - ❌ **Exporting Shared Constants/Data from Client Components (RSC Boundary Law):**
   AI agents MUST NEVER define or export shared constants, default arrays, configurations, or schemas from files containing the `"use client"` directive if they are consumed by React Server Components (`layout.tsx`, `page.tsx`).
   All shared constants, fallback anchors (e.g. `BASE_NAV_ITEMS`), and data structures MUST reside in pure TypeScript modules (`types.ts`, `constants.ts`) without the `"use client"` directive to prevent runtime `undefined` bundle proxy errors.
+- ❌ **Bloated & Monolithic Interfaces (SOLID Interface Segregation Law):**
+  AI agents are **STRICTLY FORBIDDEN** from bundling unrelated, orthogonal domain concerns (such as user identity, tenant scoping, RBAC permissions, lifecycle timestamps, and UI preferences) into monolithic, bloated TypeScript interfaces.
+  1. Every domain interface MUST follow the **Single Responsibility Principle (SRP)** and **Interface Segregation Principle (ISP)** by encapsulating only one cohesive domain context (e.g., `UserIdentityContext`, `TenantSessionContext`, `SessionAuthorizationContext`, `SessionLifecycleContext`, `SessionPreferencesContext`).
+  2. Composite payloads MUST be assembled using multiple interface inheritance (`interface SessionPayload extends UserIdentityContext, ...`).
+  3. Component prop interfaces MUST cleanly segregate header metadata, layout slots, event callbacks, and state into independent interfaces.
+- ❌ **Scattered Host Environment Checks (Centralized Environment Guard Law):**
+  AI agents are **STRICTLY FORBIDDEN** from scattering raw `typeof window !== "undefined"` or `typeof document !== "undefined"` checks throughout component code.
+  1. All runtime host environment detection MUST be centralized in `lib/env.ts` (exporting `isBrowser`, `isServer`).
+  2. Components and client utilities MUST import and use `isBrowser` / `isServer` directly for readable, maintainable SSR guards.
+- ❌ **Floating Elements Outside Envelope Cards (Complete Card Encapsulation & Zero-Scroll Law):**
+  1. All visual elements of an authentication or modal card (branding emblems, application titles, subtitles, badges, form controls, OAuth provider buttons, passkey triggers, and secondary navigation links like "Sign up" or "Sign in") MUST be encapsulated strictly **inside** the card container (`AuthCard`). Floating text or external wrappers outside the card are strictly forbidden.
+  2. Superfluous external trust badges (such as "TLS Encrypted", "Zero-Trust Gate", "Kernel Tenant Isolated") MUST NOT be added.
+  3. The card layout MUST maintain a compact vertical rhythm so that on a standard desktop/laptop viewport at 100% zoom, the complete card is visible with **zero vertical scrolling**. Natural vertical scrolling must only engage when the viewport height is reduced below the card height.
+- ❌ **Unnecessary Form Inputs for Deterministic Data (Minimalist Input Law):**
+  Do NOT demand user inputs for fields that can be deterministically derived. On initial sign up / registration, do NOT demand a "Full Name" field if the user's name can be automatically derived from the email address local-part. The backend MUST dynamically derive fallback display names.
+- ❌ **Blocking Public Auth Routes in Edge Middleware (Public Auth Whitelist Law):**
+  When creating or refactoring authentication routes (`/login`, `/signup`, `/forgot-password`, `/reset-password`), Edge middleware MUST explicitly whitelist them in `isAuthRoute` to prevent unauthenticated users from encountering redirect loops (`307` back to `/login`).
 
 ---
 

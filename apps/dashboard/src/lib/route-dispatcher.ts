@@ -5,15 +5,38 @@
  * whether a user lands on the executive dashboard or directly into a designated app.
  */
 
-export interface RouteDispatchContext {
+/**
+ * Role & Privilege parameters for route dispatching (ISP).
+ */
+export interface RouteAuthorizationContext {
   roleSlug?: string;
   permissions?: string[];
+  isSuperAdmin?: boolean;
+}
+
+/**
+ * Application entitlement mappings (ISP).
+ */
+export interface RouteAppEntitlementsContext {
   assignedAppIds?: string[];
   assignedAppCodes?: string[];
-  isSuperAdmin?: boolean;
+}
+
+/**
+ * Onboarding lifecycle state (ISP).
+ */
+export interface RouteOnboardingStateContext {
   onboardingStatus?: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED";
   currentOnboardingStep?: number | null;
 }
+
+/**
+ * Composite context for post-login destination routing.
+ */
+export interface RouteDispatchContext
+  extends RouteAuthorizationContext,
+    RouteAppEntitlementsContext,
+    RouteOnboardingStateContext {}
 
 // Canonical application route registry mapping modular app IDs to entry roots
 const APP_ROUTES = new Map<string, string>([

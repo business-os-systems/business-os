@@ -17,13 +17,36 @@ export const BASE_NAV_ITEMS: NavigationItem[] = [
   },
 ];
 
-export interface TenantContext {
+/**
+ * Organization scope segment (ISP).
+ */
+export interface TenantOrganizationContext {
   organizationId: string;
   organizationName: string;
+}
+
+/**
+ * Branch execution scope segment (ISP).
+ */
+export interface TenantBranchContext {
   activeBranchId?: string;
   activeBranchName?: string;
+}
+
+/**
+ * Active operator identity in navigation shell (ISP).
+ */
+export interface TenantUserProfile {
   userName?: string;
   userEmail?: string;
   userRole?: string;
   userInitials?: string;
 }
+
+/**
+ * Composite Tenant context for workspace navigation shell.
+ */
+export interface TenantContext
+  extends TenantOrganizationContext,
+    TenantBranchContext,
+    TenantUserProfile {}

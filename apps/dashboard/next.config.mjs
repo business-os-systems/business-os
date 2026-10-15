@@ -1,15 +1,20 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  transpilePackages: ["@suite/website-builder", "@suite/ui"],
+  transpilePackages: ["@suite/website-builder", "@suite/ui", "@suite/auth"],
+  serverExternalPackages: ["@node-rs/argon2", "@node-rs/argon2-linux-x64-gnu"],
   typescript: {
     ignoreBuildErrors: false,
   },
-  webpack: (config) => {
+  webpack: (config, { isServer }) => {
     config.resolve.extensionAlias = {
       ".js": [".ts", ".tsx", ".js"],
       ".jsx": [".tsx", ".jsx"],
     };
+    if (isServer) {
+      config.externals = config.externals || [];
+      config.externals.push("@node-rs/argon2", "@node-rs/argon2-linux-x64-gnu");
+    }
     return config;
   },
   async rewrites() {

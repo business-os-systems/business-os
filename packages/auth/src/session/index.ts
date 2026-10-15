@@ -20,4 +20,9 @@ export {
   decodeSessionPayload,
   type SessionCookieOptions,
   type SessionPayload,
+  type UserIdentityContext,
+  type TenantSessionContext,
+  type SessionAuthorizationContext,
+  type SessionLifecycleContext,
+  type SessionPreferencesContext,
 } from "./session-token.js";

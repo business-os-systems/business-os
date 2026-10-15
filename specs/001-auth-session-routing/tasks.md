@@ -44,17 +44,17 @@
 **Independent Test**: Scenario 1 & Scenario 2 in [quickstart.md](./quickstart.md). Navigating to `/login` or `/signup` renders a 400px card in correct light/dark theme; user registration creates database records and issues session cookie.
 
 ### Tests for User Story 1
-- [ ] T010 [P] [US1] Unit and contract tests for authentication gateway in `packages/auth/tests/auth.test.ts`
+- [x] T010 [P] [US1] Unit and contract tests for authentication gateway in `packages/auth/tests/auth.test.ts`
 
 ### Implementation for User Story 1
-- [ ] T011 [P] [US1] Build centered 400px envelope card layout container (`modal-sm`, fixed width `400px`, level-1 border, level-2 elevation) in `apps/dashboard/src/components/auth/auth-card.tsx`
-- [ ] T012 [P] [US1] Build interactive email & password form with real-time password complexity validation (min 8 chars, 1 uppercase, 1 number, 1 special symbol) and show/hide toggle in `apps/dashboard/src/components/auth/email-password-form.tsx`
-- [ ] T013 [P] [US1] Build OAuth provider button row (Google, Microsoft, GitHub) in `apps/dashboard/src/components/auth/oauth-providers.tsx` using `OAuthProviderRegistry`
-- [ ] T014 [P] [US1] Build FIDO2/WebAuthn passkey button triggering `navigator.credentials.get()` in `apps/dashboard/src/components/auth/passkey-button.tsx`
-- [ ] T015 [US1] Implement user registration endpoint `POST /api/auth/register` in `apps/dashboard/src/app/api/auth/register/route.ts` creating `User` (`email @unique @db.VarChar(255)`, `name @db.VarChar(191)`, `emailVerified: false`, `metadata.onboarding_status: "IN_PROGRESS"`, `metadata.current_onboarding_step: 1`), hashing password in `Account`
-- [ ] T016 [US1] Implement user login endpoint `POST /api/auth/login` in `apps/dashboard/src/app/api/auth/login/route.ts` validating credentials, verifying Turnstile token, issuing 24h rolling or 30d persistent session cookie
-- [ ] T017 [US1] Assemble responsive `/login` page in `apps/dashboard/src/app/(auth)/login/page.tsx` integrating AuthCard, EmailPasswordForm, OAuthProviders, and PasskeyButton
-- [ ] T018 [US1] Build `/signup` page with Terms & Privacy microcopy in `apps/dashboard/src/app/(auth)/signup/page.tsx`
+- [x] T011 [P] [US1] Build centered 400px envelope card layout container (`modal-sm`, fixed width `400px`, level-1 border, level-2 elevation) in `apps/dashboard/src/components/auth/auth-card.tsx`
+- [x] T012 [P] [US1] Build interactive email & password form with real-time password complexity validation (min 8 chars, 1 uppercase, 1 number, 1 special symbol) and show/hide toggle in `apps/dashboard/src/components/auth/email-password-form.tsx`
+- [x] T013 [P] [US1] Build OAuth provider button row (Google, Microsoft, GitHub) in `apps/dashboard/src/components/auth/oauth-providers.tsx` using `OAuthProviderRegistry`
+- [x] T014 [P] [US1] Build FIDO2/WebAuthn passkey button triggering `navigator.credentials.get()` in `apps/dashboard/src/components/auth/passkey-button.tsx`
+- [x] T015 [US1] Implement user registration endpoint `POST /api/auth/register` in `apps/dashboard/src/app/api/auth/register/route.ts` creating `User` (`email @unique @db.VarChar(255)`, `name @db.VarChar(191)`, `emailVerified: false`, `metadata.onboarding_status: "IN_PROGRESS"`, `metadata.current_onboarding_step: 1`), hashing password in `Account`
+- [x] T016 [US1] Implement user login endpoint `POST /api/auth/login` in `apps/dashboard/src/app/api/auth/login/route.ts` validating credentials, verifying Turnstile token, issuing 24h rolling or 30d persistent session cookie
+- [x] T017 [US1] Assemble responsive `/login` page in `apps/dashboard/src/app/(auth)/login/page.tsx` integrating AuthCard, EmailPasswordForm, OAuthProviders, and PasskeyButton
+- [x] T018 [US1] Build `/signup` page with Terms & Privacy microcopy in `apps/dashboard/src/app/(auth)/signup/page.tsx`
 
 **Checkpoint**: User Story 1 is fully functional and testable independently.
 
@@ -285,3 +285,15 @@ Task: "T029 [P] [US3] Build Step 3 UI in apps/dashboard/src/app/(onboarding)/ste
 - [x] T067 [P] Remove hardcoded dummy OAuth client IDs (dev-*-client-id) in `apps/dashboard/src/lib/oauth-registry.ts` per Constitution Zero Static Data (contradicts)
 - [x] T068 [P] Replace raw process.env.NODE_ENV check with isProduction from @/lib/env in `apps/dashboard/src/app/api/auth/login/route.ts` per Code Standards (contradicts)
 - [x] T069 [P] Remove hardcoded "localhost" hostname from Turnstile verification in `apps/dashboard/src/lib/turnstile.ts` per Constitution Zero Static Data (contradicts)
+
+---
+
+## Phase 14: Convergence
+
+**Purpose**: Encapsulate all auth branding and navigation inside the auth envelope card and remove external trust badges for zero-scroll presentation at 100% zoom.
+
+- [x] T070 [P] Encapsulate branding, logo, titles, form controls, and footer navigation strictly inside the envelope card container in `apps/dashboard/src/components/auth/auth-card.tsx` per UI Convergence
+- [x] T071 [P] Remove external TLS encrypted, Zero-Trust Gate, and Kernel Tenant Isolated badges from `apps/dashboard/src/app/(auth)/login/page.tsx` and `apps/dashboard/src/app/(auth)/signup/page.tsx` per UI Convergence
+- [x] T072 [P] Calibrate compact vertical rhythm ensuring zero vertical scrollbars on standard 100% desktop viewports while preserving responsive scroll on smaller viewports in `apps/dashboard/src/components/auth/auth-card.tsx` per UI Convergence
+- [x] T073 Update test suites in `apps/dashboard/tests/auth-gate.test.tsx` and `apps/dashboard/tests/e2e-studio-integration.test.tsx` reflecting clean signup navigation assertions per UI Convergence
+

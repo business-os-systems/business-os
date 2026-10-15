@@ -15,17 +15,18 @@ export default async function DashboardLayout({
   const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME)?.value;
   const session = sessionCookie ? decodeSessionPayload(sessionCookie) : null;
 
-  const tenant: TenantContext | undefined = session
-    ? {
-        organizationId: session.organizationId,
-        organizationName: session.organizationName,
-        userName: session.userName,
-        userEmail: session.email,
-        userRole: session.role,
-        activeBranchId: session.activeBranchId,
-        activeBranchName: session.activeBranchName,
-      }
-    : undefined;
+  const tenant: TenantContext | undefined =
+    session && session.organizationId && session.organizationName
+      ? {
+          organizationId: session.organizationId,
+          organizationName: session.organizationName,
+          userName: session.userName,
+          userEmail: session.email,
+          userRole: session.role,
+          activeBranchId: session.activeBranchId,
+          activeBranchName: session.activeBranchName,
+        }
+      : undefined;
 
   let initialNavItems: NavigationItem[] = BASE_NAV_ITEMS;
 
