@@ -26,6 +26,12 @@ export default function ForgotPasswordPage() {
 
       if (!response.ok && response.status !== 404) {
         const data = await response.json().catch(() => ({}));
+        if (response.status === 429) {
+          setErrorMessage(
+            data.detail || "Rate limit exceeded. Maximum 5 password reset requests allowed per hour."
+          );
+          return;
+        }
         throw new Error(
           data.detail || data.error || "Failed to process request",
         );
@@ -33,9 +39,12 @@ export default function ForgotPasswordPage() {
 
       // Security practice: Always show success even if email is not found to prevent user enumeration
       setIsSubmitted(true);
-    } catch {
-      // In case endpoint is not wired yet or network fails, provide graceful fallback
-      setIsSubmitted(true);
+    } catch (err: unknown) {
+      if (err instanceof Error && err.message !== "Failed to process request") {
+        setErrorMessage(err.message);
+      } else {
+        setIsSubmitted(true);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -96,6 +105,7 @@ export default function ForgotPasswordPage() {
         >
           {errorMessage && (
             <div
+              id="forgot-password-error"
               role="alert"
               className="p-3 text-xs rounded-lg border border-danger/30 bg-danger/10 text-danger flex items-start gap-2"
             >
@@ -129,6 +139,8 @@ export default function ForgotPasswordPage() {
               type="email"
               required
               autoComplete="email"
+              aria-invalid={Boolean(errorMessage)}
+              aria-describedby={errorMessage ? "forgot-password-error" : undefined}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={isLoading}
@@ -140,7 +152,7 @@ export default function ForgotPasswordPage() {
           <button
             type="submit"
             disabled={isLoading || !email.trim()}
-            className="w-full mt-1 py-2.5 px-4 rounded-lg bg-action hover:bg-action-hover active:bg-action-active text-on-action font-semibold text-sm shadow-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full mt-1 py-2.5 px-4 min-h-[44px] rounded-lg bg-action hover:bg-action-hover active:bg-action-active text-on-action font-semibold text-sm shadow-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {isLoading ? "Sending recovery link..." : "Send reset link"}
           </button>

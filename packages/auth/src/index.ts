@@ -112,4 +112,25 @@ export {
   type EmailSendResult,
 } from "./email/transporter.js";
 
+export {
+  PASSWORD_RESET_EXPIRATION_MINUTES,
+  PASSWORD_RESET_EXPIRATION_MS,
+  ACCOUNT_LINKING_TICKET_EXPIRATION_MINUTES,
+  ACCOUNT_LINKING_TICKET_EXPIRATION_MS,
+  createPasswordResetToken,
+  verifyPasswordResetToken,
+  completePasswordReset,
+  createAccountLinkingTicket,
+  verifyAccountLinkingTicket,
+  linkOAuthAccountWithPassword,
+  type PasswordResetTokenResult,
+  type VerifyPasswordResetTokenResult,
+  type CompletePasswordResetParams,
+  type CompletePasswordResetResult,
+  type AccountLinkingTicketPayload,
+  type CreateAccountLinkingTicketParams,
+  type LinkOAuthAccountParams,
+  type LinkOAuthAccountResult,
+} from "./security/index.js";
+
 

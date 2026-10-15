@@ -157,6 +157,7 @@ export function EmailPasswordForm({
       {/* Global Error Banner */}
       {errorMessage && (
         <div
+          id="auth-error-alert"
           role="alert"
           className="p-3 text-xs rounded-lg border border-danger/30 bg-danger/10 text-danger flex items-start gap-2"
         >
@@ -177,7 +178,6 @@ export function EmailPasswordForm({
           <span className="leading-tight">{errorMessage}</span>
         </div>
       )}
-
 
       {/* Email */}
       <div className="flex flex-col gap-1.5">
@@ -203,6 +203,8 @@ export function EmailPasswordForm({
           type="email"
           required
           autoComplete="username webauthn email"
+          aria-invalid={Boolean(errorMessage)}
+          aria-describedby={errorMessage ? "auth-error-alert" : undefined}
           value={email}
           onChange={(e) => {
             setEmail(e.target.value);
@@ -261,6 +263,8 @@ export function EmailPasswordForm({
                 type={showPassword ? "text" : "password"}
                 required
                 autoComplete={mode === "signup" ? "new-password" : "current-password"}
+                aria-invalid={Boolean(errorMessage || (mode === "signup" && hasInteractedWithPassword && !complexity.isValid))}
+                aria-describedby={errorMessage ? "auth-error-alert" : undefined}
                 value={password}
                 onChange={(e) => {
                   setPassword(e.target.value);
@@ -268,13 +272,13 @@ export function EmailPasswordForm({
                 }}
                 disabled={isLoading}
                 placeholder="••••••••••••"
-                className="w-full pl-3 pr-10 py-2 text-sm rounded-lg bg-surface border border-border text-text placeholder:text-text-disabled focus:outline-none focus:border-action focus:ring-1 focus:ring-action transition-colors"
+                className="w-full pl-3 pr-11 py-2 text-sm rounded-lg bg-surface border border-border text-text placeholder:text-text-disabled focus:outline-none focus:border-action focus:ring-1 focus:ring-action transition-colors"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword((prev) => !prev)}
                 aria-label={showPassword ? "Hide password" : "Show password"}
-                className="absolute right-2.5 p-1 text-text-muted hover:text-text transition-colors focus:outline-none"
+                className="absolute right-0 w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center text-text-muted hover:text-text transition-colors focus:outline-none"
               >
                 {showPassword ? (
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -363,7 +367,7 @@ export function EmailPasswordForm({
           <button
             type="submit"
             disabled={isLoading || (mode === "signup" && hasInteractedWithPassword && !complexity.isValid)}
-            className="w-full mt-2 py-2.5 px-4 rounded-lg bg-action hover:bg-action-hover active:bg-action-active text-on-action font-semibold text-sm shadow-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full mt-2 py-2.5 px-4 min-h-[44px] rounded-lg bg-action hover:bg-action-hover active:bg-action-active text-on-action font-semibold text-sm shadow-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {isLoading && (
               <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-on-action" fill="none" viewBox="0 0 24 24">

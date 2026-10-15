@@ -25,7 +25,8 @@ function isAuthenticationRoute(pathname: string): boolean {
     pathname.startsWith("/login") ||
     pathname.startsWith("/signup") ||
     pathname.startsWith("/forgot-password") ||
-    pathname.startsWith("/reset-password")
+    pathname.startsWith("/reset-password") ||
+    pathname.startsWith("/link-account")
   );
 }
 
