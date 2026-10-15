@@ -160,4 +160,55 @@ describe("Platform Core Auth Engine & Better-Auth Integration", () => {
       process.env.BETTER_AUTH_SECRET = originalSecret;
     });
   });
+
+  describe("Argon2id Password Hashing & Complexity Validation", () => {
+    it("validates password complexity (8+ chars, uppercase, number, symbol)", async () => {
+      const { validatePasswordComplexity } = await import("../src/index.js");
+
+      const weak1 = validatePasswordComplexity("short");
+      expect(weak1.isValid).toBe(false);
+      expect(weak1.hasMinLength).toBe(false);
+
+      const weak2 = validatePasswordComplexity("lowercaseonly123!");
+      expect(weak2.isValid).toBe(false);
+      expect(weak2.hasUppercase).toBe(false);
+
+      const weak3 = validatePasswordComplexity("NoNumberHere!");
+      expect(weak3.isValid).toBe(false);
+      expect(weak3.hasNumber).toBe(false);
+
+      const weak4 = validatePasswordComplexity("NoSymbol1234");
+      expect(weak4.isValid).toBe(false);
+      expect(weak4.hasSpecialSymbol).toBe(false);
+
+      const strong = validatePasswordComplexity("StrongP@ssw0rd");
+      expect(strong.isValid).toBe(true);
+      expect(strong.score).toBe(4);
+    });
+
+    it("hashes password with Argon2id and verifies match", async () => {
+      const { hashPassword, verifyPassword } = await import("../src/index.js");
+
+      const raw = "SuperS3cret!Password";
+      const hashed = await hashPassword(raw);
+
+      expect(hashed).toBeTypeOf("string");
+      expect(hashed.startsWith("$argon2id$")).toBe(true);
+
+      const isMatch = await verifyPassword(raw, hashed);
+      expect(isMatch).toBe(true);
+
+      const isMismatch = await verifyPassword("WrongPassword123!", hashed);
+      expect(isMismatch).toBe(false);
+    });
+
+    it("rejects empty or invalid arguments", async () => {
+      const { hashPassword, verifyPassword } = await import("../src/index.js");
+
+      await expect(hashPassword("")).rejects.toThrow();
+      expect(await verifyPassword("", "somehash")).toBe(false);
+      expect(await verifyPassword("password", "")).toBe(false);
+    });
+  });
 });
+

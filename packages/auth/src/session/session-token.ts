@@ -19,21 +19,63 @@ export interface SessionCookieOptions {
   maxAge: number; // in seconds
 }
 
-export interface SessionPayload {
+/**
+ * Core User Identity segment (ISP & SRP).
+ * Identifies the natural person holding the authentication ticket.
+ */
+export interface UserIdentityContext {
   userId: string;
   email: string;
+  userName: string;
+}
+
+/**
+ * Organizational & Branch Execution scope (ISP & SRP).
+ * Scopes tenant boundaries and ground operational outlet assignment.
+ */
+export interface TenantSessionContext {
   organizationId: string;
   organizationName: string;
-  role: string;
-  userName: string;
   activeBranchId?: string;
   activeBranchName?: string;
-  timestamp: number;
-  expiresAt?: number;
+}
+
+/**
+ * Role-Based Access Control & Privilege claims (ISP & SRP).
+ * Determines authorization matrix and administrative elevation.
+ */
+export interface SessionAuthorizationContext {
+  role: string;
   isSuperAdmin?: boolean;
   permissions?: string[];
+}
+
+/**
+ * Temporal lifecycle bounds (ISP & SRP).
+ * Controls issuance timestamp and absolute expiration cutoff.
+ */
+export interface SessionLifecycleContext {
+  timestamp: number;
+  expiresAt?: number;
+}
+
+/**
+ * Client visual personalization preferences (ISP & SRP).
+ */
+export interface SessionPreferencesContext {
   themePreference?: "system" | "light" | "dark";
 }
+
+/**
+ * Consolidated Session Payload.
+ * Composed via Interface Segregation Principle from discrete domain contexts.
+ */
+export interface SessionPayload
+  extends UserIdentityContext,
+    Partial<TenantSessionContext>,
+    SessionAuthorizationContext,
+    SessionLifecycleContext,
+    SessionPreferencesContext {}
 
 /**
  * Creates standardized enterprise cookie security attributes for session tokens.

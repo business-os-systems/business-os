@@ -5,6 +5,7 @@ import { Badge, Button } from "@suite/ui";
 import { MenuIcon, BuildingIcon, LogOutIcon } from "@suite/ui/icons";
 import { ThemeToggle } from "./theme-toggle";
 import type { TenantContext } from "./types";
+import { isBrowser } from "@/lib/env";
 
 interface HeaderTopbarProps {
   tenant?: TenantContext;
@@ -21,7 +22,7 @@ export function HeaderTopbar({
     } catch {
       // Ignore network errors on logout
     }
-    if (typeof window !== "undefined") {
+    if (isBrowser) {
       window.location.assign("/login");
     }
   };

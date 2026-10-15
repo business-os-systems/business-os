@@ -39,13 +39,13 @@ describe("Automated E2E Integration Suite: Complete Authoring Lifecycle (@suite/
   });
 
   describe("Lifecycle Step 0: Platform Auth Gate & Tenant Login", () => {
-    it("renders enterprise login credentials form and secure TLS badge", () => {
+    it("renders enterprise login credentials form and signup navigation", () => {
       const html = renderToString(<LoginPage />);
 
       expect(html).toContain("Business OS");
       expect(html).toContain("Sign In to Workspace");
       expect(html).toContain("operator@company.com");
-      expect(html).toContain("TLS Encrypted");
+      expect(html).toContain("Sign up");
     });
   });
 

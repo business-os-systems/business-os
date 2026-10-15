@@ -5,6 +5,7 @@ import type {
   PublishPageParams,
   PublishPageResult,
 } from "./types";
+import { isBrowser } from "../env";
 
 export interface CmsApiClientOptions {
   baseUrl?: string;
@@ -16,7 +17,7 @@ export class CmsApiClient implements ICmsApiClient {
   constructor(options: CmsApiClientOptions = {}) {
     if (options.baseUrl) {
       this.baseUrl = options.baseUrl;
-    } else if (typeof window !== "undefined") {
+    } else if (isBrowser) {
       this.baseUrl = "";
     } else {
       this.baseUrl = process.env.API_URL ?? "";

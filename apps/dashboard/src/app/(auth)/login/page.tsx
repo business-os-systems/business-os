@@ -1,134 +1,99 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Card, CardHeader, CardTitle, CardContent, Button, Input, Badge } from "@suite/ui";
-import { LayersIcon, LockIcon } from "@suite/ui/icons";
+import { AuthCard } from "@/components/auth/auth-card";
+import { OAuthProviders } from "@/components/auth/oauth-providers";
+import { EmailPasswordForm } from "@/components/auth/email-password-form";
+import { PasskeyButton } from "@/components/auth/passkey-button";
+import { isBrowser } from "@/lib/env";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
+  const handleLogin = async (data: {
+    email: string;
+    password: string;
+    keepSignedIn?: boolean;
+  }) => {
+    setErrorMessage(null);
     setIsLoading(true);
 
     try {
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({
+          email: data.email,
+          password: data.password,
+          keepSignedIn: data.keepSignedIn,
+        }),
       });
 
-      const data = await response.json().catch(() => ({}));
+      const result = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(data.error ?? data.detail ?? "Authentication failed");
+        throw new Error(
+          result.detail ||
+            result.error ||
+            "Failed to sign in. Please check your credentials.",
+        );
       }
 
-      // Successful login -> Redirect to Workspace App Launcher
-      router.push("/");
+      // Synchronize theme preference if returned
+      if (result.themePreference && isBrowser) {
+        document.documentElement.setAttribute(
+          "data-theme",
+          result.themePreference,
+        );
+        try {
+          localStorage.setItem("business_os_theme", result.themePreference);
+        } catch {
+          // Ignore localStorage errors
+        }
+      }
+
+      // Route user to resolved post-login destination
+      const targetUrl = result.redirectUrl || "/dashboard";
+      router.push(targetUrl);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Authentication failed");
+      setErrorMessage(err instanceof Error ? err.message : "Failed to sign in");
       setIsLoading(false);
     }
   };
 
-
   return (
-    <div className="w-full max-w-md space-y-6">
-      <div className="text-center space-y-2">
-        <div className="inline-flex items-center justify-center h-12 w-12 rounded-xl bg-brand-tint text-brand shadow-sm mb-2">
-          <LayersIcon className="h-6 w-6" />
-        </div>
-        <h1 className="text-2xl font-bold tracking-tight text-text">
-          Business OS
-        </h1>
+    <AuthCard
+      title="Sign In to Workspace"
+      footer={
         <p className="text-xs text-text-muted">
-          Composable Operating System &amp; Modular App Suite
+          Don&apos;t have an account yet?{" "}
+          <Link
+            href="/signup"
+            className="text-action hover:text-action-hover font-semibold underline-offset-2 hover:underline"
+          >
+            Sign up
+          </Link>
         </p>
-      </div>
+      }
+    >
+      {/* OAuth Fast Providers */}
+      <OAuthProviders disabled={isLoading} />
 
-      <Card className="border-border bg-surface text-text shadow-xl">
-        <CardHeader className="space-y-1 pb-4">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg font-semibold text-text">
-              Sign In to Workspace
-            </CardTitle>
-            <Badge variant="secondary" className="bg-surface-muted text-text-secondary text-[10px]">
-              Enterprise SSO
-            </Badge>
-          </div>
-          <p className="text-xs text-text-muted">
-            Enter your employee credentials to access your installed apps.
-          </p>
-        </CardHeader>
+      {/* Primary Email & Password Form */}
+      <EmailPasswordForm
+        mode="login"
+        onSubmit={handleLogin}
+        isLoading={isLoading}
+        errorMessage={errorMessage}
+      />
 
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {error && (
-              <div className="p-3 rounded-lg bg-danger/10 border border-danger/30 text-danger text-xs font-medium">
-                {error}
-              </div>
-            )}
-
-            <div className="space-y-1.5">
-              <label
-                htmlFor="email"
-                className="block text-xs font-medium text-text"
-              >
-                Work Email
-              </label>
-              <Input
-                id="email"
-                type="email"
-                required
-                placeholder="operator@company.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="h-10 text-sm"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label
-                htmlFor="password"
-                className="block text-xs font-medium text-text"
-              >
-                Password
-              </label>
-              <Input
-                id="password"
-                type="password"
-                required
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="h-10 text-sm"
-              />
-            </div>
-
-            <Button
-              type="submit"
-              variant="default"
-              disabled={isLoading}
-              className="w-full font-medium h-10 text-sm mt-2 transition-colors"
-            >
-              {isLoading ? "Authenticating..." : "Sign In to Workspace"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-
-      <div className="flex items-center justify-center gap-1.5 text-[11px] text-text-muted text-center">
-        <LockIcon className="w-3 h-3" />
-        <span>TLS Encrypted &bull; Tenant Kernel Isolated &bull; Zero-Trust Gate</span>
-      </div>
-    </div>
+      {/* FIDO2 / WebAuthn Passkeys */}
+      <PasskeyButton disabled={isLoading} />
+    </AuthCard>
   );
 }
