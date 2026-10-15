@@ -201,54 +201,49 @@ The application supports three theme modes: `system`, `light`, and `dark`.
 ### 6.3 Platform Onboarding Pipeline Specification (3 Steps)
 
 #### Step 1: Workspace & Organization Setup (`/onboarding/step-1`)
-* **Purpose:** Provisions the enterprise tenant record (`Organization`) and establishes the authenticated user as Organization Owner (`UserOrganization`).
-* **Presentation:** Rendered in a centered `400px` (`modal-sm`) card with header badge `"Step 1 of 3: Organization"`.
+* **Purpose:** Provisions the enterprise tenant record (`Organization`), validates the unique workspace domain, captures industry domains, and atomically bootstraps the user as Organization Owner (`UserOrganization`, `branchId: null`). The primary operating location (`Branch`) is auto-provisioned in the background ("Main Location", "MAIN") per the Minimalist Input Law so users do not fill repetitive location fields upfront.
+* **Presentation:** Rendered in a centered `480px` (`modal-sm/md`) card with stepper header: `01 Organization Details` (Active) → `02 Application Selection` → `03 Workspace Setup`.
 * **Input Fields:**
-  1. `organizationName` (Input `text`, Height `40px`, required): Display name of the enterprise (e.g., "Grand Horizon Resorts"). Minimum 2 characters, maximum 100 characters.
-  2. `organizationSlug` (Input `text`, Height `40px`, required): Subdomain and URL slug (e.g., "grand-horizon"). Auto-generated in real-time from `organizationName` with debounce uniqueness check against PostgreSQL. Must match `^[a-z0-9-]+$`.
-  3. `industry` (Select dropdown, required): Business category (`"hospitality"`, `"restaurant_fb"`, `"retail"`, `"services"`, `"general"`). Determines tailored app launcher defaults in Step 3.
-  4. `currency` (Select dropdown, required, default `"USD"`): Operating currency ISO 4217 code (`USD`, `EUR`, `GBP`, `INR`, `CAD`, `AUD`).
-  5. `timezone` (Select dropdown, required): Operating timezone (IANA format, auto-detected from client browser, e.g., `"America/New_York"`).
+  1. `organizationName` (Input `text`, Height `40px`, required): Display name of the enterprise (e.g., "Apex Hospitality Group"). Minimum 2 characters, maximum 100 characters.
+  2. `organizationSlug` (Input `text` with prefix `https://` and suffix `.businessos.app`, Height `40px`, required): Workspace subdomain and URL slug (e.g., "apex-hospitality"). Auto-derived in real-time from `organizationName` with debounce uniqueness check against PostgreSQL (`/api/v1/onboarding/check-slug`). User editable. Displays green `Available` verification badge.
+  3. `industries` (Interactive Multi-Select Pills & Search, required, min 1 selection): Interactive domain selection with removable tags (`[Hospitality ×]`, `[Retail ×]`) and clickable available domains (`Hospitality`, `Retail & E-commerce`, `Restaurant & F&B`, `Sales & Marketing`, `Finance & Accounting`, `Human Resources`, `Real Estate & Properties`, `Healthcare`, `Technology & Services`, `Manufacturing`).
 * **Validation & Actions:**
   * Submitting triggers client-side Zod validation and sends `POST /api/v1/onboarding/step-1`.
-  * Server creates `Organization` in `@suite/db`, links user in `UserOrganization` (`role: "Owner"`), updates `User.metadata.current_onboarding_step = 2`.
+  * Server creates `Organization` in `@suite/db` (persisting `industries` in `metadata`), auto-creates root `Branch` linked to tenant (`name: "Main Location"`, `code: "MAIN"`), links user in `UserOrganization` (`role: "Owner"`), provisions system `Role` (`slug: "owner"`, `isSystem: true`), creates `UserBranchRole` with `branchId: null`, updates `User.metadata.current_onboarding_step = 2`.
   * Client transitions via `history.pushState` to `/onboarding/step-2`.
 
-#### Step 2: Primary Branch & Operating Location (`/onboarding/step-2`)
-* **Purpose:** Provisions the root operating branch (`Branch`) and assigns the user's role context (`UserBranchRole`).
-* **Presentation:** Centered `400px` (`modal-sm`) card with header badge `"Step 2 of 3: Location"`.
-* **Input Fields:**
-  1. `branchName` (Input `text`, Height `40px`, required, default `"Main Location"`): Physical property or office name (e.g., "Downtown Riverside Property").
-  2. `branchCode` (Input `text`, Height `40px`, required): 3–6 alphanumeric uppercase branch code (e.g., "RIV01"), auto-derived from branch name.
-  3. `addressLine1` (Input `text`, Height `40px`, optional): Physical street address.
-  4. `city` (Input `text`, Height `40px`, required): City or municipality name.
-  5. `country` (Select dropdown, required, ISO 3166-1 alpha-2, default `"US"`).
-  6. `phone` (Input `tel`, Height `40px`, optional): Branch primary phone number in E.164 format.
+#### Step 2: Tailored Application Selection (`/onboarding/step-2`)
+* **Purpose:** Allows user to select modular business applications from available apps, dynamically recommending industry-specific applications on top based on Step 1 industry selections.
+* **Presentation:** Centered `560px` card container (`modal-md`) with stepper header: `01 Organization Details` (Done) → `02 Application Selection` (Active) → `03 Workspace Setup`.
+* **Components & Fields:**
+  1. `industryFilterBanner`: Displays active recommendation context: *"Filtering recommendations for: [Selected Industries]"* with a *"Change industry"* link returning to Step 1.
+  2. `recommendedApps` (Multi-select interactive grid cards): Modular applications matching selected industries displayed prominently on top and pre-selected by default (e.g. `Website Builder & Headless CMS`, `Lodging Property Management (PMS)`, `Restaurant POS & KDS`).
+  3. `additionalApps` (Multi-select grid cards): Secondary section listing remaining available workspace applications (e.g. `Central Inventory & Procurement`, `Finance & Accounting Ledger`, `Customer Relationship Management`).
+  4. Each app card displays module icon, title, description, category tag, and checkbox.
 * **Validation & Actions:**
-  * Submitting sends `POST /api/v1/onboarding/step-2`.
-  * Server creates `Branch` linked to the user's active `organizationId`, creates `UserBranchRole` (`role: "Owner"`), updates `User.metadata.current_onboarding_step = 3`.
+  * Submitting sends `POST /api/v1/onboarding/step-2` saving chosen `selectedApps` in `User.metadata.selected_apps` and updating `User.metadata.current_onboarding_step = 3`.
   * Client transitions to `/onboarding/step-3`.
 
-#### Step 3: Application Selection & Workspace Activation (`/onboarding/step-3`)
-* **Purpose:** Selects initial modular applications, optionally generates sample catalog fixtures, and activates workspace to `COMPLETED`.
-* **Presentation:** Centered `520px` card container (`modal-md`) with header badge `"Step 3 of 3: Apps & Activation"`.
-* **Input Fields:**
-  1. `selectedApps` (Multi-select interactive grid cards with checkboxes, minimum 1 selection required):
-     * **Website Builder & Headless CMS** (`App 01`) - Visual studio & storefront delivery (checked by default).
-     * **Lodging Property Management (PMS)** (`App 03`) - Multi-property reservation calendar.
-     * **Restaurant POS & KDS** (`App 04`) - Touch ordering & shift reconciliation.
-     * **Central Inventory & Stock Requisitions** (`App 05`) - Multi-warehouse balances.
-  2. `sampleData` (Switch/Checkbox toggle, default `true`): Label *"Populate with industry starter templates and demo catalog"*.
-* **Validation & Actions:**
-  * Submitting sends `POST /api/v1/onboarding/step-3`.
-  * Server updates `User.metadata.onboarding_status = "COMPLETED"`, sets `User.metadata.current_onboarding_step = null`, sets active tenant/branch context cookies, and provisions initial application licenses.
-  * Client performs `history.replaceState` and redirects directly to `/dashboard`.
+#### Step 3: Workspace Provisioning & Confetti Launchpad (`/onboarding/step-3`)
+* **Purpose:** Displays a live animated deployment progress engine while workspace modules are licensed and configured, seamlessly transitioning upon completion to a celebratory launchpad with a 5-second auto-redirect to `/dashboard`.
+* **Presentation & States:**
+  * **State A (Live Provisioning Engine):**
+    - Master Progress Bar: Animated progress indicator (`0%` → `100%`) with pulse: *"Configuring workspace modules... 92% completed"*.
+    - Deployment Stack Items: Real-time status cards for `Workspace Database` (Ready), followed by each selected application (e.g., `Deploying templates & routes...` → `Ready`).
+    - API: Concurrently dispatches `POST /api/v1/onboarding/complete` which provisions licenses in `InstalledApp` table for all selected apps, updates `User.metadata.onboarding_status = "COMPLETED"`, and clears `User.metadata.current_onboarding_step = null`.
+  * **State B (Celebration & Auto-Redirect):**
+    - Seamless transition on 100% completion.
+    - Confetti Animation: Lightweight celebratory paper glitters / confetti burst animation around a circular success checkmark.
+    - Headline: *"Your workspace is ready!"*
+    - Subtitle: *"Your Business OS workspace for [Organization Name] has been prepared. Let's get to work."*
+    - Summary List: `CONFIGURED APPLICATIONS` with `Live & Connected` status pills.
+    - Smart CTA Button: `"Go to dashboard (5s) →"` with live decrementing timer (5 → 4 → 3 → 2 → 1). Automatically executes navigation to `/dashboard` upon timeout, or immediately on click.
 
 #### Organization Invitation Fast-Track (Onboarding Bypass)
 * **Trigger:** An employee or team member creates an account or signs in via an accepted `OrganizationInvitation` (`/invite/[token]`).
 * **Enforcement:**
   * The user is automatically associated with the inviting `Organization` (`UserOrganization`) and assigned their designated `Branch` and `Role` (`UserBranchRole`).
-  * The user **bypasses Step 1 (Organization) and Step 2 (Branch)** entirely to prevent redundant organizational records.
+  * The user **bypasses Step 1 and Step 2 entirely** to prevent redundant organizational records.
   * `onboarding_status` is marked `"COMPLETED"` immediately.
   * Client sets active tenant/branch cookies and routes directly via `resolvePostLoginRoute` (landing on the permitted application or permission-filtered `/dashboard`).
 

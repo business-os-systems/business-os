@@ -11,7 +11,7 @@ export const BASE_NAV_ITEMS: NavigationItem[] = [
   {
     id: "home",
     name: "Overview",
-    href: "/",
+    href: "/dashboard",
     icon: "home",
     description: "Executive Business Summary",
   },

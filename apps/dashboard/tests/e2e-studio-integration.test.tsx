@@ -3,7 +3,7 @@ import React from "react";
 import { renderToString } from "react-dom/server";
 import LoginPage from "../src/app/(auth)/login/page";
 import SiteOnboardingWizard from "../src/app/(dashboard)/sites/onboarding/page";
-import OverviewPage from "../src/app/(dashboard)/page";
+import OverviewPage from "../src/app/(dashboard)/dashboard/page";
 import SitesPage from "../src/app/(dashboard)/sites/page";
 import SitePagesPage from "../src/app/(dashboard)/sites/[siteId]/pages/page";
 import StudioEditorPage from "../src/app/(editor)/sites/[siteId]/editor/[pageId]/page";

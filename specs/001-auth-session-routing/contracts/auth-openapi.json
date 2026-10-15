@@ -303,22 +303,54 @@
         }
       }
     },
+    "/api/v1/onboarding/check-slug": {
+      "get": {
+        "summary": "Check workspace domain slug availability",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "pattern": "^[a-z0-9-]+$" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Slug availability status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "available": { "type": "boolean" },
+                    "slug": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ProblemDetails" }
+        }
+      }
+    },
     "/api/v1/onboarding/step-1": {
       "post": {
-        "summary": "Execute Onboarding Step 1: Organization Creation",
+        "summary": "Execute Onboarding Step 1: Organization & Domain Setup",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["organizationName", "organizationSlug", "industry", "currency", "timezone"],
+                "required": ["organizationName", "organizationSlug", "industries"],
                 "properties": {
                   "organizationName": { "type": "string", "minLength": 2, "maxLength": 100 },
                   "organizationSlug": { "type": "string", "pattern": "^[a-z0-9-]+$" },
-                  "industry": { "type": "string", "enum": ["hospitality", "restaurant_fb", "retail", "services", "general"] },
-                  "currency": { "type": "string", "minLength": 3, "maxLength": 3 },
-                  "timezone": { "type": "string" }
+                  "industries": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "minItems": 1
+                  }
                 }
               }
             }
@@ -326,7 +358,7 @@
         },
         "responses": {
           "200": {
-            "description": "Step 1 completed; Organization provisioned",
+            "description": "Step 1 completed; Organization provisioned with root Branch",
             "content": {
               "application/json": {
                 "schema": {
@@ -347,50 +379,7 @@
     },
     "/api/v1/onboarding/step-2": {
       "post": {
-        "summary": "Execute Onboarding Step 2: Branch & Location Setup",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": ["branchName", "branchCode", "city", "country"],
-                "properties": {
-                  "branchName": { "type": "string", "minLength": 2 },
-                  "branchCode": { "type": "string", "minLength": 3, "maxLength": 6 },
-                  "addressLine1": { "type": "string" },
-                  "city": { "type": "string" },
-                  "country": { "type": "string", "minLength": 2, "maxLength": 2 },
-                  "phone": { "type": "string" }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Step 2 completed; Branch provisioned",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": { "type": "boolean" },
-                    "branchId": { "type": "string" },
-                    "nextStep": { "type": "integer", "example": 3 },
-                    "redirectUrl": { "type": "string", "example": "/onboarding/step-3" }
-                  }
-                }
-              }
-            }
-          },
-          "400": { "$ref": "#/components/responses/ProblemDetails" }
-        }
-      }
-    },
-    "/api/v1/onboarding/step-3": {
-      "post": {
-        "summary": "Execute Onboarding Step 3: Application Selection & Workspace Activation",
+        "summary": "Execute Onboarding Step 2: Tailored Application Selection",
         "requestBody": {
           "required": true,
           "content": {
@@ -403,8 +392,7 @@
                     "type": "array",
                     "items": { "type": "string" },
                     "minItems": 1
-                  },
-                  "sampleData": { "type": "boolean", "default": true }
+                  }
                 }
               }
             }
@@ -412,7 +400,30 @@
         },
         "responses": {
           "200": {
-            "description": "Step 3 completed; Workspace activated",
+            "description": "Step 2 completed; Applications selected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "nextStep": { "type": "integer", "example": 3 },
+                    "redirectUrl": { "type": "string", "example": "/onboarding/step-3" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ProblemDetails" }
+        }
+      }
+    },
+    "/api/v1/onboarding/complete": {
+      "post": {
+        "summary": "Execute Workspace Completion: License Provisioning & Activation",
+        "responses": {
+          "200": {
+            "description": "Workspace activated successfully",
             "content": {
               "application/json": {
                 "schema": {

@@ -28,6 +28,10 @@ function isAuthenticationRoute(pathname: string): boolean {
   );
 }
 
+function isInvitationRoute(pathname: string): boolean {
+  return pathname.startsWith("/invite");
+}
+
 async function resolveSessionPayload(request: NextRequest): Promise<SessionPayload | null> {
   const sessionToken = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   if (!sessionToken) return null;
@@ -47,7 +51,7 @@ function handleUnauthenticatedGate(
   pathname: string,
   search: string
 ): NextResponse {
-  if (isAuthenticationRoute(pathname)) {
+  if (isAuthenticationRoute(pathname) || isInvitationRoute(pathname)) {
     return NextResponse.next();
   }
 
@@ -76,6 +80,10 @@ function handleAuthenticatedGate(
   payload: SessionPayload,
   pathname: string
 ): NextResponse {
+  if (isInvitationRoute(pathname)) {
+    return createAuthenticatedResponse(request, payload);
+  }
+
   const isAuthRoute = isAuthenticationRoute(pathname);
   const isOnboardingComplete = payload.onboardingStatus === "COMPLETED";
   const isOnboardingIncomplete = !isOnboardingComplete;
@@ -86,6 +94,14 @@ function handleAuthenticatedGate(
   const onboardingStepPath = `/onboarding/step-${currentStep}`;
 
   if (isAuthRoute) {
+    const destinationUrl = new URL(
+      isOnboardingIncomplete ? onboardingStepPath : "/dashboard",
+      request.url
+    );
+    return NextResponse.redirect(destinationUrl);
+  }
+
+  if (pathname === "/") {
     const destinationUrl = new URL(
       isOnboardingIncomplete ? onboardingStepPath : "/dashboard",
       request.url

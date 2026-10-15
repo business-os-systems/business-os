@@ -80,21 +80,21 @@
 
 ## Phase 5: User Story 3 - 3-Step Platform Onboarding Pipeline & Tenant Bootstrapping (Priority: P1)
 
-**Goal**: Deliver the 3-step platform onboarding pipeline with atomic Tenant-Owner bootstrapping (`branchId: null`) and invitation fast-track bypass.
+**Goal**: Deliver the streamlined 3-step platform onboarding pipeline with atomic Tenant-Owner bootstrapping (`branchId: null`), industry-tailored app selection, live animated provisioning engine, confetti celebration launchpad, and invitation fast-track bypass.
 
-**Independent Test**: Scenario 2 & Scenario 8 in [quickstart.md](./quickstart.md). Completing Steps 1–3 creates Organization, Branch, Owner role, and sets `onboarding_status: "COMPLETED"`; invited member bypasses Steps 1 & 2.
+**Independent Test**: Scenario 2 & Scenario 8 in [quickstart.md](./quickstart.md). Completing Steps 1–3 creates Organization, auto-provisions root Branch, Owner role, licenses installed apps, and sets `onboarding_status: "COMPLETED"`; invited member bypasses Steps 1 & 2.
 
 ### Tests for User Story 3
-- [ ] T023 [P] [US3] Unit and contract tests for onboarding endpoints in `apps/dashboard/tests/onboarding.test.ts`
+- [ ] T023 [P] [US3] Unit and contract tests for onboarding endpoints, slug availability, and workspace provisioning in `apps/dashboard/tests/onboarding.test.ts`
 
 ### Implementation for User Story 3
-- [ ] T024 [P] [US3] Build centered onboarding container layout in `apps/dashboard/src/app/(onboarding)/layout.tsx`
-- [ ] T025 [P] [US3] Build Step 1 UI in `apps/dashboard/src/app/(onboarding)/step-1/page.tsx` (`organizationName` min 2 max 100 chars, `organizationSlug` pattern `^[a-z0-9-]+$`, `industry`, `currency`, `timezone`)
-- [ ] T026 [US3] Implement Step 1 API `POST /api/v1/onboarding/step-1` in `apps/dashboard/src/app/api/v1/onboarding/step-1/route.ts` executing atomic transaction: create `Organization`, `UserOrganization` (`role: "Owner"`), system `Role` (`slug: "owner"`, `isSystem: true`), `role_permissions`, and `UserBranchRole` with `branchId: null`
-- [ ] T027 [P] [US3] Build Step 2 UI in `apps/dashboard/src/app/(onboarding)/step-2/page.tsx` (`branchName` required default "Main Location", `branchCode` 3–6 alphanumeric uppercase, `addressLine1`, `city`, `country`, `phone` in E.164)
-- [ ] T028 [US3] Implement Step 2 API `POST /api/v1/onboarding/step-2` in `apps/dashboard/src/app/api/v1/onboarding/step-2/route.ts` creating `Branch` linked to tenant, creating `UserBranchRole`, updating `current_onboarding_step: 3`
-- [ ] T029 [P] [US3] Build Step 3 UI in `apps/dashboard/src/app/(onboarding)/step-3/page.tsx` (`selectedApps` multi-select grid min 1 selection, `sampleData` boolean toggle)
-- [ ] T030 [US3] Implement Step 3 API `POST /api/v1/onboarding/step-3` in `apps/dashboard/src/app/api/v1/onboarding/step-3/route.ts` provisioning initial app licenses, updating `onboarding_status = "COMPLETED"`, clearing `current_onboarding_step`
+- [ ] T024 [P] [US3] Build centered onboarding container layout and stepper header (`01 Organization Details` → `02 Application Selection` → `03 Workspace Setup`) in `apps/dashboard/src/app/(onboarding)/layout.tsx`
+- [ ] T025 [P] [US3] Build Step 1 Organization Details UI in `apps/dashboard/src/app/(onboarding)/step-1/page.tsx` (`organizationName`, `organizationSlug` with `https://` prefix and `.businessos.app` suffix + live availability badge, interactive multi-select `industries` tag pills and search)
+- [ ] T026 [US3] Implement Step 1 API `POST /api/v1/onboarding/step-1` and slug availability endpoint `GET /api/v1/onboarding/check-slug` in `apps/dashboard/src/app/api/v1/onboarding/step-1/route.ts` and `apps/dashboard/src/app/api/v1/onboarding/check-slug/route.ts` executing atomic transaction: create `Organization`, auto-create root `Branch` ("Main Location", "MAIN"), `UserOrganization` (`role: "Owner"`), system `Role` (`slug: "owner"`, `isSystem: true`), `role_permissions`, and `UserBranchRole` with `branchId: null`
+- [ ] T027 [P] [US3] Build Step 2 Application Selection UI in `apps/dashboard/src/app/(onboarding)/step-2/page.tsx` rendering industry recommendation header, top section "Recommended for your industry" (pre-selected), and bottom section "Additional workspace applications"
+- [ ] T028 [US3] Implement Step 2 API `POST /api/v1/onboarding/step-2` in `apps/dashboard/src/app/api/v1/onboarding/step-2/route.ts` validating app selections, persisting to `User.metadata.selected_apps`, and advancing `current_onboarding_step: 3`
+- [ ] T029 [P] [US3] Build Step 3 Provisioning & Launchpad UI in `apps/dashboard/src/app/(onboarding)/step-3/page.tsx` featuring animated master progress bar (0% → 100%), module deployment status items, paper glitters/confetti celebration burst, active app summary, and 5-second countdown timer auto-redirect button
+- [ ] T030 [US3] Implement Workspace Completion API `POST /api/v1/onboarding/complete` in `apps/dashboard/src/app/api/v1/onboarding/complete/route.ts` provisioning `InstalledApp` records in `@suite/db`, marking `onboarding_status = "COMPLETED"`, clearing `current_onboarding_step`, and updating session claims
 - [ ] T031 [US3] Implement Organization Invitation acceptance endpoint `POST /api/v1/auth/invitation/accept` and route `/invite/[token]` in `apps/dashboard/src/app/(auth)/invite/[token]/page.tsx` bypassing Steps 1 & 2 directly to `COMPLETED`
 
 **Checkpoint**: User Stories 1, 2, and 3 provide a complete end-to-end onboarding and tenant activation flow.
@@ -275,4 +275,15 @@ Task: "T029 [P] [US3] Build Step 3 UI in apps/dashboard/src/app/(onboarding)/ste
 - [x] T071 [P] Remove external TLS encrypted, Zero-Trust Gate, and Kernel Tenant Isolated badges from `apps/dashboard/src/app/(auth)/login/page.tsx` and `apps/dashboard/src/app/(auth)/signup/page.tsx` per UI Convergence
 - [x] T072 [P] Calibrate compact vertical rhythm ensuring zero vertical scrollbars on standard 100% desktop viewports while preserving responsive scroll on smaller viewports in `apps/dashboard/src/components/auth/auth-card.tsx` per UI Convergence
 - [x] T073 Update test suites in `apps/dashboard/tests/auth-gate.test.tsx` and `apps/dashboard/tests/e2e-studio-integration.test.tsx` reflecting clean signup navigation assertions per UI Convergence
+
+---
+
+## Phase 15: Convergence
+
+**Purpose**: Remediate step-1 back-navigation form data loss, fix button directional arrow optical scaling, and enhance test coverage for onboarding re-entry.
+
+- [x] T074 [US3] Persist and pre-populate Step 1 organization form data (`orgName`, `slug`, `selectedIndustries`) on mount from existing tenant session profile, and support idempotent re-submission without self-domain collision in `apps/dashboard/src/app/onboarding/step-1/page.tsx` and `apps/dashboard/src/app/api/v1/onboarding/step-1/route.ts` per US3/AC1 (partial)
+- [x] T075 [P] Replace literal unicode arrows with calibrated, inline SVG icons (`w-4 h-4`) matching button typography and optical alignment on back and next buttons in `apps/dashboard/src/app/onboarding/step-1/page.tsx`, `step-2/page.tsx`, and `step-3/page.tsx` per DESIGN.md Primacy (partial)
+- [x] T076 [P] Add unit and integration test coverage for Step 1 pre-population, idempotent updates, and button navigation in `apps/dashboard/tests/onboarding.test.tsx` per Testing Standards (partial)
+
 

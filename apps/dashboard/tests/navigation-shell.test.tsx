@@ -3,7 +3,7 @@ import React from "react";
 import { renderToString } from "react-dom/server";
 import { SidebarNav } from "../src/components/layout/sidebar-nav";
 import { HeaderTopbar } from "../src/components/layout/header-topbar";
-import OverviewPage from "../src/app/(dashboard)/page";
+import OverviewPage from "../src/app/(dashboard)/dashboard/page";
 
 describe("Tenant Navigation Shell & App Launcher Primitives", () => {
   it("renders dynamic navigation items in SidebarNav", () => {
