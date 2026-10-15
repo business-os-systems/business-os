@@ -153,5 +153,45 @@ describe("Route Integration Suite", () => {
       expect(body.data?.enforceSso).toBe(false);
       expect(body.data?.providerType).toBe("internal_suite");
     });
+
+    it("GET /api/v1/auth/sso/:id/login redirects browser to /login with error query if IdP unconfigured", async () => {
+      vi.spyOn(prisma.ssoConnection, "findUnique").mockResolvedValueOnce({
+        id: "sso_conn_99",
+        domain: "corp.com",
+        config: {},
+        organization: { name: "Corporate Group" },
+      } as unknown as Awaited<ReturnType<typeof prisma.ssoConnection.findUnique>>);
+
+      const res = await app.request("/api/v1/auth/sso/sso_conn_99/login?email=ceo%40corp.com", {
+        method: "GET",
+        headers: { Accept: "text/html" },
+      });
+
+      expect(res.status).toBe(307);
+      const location = res.headers.get("location");
+      expect(location).toContain("/login?error=sso_unconfigured");
+      expect(location).toContain("domain=corp.com");
+      expect(location).toContain("email=ceo%40corp.com");
+    });
+
+    it("GET /api/v1/auth/sso/:id/login returns 501 problem details to API clients if IdP unconfigured", async () => {
+      vi.spyOn(prisma.ssoConnection, "findUnique").mockResolvedValueOnce({
+        id: "sso_conn_99",
+        domain: "corp.com",
+        config: {},
+        organization: { name: "Corporate Group" },
+      } as unknown as Awaited<ReturnType<typeof prisma.ssoConnection.findUnique>>);
+
+      const res = await app.request("/api/v1/auth/sso/sso_conn_99/login", {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      });
+
+      expect(res.status).toBe(501);
+      const body = (await res.json()) as { code: string; title: string };
+      expect(body.code).toBe("SSO_IDP_NOT_CONFIGURED");
+      expect(body.title).toBe("SSO Configuration Pending");
+    });
   });
 });
+

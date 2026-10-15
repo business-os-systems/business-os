@@ -14,6 +14,7 @@ function isBypassRoute(pathname: string): boolean {
   return (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/api/v1/auth") ||
     pathname === "/favicon.ico" ||
     STATIC_ASSET_REGEX.test(pathname)
   );

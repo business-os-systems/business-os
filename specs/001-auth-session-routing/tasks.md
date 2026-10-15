@@ -108,12 +108,12 @@
 **Independent Test**: Scenario 3 in [quickstart.md](./quickstart.md). Typing enterprise email dynamically swaps password field to "Sign in with Enterprise SSO".
 
 ### Tests for User Story 4
-- [ ] T032 [P] [US4] Unit tests for SSO domain discovery and JIT user provisioning in `packages/auth/tests/sso-discovery.test.ts`
+- [x] T032 [P] [US4] Unit tests for SSO domain discovery and JIT user provisioning in `packages/auth/tests/sso-discovery.test.ts`
 
 ### Implementation for User Story 4
-- [ ] T033 [US4] Implement domain discovery endpoint `POST /api/auth/sso/discover` in `apps/dashboard/src/app/api/auth/sso/discover/route.ts` matching corporate domains to SAML/OIDC IdP
-- [ ] T034 [US4] Build dynamic SSO redirect component in `apps/dashboard/src/components/auth/sso-redirect-card.tsx` switching password input to "Sign in with Enterprise SSO"
-- [ ] T035 [US4] Implement JIT user provisioning handler in `packages/auth/src/sso/jit-provisioning.ts` mapping enterprise claims to user profile and roles
+- [x] T033 [US4] Implement domain discovery endpoint `POST /api/auth/sso/discover` in `apps/dashboard/src/app/api/auth/sso/discover/route.ts` matching corporate domains to SAML/OIDC IdP
+- [x] T034 [US4] Build dynamic SSO redirect component in `apps/dashboard/src/components/auth/sso-redirect-card.tsx` switching password input to "Sign in with Enterprise SSO"
+- [x] T035 [US4] Implement JIT user provisioning handler in `packages/auth/src/sso/jit-provisioning.ts` mapping enterprise claims to user profile and roles
 
 **Checkpoint**: User Story 4 allows corporate SSO authentication without credential entry.
 

@@ -1,0 +1,76 @@
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@suite/db";
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+): Promise<NextResponse> {
+  try {
+    const { id } = await params;
+
+    const ssoRecord = await prisma.ssoConnection.findUnique({
+      where: { id },
+      include: { organization: true },
+    });
+
+    if (!ssoRecord) {
+      const acceptHeader = request.headers.get("accept") || "";
+      if (acceptHeader.includes("text/html")) {
+        const loginUrl = new URL("/login", request.url);
+        loginUrl.searchParams.set("error", "sso_not_found");
+        return NextResponse.redirect(loginUrl);
+      }
+
+      return NextResponse.json(
+        {
+          type: "/errors/not-found",
+          title: "Not Found",
+          status: 404,
+          detail: "SSO Connection not found.",
+          code: "SSO_CONNECTION_NOT_FOUND",
+        },
+        { status: 404, headers: { "Content-Type": "application/problem+json" } }
+      );
+    }
+
+    // If an external IdP authorization URL is configured, redirect to it
+    const ssoConfig = ssoRecord.config as Record<string, unknown> | null;
+    if (ssoConfig?.authUrl && typeof ssoConfig.authUrl === "string") {
+      return NextResponse.redirect(new URL(ssoConfig.authUrl));
+    }
+
+    // Browser navigation fallback: redirect back to /login with friendly error message
+    const acceptHeader = request.headers.get("accept") || "";
+    if (acceptHeader.includes("text/html")) {
+      const loginUrl = new URL("/login", request.url);
+      loginUrl.searchParams.set("error", "sso_unconfigured");
+      loginUrl.searchParams.set("domain", ssoRecord.domain);
+      loginUrl.searchParams.set("org", ssoRecord.organization.name);
+      return NextResponse.redirect(loginUrl);
+    }
+
+    // Enterprise IdP must be configured to execute authentication (RFC 7807 for API callers)
+    return NextResponse.json(
+      {
+        type: "/errors/sso-unconfigured",
+        title: "SSO Configuration Pending",
+        status: 501,
+        detail: `Enterprise Identity Provider for ${ssoRecord.organization.name} (${ssoRecord.domain}) is not yet configured with an active SAML 2.0 / OIDC endpoint. Please contact your workspace administrator or use standard password login.`,
+        code: "SSO_IDP_NOT_CONFIGURED",
+      },
+      { status: 501, headers: { "Content-Type": "application/problem+json" } }
+    );
+  } catch (error) {
+    console.error("Error executing SSO login flow:", error);
+    return NextResponse.json(
+      {
+        type: "/errors/internal-error",
+        title: "Internal Server Error",
+        status: 500,
+        detail: "An unexpected error occurred during SSO authentication.",
+        code: "INTERNAL_SERVER_ERROR",
+      },
+      { status: 500, headers: { "Content-Type": "application/problem+json" } }
+    );
+  }
+}

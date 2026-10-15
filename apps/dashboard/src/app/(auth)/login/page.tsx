@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AuthCard } from "@/components/auth/auth-card";
@@ -32,6 +32,22 @@ export default function LoginPage() {
   const router = useRouter();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isBrowser) return;
+    const params = new URLSearchParams(window.location.search);
+    const errorParam = params.get("error");
+    if (errorParam === "sso_unconfigured") {
+      const org = params.get("org") || params.get("domain") || "your organization";
+      setErrorMessage(
+        `Enterprise SSO is not yet configured for ${org}. Please sign in with your email and password.`
+      );
+    } else if (errorParam === "sso_not_found") {
+      setErrorMessage(
+        "Enterprise SSO connection not found. Please sign in with your email and password."
+      );
+    }
+  }, []);
 
   const handleLogin = async (data: {
     email: string;
