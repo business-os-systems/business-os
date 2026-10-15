@@ -235,6 +235,44 @@ export const ssoDiscoverRoute = createRoute({
   },
 });
 
+export const ssoLoginRoute = createRoute({
+  method: "get",
+  path: "/sso/{id}/login",
+  tags: ["Identity, Sessions & Auth"],
+  summary: "Initiate Enterprise SSO authentication",
+  description: "Redirects user to configured corporate Identity Provider (Google Workspace, Entra ID, SAML) or falls back to login page / 501 problem details.",
+  request: {
+    params: z.object({
+      id: z.string().openapi({ description: "SSO Connection ID", example: "sso_conn_01" }),
+    }),
+    query: z.object({
+      email: z.string().optional().openapi({ description: "User email hint", example: "user@enterprise.com" }),
+    }),
+  },
+  responses: {
+    307: {
+      description: "Redirects to external IdP authorization URL or dashboard login fallback.",
+    },
+    404: {
+      content: {
+        "application/problem+json": {
+          schema: problemDetailsResponseSchema,
+        },
+      },
+      description: "SSO connection not found.",
+    },
+    501: {
+      content: {
+        "application/problem+json": {
+          schema: problemDetailsResponseSchema,
+        },
+      },
+      description: "Enterprise IdP endpoint not configured.",
+    },
+  },
+});
+
+
 authRouter.openapi(switchBranchRoute, async (c) => {
   const token = getSessionToken(c);
   const { branchId } = c.req.valid("json");
@@ -291,6 +329,65 @@ authRouter.openapi(ssoDiscoverRoute, async (c) => {
       timestamp: new Date().toISOString(),
     },
     200
+  );
+});
+
+authRouter.openapi(ssoLoginRoute, async (c) => {
+  const { id } = c.req.valid("param");
+  const { email } = c.req.valid("query");
+
+  const ssoRecord = await prisma.ssoConnection.findUnique({
+    where: { id },
+    include: { organization: true },
+  });
+
+  const acceptHeader = c.req.header("accept") || "";
+  const isBrowser = acceptHeader.includes("text/html");
+  const dashboardUrl = process.env.DASHBOARD_URL || "http://localhost:3001";
+
+  if (!ssoRecord) {
+    if (isBrowser) {
+      const loginUrl = new URL("/login", dashboardUrl);
+      loginUrl.searchParams.set("error", "sso_not_found");
+      return c.redirect(loginUrl.toString(), 307);
+    }
+    return c.json(
+      {
+        type: "/errors/not-found",
+        title: "Not Found",
+        status: 404,
+        detail: "SSO Connection not found.",
+        code: "SSO_CONNECTION_NOT_FOUND",
+      },
+      404
+    );
+  }
+
+  const ssoConfig = ssoRecord.config as Record<string, unknown> | null;
+  if (ssoConfig?.authUrl && typeof ssoConfig.authUrl === "string") {
+    return c.redirect(ssoConfig.authUrl, 307);
+  }
+
+  if (isBrowser) {
+    const loginUrl = new URL("/login", dashboardUrl);
+    loginUrl.searchParams.set("error", "sso_unconfigured");
+    loginUrl.searchParams.set("domain", ssoRecord.domain);
+    loginUrl.searchParams.set("org", ssoRecord.organization.name);
+    if (email) {
+      loginUrl.searchParams.set("email", email);
+    }
+    return c.redirect(loginUrl.toString(), 307);
+  }
+
+  return c.json(
+    {
+      type: "/errors/sso-unconfigured",
+      title: "SSO Configuration Pending",
+      status: 501,
+      detail: `Enterprise Identity Provider for ${ssoRecord.organization.name} (${ssoRecord.domain}) is not yet configured with an active SAML 2.0 / OIDC endpoint. Please contact your workspace administrator or use standard password login.`,
+      code: "SSO_IDP_NOT_CONFIGURED",
+    },
+    501
   );
 });
 
