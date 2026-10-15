@@ -144,14 +144,14 @@
 **Independent Test**: Scenario 4 in [quickstart.md](./quickstart.md). Unverified user sees dashboard banner, 60s cooldown timer; clicking Install on app pops verification required dialog and returns HTTP 403.
 
 ### Tests for User Story 6
-- [ ] T040 [P] [US6] Unit and integration tests for email verification token lifecycle and rate limiter in `packages/auth/tests/verification.test.ts`
+- [x] T040 [P] [US6] Unit and integration tests for email verification token lifecycle and rate limiter in `packages/auth/tests/verification.test.ts`
 
 ### Implementation for User Story 6
-- [ ] T041 [US6] Implement verification token dispatch endpoint `POST /api/auth/verify-email/request` in `apps/dashboard/src/app/api/auth/verify-email/request/route.ts` with 60s client cooldown and server-side rate limit of max 5 requests per hour (HTTP 429)
-- [ ] T042 [US6] Implement token confirmation endpoint `GET /api/auth/verify-email/confirm` in `apps/dashboard/src/app/api/auth/verify-email/confirm/route.ts` verifying SHA-256 token and updating `User.emailVerified = true`
-- [ ] T043 [US6] Build expired verification handler page in `apps/dashboard/src/app/(auth)/verify-expired/page.tsx` with resend CTA
-- [ ] T044 [US6] Build top persistent unverified email warning banner in `apps/dashboard/src/components/layout/unverified-email-banner.tsx` with live 60s cooldown timer
-- [ ] T045 [US6] Implement marketplace install gate dialog (`modal-sm`, `400px`) and guard API endpoint `POST /api/v1/apps/[id]/install` in `apps/dashboard/src/app/api/v1/apps/[id]/install/route.ts` returning HTTP 403 `EMAIL_VERIFICATION_REQUIRED`
+- [x] T041 [US6] Implement verification token dispatch endpoint `POST /api/auth/verify-email/request` in `apps/dashboard/src/app/api/auth/verify-email/request/route.ts` with 60s client cooldown and server-side rate limit of max 5 requests per hour (HTTP 429)
+- [x] T042 [US6] Implement token confirmation endpoint `GET /api/auth/verify-email/confirm` in `apps/dashboard/src/app/api/auth/verify-email/confirm/route.ts` verifying SHA-256 token and updating `User.emailVerified = true`
+- [x] T043 [US6] Build expired verification handler page in `apps/dashboard/src/app/(auth)/verify-expired/page.tsx` with resend CTA
+- [x] T044 [US6] Build top persistent unverified email warning banner in `apps/dashboard/src/components/layout/unverified-email-banner.tsx` with live 60s cooldown timer
+- [x] T045 [US6] Implement marketplace install gate dialog (`modal-sm`, `400px`) and guard API endpoint `POST /api/v1/apps/[id]/install` in `apps/dashboard/src/app/api/v1/apps/[id]/install/route.ts` returning HTTP 403 `EMAIL_VERIFICATION_REQUIRED`
 
 **Checkpoint**: User Story 6 protects marketplace operations while allowing uninterrupted onboarding.
 

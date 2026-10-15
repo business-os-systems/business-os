@@ -39,6 +39,7 @@ export interface TenantBranchContext {
 export interface TenantUserProfile {
   userName?: string;
   userEmail?: string;
+  userEmailVerified?: boolean;
   userRole?: string;
   userInitials?: string;
 }

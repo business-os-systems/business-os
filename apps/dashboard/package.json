@@ -16,6 +16,7 @@
     "@suite/core": "workspace:*",
     "@suite/db": "workspace:*",
     "@suite/logger": "workspace:*",
+    "@suite/redis": "workspace:*",
     "@suite/ui": "workspace:*",
     "@suite/website-builder": "workspace:*",
     "clsx": "^2.1.1",

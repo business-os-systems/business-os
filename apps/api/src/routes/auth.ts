@@ -1,6 +1,7 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { type Context } from "hono";
 import { prisma } from "@suite/db";
+import { redis } from "@suite/redis";
 import {
   switchActiveBranch,
   verifyTerminalPin,
@@ -10,6 +11,9 @@ import {
   resolveSsoProviderByEmail,
   listUserTenants,
   switchActiveTenant,
+  createEmailVerificationToken,
+  verifyEmailToken,
+  sendEmail,
   verifySessionToken,
   decodeSessionPayload,
   extractTokenFromHeader,
@@ -352,7 +356,103 @@ export const switchTenantRoute = createRoute({
   },
 });
 
+export const requestVerifyEmailRoute = createRoute({
+  method: "post",
+  path: "/verify-email/request",
+  tags: ["Identity, Sessions & Auth"],
+  summary: "Resend email verification link",
+  description: "Dispatches a new 24h cryptographic token to the user's email address.",
+  request: {
+    body: {
+      content: {
+        "application/json": {
+          schema: z.object({
+            email: z.string().email().optional(),
+          }),
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      content: {
+        "application/json": {
+          schema: z.object({
+            success: z.boolean(),
+            message: z.string(),
+            alreadyVerified: z.boolean().optional(),
+          }),
+        },
+      },
+      description: "Verification link dispatched",
+    },
+    400: {
+      content: {
+        "application/problem+json": {
+          schema: problemDetailsResponseSchema,
+        },
+      },
+      description: "Validation error or missing email",
+    },
+    429: {
+      content: {
+        "application/problem+json": {
+          schema: problemDetailsResponseSchema,
+        },
+      },
+      description: "Rate limit exceeded (max 5 requests per hour)",
+    },
+  },
+});
 
+export const confirmVerifyEmailRoute = createRoute({
+  method: "post",
+  path: "/verify-email/confirm",
+  tags: ["Identity, Sessions & Auth"],
+  summary: "Confirm email verification with cryptographic token",
+  description: "Validates submitted token and marks User.emailVerified = true.",
+  request: {
+    body: {
+      content: {
+        "application/json": {
+          schema: z.object({
+            token: z.string().min(1),
+          }),
+        },
+      },
+    },
+  },
+  responses: {
+    200: {
+      content: {
+        "application/json": {
+          schema: z.object({
+            success: z.boolean(),
+            message: z.string(),
+            email: z.string().optional(),
+          }),
+        },
+      },
+      description: "Email verified successfully",
+    },
+    400: {
+      content: {
+        "application/problem+json": {
+          schema: problemDetailsResponseSchema,
+        },
+      },
+      description: "Invalid or consumed verification token",
+    },
+    410: {
+      content: {
+        "application/problem+json": {
+          schema: problemDetailsResponseSchema,
+        },
+      },
+      description: "Verification token expired",
+    },
+  },
+});
 
 authRouter.openapi(switchBranchRoute, async (c) => {
   const token = getSessionToken(c);
@@ -511,6 +611,166 @@ authRouter.openapi(switchTenantRoute, async (c) => {
       redirectUrl: "/dashboard",
     },
     200
+  );
+});
+
+authRouter.openapi(requestVerifyEmailRoute, async (c) => {
+  let targetEmail: string | undefined;
+
+  const authHeader = c.req.header("Authorization");
+  const cookieHeader = c.req.header("Cookie");
+  const token = extractTokenFromHeader(authHeader) || extractTokenFromCookie(cookieHeader);
+
+  if (token) {
+    const payload = decodeSessionPayload(token);
+    if (payload?.email) {
+      targetEmail = payload.email;
+    }
+  }
+
+  const body = c.req.valid("json");
+  if (!targetEmail && body?.email) {
+    targetEmail = body.email;
+  }
+
+  if (!targetEmail) {
+    return c.json(
+      {
+        type: "/errors/validation-failed",
+        title: "Bad Request",
+        status: 400,
+        detail: "Email address is required to dispatch verification link.",
+        code: "VALIDATION_FAILED",
+      },
+      400
+    );
+  }
+
+  const normalizedEmail = targetEmail.toLowerCase().trim();
+
+  const user = await prisma.user.findUnique({
+    where: { email: normalizedEmail },
+    select: { id: true, email: true, emailVerified: true },
+  });
+
+  if (!user) {
+    return c.json(
+      {
+        success: true,
+        message: "If an account exists with this email, a verification link has been dispatched.",
+      },
+      200
+    );
+  }
+
+  if (user.emailVerified) {
+    return c.json(
+      {
+        success: true,
+        message: "Email is already verified.",
+        alreadyVerified: true,
+      },
+      200
+    );
+  }
+
+  // Rate Limiting via Redis (Max 5 requests per hour)
+  const rateLimitKey = `ratelimit:verify-email:${normalizedEmail}`;
+  try {
+    const currentCount = await redis.incr(rateLimitKey);
+    if (currentCount === 1) {
+      await redis.expire(rateLimitKey, 3600);
+    }
+
+    if (currentCount > 5) {
+      return c.json(
+        {
+          type: "/errors/rate-limit-exceeded",
+          title: "Too Many Requests",
+          status: 429,
+          detail: "Rate limit exceeded. Maximum 5 verification emails allowed per hour.",
+          code: "RATE_LIMIT_EXCEEDED",
+        },
+        429
+      );
+    }
+  } catch {
+    // If Redis is unreachable, bypass rate limit check without in-memory state (Zero Static Data law)
+  }
+
+  const { rawToken } = await createEmailVerificationToken(normalizedEmail, prisma);
+
+  const dashboardUrl = process.env.DASHBOARD_URL || "http://localhost:3001";
+  const verificationUrl = `${dashboardUrl}/api/auth/verify-email/confirm?token=${rawToken}`;
+
+  await sendEmail({
+    to: normalizedEmail,
+    subject: "Verify your email address - Business OS",
+    html: `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px;">
+        <h2 style="color: #1E1B19;">Verify your email address</h2>
+        <p style="color: #5C504B; font-size: 15px; line-height: 1.5;">
+          Thank you for joining Business OS. Click the button below to verify your email address and unlock full workspace access.
+        </p>
+        <div style="margin: 32px 0;">
+          <a href="${verificationUrl}" style="background-color: #F87171; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">
+            Verify Email Address
+          </a>
+        </div>
+        <p style="color: #8C7B75; font-size: 13px;">
+          This link is valid for 24 hours. If you did not create this account, you can safely ignore this email.
+        </p>
+      </div>
+    `,
+    text: `Verify your Business OS email address by visiting: ${verificationUrl}`,
+  });
+
+  return c.json(
+    {
+      success: true,
+      message: "Verification link dispatched",
+    },
+    200
+  );
+});
+
+authRouter.openapi(confirmVerifyEmailRoute, async (c) => {
+  const { token } = c.req.valid("json");
+  const result = await verifyEmailToken(token, prisma);
+
+  if (result.success) {
+    return c.json(
+      {
+        success: true,
+        message: "Email verified successfully",
+        email: result.email,
+      },
+      200
+    );
+  }
+
+  if (result.reason === "EXPIRED") {
+    return c.json(
+      {
+        type: "/errors/token-expired",
+        title: "Verification Token Expired",
+        status: 410,
+        detail: "The verification link has expired after 24 hours. Please request a new one.",
+        code: "TOKEN_EXPIRED",
+      },
+      410
+    );
+  }
+
+  return c.json(
+    {
+      type: "/errors/invalid-token",
+      title: "Invalid Verification Token",
+      status: 400,
+      detail: "The verification token is invalid or has already been used.",
+      code: "INVALID_TOKEN",
+    },
+    400
   );
 });
 
