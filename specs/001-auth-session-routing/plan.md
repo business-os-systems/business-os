@@ -105,10 +105,10 @@ apps/dashboard/
 │   │   │   ├── choose-tenant/page.tsx   # Multi-workspace disambiguation screen
 │   │   │   └── verify-expired/page.tsx  # Expired verification handler with resend action
 │   │   ├── (onboarding)/
-│   │   │   ├── layout.tsx          # Centered onboarding container layout
-│   │   │   ├── step-1/page.tsx     # Step 1: Workspace & Organization Setup
-│   │   │   ├── step-2/page.tsx     # Step 2: Primary Branch & Operating Location
-│   │   │   └── step-3/page.tsx     # Step 3: Application Selection & Activation
+│   │   │   ├── layout.tsx          # Centered onboarding container layout & stepper
+│   │   │   ├── step-1/page.tsx     # Step 1: Organization & Domain Setup
+│   │   │   ├── step-2/page.tsx     # Step 2: Tailored Application Selection
+│   │   │   └── step-3/page.tsx     # Step 3: Provisioning Engine & Confetti Launchpad
 │   │   └── api/
 │   │       ├── auth/
 │   │       │   ├── login/route.ts
@@ -124,9 +124,10 @@ apps/dashboard/
 │   │           ├── user/preferences/route.ts
 │   │           ├── auth/switch-tenant/route.ts
 │   │           └── onboarding/
-│   │               ├── step-1/route.ts
-│   │               ├── step-2/route.ts
-│   │               └── step-3/route.ts
+│   │               ├── check-slug/route.ts # Real-time debounced slug availability
+│   │               ├── step-1/route.ts     # Org creation & root branch bootstrap
+│   │               ├── step-2/route.ts     # Selected apps persistence
+│   │               └── complete/route.ts   # License provisioning & activation
 │   ├── components/
 │   │   ├── auth/
 │   │   │   ├── auth-card.tsx       # 400px envelope card container

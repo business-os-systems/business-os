@@ -2,7 +2,7 @@ import React from "react";
 import { describe, it, expect, vi } from "vitest";
 import { renderToString } from "react-dom/server";
 import LoginPage from "../src/app/(auth)/login/page";
-import OverviewPage from "../src/app/(dashboard)/page";
+import OverviewPage from "../src/app/(dashboard)/dashboard/page";
 import { HeaderTopbar } from "../src/components/layout/header-topbar";
 
 import {
