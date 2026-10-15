@@ -8,6 +8,14 @@ export {
 } from "./branch-context.js";
 
 export {
+  listUserTenants,
+  switchActiveTenant,
+  type UserTenantMembership,
+  type SwitchTenantParams,
+  type SwitchTenantResult,
+} from "./tenant-context.js";
+
+export {
   DEFAULT_SESSION_COOKIE_NAME,
   SESSION_COOKIE_NAME,
   SESSION_EPHEMERAL_MAX_AGE_SECONDS,

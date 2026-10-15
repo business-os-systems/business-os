@@ -169,12 +169,17 @@ export async function POST(request: Request) {
     }
     const userPermissions = Array.from(permissionsSet);
 
+    const hasMultipleWorkspaces =
+      onboardingStatus === "COMPLETED" && dbUser.organizations.length > 1;
+
     // Resolve post-login route based on dynamic permissions and lifecycle state
-    const redirectUrl = resolvePostLoginRoute({
-      permissions: userPermissions,
-      onboardingStatus,
-      currentOnboardingStep,
-    });
+    const redirectUrl = hasMultipleWorkspaces
+      ? "/choose-tenant"
+      : resolvePostLoginRoute({
+          permissions: userPermissions,
+          onboardingStatus,
+          currentOnboardingStep,
+        });
 
     // Generate cryptographically signed session token with verified tenant payload
     const rawPayload = encodeSessionPayload({

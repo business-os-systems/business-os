@@ -3,6 +3,8 @@ import type { PrismaClient } from "@suite/db";
 import {
   switchActiveBranch,
   getActiveBranchSession,
+  listUserTenants,
+  switchActiveTenant,
 } from "../src/session/index.js";
 import {
   UnauthorizedError,
@@ -287,4 +289,119 @@ describe("Active Branch Session Context Engine", () => {
     expect(details.effectiveRoles).toContain("front-desk");
     expect(details.permissions).toContain("pms:reservations:read");
   });
+
+  describe("Multi-Tenancy Disambiguation & Context Switching", () => {
+    it("lists all active tenant memberships with roles, names, and slugs", async () => {
+      const mockPrisma = {
+        userOrganization: {
+          findMany: async () => [
+            {
+              userId: "user_multi_01",
+              organizationId: "org_riverview",
+              organization: {
+                id: "org_riverview",
+                name: "River View Homestay",
+                slug: "riverview",
+                metadata: { logoUrl: "https://cdn.example.com/riverview.png" },
+              },
+            },
+            {
+              userId: "user_multi_01",
+              organizationId: "org_alpine",
+              organization: {
+                id: "org_alpine",
+                name: "Alpine Cafe",
+                slug: "alpine-cafe",
+                metadata: {},
+              },
+            },
+          ],
+        },
+        userBranchRole: {
+          findFirst: async ({ where }: { where: { organizationId: string } }) => {
+            if (where.organizationId === "org_riverview") {
+              return { role: { name: "Owner", slug: "owner" } };
+            }
+            return { role: { name: "Manager", slug: "manager" } };
+          },
+        },
+      } as unknown as PrismaClient;
+
+      const tenants = await listUserTenants("user_multi_01", mockPrisma);
+
+      expect(tenants).toHaveLength(2);
+      expect(tenants[0]?.name).toBe("River View Homestay");
+      expect(tenants[0]?.role).toBe("Owner");
+      expect(tenants[0]?.logoUrl).toBe("https://cdn.example.com/riverview.png");
+      expect(tenants[1]?.name).toBe("Alpine Cafe");
+      expect(tenants[1]?.role).toBe("Manager");
+      expect(tenants[1]?.logoUrl).toBeNull();
+    });
+
+    it("switches active tenant context and extracts branch and dynamic permissions", async () => {
+      const mockPrisma = {
+        userOrganization: {
+          findUnique: async () => ({
+            userId: "user_multi_01",
+            organizationId: "org_alpine",
+            status: "ACTIVE",
+            organization: {
+              id: "org_alpine",
+              name: "Alpine Cafe",
+              slug: "alpine-cafe",
+              branches: [{ id: "branch_main", name: "Main Dining Hall" }],
+            },
+          }),
+        },
+        userBranchRole: {
+          findMany: async () => [
+            {
+              branchId: "branch_main",
+              branch: { id: "branch_main", name: "Main Dining Hall" },
+              role: {
+                name: "Manager",
+                slug: "manager",
+                permissions: [
+                  { permission: { action: "pos:orders:create" } },
+                  { permission: { action: "pos:reports:read" } },
+                ],
+              },
+            },
+          ],
+        },
+      } as unknown as PrismaClient;
+
+      const result = await switchActiveTenant({
+        userId: "user_multi_01",
+        targetOrganizationId: "org_alpine",
+        prisma: mockPrisma,
+      });
+
+      expect(result.organizationId).toBe("org_alpine");
+      expect(result.organizationName).toBe("Alpine Cafe");
+      expect(result.organizationSlug).toBe("alpine-cafe");
+      expect(result.activeBranchId).toBe("branch_main");
+      expect(result.activeBranchName).toBe("Main Dining Hall");
+      expect(result.role).toBe("Manager");
+      expect(result.permissions).toContain("pos:orders:create");
+      expect(result.permissions).toContain("pos:reports:read");
+    });
+
+    it("rejects tenant switch with ForbiddenError if user is not an active member", async () => {
+      const mockPrisma = {
+        userOrganization: {
+          findUnique: async () => null,
+        },
+      } as unknown as PrismaClient;
+
+      await expect(
+        switchActiveTenant({
+          userId: "user_multi_01",
+          targetOrganizationId: "org_foreign",
+          prisma: mockPrisma,
+        })
+      ).rejects.toThrow(ForbiddenError);
+    });
+  });
 });
+

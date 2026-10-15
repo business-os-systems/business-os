@@ -1,11 +1,13 @@
 "use client";
 
 import React from "react";
-import { Badge, Button } from "@suite/ui";
+import { Button } from "@suite/ui";
 import { MenuIcon, BuildingIcon, LogOutIcon } from "@suite/ui/icons";
 import { ThemeToggle } from "./theme-toggle";
 import type { TenantContext } from "./types";
 import { isBrowser } from "@/lib/env";
+
+import { WorkspaceSwitcher } from "./workspace-switcher";
 
 interface HeaderTopbarProps {
   tenant?: TenantContext;
@@ -51,16 +53,10 @@ export function HeaderTopbar({
             <MenuIcon className="h-5 w-5" />
           </Button>
         )}
-        <div className="flex items-center gap-2">
-          {tenant?.organizationName && (
-            <span className="text-sm font-semibold text-on-surface">
-              {tenant.organizationName}
-            </span>
-          )}
-          <Badge variant="secondary" className="text-xs">
-            Enterprise
-          </Badge>
-        </div>
+        <WorkspaceSwitcher
+          activeOrganizationId={tenant?.organizationId}
+          activeOrganizationName={tenant?.organizationName}
+        />
       </div>
 
       <div className="flex items-center gap-4">

@@ -35,6 +35,11 @@ export {
 export {
   switchActiveBranch,
   getActiveBranchSession,
+  listUserTenants,
+  switchActiveTenant,
+  type UserTenantMembership,
+  type SwitchTenantParams,
+  type SwitchTenantResult,
   DEFAULT_SESSION_COOKIE_NAME,
   SESSION_COOKIE_NAME,
   SESSION_EPHEMERAL_MAX_AGE_SECONDS,
