@@ -192,6 +192,61 @@ describe("Route Integration Suite", () => {
       expect(body.code).toBe("SSO_IDP_NOT_CONFIGURED");
       expect(body.title).toBe("SSO Configuration Pending");
     });
+
+    it("POST /api/v1/auth/verify-email/request returns 400 when no email or session is provided", async () => {
+      const res = await app.request("/api/v1/auth/verify-email/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+
+      expect(res.status).toBe(400);
+      const body = (await res.json()) as ProblemDetails;
+      expect(body.code).toBe("VALIDATION_FAILED");
+    });
+
+    it("POST /api/v1/auth/verify-email/request returns 200 when account exists", async () => {
+      vi.spyOn(prisma.user, "findUnique").mockResolvedValueOnce({
+        id: "usr_test_1",
+        email: "unverified@example.com",
+        emailVerified: false,
+      } as unknown as Awaited<ReturnType<typeof prisma.user.findUnique>>);
+
+      vi.spyOn(prisma.verification, "deleteMany").mockResolvedValueOnce({ count: 0 });
+      vi.spyOn(prisma.verification, "create").mockResolvedValueOnce({
+        id: "ver_1",
+        identifier: "unverified@example.com",
+        value: "hashed_token",
+        expiresAt: new Date(Date.now() + 86400000),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      const res = await app.request("/api/v1/auth/verify-email/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: "unverified@example.com" }),
+      });
+
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { success: boolean; message: string };
+      expect(body.success).toBe(true);
+      expect(body.message).toContain("dispatched");
+    });
+
+    it("POST /api/v1/auth/verify-email/confirm returns 400 when token is invalid", async () => {
+      vi.spyOn(prisma.verification, "findFirst").mockResolvedValueOnce(null);
+
+      const res = await app.request("/api/v1/auth/verify-email/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: "invalid_raw_token" }),
+      });
+
+      expect(res.status).toBe(400);
+      const body = (await res.json()) as ProblemDetails;
+      expect(body.code).toBe("INVALID_TOKEN");
+    });
   });
 });
 

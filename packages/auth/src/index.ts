@@ -92,3 +92,24 @@ export {
   type PasswordComplexityResult,
 } from "./password/password-engine.js";
 
+export {
+  createEmailVerificationToken,
+  verifyEmailToken,
+  hashVerificationToken,
+  EMAIL_VERIFICATION_EXPIRATION_HOURS,
+  EMAIL_VERIFICATION_EXPIRATION_MS,
+  type CreateVerificationTokenResult,
+  type VerifyEmailResult,
+} from "./verification/index.js";
+
+export {
+  sendEmail,
+  resolveEmailTransporter,
+  ConsoleEmailTransporter,
+  ResendEmailTransporter,
+  type EmailTransporter,
+  type SendEmailOptions,
+  type EmailSendResult,
+} from "./email/transporter.js";
+
+

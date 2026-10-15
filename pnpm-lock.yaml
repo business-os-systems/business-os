@@ -99,6 +99,9 @@ importers:
       '@suite/logger':
         specifier: workspace:*
         version: link:../../packages/logger
+      '@suite/redis':
+        specifier: workspace:*
+        version: link:../../packages/redis
       '@suite/ui':
         specifier: workspace:*
         version: link:../../packages/ui

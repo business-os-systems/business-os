@@ -15,6 +15,17 @@ export default async function DashboardLayout({
   const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME)?.value;
   const session = sessionCookie ? decodeSessionPayload(sessionCookie) : null;
 
+  let userEmailVerified = true;
+  if (session?.userId) {
+    const dbUser = await prisma.user.findUnique({
+      where: { id: session.userId },
+      select: { emailVerified: true },
+    });
+    if (dbUser) {
+      userEmailVerified = dbUser.emailVerified;
+    }
+  }
+
   const tenant: TenantContext | undefined =
     session && session.organizationId && session.organizationName
       ? {
@@ -22,6 +33,7 @@ export default async function DashboardLayout({
           organizationName: session.organizationName,
           userName: session.userName,
           userEmail: session.email,
+          userEmailVerified,
           userRole: session.role,
           activeBranchId: session.activeBranchId,
           activeBranchName: session.activeBranchName,

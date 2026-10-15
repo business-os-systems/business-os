@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from "react";
 import { SidebarNav } from "./sidebar-nav";
 import { HeaderTopbar } from "./header-topbar";
+import { UnverifiedEmailBanner } from "./unverified-email-banner";
+import { VerifiedSuccessBanner } from "./verified-success-banner";
 import type { TenantContext, NavigationItem } from "./types";
 import { BASE_NAV_ITEMS } from "./types";
 
@@ -78,6 +80,10 @@ export function DashboardShell({
           tenant={tenant}
           onToggleSidebar={() => setCollapsed(!collapsed)}
         />
+        <VerifiedSuccessBanner />
+        {tenant?.userEmailVerified === false && (
+          <UnverifiedEmailBanner email={tenant?.userEmail} />
+        )}
         <main className="flex-1 overflow-y-auto p-6 md:p-8">{children}</main>
       </div>
     </div>
