@@ -1,0 +1,690 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Business OS Authentication & Session Routing API",
+    "version": "1.0.0",
+    "description": "API contracts for identity, authentication, session routing, tenancy resolution, and email verification under SPEC-AUTH-001."
+  },
+  "paths": {
+    "/api/auth/register": {
+      "post": {
+        "summary": "Register a new user account with email and password",
+        "description": "Initializes user record with emailVerified: false, onboarding_status: IN_PROGRESS, dispatches verification email, and sets session cookie.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password", "name"],
+                "properties": {
+                  "email": { "type": "string", "format": "email" },
+                  "password": { "type": "string", "minLength": 8 },
+                  "name": { "type": "string", "minLength": 1 },
+                  "turnstileToken": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User created and authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "redirectUrl": { "type": "string", "example": "/onboarding/step-1" },
+                    "user": { "$ref": "#/components/schemas/UserSummary" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ProblemDetails" },
+          "409": {
+            "description": "Email already exists or collision detected",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ProblemDetails" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "summary": "Authenticate user credentials",
+        "description": "Authenticates user with email and password, creates session token, returns tenant context and theme preference.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": { "type": "string", "format": "email" },
+                  "password": { "type": "string" },
+                  "keepSignedIn": { "type": "boolean", "default": false },
+                  "turnstileToken": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successfully authenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "redirectUrl": { "type": "string", "example": "/dashboard" },
+                    "themePreference": { "type": "string", "enum": ["system", "light", "dark"] },
+                    "user": { "$ref": "#/components/schemas/UserSummary" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/ProblemDetails" },
+          "403": { "$ref": "#/components/responses/ProblemDetails" }
+        }
+      }
+    },
+    "/api/auth/sso/discover": {
+      "post": {
+        "summary": "Home Realm Discovery (HRD) lookup for managed email domain",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email"],
+                "properties": {
+                  "email": { "type": "string", "format": "email" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Discovery resolution",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "domain": { "type": "string" },
+                    "isEnterprise": { "type": "boolean" },
+                    "providerType": { "type": ["string", "null"] },
+                    "organizationName": { "type": ["string", "null"] },
+                    "ssoLoginUrl": { "type": ["string", "null"] }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/verify-email/request": {
+      "post": {
+        "summary": "Resend email verification link",
+        "description": "Dispatches a new 24h cryptographic token to the user's email address.",
+        "responses": {
+          "200": {
+            "description": "Verification link dispatched",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "429": { "$ref": "#/components/responses/ProblemDetails" }
+        }
+      }
+    },
+    "/api/auth/verify-email/confirm": {
+      "post": {
+        "summary": "Confirm email verification with cryptographic token",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["token"],
+                "properties": {
+                  "token": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Email verified successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Verification token expired (routes to /auth/verify-expired)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ProblemDetails" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/tenants": {
+      "get": {
+        "summary": "List available organizations/workspaces for authenticated user",
+        "responses": {
+          "200": {
+            "description": "List of user workspace memberships",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "tenants": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "organizationId": { "type": "string" },
+                          "name": { "type": "string" },
+                          "slug": { "type": "string" },
+                          "role": { "type": "string" },
+                          "logoUrl": { "type": ["string", "null"] }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/switch-tenant": {
+      "post": {
+        "summary": "Select active workspace and issue tenant-scoped session context",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["organizationId"],
+                "properties": {
+                  "organizationId": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Active tenant context updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "redirectUrl": { "type": "string", "example": "/dashboard" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/user/preferences": {
+      "patch": {
+        "summary": "Update user preferences (theme preference, locale)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "themePreference": { "type": "string", "enum": ["system", "light", "dark"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Preferences updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "themePreference": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/onboarding/step-1": {
+      "post": {
+        "summary": "Execute Onboarding Step 1: Organization Creation",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["organizationName", "organizationSlug", "industry", "currency", "timezone"],
+                "properties": {
+                  "organizationName": { "type": "string", "minLength": 2, "maxLength": 100 },
+                  "organizationSlug": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+                  "industry": { "type": "string", "enum": ["hospitality", "restaurant_fb", "retail", "services", "general"] },
+                  "currency": { "type": "string", "minLength": 3, "maxLength": 3 },
+                  "timezone": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Step 1 completed; Organization provisioned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "organizationId": { "type": "string" },
+                    "nextStep": { "type": "integer", "example": 2 },
+                    "redirectUrl": { "type": "string", "example": "/onboarding/step-2" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ProblemDetails" }
+        }
+      }
+    },
+    "/api/v1/onboarding/step-2": {
+      "post": {
+        "summary": "Execute Onboarding Step 2: Branch & Location Setup",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["branchName", "branchCode", "city", "country"],
+                "properties": {
+                  "branchName": { "type": "string", "minLength": 2 },
+                  "branchCode": { "type": "string", "minLength": 3, "maxLength": 6 },
+                  "addressLine1": { "type": "string" },
+                  "city": { "type": "string" },
+                  "country": { "type": "string", "minLength": 2, "maxLength": 2 },
+                  "phone": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Step 2 completed; Branch provisioned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "branchId": { "type": "string" },
+                    "nextStep": { "type": "integer", "example": 3 },
+                    "redirectUrl": { "type": "string", "example": "/onboarding/step-3" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ProblemDetails" }
+        }
+      }
+    },
+    "/api/v1/onboarding/step-3": {
+      "post": {
+        "summary": "Execute Onboarding Step 3: Application Selection & Workspace Activation",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["selectedApps"],
+                "properties": {
+                  "selectedApps": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "minItems": 1
+                  },
+                  "sampleData": { "type": "boolean", "default": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Step 3 completed; Workspace activated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "onboardingStatus": { "type": "string", "example": "COMPLETED" },
+                    "redirectUrl": { "type": "string", "example": "/dashboard" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ProblemDetails" }
+        }
+      }
+    },
+    "/api/v1/apps/{id}/install": {
+      "post": {
+        "summary": "Install a modular application into the current workspace",
+        "description": "Guarded by mandatory email verification gate (AC-VER-05/06).",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "App installed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "appId": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Email verification required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": { "type": "string", "example": "https://api.business-os.com/errors/email-verification-required" },
+                    "title": { "type": "string", "example": "Email verification required" },
+                    "status": { "type": "integer", "example": 403 },
+                    "detail": { "type": "string", "example": "You must verify your email address before installing new applications to your workspace." },
+                    "code": { "type": "string", "example": "EMAIL_VERIFICATION_REQUIRED" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/reset-password": {
+      "post": {
+        "summary": "Complete password reset and invalidate all active sessions globally",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["token", "newPassword", "confirmPassword"],
+                "properties": {
+                  "token": { "type": "string" },
+                  "newPassword": { "type": "string", "minLength": 8 },
+                  "confirmPassword": { "type": "string", "minLength": 8 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password updated; all existing sessions revoked; new session issued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ProblemDetails" },
+          "410": {
+            "description": "Reset token expired or already consumed",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ProblemDetails" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/link-account": {
+      "post": {
+        "summary": "Confirm password to link federated OAuth account to existing credential user",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["ticket", "password"],
+                "properties": {
+                  "ticket": { "type": "string" },
+                  "password": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Account linked successfully; session issued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "user": { "$ref": "#/components/schemas/UserSummary" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/ProblemDetails" },
+          "410": {
+            "description": "Linking ticket expired",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ProblemDetails" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "summary": "Terminate current session",
+        "description": "Invalidates server session and clears session cookies or keychain tokens.",
+        "responses": {
+          "200": {
+            "description": "Logged out successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/super-admin/auth/login": {
+      "post": {
+        "summary": "Authenticate platform super administrator with mandatory MFA",
+        "description": "Authenticates platform operators holding global role (Role.organizationId === null && Role.slug === 'platform-super-admin') with MFA challenge.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password", "totpCode"],
+                "properties": {
+                  "email": { "type": "string", "format": "email" },
+                  "password": { "type": "string" },
+                  "totpCode": { "type": "string", "pattern": "^[0-9]{6}$" },
+                  "turnstileToken": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Platform super admin authenticated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean" },
+                    "redirectUrl": { "type": "string", "example": "/super-admin" },
+                    "user": { "$ref": "#/components/schemas/UserSummary" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/ProblemDetails" },
+          "403": {
+            "description": "User lacks platform super admin role or MFA failed",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ProblemDetails" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "UserSummary": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "email": { "type": "string" },
+          "name": { "type": "string" },
+          "emailVerified": { "type": "boolean" },
+          "role": { "type": "string" },
+          "organizationId": { "type": ["string", "null"] },
+          "organizationName": { "type": ["string", "null"] },
+          "onboardingStatus": { "type": "string", "enum": ["NOT_STARTED", "IN_PROGRESS", "COMPLETED"] },
+          "currentOnboardingStep": { "type": "integer" }
+        }
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string" },
+          "title": { "type": "string" },
+          "status": { "type": "integer" },
+          "detail": { "type": "string" },
+          "code": { "type": "string" },
+          "invalidParams": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": { "type": "string" },
+                "reason": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "responses": {
+      "ProblemDetails": {
+        "description": "RFC 7807 problem details error response",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ProblemDetails" }
+          }
+        }
+      }
+    }
+  }
+}

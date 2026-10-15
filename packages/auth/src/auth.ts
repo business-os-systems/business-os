@@ -2,6 +2,7 @@ import { betterAuth, type BetterAuthOptions } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { organization, bearer } from "better-auth/plugins";
 import type { PrismaClient } from "@suite/db";
+import { isProduction, getBetterAuthSecret } from "./env.js";
 
 export interface CreateAuthOptions {
   secret?: string;
@@ -16,10 +17,7 @@ export interface CreateAuthOptions {
  * and cryptographically secure session cookies.
  */
 export function createAuth(prisma: PrismaClient, options: CreateAuthOptions = {}) {
-  const secret = options.secret ?? process.env.BETTER_AUTH_SECRET;
-  if (!secret) {
-    throw new Error("BETTER_AUTH_SECRET is required to initialize authentication engine.");
-  }
+  const secret = options.secret ?? getBetterAuthSecret();
 
   const baseURL = options.baseURL ?? process.env.BETTER_AUTH_URL;
   if (!baseURL) {
@@ -68,7 +66,7 @@ export function createAuth(prisma: PrismaClient, options: CreateAuthOptions = {}
       },
     },
     advanced: {
-      useSecureCookies: process.env.NODE_ENV === "production",
+      useSecureCookies: isProduction,
       cookiePrefix: "suite",
     },
   });

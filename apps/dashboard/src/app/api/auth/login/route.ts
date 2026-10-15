@@ -7,6 +7,7 @@ import {
   signSessionToken,
   encodeSessionPayload,
 } from "@/lib/auth-constants";
+import { isProduction } from "@/lib/env";
 
 const LoginSchema = z.object({
   email: z.string().email("A valid email address is required"),
@@ -87,7 +88,7 @@ export async function POST(request: Request) {
     });
 
     const token = await signSessionToken(rawPayload);
-    const cookieOptions = createSessionCookieOptions(process.env.NODE_ENV === "production");
+    const cookieOptions = createSessionCookieOptions(isProduction);
 
     const response = NextResponse.json({
       success: true,
