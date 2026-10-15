@@ -85,17 +85,17 @@
 **Independent Test**: Scenario 2 & Scenario 8 in [quickstart.md](./quickstart.md). Completing Steps 1–3 creates Organization, auto-provisions root Branch, Owner role, licenses installed apps, and sets `onboarding_status: "COMPLETED"`; invited member bypasses Steps 1 & 2.
 
 ### Tests for User Story 3
-- [ ] T023 [P] [US3] Unit and contract tests for onboarding endpoints, slug availability, and workspace provisioning in `apps/dashboard/tests/onboarding.test.ts`
+- [x] T023 [P] [US3] Unit and contract tests for onboarding endpoints, slug availability, and workspace provisioning in `apps/dashboard/tests/onboarding.test.ts`
 
 ### Implementation for User Story 3
-- [ ] T024 [P] [US3] Build centered onboarding container layout and stepper header (`01 Organization Details` → `02 Application Selection` → `03 Workspace Setup`) in `apps/dashboard/src/app/(onboarding)/layout.tsx`
-- [ ] T025 [P] [US3] Build Step 1 Organization Details UI in `apps/dashboard/src/app/(onboarding)/step-1/page.tsx` (`organizationName`, `organizationSlug` with `https://` prefix and `.businessos.app` suffix + live availability badge, interactive multi-select `industries` tag pills and search)
-- [ ] T026 [US3] Implement Step 1 API `POST /api/v1/onboarding/step-1` and slug availability endpoint `GET /api/v1/onboarding/check-slug` in `apps/dashboard/src/app/api/v1/onboarding/step-1/route.ts` and `apps/dashboard/src/app/api/v1/onboarding/check-slug/route.ts` executing atomic transaction: create `Organization`, auto-create root `Branch` ("Main Location", "MAIN"), `UserOrganization` (`role: "Owner"`), system `Role` (`slug: "owner"`, `isSystem: true`), `role_permissions`, and `UserBranchRole` with `branchId: null`
-- [ ] T027 [P] [US3] Build Step 2 Application Selection UI in `apps/dashboard/src/app/(onboarding)/step-2/page.tsx` rendering industry recommendation header, top section "Recommended for your industry" (pre-selected), and bottom section "Additional workspace applications"
-- [ ] T028 [US3] Implement Step 2 API `POST /api/v1/onboarding/step-2` in `apps/dashboard/src/app/api/v1/onboarding/step-2/route.ts` validating app selections, persisting to `User.metadata.selected_apps`, and advancing `current_onboarding_step: 3`
-- [ ] T029 [P] [US3] Build Step 3 Provisioning & Launchpad UI in `apps/dashboard/src/app/(onboarding)/step-3/page.tsx` featuring animated master progress bar (0% → 100%), module deployment status items, paper glitters/confetti celebration burst, active app summary, and 5-second countdown timer auto-redirect button
-- [ ] T030 [US3] Implement Workspace Completion API `POST /api/v1/onboarding/complete` in `apps/dashboard/src/app/api/v1/onboarding/complete/route.ts` provisioning `InstalledApp` records in `@suite/db`, marking `onboarding_status = "COMPLETED"`, clearing `current_onboarding_step`, and updating session claims
-- [ ] T031 [US3] Implement Organization Invitation acceptance endpoint `POST /api/v1/auth/invitation/accept` and route `/invite/[token]` in `apps/dashboard/src/app/(auth)/invite/[token]/page.tsx` bypassing Steps 1 & 2 directly to `COMPLETED`
+- [x] T024 [P] [US3] Build centered onboarding container layout and stepper header (`01 Organization Details` → `02 Application Selection` → `03 Workspace Setup`) in `apps/dashboard/src/app/(onboarding)/layout.tsx`
+- [x] T025 [P] [US3] Build Step 1 Organization Details UI in `apps/dashboard/src/app/(onboarding)/step-1/page.tsx` (`organizationName`, `organizationSlug` with `https://` prefix and `.businessos.app` suffix + live availability badge, interactive multi-select `industries` tag pills and search)
+- [x] T026 [US3] Implement Step 1 API `POST /api/v1/onboarding/step-1` and slug availability endpoint `GET /api/v1/onboarding/check-slug` in `apps/dashboard/src/app/api/v1/onboarding/step-1/route.ts` and `apps/dashboard/src/app/api/v1/onboarding/check-slug/route.ts` executing atomic transaction: create `Organization`, auto-create root `Branch` ("Main Location", "MAIN"), `UserOrganization` (`role: "Owner"`), system `Role` (`slug: "owner"`, `isSystem: true`), `role_permissions`, and `UserBranchRole` with `branchId: null`
+- [x] T027 [P] [US3] Build Step 2 Application Selection UI in `apps/dashboard/src/app/(onboarding)/step-2/page.tsx` rendering industry recommendation header, top section "Recommended for your industry" (pre-selected), and bottom section "Additional workspace applications"
+- [x] T028 [US3] Implement Step 2 API `POST /api/v1/onboarding/step-2` in `apps/dashboard/src/app/api/v1/onboarding/step-2/route.ts` validating app selections, persisting to `User.metadata.selected_apps`, and advancing `current_onboarding_step: 3`
+- [x] T029 [P] [US3] Build Step 3 Provisioning & Launchpad UI in `apps/dashboard/src/app/(onboarding)/step-3/page.tsx` featuring animated master progress bar (0% → 100%), module deployment status items, paper glitters/confetti celebration burst, active app summary, and 5-second countdown timer auto-redirect button
+- [x] T030 [US3] Implement Workspace Completion API `POST /api/v1/onboarding/complete` in `apps/dashboard/src/app/api/v1/onboarding/complete/route.ts` provisioning `InstalledApp` records in `@suite/db`, marking `onboarding_status = "COMPLETED"`, clearing `current_onboarding_step`, and updating session claims
+- [x] T031 [US3] Implement Organization Invitation acceptance endpoint `POST /api/v1/auth/invitation/accept` and route `/invite/[token]` in `apps/dashboard/src/app/(auth)/invite/[token]/page.tsx` bypassing Steps 1 & 2 directly to `COMPLETED`
 
 **Checkpoint**: User Stories 1, 2, and 3 provide a complete end-to-end onboarding and tenant activation flow.
 
@@ -164,14 +164,14 @@
 **Independent Test**: Scenario 7 in [quickstart.md](./quickstart.md). Password reset completes at `/auth/reset-password` and invalidates all active sessions in the `sessions` table across other devices.
 
 ### Tests for User Story 7
-- [ ] T046 [P] [US7] Integration tests for password reset session revocation and OAuth collision flow in `apps/dashboard/tests/account-security.test.tsx`
+- [x] T046 [P] [US7] Integration tests for password reset session revocation and OAuth collision flow in `apps/dashboard/tests/account-security.test.tsx`
 
 ### Implementation for User Story 7
-- [ ] T047 [US7] Build password recovery page in `apps/dashboard/src/app/(auth)/forgot-password/page.tsx` dispatching 15m single-use token
-- [ ] T048 [US7] Build password reset completion page in `apps/dashboard/src/app/(auth)/reset-password/page.tsx` enforcing 8+ char complexity and show/hide toggle
-- [ ] T049 [US7] Implement password reset endpoint `POST /api/auth/reset-password` in `apps/dashboard/src/app/api/auth/reset-password/route.ts` updating password hash and deleting all active records in `sessions` table for `userId`
-- [ ] T050 [US7] Build account linking challenge page in `apps/dashboard/src/app/(auth)/link-account/page.tsx` prompting existing password on OAuth collision
-- [ ] T051 [US7] Implement account linking endpoint `POST /api/auth/link-account` in `apps/dashboard/src/app/api/auth/link-account/route.ts` linking provider in `Account` upon password verification
+- [x] T047 [US7] Build password recovery page in `apps/dashboard/src/app/(auth)/forgot-password/page.tsx` dispatching 15m single-use token
+- [x] T048 [US7] Build password reset completion page in `apps/dashboard/src/app/(auth)/reset-password/page.tsx` enforcing 8+ char complexity and show/hide toggle
+- [x] T049 [US7] Implement password reset endpoint `POST /api/auth/reset-password` in `apps/dashboard/src/app/api/auth/reset-password/route.ts` updating password hash and deleting all active records in `sessions` table for `userId`
+- [x] T050 [US7] Build account linking challenge page in `apps/dashboard/src/app/(auth)/link-account/page.tsx` prompting existing password on OAuth collision
+- [x] T051 [US7] Implement account linking endpoint `POST /api/auth/link-account` in `apps/dashboard/src/app/api/auth/link-account/route.ts` linking provider in `Account` upon password verification
 
 **Checkpoint**: User Story 7 delivers hardened account security, session revocation, and collision prevention.
 
@@ -181,9 +181,9 @@
 
 **Purpose**: Cross-cutting quality checks, accessibility validation, and documentation.
 
-- [ ] T057 [P] Accessibility and keyboard navigation audit across all auth forms (`aria-invalid`, `focus-ring`, 44x44px touch targets)
-- [ ] T058 [P] Documentation updates in `docs/auth-session-routing.md` detailing architecture, security model, and API contracts
-- [ ] T059 Run quickstart validation runbook (`quickstart.md` Scenarios 1–8) and verify all Vitest suites pass
+- [x] T057 [P] Accessibility and keyboard navigation audit across all auth forms (`aria-invalid`, `focus-ring`, 44x44px touch targets)
+- [x] T058 [P] Documentation updates in `docs/auth-session-routing.md` detailing architecture, security model, and API contracts
+- [x] T059 Run quickstart validation runbook (`quickstart.md` Scenarios 1–8) and verify all Vitest suites pass
 
 ---
 
@@ -286,4 +286,12 @@ Task: "T029 [P] [US3] Build Step 3 UI in apps/dashboard/src/app/(onboarding)/ste
 - [x] T075 [P] Replace literal unicode arrows with calibrated, inline SVG icons (`w-4 h-4`) matching button typography and optical alignment on back and next buttons in `apps/dashboard/src/app/onboarding/step-1/page.tsx`, `step-2/page.tsx`, and `step-3/page.tsx` per DESIGN.md Primacy (partial)
 - [x] T076 [P] Add unit and integration test coverage for Step 1 pre-population, idempotent updates, and button navigation in `apps/dashboard/tests/onboarding.test.tsx` per Testing Standards (partial)
 
+---
 
+## Phase 16: Convergence
+
+**Purpose**: Author architectural documentation, audit accessibility attributes (`aria-invalid`, touch targets), and validate full runbook matrix.
+
+- [x] T077 [P] Author comprehensive technical documentation in `docs/auth-session-routing.md` detailing architecture, session security model, and API contracts per T058 (missing)
+- [x] T078 [P] Accessibility and keyboard navigation audit across all auth forms (`aria-invalid`, `aria-describedby`, 44x44px touch targets) in `apps/dashboard/src/components/auth/email-password-form.tsx`, `apps/dashboard/src/app/(auth)/forgot-password/page.tsx`, `apps/dashboard/src/app/(auth)/reset-password/page.tsx`, and `apps/dashboard/src/app/(auth)/link-account/page.tsx` per T057 (partial)
+- [x] T079 Validate automated Vitest coverage across all quickstart runbook scenarios (Scenarios 1–8) and document verification matrix in `docs/auth-session-routing.md` per T059 (partial)
