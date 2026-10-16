@@ -11,7 +11,7 @@
 ## 0. Rule 0: Pre-Change Rule Verification Gate (APPLY RULES FIRST BEFORE MAKING ANY CHANGES)
 - **Before making ANY code, design, configuration, or architectural change, AI agents MUST explicitly review, verify, and apply ALL operational directives, architectural rules, and Clean Code standards FIRST.**
 - AI agents are **STRICTLY PROHIBITED** from taking shortcuts, introducing temporary workarounds, using mock/static data fallbacks, or writing code before validating all repository rules.
-- Every turn begins with a rule compliance check: If an action would violate ANY directive in this document or Constitution Principle XII (e.g., issue-first policy, zero static data, DESIGN.md primacy, clean code discipline, branch hierarchy, human issue approval gate, human commit & PR approval gate, human merge approval gate, core immutability), the agent **MUST NOT** proceed with the violation.
+- Every turn begins with a rule compliance check: If an action would violate ANY directive in this document or Constitution Principle XII (e.g., issue-first policy, zero static data, DESIGN.md primacy, clean code discipline, branch hierarchy, human issue approval gate, human commit & PR approval gate, human merge approval gate, core immutability, env-first pre-declaration), the agent **MUST NOT** proceed with the violation.
 
 ---
 
@@ -168,6 +168,8 @@ You are **STRICTLY PROHIBITED** from:
   AI agents and developers are **STRICTLY FORBIDDEN** from introducing empty `catch {}` blocks or silently ignoring failures. All exceptions must either be handled cleanly with appropriate recovery/logging or rethrown as typed `AppError` subclasses.
 - ❌ **Un-Scoped Sweeping Refactors (Strict Boy Scout Blast Radius Law):**
   Under the Boy Scout Rule, cleanup (fixing typos, improving variable names, typing fixes) MUST be strictly bounded to files in the active ticket's blast radius. Sweeping refactors across unrelated modules or packages without an explicit ticket are strictly forbidden.
+- ❌ **Undeclared & Phantom Environment Variables (Env-First Pre-Declaration Law):**
+  AI agents and engineers are **STRICTLY FORBIDDEN** from consuming, accessing, or introducing any environment variable (`process.env.*`, `import.meta.env.*`) in runtime code, configuration, scripts, or test utilities without **FIRST** pre-declaring and documenting it in the root and package-level `.env.example` templates and local `.env` files with safe, intention-revealing default or placeholder values. Referencing undeclared, undocumented, or phantom environment variables is strictly prohibited.
 
 ---
 
