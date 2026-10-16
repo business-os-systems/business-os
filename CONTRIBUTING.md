@@ -143,6 +143,7 @@ business-os/
 - **Zero raw `any` types** and zero `@ts-ignore` bypasses.
 - All network boundaries (REST endpoints, RPC parameters, BullMQ payloads) must be parsed and validated with **Zod**.
 - **Type-Safe Environment Variables:** Every package and app validates its required environment variables at process boot; if any variable is missing or invalid, the process terminates immediately with an explicit error.
+- **Env-First Pre-Declaration Law:** Every environment variable accessed in runtime code, configuration, scripts, or test utilities (`process.env.*`, `import.meta.env.*`) MUST be pre-declared and documented in root and package-level `.env.example` templates and local `.env` files with safe, intention-revealing default or placeholder values before being referenced in code. Referencing undeclared, undocumented, or phantom environment variables in code is strictly prohibited.
 
 ### Rule 5.1: Enterprise Clean Code & Refactoring Standards (Constitution Principle XII)
 All code submitted to Business OS MUST comply with Constitution Principle XII:
@@ -232,6 +233,7 @@ You are **STRICTLY PROHIBITED** from:
 - ❌ Deleting or modifying `*.code-workspace` files (these define the active multi-root IDE workspace).
 - ❌ Writing undocumented API endpoints: Every HTTP route **MUST** be registered with `@hono/zod-openapi`'s `createRoute()` with schemas for params, request body, and RFC 7807 problem details responses.
 - ❌ Exposing `/doc` and `/openapi.json` without environment guards: Internal documentation must be protected or restricted in production.
+- ❌ Consuming undeclared or phantom environment variables in code without pre-declaring them in `.env` and `.env.example` templates (Env-First Pre-Declaration Law).
 
 ---
 

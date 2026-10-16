@@ -1,12 +1,8 @@
 <!--
 SYNC IMPACT REPORT
-- Version change: 1.3.0 -> 1.4.0 (ratification of Principle XII: Enterprise Clean Code & Refactoring Discipline)
+- Version change: 1.4.0 -> 1.4.1 (formalization of Env-First Pre-Declaration Law in Principle XII.2)
 - List of modified principles:
-  - Added Principle XII: Enterprise Clean Code & Refactoring Discipline covering general rules, design/boundaries, understandability, naming, functions, comments, structure/formatting, objects vs data structures, testing, and code smells.
-- Added sections / subsections:
-  - Principle XII.1 through XII.10
-- Removed sections:
-  - None.
+  - Principle XII.2: Added explicit Env-First Pre-Declaration Law requiring all environment variables to be pre-declared and documented in .env.example and .env files before code reference.
 - Follow-up TODOs:
   - None.
 -->
@@ -76,6 +72,7 @@ Every engineer and AI agent contributing to Business OS MUST write code that is 
    - *Root-Cause Resolution:* Always diagnose and resolve the fundamental underlying cause of bugs. Superficial symptom workarounds (such as swallowing errors with empty catch blocks, applying arbitrary timeouts, or forcing types with `as any`) are strictly prohibited.
 2. **Design, Boundaries & Architecture:**
    - *Configurable Data at High Levels:* Configuration constants, timeouts, rate limits, and environment variables MUST reside in dedicated configuration modules or package constants (e.g. `@suite/core/constants`, `@/lib/env.ts`) and be passed downward. Hardcoding magic timeouts or inline literals deep in business logic is prohibited.
+   - *Environment Variable Pre-Declaration (Env-First Principle):* Every environment variable accessed in runtime code, configuration, scripts, or test utilities (`process.env.*`, `import.meta.env.*`) MUST be pre-declared and documented in root and package-level `.env.example` templates and local `.env` files with safe, intention-revealing default/placeholder values before being referenced or consumed in code. Referencing undeclared, undocumented, or phantom environment variables in runtime or test code is strictly prohibited.
    - *Behavior-Oriented Design & Polymorphism over Type Switching:* Avoid deep, nested `switch (type)` or cascading `if/else` ladders across business logic. Use strategy objects, lookup maps, or polymorphism via interfaces when dispatching behavior across extensible app modules or payment/media providers.
    - *Separation of Concurrency & Logic:* Asynchronous concurrency primitives (BullMQ workers, Redis distributed locks, CAS optimistic concurrency, and batch queues) MUST be segregated into dedicated worker adapters or queue producers. Pure business domain calculations (e.g. folio balances, tax rates, operational business dates) MUST remain synchronous and pure.
    - *Minimalist Abstraction:* Every interface, wrapper, and class MUST justify its existence by providing deep functionality or enforcing a distinct architectural boundary. Thin pass-through shims that do not transform data or add security are forbidden.
@@ -206,4 +203,4 @@ The Constitution version follows strict Semantic Versioning (`MAJOR.MINOR.PATCH`
 ### Compliance Review Expectations
 Every code contribution, pull request review, and architectural plan MUST explicitly verify compliance with this Constitution. Architectural violations (such as leaky multi-tenancy, cross-module tight coupling, core schema mutation, hardcoded mock data, off-token styling, or unapproved PR merges) are non-negotiable blockers that mandate immediate PR rejection.
 
-**Version**: 1.4.0 | **Ratified**: 2026-10-15 | **Last Amended**: 2026-10-16
+**Version**: 1.4.1 | **Ratified**: 2026-10-15 | **Last Amended**: 2026-10-16
