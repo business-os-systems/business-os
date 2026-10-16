@@ -8,6 +8,7 @@ import {
   signSessionToken,
   encodeSessionPayload,
 } from "@/lib/auth-constants";
+import { getUserOnboardingState, extractEffectivePermissions } from "@suite/auth";
 import { isProduction } from "@/lib/env";
 import { verifyTurnstileToken } from "@/lib/turnstile";
 import { resolvePostLoginRoute } from "@/lib/route-dispatcher";
@@ -124,14 +125,10 @@ export async function POST(request: Request) {
       );
     }
 
-    const metadata = (dbUser.metadata || {}) as Record<string, unknown>;
-    const rawStatus = metadata.onboarding_status;
-    const onboardingStatus =
-      rawStatus === "IN_PROGRESS" || rawStatus === "COMPLETED" || rawStatus === "NOT_STARTED"
-        ? (rawStatus as "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED")
-        : undefined;
-    const currentOnboardingStep = (metadata.current_onboarding_step as number) || undefined;
-    const themePreference = (metadata.theme_preference as "system" | "light" | "dark") || "system";
+    const onboardingState = getUserOnboardingState(dbUser.metadata);
+    const onboardingStatus = onboardingState.onboardingStatus;
+    const currentOnboardingStep = onboardingState.currentOnboardingStep ?? undefined;
+    const themePreference = onboardingState.themePreference;
 
     const membership = dbUser.organizations[0];
     const organization = membership?.organization;
@@ -155,19 +152,7 @@ export async function POST(request: Request) {
     }
 
     // Extract dynamic permissions scoped to the active branch or organization-wide assignments
-    const permissionsSet = new Set<string>();
-    for (const br of dbUser.branchRoles) {
-      if (br.branchId === branchId || br.branchId === null || !branchId) {
-        if (br.role?.permissions) {
-          for (const rp of br.role.permissions) {
-            if (rp.permission?.action) {
-              permissionsSet.add(rp.permission.action);
-            }
-          }
-        }
-      }
-    }
-    const userPermissions = Array.from(permissionsSet);
+    const userPermissions = extractEffectivePermissions(dbUser.branchRoles, { branchId });
 
     const hasMultipleWorkspaces =
       onboardingStatus === "COMPLETED" && dbUser.organizations.length > 1;

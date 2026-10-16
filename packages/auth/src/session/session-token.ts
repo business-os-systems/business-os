@@ -159,9 +159,13 @@ export function encodeSessionPayload(payload: SessionPayload): string {
     .replace(/=+$/, "");
 }
 
+export const DEFAULT_KEY_VERSION = "v1";
+
 export function decodeSessionPayload(token: string): SessionPayload | null {
   if (!token || typeof token !== "string" || !token.includes(".")) return null;
-  const [rawPayload] = token.split(".");
+  const parts = token.split(".");
+  if (parts.length !== 2 && parts.length !== 3) return null;
+  const rawPayload = parts.length === 3 ? parts[1] : parts[0];
   if (!rawPayload) return null;
   try {
     let base64 = rawPayload.replace(/-/g, "+").replace(/_/g, "/");
@@ -180,10 +184,15 @@ export function decodeSessionPayload(token: string): SessionPayload | null {
   }
 }
 
-export async function signSessionToken(payload: string): Promise<string> {
+export async function signSessionToken(
+  payload: string,
+  options?: { kid?: string }
+): Promise<string> {
   const secret = getBetterAuthSecret();
-  const hmac = await computeHmacSha256(payload, secret);
-  return `${payload}.${hmac}`;
+  const kid = options?.kid;
+  const target = kid ? `${kid}.${payload}` : payload;
+  const hmac = await computeHmacSha256(target, secret);
+  return `${target}.${hmac}`;
 }
 
 export function isSessionPayloadExpired(payload: SessionPayload): boolean {
@@ -197,13 +206,14 @@ export function isSessionPayloadExpired(payload: SessionPayload): boolean {
 export async function verifySessionToken(token: string): Promise<boolean> {
   if (!token || typeof token !== "string" || !token.includes(".")) return false;
   const parts = token.split(".");
-  if (parts.length !== 2) return false;
-  const [payload, sig] = parts;
-  if (!payload || !sig) return false;
+  if (parts.length !== 2 && parts.length !== 3) return false;
+  const target = parts.length === 3 ? `${parts[0]}.${parts[1]}` : parts[0];
+  const sig = parts.length === 3 ? parts[2] : parts[1];
+  if (!target || !sig) return false;
 
   try {
     const secret = getBetterAuthSecret();
-    const expectedSig = await computeHmacSha256(payload, secret);
+    const expectedSig = await computeHmacSha256(target, secret);
 
     // Constant-time comparison
     if (sig.length !== expectedSig.length) return false;

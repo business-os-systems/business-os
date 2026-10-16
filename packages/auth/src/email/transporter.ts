@@ -93,19 +93,51 @@ export class ResendEmailTransporter implements EmailTransporter {
   }
 }
 
+export type EmailTransporterFactory = () => EmailTransporter;
+
+const TRANSPORTER_FACTORIES = new Map<string, EmailTransporterFactory>();
+
+/**
+ * Registers an email transporter factory dynamically into the open registry.
+ * Enables zero-touch extensibility for any provider (SMTP, AWS SES, Postmark, etc.)
+ * adhering strictly to the Open-Closed Principle (OCP).
+ */
+export function registerEmailTransporter(id: string, factory: EmailTransporterFactory): void {
+  TRANSPORTER_FACTORIES.set(id.toLowerCase(), factory);
+}
+
+// Register default built-in providers into the dynamic registry
+registerEmailTransporter("console", () => new ConsoleEmailTransporter());
+registerEmailTransporter("resend", () => {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey && process.env.NODE_ENV === "production") {
+    throw new Error(
+      "Critical Configuration Error: RESEND_API_KEY is required when using the 'resend' email provider in production."
+    );
+  }
+  return apiKey ? new ResendEmailTransporter(apiKey) : new ConsoleEmailTransporter();
+});
+
 /**
  * Resolves the active email transporter dynamically based on runtime environment configuration.
- * Adheres to SOLID Open-Closed Principle without hardcoding provider logic.
+ * Uses O(1) registry lookup without static hardcoded provider branches or chained conditions.
  */
 export function resolveEmailTransporter(): EmailTransporter {
-  const provider = process.env.EMAIL_PROVIDER?.toLowerCase();
+  const provider = (process.env.EMAIL_PROVIDER || "console").toLowerCase();
+  const factory = TRANSPORTER_FACTORIES.get(provider);
 
-  if (provider === "resend" && process.env.RESEND_API_KEY) {
-    return new ResendEmailTransporter(process.env.RESEND_API_KEY);
+  if (!factory) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error(
+        `Critical Configuration Error: Unsupported EMAIL_PROVIDER '${provider}' configured in production.`
+      );
+    }
+    return new ConsoleEmailTransporter();
   }
 
-  return new ConsoleEmailTransporter();
+  return factory();
 }
+
 
 /**
  * Unified dispatch helper accepting tenant scope for future BYO-SMTP extensibility.

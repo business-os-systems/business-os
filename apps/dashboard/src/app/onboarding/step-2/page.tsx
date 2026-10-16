@@ -113,7 +113,7 @@ export default function OnboardingStep2Page() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
-  const [selectedApps, setSelectedApps] = useState<string[]>(["website-builder"]);
+  const [selectedApps, setSelectedApps] = useState<string[]>([]);
   const [userIndustries, setUserIndustries] = useState<string[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -137,7 +137,6 @@ export default function OnboardingStep2Page() {
   }, []);
 
   const isAppRecommended = (app: CatalogApp): boolean => {
-    if (app.id === "website-builder" || app.id === "financial-ledger") return true;
     if (userIndustries.length === 0) {
       return app.targetIndustries.includes("*");
     }
@@ -149,15 +148,6 @@ export default function OnboardingStep2Page() {
 
   const recommendedApps = APP_CATALOG.filter(isAppRecommended);
   const additionalApps = APP_CATALOG.filter((a) => !isAppRecommended(a));
-
-  // Auto-select recommended apps initially
-  useEffect(() => {
-    const initialSelected = APP_CATALOG.filter(isAppRecommended).map((a) => a.id);
-    setSelectedApps((prev) => {
-      const merged = Array.from(new Set([...prev, ...initialSelected]));
-      return merged.length > 0 ? merged : ["website-builder"];
-    });
-  }, [userIndustries]);
 
   const toggleApp = (appId: string) => {
     setSelectedApps((prev) =>

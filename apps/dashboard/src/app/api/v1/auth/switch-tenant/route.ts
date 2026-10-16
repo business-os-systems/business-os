@@ -3,9 +3,6 @@ import { z } from "zod";
 import { prisma } from "@suite/db";
 import {
   switchActiveTenant,
-  SESSION_COOKIE_NAME,
-  verifySessionToken,
-  decodeSessionPayload,
   signSessionToken,
   encodeSessionPayload,
   createSessionCookieOptions,
@@ -13,6 +10,7 @@ import {
 } from "@suite/auth";
 import { isProduction } from "@/lib/env";
 import { resolvePostLoginRoute } from "@/lib/route-dispatcher";
+import { getAuthenticatedSession } from "@/lib/session-helper";
 
 const switchTenantSchema = z.object({
   organizationId: z.string().min(1, "Organization ID is required"),
@@ -20,47 +18,12 @@ const switchTenantSchema = z.object({
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    const sessionCookie = request.cookies.get(SESSION_COOKIE_NAME)?.value;
-    if (!sessionCookie) {
-      return NextResponse.json(
-        {
-          type: "/errors/unauthorized",
-          title: "Unauthorized",
-          status: 401,
-          detail: "Active session required to switch workspace context.",
-          code: "UNAUTHORIZED",
-        },
-        { status: 401, headers: { "Content-Type": "application/problem+json" } }
-      );
+    const sessionResult = await getAuthenticatedSession(request);
+    if (!sessionResult.ok) {
+      return sessionResult.response;
     }
+    const payload = sessionResult.session;
 
-    const isValid = await verifySessionToken(sessionCookie);
-    if (!isValid) {
-      return NextResponse.json(
-        {
-          type: "/errors/invalid-session",
-          title: "Invalid Session",
-          status: 401,
-          detail: "Session token signature is invalid or expired.",
-          code: "INVALID_SESSION",
-        },
-        { status: 401, headers: { "Content-Type": "application/problem+json" } }
-      );
-    }
-
-    const payload = decodeSessionPayload(sessionCookie);
-    if (!payload?.userId) {
-      return NextResponse.json(
-        {
-          type: "/errors/invalid-payload",
-          title: "Invalid Session Payload",
-          status: 401,
-          detail: "Session token is malformed.",
-          code: "INVALID_PAYLOAD",
-        },
-        { status: 401, headers: { "Content-Type": "application/problem+json" } }
-      );
-    }
 
     const body = await request.json().catch(() => null);
     const parseResult = switchTenantSchema.safeParse(body);

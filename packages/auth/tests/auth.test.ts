@@ -210,5 +210,105 @@ describe("Platform Core Auth Engine & Better-Auth Integration", () => {
       expect(await verifyPassword("password", "")).toBe(false);
     });
   });
+
+  describe("Versioned Tokens (SEC-05) & Key Rotation Support", () => {
+    it("signs and verifies tokens with key version identifier (kid)", async () => {
+      const samplePayload: SessionPayload = {
+        userId: "usr_v1",
+        email: "v1@company.com",
+        userName: "V1 User",
+        timestamp: Date.now(),
+      };
+      const encoded = encodeSessionPayload(samplePayload);
+      const versionedToken = await signSessionToken(encoded, { kid: "v1" });
+
+      expect(versionedToken.startsWith("v1.")).toBe(true);
+      expect(versionedToken.split(".").length).toBe(3);
+
+      const isValid = await verifySessionToken(versionedToken);
+      expect(isValid).toBe(true);
+
+      const decoded = decodeSessionPayload(versionedToken);
+      expect(decoded?.userId).toBe("usr_v1");
+      expect(decoded?.email).toBe("v1@company.com");
+    });
+  });
+
+  describe("User Onboarding State Domain Helper (CODE-03 & CODE-04)", () => {
+    it("safely parses raw JSON metadata with fallbacks", async () => {
+      const { getUserOnboardingState, ONBOARDING_STATUS } = await import("../src/index.js");
+
+      const state1 = getUserOnboardingState(null);
+      expect(state1.onboardingStatus).toBe(ONBOARDING_STATUS.NOT_STARTED);
+      expect(state1.currentOnboardingStep).toBeNull();
+      expect(state1.themePreference).toBe("system");
+
+      const state2 = getUserOnboardingState({
+        onboarding_status: "IN_PROGRESS",
+        current_onboarding_step: 2,
+        theme_preference: "dark",
+        active_organization_id: "org_123",
+        selected_apps: ["restaurant_pos"],
+      });
+      expect(state2.onboardingStatus).toBe(ONBOARDING_STATUS.IN_PROGRESS);
+      expect(state2.currentOnboardingStep).toBe(2);
+      expect(state2.themePreference).toBe("dark");
+      expect(state2.activeOrganizationId).toBe("org_123");
+      expect(state2.selectedApps).toEqual(["restaurant_pos"]);
+    });
+
+    it("merges updated onboarding state without corrupting base metadata", async () => {
+      const { mergeUserOnboardingState, ONBOARDING_STATUS } = await import("../src/index.js");
+
+      const base = { custom_field: "preserve_me", onboarding_status: "NOT_STARTED" };
+      const merged = mergeUserOnboardingState(base, {
+        onboardingStatus: ONBOARDING_STATUS.COMPLETED,
+        currentOnboardingStep: null,
+      });
+
+      expect(merged.custom_field).toBe("preserve_me");
+      expect(merged.onboarding_status).toBe("COMPLETED");
+      expect(merged.current_onboarding_step).toBeNull();
+    });
+  });
+
+  describe("Shared Permission Aggregation (CODE-02)", () => {
+    it("extracts and dedupes effective permissions across branch roles", async () => {
+      const { extractEffectivePermissions } = await import("../src/index.js");
+
+      const branchRoles = [
+        {
+          branchId: null,
+          role: {
+            permissions: [
+              { permission: { action: "core:org:read" } },
+              { permission: { action: "apps:install" } },
+            ],
+          },
+        },
+        {
+          branchId: "branch_alpha",
+          role: {
+            permissions: [
+              { permission: { action: "apps:install" } },
+              { permission: { action: "restaurant_pos:orders:create" } },
+            ],
+          },
+        },
+      ];
+
+      const allPerms = extractEffectivePermissions(branchRoles);
+      expect(allPerms).toContain("core:org:read");
+      expect(allPerms).toContain("apps:install");
+      expect(allPerms).toContain("restaurant_pos:orders:create");
+      expect(allPerms.filter((p) => p === "apps:install").length).toBe(1);
+
+      // Scoped to specific branch
+      const scopedPerms = extractEffectivePermissions(branchRoles, { branchId: "branch_alpha" });
+      expect(scopedPerms).toContain("core:org:read"); // null branch included
+      expect(scopedPerms).toContain("restaurant_pos:orders:create");
+    });
+  });
 });
+
 

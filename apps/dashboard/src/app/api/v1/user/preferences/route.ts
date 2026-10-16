@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@suite/db";
-import {
-  SESSION_COOKIE_NAME,
-  verifySessionToken,
-  decodeSessionPayload,
-} from "@/lib/auth-constants";
+import { getAuthenticatedSession } from "@/lib/session-helper";
 
 const PreferencesSchema = z.object({
   theme: z.enum(["system", "light", "dark"]).optional(),
@@ -19,47 +15,12 @@ const PreferencesSchema = z.object({
 
 export async function PATCH(request: NextRequest) {
   try {
-    const sessionCookie = request.cookies.get(SESSION_COOKIE_NAME)?.value;
-    if (!sessionCookie) {
-      return NextResponse.json(
-        {
-          type: "/errors/unauthorized",
-          title: "Unauthorized",
-          status: 401,
-          detail: "Active session required to update preferences.",
-          code: "UNAUTHORIZED",
-        },
-        { status: 401 }
-      );
+    const sessionResult = await getAuthenticatedSession(request);
+    if (!sessionResult.ok) {
+      return sessionResult.response;
     }
+    const payload = sessionResult.session;
 
-    const isValid = await verifySessionToken(sessionCookie);
-    if (!isValid) {
-      return NextResponse.json(
-        {
-          type: "/errors/invalid-session",
-          title: "Invalid Session",
-          status: 401,
-          detail: "Session token signature is invalid or expired.",
-          code: "INVALID_SESSION",
-        },
-        { status: 401 }
-      );
-    }
-
-    const payload = decodeSessionPayload(sessionCookie);
-    if (!payload?.userId) {
-      return NextResponse.json(
-        {
-          type: "/errors/invalid-payload",
-          title: "Invalid Session Payload",
-          status: 401,
-          detail: "Session token is malformed.",
-          code: "INVALID_PAYLOAD",
-        },
-        { status: 401 }
-      );
-    }
 
     const rawBody = await request.json().catch(() => ({}));
     const parseResult = PreferencesSchema.safeParse(rawBody);

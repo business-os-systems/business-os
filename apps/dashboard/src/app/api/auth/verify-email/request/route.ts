@@ -110,7 +110,34 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         );
       }
     } catch {
-      // If Redis is unreachable, bypass rate limit check without in-memory state (Zero Static Data law)
+      // Degraded fail-safe rate limiting via PostgreSQL (SEC-04)
+      const oneHourAgo = new Date(Date.now() - RATE_LIMIT_WINDOW_SECONDS * 1000);
+      const recentAttempts = await prisma.verification.count({
+        where: {
+          identifier: normalizedEmail,
+          createdAt: { gte: oneHourAgo },
+        },
+      });
+
+      if (recentAttempts >= MAX_REQUESTS_PER_HOUR) {
+        return NextResponse.json(
+          {
+            type: "/errors/rate-limit-exceeded",
+            title: "Too Many Requests",
+            status: 429,
+            detail: "Rate limit exceeded. Maximum 5 verification emails allowed per hour.",
+            code: "RATE_LIMIT_EXCEEDED",
+            retryAfter: RATE_LIMIT_WINDOW_SECONDS,
+          },
+          {
+            status: 429,
+            headers: {
+              "Content-Type": "application/problem+json",
+              "Retry-After": String(RATE_LIMIT_WINDOW_SECONDS),
+            },
+          }
+        );
+      }
     }
 
     // 5. Generate secure verification token (24-hour expiry)

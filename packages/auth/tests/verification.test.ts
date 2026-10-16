@@ -8,6 +8,7 @@ import {
   ConsoleEmailTransporter,
   ResendEmailTransporter,
   resolveEmailTransporter,
+  registerEmailTransporter,
   sendEmail,
 } from "../src/index.js";
 
@@ -172,6 +173,48 @@ describe("Email Verification Token Lifecycle & Transporter Engine", () => {
       const transporter = resolveEmailTransporter();
       expect(transporter).toBeInstanceOf(ResendEmailTransporter);
       expect(transporter.id).toBe("resend");
+    });
+
+    it("allows dynamic registration of custom email transporters without changing core code", () => {
+      const customTransporter = {
+        id: "mock-smtp",
+        sendEmail: vi.fn(async () => ({ success: true, messageId: "smtp_123" })),
+      };
+
+      registerEmailTransporter("mock-smtp", () => customTransporter);
+
+      process.env.EMAIL_PROVIDER = "mock-smtp";
+      const resolved = resolveEmailTransporter();
+      expect(resolved.id).toBe("mock-smtp");
+    });
+
+    it("throws critical configuration error in production when unsupported provider is requested", () => {
+      const prevEnv = process.env.NODE_ENV;
+      try {
+        process.env.NODE_ENV = "production";
+        process.env.EMAIL_PROVIDER = "unknown-vendor";
+
+        expect(() => resolveEmailTransporter()).toThrowError(
+          /Unsupported EMAIL_PROVIDER 'unknown-vendor' configured in production/
+        );
+      } finally {
+        process.env.NODE_ENV = prevEnv;
+      }
+    });
+
+    it("throws critical configuration error in production when resend is used without api key", () => {
+      const prevEnv = process.env.NODE_ENV;
+      try {
+        process.env.NODE_ENV = "production";
+        process.env.EMAIL_PROVIDER = "resend";
+        delete process.env.RESEND_API_KEY;
+
+        expect(() => resolveEmailTransporter()).toThrowError(
+          /RESEND_API_KEY is required/
+        );
+      } finally {
+        process.env.NODE_ENV = prevEnv;
+      }
     });
 
     it("sendEmail dispatches through resolved transporter with optional tenant scope", async () => {

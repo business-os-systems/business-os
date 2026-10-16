@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@suite/db";
 import { ForbiddenError } from "@suite/core/errors";
+import { extractEffectivePermissions } from "./permissions.js";
 
 export interface UserTenantMembership {
   organizationId: string;
@@ -156,17 +157,7 @@ export async function switchActiveTenant(
   const primaryRole = branchRoles[0]?.role;
   const roleName = primaryRole?.name || "Member";
   const roleSlug = primaryRole?.slug || "member";
-
-  const permissionsSet = new Set<string>();
-  for (const br of branchRoles) {
-    if (br.role?.permissions) {
-      for (const rp of br.role.permissions) {
-        if (rp.permission?.action) {
-          permissionsSet.add(rp.permission.action);
-        }
-      }
-    }
-  }
+  const permissions = extractEffectivePermissions(branchRoles);
 
   return {
     organizationId: userOrg.organization.id,
@@ -176,6 +167,6 @@ export async function switchActiveTenant(
     activeBranchName,
     role: roleName,
     roleSlug,
-    permissions: Array.from(permissionsSet),
+    permissions,
   };
 }
