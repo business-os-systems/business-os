@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import type { PrismaClient } from "@suite/db";
+import { AUDIT_EVENT_TYPES } from "@suite/core";
 import {
   createAuth,
   createSessionCookieOptions,
@@ -307,6 +308,50 @@ describe("Platform Core Auth Engine & Better-Auth Integration", () => {
       const scopedPerms = extractEffectivePermissions(branchRoles, { branchId: "branch_alpha" });
       expect(scopedPerms).toContain("core:org:read"); // null branch included
       expect(scopedPerms).toContain("restaurant_pos:orders:create");
+    });
+  });
+
+  describe("Tamper-Evident Security Audit Logger (SPEC-04)", () => {
+    it("creates audit log with SHA-256 tamper-evident recordHash", async () => {
+      const { recordSecurityAuditLog } = await import("../src/index.js");
+
+      let createdData: unknown = null;
+      const mockPrisma = {
+        auditLog: {
+          create: async ({ data }: { data: unknown }) => {
+            createdData = data;
+            return { id: "audit_123", ...data as object };
+          },
+        },
+      } as unknown as PrismaClient;
+
+      await recordSecurityAuditLog({
+        prisma: mockPrisma,
+        organizationId: "org_alpha",
+        userId: "user_alpha",
+        action: AUDIT_EVENT_TYPES.AUTH_PASSWORD_RESET,
+        ipAddress: "192.168.1.100",
+        userAgent: "Mozilla/5.0 Test Browser",
+        metadata: { resetSessionCount: 2 },
+      });
+
+      expect(createdData).toBeDefined();
+      const record = createdData as {
+        organizationId: string;
+        actorUserId: string;
+        action: string;
+        recordHash: string;
+        ipAddress: string;
+        userAgent: string;
+        newData: unknown;
+      };
+      expect(record.organizationId).toBe("org_alpha");
+      expect(record.actorUserId).toBe("user_alpha");
+      expect(record.action).toBe(AUDIT_EVENT_TYPES.AUTH_PASSWORD_RESET);
+      expect(record.ipAddress).toBe("192.168.1.100");
+      expect(record.userAgent).toBe("Mozilla/5.0 Test Browser");
+      // Must be 64-character hex string (SHA-256)
+      expect(record.recordHash).toMatch(/^[a-f0-9]{64}$/);
     });
   });
 });

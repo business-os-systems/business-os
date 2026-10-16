@@ -8,7 +8,8 @@ import {
   signSessionToken,
   encodeSessionPayload,
 } from "@/lib/auth-constants";
-import { getUserOnboardingState, extractEffectivePermissions } from "@suite/auth";
+import { getUserOnboardingState, extractEffectivePermissions, recordSecurityAuditLog } from "@suite/auth";
+import { AUDIT_EVENT_TYPES } from "@suite/core";
 import { isProduction } from "@/lib/env";
 import { verifyTurnstileToken } from "@/lib/turnstile";
 import { resolvePostLoginRoute } from "@/lib/route-dispatcher";
@@ -212,6 +213,19 @@ export async function POST(request: Request) {
       sameSite: cookieOptions.sameSite,
       path: cookieOptions.path,
       maxAge: cookieOptions.maxAge,
+    });
+
+    const userAgent = request.headers.get("user-agent");
+    const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+
+    await recordSecurityAuditLog({
+      prisma,
+      organizationId: organization?.id,
+      userId: dbUser.id,
+      action: AUDIT_EVENT_TYPES.AUTH_LOGIN_SUCCESS,
+      ipAddress: clientIp,
+      userAgent,
+      metadata: { method: "password" },
     });
 
     return response;

@@ -54,6 +54,9 @@ vi.mock("@suite/db", () => {
       create: vi.fn(),
       deleteMany: vi.fn(),
     },
+    auditLog: {
+      create: vi.fn(async ({ data }: { data: unknown }) => ({ id: "audit_1", ...data as object })),
+    },
     $transaction: vi.fn(async (callback: (tx: unknown) => Promise<unknown>) => {
       return callback(mockPrisma);
     }),

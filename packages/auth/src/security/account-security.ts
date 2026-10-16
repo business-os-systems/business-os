@@ -55,7 +55,7 @@ export interface LinkOAuthAccountParams {
 }
 
 export type LinkOAuthAccountResult =
-  | { success: true; userId: string; email: string }
+  | { success: true; userId: string; email: string; providerId: string; accountId: string }
   | { success: false; reason: "INVALID_TICKET" | "EXPIRED_TICKET" | "INVALID_PASSWORD" | "USER_NOT_FOUND" | "CREDENTIAL_NOT_FOUND" | "ALREADY_LINKED" };
 
 /**
@@ -319,7 +319,13 @@ export async function linkOAuthAccountWithPassword({
   );
 
   if (existingProvider) {
-    return { success: true, userId: user.id, email: user.email };
+    return {
+      success: true,
+      userId: user.id,
+      email: user.email,
+      providerId: payload.providerId,
+      accountId: payload.accountId,
+    };
   }
 
   // Create linked provider Account
@@ -335,5 +341,7 @@ export async function linkOAuthAccountWithPassword({
     success: true,
     userId: user.id,
     email: user.email,
+    providerId: payload.providerId,
+    accountId: payload.accountId,
   };
 }

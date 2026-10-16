@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { AuthCard } from "@/components/auth/auth-card";
 import { OAuthProviders } from "@/components/auth/oauth-providers";
 import { EmailPasswordForm } from "@/components/auth/email-password-form";
-import { PasskeyButton } from "@/components/auth/passkey-button";
+import { PasskeyButton, type PasskeyVerificationResult } from "@/components/auth/passkey-button";
 import { resolvePostLoginRoute } from "@/lib/route-dispatcher";
 import { isBrowser } from "@/lib/env";
 
@@ -53,6 +53,7 @@ export default function LoginPage() {
     email: string;
     password: string;
     keepSignedIn?: boolean;
+    turnstileToken?: string | null;
   }) => {
     setErrorMessage(null);
     setIsLoading(true);
@@ -65,6 +66,7 @@ export default function LoginPage() {
           email: data.email,
           password: data.password,
           keepSignedIn: data.keepSignedIn,
+          turnstileToken: data.turnstileToken,
         }),
       });
 
@@ -78,44 +80,47 @@ export default function LoginPage() {
         );
       }
 
-      // Synchronize theme preference if returned
-      if (result.themePreference && isBrowser) {
-        document.documentElement.setAttribute(
-          "data-theme",
-          result.themePreference,
-        );
-        try {
-          localStorage.setItem("business_os_theme", result.themePreference);
-        } catch {
-          // Ignore localStorage errors
-        }
-      }
-
-      // Route user using resolvePostLoginRoute dispatcher handshake
-      const user = result.user;
-      const dispatcherRoute = resolvePostLoginRoute({
-        permissions: user?.permissions,
-        onboardingStatus: user?.onboardingStatus,
-        currentOnboardingStep: user?.currentOnboardingStep,
-        assignedAppIds: user?.assignedAppIds,
-        assignedAppCodes: user?.assignedAppCodes,
-      });
-
-      // Safe query redirect (?redirect=...) takes precedence only if onboarding is complete
-      const queryRedirect = isBrowser
-        ? new URLSearchParams(window.location.search).get("redirect")
-        : null;
-      const safeRedirect = sanitizeRedirect(queryRedirect, user?.onboardingStatus);
-
-      const targetUrl =
-        safeRedirect || result.redirectUrl || dispatcherRoute || "/dashboard";
-
-      router.push(targetUrl);
-      router.refresh();
+      // Synchronize session and navigate to target workspace route
+      handleAuthSuccess(result);
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : "Failed to sign in");
       setIsLoading(false);
     }
+  };
+
+  const handleAuthSuccess = (result: PasskeyVerificationResult) => {
+    // Synchronize theme preference if returned
+    if (result.themePreference && isBrowser) {
+      document.documentElement.setAttribute(
+        "data-theme",
+        result.themePreference,
+      );
+      try {
+        localStorage.setItem("business_os_theme", result.themePreference);
+      } catch {
+        // Ignore localStorage errors
+      }
+    }
+
+    // Route user using resolvePostLoginRoute dispatcher handshake
+    const user = result.user;
+    const dispatcherRoute = resolvePostLoginRoute({
+      permissions: user?.permissions,
+      onboardingStatus: user?.onboardingStatus,
+      currentOnboardingStep: user?.currentOnboardingStep,
+    });
+
+    // Safe query redirect (?redirect=...) takes precedence only if onboarding is complete
+    const queryRedirect = isBrowser
+      ? new URLSearchParams(window.location.search).get("redirect")
+      : null;
+    const safeRedirect = sanitizeRedirect(queryRedirect, user?.onboardingStatus);
+
+    const targetUrl =
+      safeRedirect || result.redirectUrl || dispatcherRoute || "/dashboard";
+
+    router.push(targetUrl);
+    router.refresh();
   };
 
   return (
@@ -145,7 +150,11 @@ export default function LoginPage() {
       />
 
       {/* FIDO2 / WebAuthn Passkeys */}
-      <PasskeyButton disabled={isLoading} />
+      <PasskeyButton
+        disabled={isLoading}
+        onSuccess={handleAuthSuccess}
+        onError={(err) => setErrorMessage(err.message)}
+      />
     </AuthCard>
   );
 }

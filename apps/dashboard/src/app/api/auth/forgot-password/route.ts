@@ -3,9 +3,12 @@ import { z } from "zod";
 import { prisma } from "@suite/db";
 import { redis } from "@suite/redis";
 import { createPasswordResetToken, sendEmail } from "@suite/auth";
+import { isProduction } from "@/lib/env";
+import { verifyTurnstileToken } from "@/lib/turnstile";
 
 const requestBodySchema = z.object({
   email: z.string().email("Valid email address is required"),
+  turnstileToken: z.string().optional().nullable(),
 });
 
 const MAX_REQUESTS_PER_HOUR = 5;
@@ -29,7 +32,25 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    const normalizedEmail = parseResult.data.email.toLowerCase().trim();
+    const { email, turnstileToken } = parseResult.data;
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Verify Cloudflare Turnstile bot token in production or when token provided
+    if (isProduction || turnstileToken) {
+      const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+      const turnstileResult = await verifyTurnstileToken(turnstileToken, clientIp);
+      if (!turnstileResult.success) {
+        return NextResponse.json(
+          {
+            type: "/errors/bot-verification-failed",
+            title: "Forbidden",
+            status: 403,
+            detail: "Security verification failed. Please complete the security check and try again.",
+          },
+          { status: 403, headers: { "Content-Type": "application/problem+json" } }
+        );
+      }
+    }
 
     // 1. Rate Limiting via Redis (Max 5 requests per hour)
     const rateLimitKey = `ratelimit:forgot-password:${normalizedEmail}`;
