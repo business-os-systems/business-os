@@ -80,8 +80,8 @@ function ProviderIcon({ iconName }: { iconName: string }) {
 }
 
 export function OAuthProviders({
-  redirectUri = "/auth/callback",
-  state = "auth_state",
+  redirectUri: _redirectUri = "/auth/callback",
+  state: _state = "auth_state",
   onProviderSelect,
   onActionTrigger,
   disabled = false,
@@ -95,13 +95,8 @@ export function OAuthProviders({
       onProviderSelect(provider.id);
       return;
     }
-    try {
-      const authUrl = provider.getAuthUrl(redirectUri, state);
-      if (isBrowser) {
-        window.location.href = authUrl;
-      }
-    } catch {
-      // Configuration error handled gracefully
+    if (isBrowser) {
+      window.location.href = `/api/auth/oauth/${provider.id}`;
     }
   };
 
