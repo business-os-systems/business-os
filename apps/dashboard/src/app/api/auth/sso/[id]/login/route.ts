@@ -33,11 +33,19 @@ export async function GET(
       );
     }
 
-    // If an external IdP authorization URL is configured, redirect to it
+    // If an external IdP authorization URL is configured, validate and redirect to it (SEC-03)
     const ssoConfig = ssoRecord.config as Record<string, unknown> | null;
     if (ssoConfig?.authUrl && typeof ssoConfig.authUrl === "string") {
-      return NextResponse.redirect(new URL(ssoConfig.authUrl));
+      try {
+        const targetUrl = new URL(ssoConfig.authUrl);
+        if (targetUrl.protocol === "https:" && !targetUrl.username && !targetUrl.password) {
+          return NextResponse.redirect(targetUrl);
+        }
+      } catch {
+        // Malformed URL falls through to unconfigured error handling
+      }
     }
+
 
     // Browser navigation fallback: redirect back to /login with friendly error message
     const acceptHeader = request.headers.get("accept") || "";

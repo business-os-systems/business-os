@@ -1,60 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@suite/db";
-import {
-  SESSION_COOKIE_NAME,
-  verifySessionToken,
-  decodeSessionPayload,
-} from "@suite/auth";
 import { PERMISSIONS, hasPermission } from "@suite/core";
+import { getAuthenticatedSession } from "@/lib/session-helper";
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
   try {
-    const sessionCookie = request.cookies.get(SESSION_COOKIE_NAME)?.value;
-    if (!sessionCookie) {
-      return NextResponse.json(
-        {
-          type: "/errors/unauthorized",
-          title: "Unauthorized",
-          status: 401,
-          detail: "Authentication session required.",
-          code: "UNAUTHORIZED",
-        },
-        { status: 401, headers: { "Content-Type": "application/problem+json" } }
-      );
+    const sessionResult = await getAuthenticatedSession(request, { requireOrganization: true });
+    if (!sessionResult.ok) {
+      return sessionResult.response;
     }
-
-    const isValid = await verifySessionToken(sessionCookie);
-    if (!isValid) {
-      return NextResponse.json(
-        {
-          type: "/errors/invalid-session",
-          title: "Invalid Session",
-          status: 401,
-          detail: "Session token is invalid or expired.",
-          code: "INVALID_SESSION",
-        },
-        { status: 401, headers: { "Content-Type": "application/problem+json" } }
-      );
-    }
-
-    const sessionPayload = decodeSessionPayload(sessionCookie);
-    if (!sessionPayload?.userId || !sessionPayload?.organizationId) {
-      return NextResponse.json(
-        {
-          type: "/errors/invalid-payload",
-          title: "Bad Request",
-          status: 400,
-          detail: "Active organization context is required.",
-          code: "ORGANIZATION_REQUIRED",
-        },
-        { status: 400, headers: { "Content-Type": "application/problem+json" } }
-      );
-    }
+    const sessionPayload = sessionResult.session;
+    const organizationId = sessionPayload.organizationId!;
 
     // 1. Check user verification status from PostgreSQL (Zero Static Data law)
+
     const user = await prisma.user.findUnique({
       where: { id: sessionPayload.userId },
       select: { id: true, emailVerified: true },
@@ -83,7 +45,7 @@ export async function POST(
       const userBranchRoles = await prisma.userBranchRole.findMany({
         where: {
           userId: sessionPayload.userId,
-          organizationId: sessionPayload.organizationId,
+          organizationId,
         },
         include: {
           role: {
@@ -135,7 +97,7 @@ export async function POST(
     const installed = await prisma.installedApp.upsert({
       where: {
         organizationId_appId: {
-          organizationId: sessionPayload.organizationId,
+          organizationId,
           appId,
         },
       },
@@ -143,7 +105,7 @@ export async function POST(
         isEnabled: true,
       },
       create: {
-        organizationId: sessionPayload.organizationId,
+        organizationId,
         appId,
         version: "1.0.0",
         isEnabled: true,

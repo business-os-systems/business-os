@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@suite/db";
+import { prisma, Prisma } from "@suite/db";
 import {
-  SESSION_COOKIE_NAME,
-  verifySessionToken,
-  decodeSessionPayload,
   encodeSessionPayload,
   signSessionToken,
   createSessionCookieOptions,
-} from "@suite/auth/session";
+  getUserOnboardingState,
+  mergeUserOnboardingState,
+  ONBOARDING_STATUS,
+} from "@suite/auth";
 import { isProduction } from "@/lib/env";
+import { getAuthenticatedSession } from "@/lib/session-helper";
 import { z } from "zod";
 
 const completeSchema = z
@@ -19,51 +20,16 @@ const completeSchema = z
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    const sessionCookie = request.cookies.get(SESSION_COOKIE_NAME)?.value;
-    if (!sessionCookie) {
-      return NextResponse.json(
-        {
-          type: "/errors/unauthorized",
-          title: "Unauthorized",
-          status: 401,
-          detail: "Active session is required to complete onboarding.",
-          code: "UNAUTHORIZED",
-        },
-        { status: 401, headers: { "Content-Type": "application/problem+json" } }
-      );
+    const sessionResult = await getAuthenticatedSession(request);
+    if (!sessionResult.ok) {
+      return sessionResult.response;
     }
-
-    const isValid = await verifySessionToken(sessionCookie);
-    if (!isValid) {
-      return NextResponse.json(
-        {
-          type: "/errors/unauthorized",
-          title: "Unauthorized",
-          status: 401,
-          detail: "Session token signature is invalid or expired.",
-          code: "INVALID_SESSION",
-        },
-        { status: 401, headers: { "Content-Type": "application/problem+json" } }
-      );
-    }
-
-    const session = decodeSessionPayload(sessionCookie);
-    if (!session || !session.userId) {
-      return NextResponse.json(
-        {
-          type: "/errors/unauthorized",
-          title: "Unauthorized",
-          status: 401,
-          detail: "Session token payload is invalid.",
-          code: "INVALID_SESSION",
-        },
-        { status: 401, headers: { "Content-Type": "application/problem+json" } }
-      );
-    }
+    const session = sessionResult.session;
 
     const body = await request.json().catch(() => null);
     const parseResult = completeSchema?.safeParse(body);
     const bodyApps = parseResult?.success ? parseResult.data?.selectedApps : undefined;
+
 
     // Load user and organizations
     const dbUser = await prisma.user.findUnique({
@@ -91,7 +57,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    const userMetadata = (dbUser.metadata || {}) as Record<string, unknown>;
     const orgId =
       session.organizationId ||
       dbUser.organizations[0]?.organizationId;
@@ -109,10 +74,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    const rawMetaApps = Array.isArray(userMetadata.selected_apps)
-      ? (userMetadata.selected_apps as string[])
-      : [];
-    const appsToInstall = bodyApps && bodyApps.length > 0 ? bodyApps : rawMetaApps.length > 0 ? rawMetaApps : ["website-builder"];
+    const onboardingState = getUserOnboardingState(dbUser.metadata);
+    const appsToInstall =
+      bodyApps && bodyApps.length > 0
+        ? bodyApps
+        : onboardingState.selectedApps;
 
     // Execute atomic license provisioning and status update
     await prisma.$transaction(async (tx) => {
@@ -137,15 +103,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }
 
       // 2. Mark onboarding as COMPLETED and clear current step
+      const updatedMetadata = mergeUserOnboardingState(dbUser.metadata, {
+        selectedApps: appsToInstall,
+        onboardingStatus: ONBOARDING_STATUS.COMPLETED,
+        currentOnboardingStep: null,
+      });
+
       await tx.user.update({
         where: { id: session.userId },
         data: {
-          metadata: {
-            ...userMetadata,
-            selected_apps: appsToInstall,
-            onboarding_status: "COMPLETED",
-            current_onboarding_step: null,
-          },
+          metadata: updatedMetadata as Prisma.InputJsonValue,
         },
       });
     });

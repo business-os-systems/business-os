@@ -64,7 +64,21 @@ export {
   type SessionLifecycleContext,
   type SessionPreferencesContext,
   type SessionOnboardingContext,
+  DEFAULT_KEY_VERSION,
+  ONBOARDING_STATUS,
+  THEME_PREFERENCES,
+  VALID_ONBOARDING_STATUSES,
+  VALID_THEMES,
+  type OnboardingStatus,
+  type ThemePreference,
+  type UserOnboardingState,
+  getUserOnboardingState,
+  mergeUserOnboardingState,
+  extractEffectivePermissions,
+  type BranchRoleWithPermissions,
+  type PermissionExtractionOptions,
 } from "./session/index.js";
+
 
 export {
   resolveSsoProviderByEmail,
@@ -105,9 +119,11 @@ export {
 export {
   sendEmail,
   resolveEmailTransporter,
+  registerEmailTransporter,
   ConsoleEmailTransporter,
   ResendEmailTransporter,
   type EmailTransporter,
+  type EmailTransporterFactory,
   type SendEmailOptions,
   type EmailSendResult,
 } from "./email/transporter.js";

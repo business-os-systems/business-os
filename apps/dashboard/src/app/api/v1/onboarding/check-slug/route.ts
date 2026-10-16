@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@suite/db";
-import {
-  SESSION_COOKIE_NAME,
-  verifySessionToken,
-  decodeSessionPayload,
-} from "@suite/auth/session";
+import { getAuthenticatedSession } from "@/lib/session-helper";
 import { z } from "zod";
 
 const checkSlugQuerySchema = z.object({
@@ -45,28 +41,23 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     let isCurrentOrg = false;
     if (existingOrg) {
-      const sessionCookie = request.cookies.get(SESSION_COOKIE_NAME)?.value;
-      if (sessionCookie) {
-        const isValid = await verifySessionToken(sessionCookie);
-        if (isValid) {
-          const session = decodeSessionPayload(sessionCookie);
-          if (session?.userId) {
-            if (session.organizationId === existingOrg.id) {
-              isCurrentOrg = true;
-            } else {
-              const membership = await prisma.userOrganization.findUnique({
-                where: {
-                  userId_organizationId: {
-                    userId: session.userId,
-                    organizationId: existingOrg.id,
-                  },
-                },
-                select: { status: true },
-              });
-              if (membership) {
-                isCurrentOrg = true;
-              }
-            }
+      const sessionResult = await getAuthenticatedSession(request);
+      if (sessionResult.ok) {
+        const session = sessionResult.session;
+        if (session.organizationId === existingOrg.id) {
+          isCurrentOrg = true;
+        } else {
+          const membership = await prisma.userOrganization.findUnique({
+            where: {
+              userId_organizationId: {
+                userId: session.userId,
+                organizationId: existingOrg.id,
+              },
+            },
+            select: { status: true },
+          });
+          if (membership) {
+            isCurrentOrg = true;
           }
         }
       }

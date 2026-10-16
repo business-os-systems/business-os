@@ -11,7 +11,10 @@ import {
   encodeSessionPayload,
   createSessionCookieOptions,
   SESSION_COOKIE_NAME,
+  getUserOnboardingState,
+  extractEffectivePermissions,
 } from "@suite/auth";
+
 
 const linkAccountSchema = z.object({
   ticket: z.string().min(1, "Account linking ticket is required"),
@@ -169,14 +172,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    const metadata = (dbUser.metadata || {}) as Record<string, unknown>;
-    const rawStatus = metadata.onboarding_status;
-    const onboardingStatus =
-      rawStatus === "IN_PROGRESS" || rawStatus === "COMPLETED" || rawStatus === "NOT_STARTED"
-        ? (rawStatus as "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED")
-        : undefined;
-    const currentOnboardingStep = (metadata.current_onboarding_step as number) || undefined;
-    const themePreference = (metadata.theme_preference as "system" | "light" | "dark") || "system";
+    const onboardingState = getUserOnboardingState(dbUser.metadata);
+    const onboardingStatus = onboardingState.onboardingStatus;
+    const currentOnboardingStep = onboardingState.currentOnboardingStep ?? undefined;
+    const themePreference = onboardingState.themePreference;
 
     const membership = dbUser.organizations[0];
     const organization = membership?.organization;
@@ -184,17 +183,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const roleName = branchRole?.role?.name || (onboardingStatus === "IN_PROGRESS" ? "owner" : "member");
 
     // Extract permissions
-    const permissionsSet = new Set<string>();
-    for (const br of dbUser.branchRoles) {
-      if (br.role?.permissions) {
-        for (const rp of br.role.permissions) {
-          if (rp.permission?.action) {
-            permissionsSet.add(rp.permission.action);
-          }
-        }
-      }
-    }
-    const userPermissions = Array.from(permissionsSet);
+    const userPermissions = extractEffectivePermissions(dbUser.branchRoles);
 
     // Resolve post-login route
     const redirectUrl = resolvePostLoginRoute({

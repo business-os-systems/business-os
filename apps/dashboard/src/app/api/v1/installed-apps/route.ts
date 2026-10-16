@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { prisma } from "@suite/db";
-import { SESSION_COOKIE_NAME, decodeSessionPayload } from "@/lib/auth-constants";
+import { SESSION_COOKIE_NAME, verifySessionToken, decodeSessionPayload } from "@/lib/auth-constants";
 
 export async function GET(request: Request) {
   try {
@@ -11,9 +11,12 @@ export async function GET(request: Request) {
       const cookieStore = await cookies();
       const sessionToken = cookieStore.get(SESSION_COOKIE_NAME)?.value;
       if (sessionToken) {
-        const payload = decodeSessionPayload(sessionToken);
-        if (payload?.organizationId) {
-          orgId = payload.organizationId;
+        const isValid = await verifySessionToken(sessionToken);
+        if (isValid) {
+          const payload = decodeSessionPayload(sessionToken);
+          if (payload?.organizationId) {
+            orgId = payload.organizationId;
+          }
         }
       }
     }

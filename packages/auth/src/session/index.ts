@@ -20,6 +20,7 @@ export {
   SESSION_COOKIE_NAME,
   SESSION_EPHEMERAL_MAX_AGE_SECONDS,
   SESSION_PERSISTENT_MAX_AGE_SECONDS,
+  DEFAULT_KEY_VERSION,
   createSessionCookieOptions,
   extractTokenFromHeader,
   extractTokenFromCookie,
@@ -37,3 +38,22 @@ export {
   type SessionPreferencesContext,
   type SessionOnboardingContext,
 } from "./session-token.js";
+
+export {
+  ONBOARDING_STATUS,
+  THEME_PREFERENCES,
+  VALID_ONBOARDING_STATUSES,
+  VALID_THEMES,
+  type OnboardingStatus,
+  type ThemePreference,
+  type UserOnboardingState,
+  getUserOnboardingState,
+  mergeUserOnboardingState,
+} from "./user-state.js";
+
+export {
+  extractEffectivePermissions,
+  type BranchRoleWithPermissions,
+  type PermissionExtractionOptions,
+} from "./permissions.js";
+

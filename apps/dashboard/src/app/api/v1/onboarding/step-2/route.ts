@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@suite/db";
+import { prisma, Prisma } from "@suite/db";
 import {
-  SESSION_COOKIE_NAME,
-  verifySessionToken,
-  decodeSessionPayload,
   encodeSessionPayload,
   signSessionToken,
   createSessionCookieOptions,
-} from "@suite/auth/session";
+  mergeUserOnboardingState,
+  ONBOARDING_STATUS,
+} from "@suite/auth";
 import { isProduction } from "@/lib/env";
+import { getAuthenticatedSession } from "@/lib/session-helper";
 import { z } from "zod";
 
 const step2Schema = z.object({
@@ -19,47 +19,12 @@ const step2Schema = z.object({
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    const sessionCookie = request.cookies.get(SESSION_COOKIE_NAME)?.value;
-    if (!sessionCookie) {
-      return NextResponse.json(
-        {
-          type: "/errors/unauthorized",
-          title: "Unauthorized",
-          status: 401,
-          detail: "Active session is required to perform onboarding.",
-          code: "UNAUTHORIZED",
-        },
-        { status: 401, headers: { "Content-Type": "application/problem+json" } }
-      );
+    const sessionResult = await getAuthenticatedSession(request);
+    if (!sessionResult.ok) {
+      return sessionResult.response;
     }
+    const session = sessionResult.session;
 
-    const isValid = await verifySessionToken(sessionCookie);
-    if (!isValid) {
-      return NextResponse.json(
-        {
-          type: "/errors/unauthorized",
-          title: "Unauthorized",
-          status: 401,
-          detail: "Session token signature is invalid or expired.",
-          code: "INVALID_SESSION",
-        },
-        { status: 401, headers: { "Content-Type": "application/problem+json" } }
-      );
-    }
-
-    const session = decodeSessionPayload(sessionCookie);
-    if (!session || !session.userId) {
-      return NextResponse.json(
-        {
-          type: "/errors/unauthorized",
-          title: "Unauthorized",
-          status: 401,
-          detail: "Session token payload is invalid.",
-          code: "INVALID_SESSION",
-        },
-        { status: 401, headers: { "Content-Type": "application/problem+json" } }
-      );
-    }
 
     const body = await request.json().catch(() => null);
     const parseResult = step2Schema.safeParse(body);
@@ -84,15 +49,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       select: { metadata: true, email: true, name: true },
     });
 
-    const currentMeta = (dbUser?.metadata || {}) as Record<string, unknown>;
+    const updatedMetadata = mergeUserOnboardingState(dbUser?.metadata, {
+      selectedApps,
+      currentOnboardingStep: 3,
+      onboardingStatus: ONBOARDING_STATUS.IN_PROGRESS,
+    });
+
     await prisma.user.update({
       where: { id: session.userId },
       data: {
-        metadata: {
-          ...currentMeta,
-          selected_apps: selectedApps,
-          current_onboarding_step: 3,
-        },
+        metadata: updatedMetadata as Prisma.InputJsonValue,
       },
     });
 
