@@ -60,3 +60,10 @@ export {
   type AuditEventPayload,
   type ManagerOverrideRequest,
 } from "./schemas/index.js";
+
+// Canonical Domain & Permission Constants
+export {
+  PERMISSIONS,
+  type PermissionCode,
+} from "./constants/index.js";
+

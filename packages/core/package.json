@@ -30,6 +30,11 @@
       "types": "./src/schemas/index.ts",
       "import": "./src/schemas/index.ts",
       "default": "./src/schemas/index.ts"
+    },
+    "./constants": {
+      "types": "./src/constants/index.ts",
+      "import": "./src/constants/index.ts",
+      "default": "./src/constants/index.ts"
     }
   },
   "scripts": {

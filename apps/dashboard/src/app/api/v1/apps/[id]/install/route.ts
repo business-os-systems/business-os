@@ -5,6 +5,7 @@ import {
   verifySessionToken,
   decodeSessionPayload,
 } from "@suite/auth";
+import { PERMISSIONS, hasPermission } from "@suite/core";
 
 export async function POST(
   request: NextRequest,
@@ -71,6 +72,49 @@ export async function POST(
         },
         { status: 403, headers: { "Content-Type": "application/problem+json" } }
       );
+    }
+
+    // 2. Enforce Capability-Based RBAC Authorization (Purely Permission-Driven, Zero Static Role Checks)
+    const requiredPermission = PERMISSIONS.APPS.INSTALL;
+    const sessionPermissions = sessionPayload.permissions ?? [];
+    const hasSessionPermission = hasPermission(sessionPermissions, requiredPermission);
+
+    if (!hasSessionPermission) {
+      const userBranchRoles = await prisma.userBranchRole.findMany({
+        where: {
+          userId: sessionPayload.userId,
+          organizationId: sessionPayload.organizationId,
+        },
+        include: {
+          role: {
+            include: {
+              permissions: {
+                include: { permission: true },
+              },
+            },
+          },
+        },
+      });
+
+      const dbPermissionActions = userBranchRoles.flatMap(
+        (ubr) =>
+          ubr.role?.permissions?.map((rp) => rp.permission?.action).filter(Boolean) as string[] ?? []
+      );
+
+      const hasDynamicDbPermission = hasPermission(dbPermissionActions, requiredPermission);
+
+      if (!hasDynamicDbPermission) {
+        return NextResponse.json(
+          {
+            type: "/errors/forbidden",
+            title: "Forbidden",
+            status: 403,
+            detail: "You do not have permission to install applications in this workspace.",
+            code: "INSUFFICIENT_PERMISSIONS",
+          },
+          { status: 403, headers: { "Content-Type": "application/problem+json" } }
+        );
+      }
     }
 
     const { id: appId } = await params;

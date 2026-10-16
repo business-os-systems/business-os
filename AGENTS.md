@@ -134,8 +134,19 @@ You are **STRICTLY PROHIBITED** from:
   Do NOT demand user inputs for fields that can be deterministically derived. On initial sign up / registration, do NOT demand a "Full Name" field if the user's name can be automatically derived from the email address local-part. The backend MUST dynamically derive fallback display names.
 - ❌ **Blocking Public Auth Routes in Edge Middleware (Public Auth Whitelist Law):**
   When creating or refactoring authentication routes (`/login`, `/signup`, `/forgot-password`, `/reset-password`), Edge middleware MUST explicitly whitelist them in `isAuthRoute` to prevent unauthenticated users from encountering redirect loops (`307` back to `/login`).
+- ❌ **Hardcoded Static Role Names (Pure Capability-Based Authorization Law):**
+  Role names (e.g. `"owner"`, `"admin"`, `"Organization Owner"`, `"Branch Manager"`, or any slug from the database) are human-readable, mutable database records and organizational titles—**never** security capabilities. A role title alone does not grant permissions; specific permissions are mapped to roles dynamically via database relation (`role_permissions`).
+  1. AI agents and developers are **STRICTLY PROHIBITED** from hardcoding role checks (e.g., `role === "owner"`, `role === "admin"`, `dbRoleSlug === "Organization Owner"`) in route handlers, middleware, service classes, RPC procedures, or UI components.
+  2. All authorization gates **MUST be 100% capability-driven**, querying whether the authenticated actor possesses the required capability/action (e.g., `hasPermission(claims, PERMISSIONS.APPS.INSTALL)`).
+  3. Even system-level superusers or tenant owners must be evaluated via permission claims (such as universal wildcard `*` or domain-scoped wildcards `apps:*`) resolved dynamically from their assigned permissions in PostgreSQL or verified session claims.
+- ❌ **Scattered Raw String Literals (Canonical Domain Constants Law):**
+  Scattering raw string literals ("primitive obsession") across routes, components, middleware, and tests causes typo regressions, diverging nomenclatures, breaking refactors, and silent security authorization failures.
+  1. AI agents and developers are **STRICTLY PROHIBITED** from using ad-hoc raw string literals in runtime code for domain constants (such as RBAC permission codes, audit event types, event topics, status discriminators, error codes, and cookie/header keys).
+  2. Every domain string that is referenced, evaluated, or assigned across multiple places **MUST** reside in a centralized, strongly-typed, immutable (`as const`) constant registry in the appropriate shared package (e.g. `PERMISSIONS` in `@suite/core`, `SESSION_COOKIE_NAME` in `@suite/auth`).
+  3. All consuming packages, modular apps, routes, and unit/integration tests **MUST** import and consume these canonical constants directly.
 
 ---
+
 
 ## 5.1 Pre-Execution Blast Radius Gate
 Before asking human approval to start ANY issue, the agent MUST explicitly state the **Blast Radius**:

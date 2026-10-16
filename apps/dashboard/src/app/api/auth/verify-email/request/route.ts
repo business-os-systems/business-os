@@ -5,6 +5,7 @@ import { redis } from "@suite/redis";
 import {
   createEmailVerificationToken,
   sendEmail,
+  verifySessionToken,
   decodeSessionPayload,
   SESSION_COOKIE_NAME,
 } from "@suite/auth";
@@ -20,12 +21,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     let targetEmail: string | undefined;
 
-    // 1. Resolve email from authenticated session cookie first
+    // 1. Resolve email from cryptographically verified session cookie first
     const sessionCookie = request.cookies.get(SESSION_COOKIE_NAME)?.value;
     if (sessionCookie) {
-      const payload = decodeSessionPayload(sessionCookie);
-      if (payload?.email) {
-        targetEmail = payload.email;
+      const isValid = await verifySessionToken(sessionCookie);
+      if (isValid) {
+        const payload = decodeSessionPayload(sessionCookie);
+        if (payload?.email) {
+          targetEmail = payload.email;
+        }
       }
     }
 
