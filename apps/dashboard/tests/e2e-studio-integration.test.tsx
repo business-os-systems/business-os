@@ -31,6 +31,7 @@ vi.mock("next/navigation", () => ({
     push: vi.fn(),
   }),
   usePathname: () => "/sites",
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 describe("Automated E2E Integration Suite: Complete Authoring Lifecycle (@suite/dashboard)", () => {

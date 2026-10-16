@@ -19,6 +19,7 @@ vi.mock("next/navigation", () => ({
     refresh: vi.fn(),
   }),
   usePathname: () => "/login",
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 describe("Platform Auth Gate & Login Route (@suite/dashboard)", () => {

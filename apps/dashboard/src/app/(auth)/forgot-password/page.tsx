@@ -144,7 +144,10 @@ export default function ForgotPasswordPage() {
               aria-invalid={Boolean(errorMessage)}
               aria-describedby={errorMessage ? "forgot-password-error" : undefined}
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (errorMessage) setErrorMessage(null);
+              }}
               disabled={isLoading}
               placeholder="operator@company.com"
               className="w-full px-3 py-2 text-sm rounded-lg bg-surface border border-border text-text placeholder:text-text-disabled focus:outline-none focus:border-action focus:ring-1 focus:ring-action transition-colors"

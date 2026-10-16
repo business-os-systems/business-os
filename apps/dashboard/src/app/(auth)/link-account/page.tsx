@@ -174,7 +174,10 @@ function LinkAccountChallengeForm() {
               aria-invalid={Boolean(errorMessage)}
               aria-describedby={errorMessage ? "link-account-error" : undefined}
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (errorMessage) setErrorMessage(null);
+              }}
               disabled={isLoading}
               placeholder="••••••••••••"
               className="w-full pl-3 pr-11 py-2 text-sm rounded-lg bg-surface border border-border text-text placeholder:text-text-disabled focus:outline-none focus:border-action focus:ring-1 focus:ring-action transition-colors"

@@ -38,6 +38,7 @@ export interface AuthFormStateProps {
  */
 export interface AuthFormActionProps {
   onForgotPassword?: () => void;
+  onClearError?: () => void;
 }
 
 /**
@@ -54,6 +55,7 @@ export function EmailPasswordForm({
   isLoading = false,
   errorMessage = null,
   onForgotPassword,
+  onClearError,
 }: EmailPasswordFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -213,6 +215,7 @@ export function EmailPasswordForm({
           onChange={(e) => {
             setEmail(e.target.value);
             if (preferPassword) setPreferPassword(false);
+            onClearError?.();
           }}
           disabled={isLoading}
           placeholder="operator@company.com"
@@ -273,6 +276,7 @@ export function EmailPasswordForm({
                 onChange={(e) => {
                   setPassword(e.target.value);
                   setHasInteractedWithPassword(true);
+                  onClearError?.();
                 }}
                 disabled={isLoading}
                 placeholder="••••••••••••"

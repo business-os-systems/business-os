@@ -39,6 +39,7 @@ export interface PasskeyStateProps {
   disabled?: boolean;
   turnstileToken?: string | null;
   verifyEndpoint?: string;
+  onActionTrigger?: () => void;
 }
 
 /**
@@ -66,6 +67,7 @@ export function PasskeyButton({
   disabled = false,
   turnstileToken,
   verifyEndpoint = "/api/auth/passkey/verify",
+  onActionTrigger,
 }: PasskeyButtonProps) {
   const [isSupported, setIsSupported] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -82,6 +84,7 @@ export function PasskeyButton({
 
   const handlePasskeyLogin = async () => {
     if (disabled || isLoading) return;
+    onActionTrigger?.();
     setIsLoading(true);
     try {
       if (!isBrowser || !navigator.credentials) {
