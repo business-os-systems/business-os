@@ -151,4 +151,15 @@ export {
   type SecurityAuditParams,
 } from "./security/index.js";
 
+export {
+  exchangeGoogleCode,
+  exchangeGitHubCode,
+  exchangeOAuthCode,
+  type OAuthUserProfile,
+  type OAuthTokenResult,
+  type OAuthExchangeResult,
+  type OAuthExchangeParams,
+} from "./oauth/index.js";
+
+
 
