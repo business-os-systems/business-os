@@ -9,9 +9,9 @@
 ---
 
 ## 0. Rule 0: Pre-Change Rule Verification Gate (APPLY RULES FIRST BEFORE MAKING ANY CHANGES)
-- **Before making ANY code, design, configuration, or architectural change, AI agents MUST explicitly review, verify, and apply ALL operational directives and architectural rules FIRST.**
+- **Before making ANY code, design, configuration, or architectural change, AI agents MUST explicitly review, verify, and apply ALL operational directives, architectural rules, and Clean Code standards FIRST.**
 - AI agents are **STRICTLY PROHIBITED** from taking shortcuts, introducing temporary workarounds, using mock/static data fallbacks, or writing code before validating all repository rules.
-- Every turn begins with a rule compliance check: If an action would violate ANY directive in this document (e.g., issue-first policy, zero static data, DESIGN.md primacy, branch hierarchy, human issue approval gate, human commit & PR approval gate, human merge approval gate, core immutability), the agent **MUST NOT** proceed with the violation.
+- Every turn begins with a rule compliance check: If an action would violate ANY directive in this document or Constitution Principle XII (e.g., issue-first policy, zero static data, DESIGN.md primacy, clean code discipline, branch hierarchy, human issue approval gate, human commit & PR approval gate, human merge approval gate, core immutability), the agent **MUST NOT** proceed with the violation.
 
 ---
 
@@ -144,6 +144,30 @@ You are **STRICTLY PROHIBITED** from:
   1. AI agents and developers are **STRICTLY PROHIBITED** from using ad-hoc raw string literals in runtime code for domain constants (such as RBAC permission codes, audit event types, event topics, status discriminators, error codes, and cookie/header keys).
   2. Every domain string that is referenced, evaluated, or assigned across multiple places **MUST** reside in a centralized, strongly-typed, immutable (`as const`) constant registry in the appropriate shared package (e.g. `PERMISSIONS` in `@suite/core`, `SESSION_COOKIE_NAME` in `@suite/auth`).
   3. All consuming packages, modular apps, routes, and unit/integration tests **MUST** import and consume these canonical constants directly.
+- ❌ **Monolithic Route Handlers & Giant Functions (Function Decomposition Law):**
+  Writing monolithic functions or route handlers that mix input validation, database access, business orchestration, and response formatting in single files is strictly forbidden.
+  1. Route handlers MUST NOT exceed 100 lines; helper functions MUST NOT exceed 30 lines.
+  2. Complex orchestration MUST be factored into dedicated domain services.
+  3. Functions MUST adhere to the Single Level of Abstraction Principle (SLAP) and take $\le 2$ positional parameters (3+ MUST be passed as a single typed options object).
+- ❌ **Boolean Flag Arguments (API Bifurcation Law):**
+  Functions MUST NOT accept boolean flag parameters that split internal execution into two distinct operational modes (e.g., `processPayment(isRefund: boolean)`). Split into separate, intention-revealing functions (`processPayment()`, `processRefund()`).
+- ❌ **Cryptic Abbreviations & Magic Literals (Intention-Revealing Naming Law):**
+  Using unsearchable abbreviations (`usrRel`, `calcBDate`), vague identifiers (`data`, `temp`, `info`), or raw numeric/string magic constants deep in business logic is strictly forbidden. All constants MUST be named and registered in strongly-typed `as const` constants.
+- ❌ **Redundant & Obsolete Comments (Comment Hygiene Law):**
+  1. Comments that merely restate what code does (`// set user id`, `// return response`) are strictly forbidden.
+  2. Leaving commented-out dead code blocks is strictly prohibited; rely on Git version history.
+  3. Closing-brace comments (`// end of if`, `// end class`) are strictly forbidden.
+  4. Comments are reserved strictly for non-obvious business invariants, architectural trade-offs, or hazardous race conditions.
+- ❌ **Conflating DTOs with Domain Entities (Data Encapsulation Law):**
+  Engineers and AI agents MUST maintain a strict separation between Data Transfer Objects (plain TypeScript types carrying boundary data without behavior) and Domain Entities/Services (cohesive abstractions encapsulating business logic while keeping mutations private).
+- ❌ **Fragile & Coupled Test Design (Testing Excellence Law):**
+  1. Each test MUST verify exactly one logical concept or business outcome (AAA pattern: Arrange-Act-Assert). Multiple assertions are permitted only when verifying different facets of that single logical outcome.
+  2. Tests MUST be independent of execution order and shared mutable state.
+  3. Weakening assertions, disabling tests, or using `@ts-ignore` in tests to force CI to pass is strictly prohibited.
+- ❌ **Swallowed Exceptions & Empty Catch Blocks (Zero Swallowed Errors Law):**
+  AI agents and developers are **STRICTLY FORBIDDEN** from introducing empty `catch {}` blocks or silently ignoring failures. All exceptions must either be handled cleanly with appropriate recovery/logging or rethrown as typed `AppError` subclasses.
+- ❌ **Un-Scoped Sweeping Refactors (Strict Boy Scout Blast Radius Law):**
+  Under the Boy Scout Rule, cleanup (fixing typos, improving variable names, typing fixes) MUST be strictly bounded to files in the active ticket's blast radius. Sweeping refactors across unrelated modules or packages without an explicit ticket are strictly forbidden.
 
 ---
 

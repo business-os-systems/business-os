@@ -144,6 +144,19 @@ business-os/
 - All network boundaries (REST endpoints, RPC parameters, BullMQ payloads) must be parsed and validated with **Zod**.
 - **Type-Safe Environment Variables:** Every package and app validates its required environment variables at process boot; if any variable is missing or invalid, the process terminates immediately with an explicit error.
 
+### Rule 5.1: Enterprise Clean Code & Refactoring Standards (Constitution Principle XII)
+All code submitted to Business OS MUST comply with Constitution Principle XII:
+1. **Function Decomposition & SLAP:** Functions must be small, cohesive, and operate at a single level of abstraction. Route handlers MUST NOT exceed 100 lines; helper functions MUST NOT exceed 30 lines. Complex orchestration must be extracted into dedicated domain services.
+2. **Parameter Discipline & No Flag Arguments:** Limit positional parameters to $\le 2$. For 3+ parameters, pass a single typed options object with destructuring. Boolean flag parameters that split function behavior into two distinct branches are strictly prohibited.
+3. **Naming & Domain Modeling:** Use intention-revealing, pronounceable, and searchable English names. Avoid cryptic abbreviations (`usrOrgRel`, `calcBDate`). Magic numbers and strings must be replaced by centralized, strongly typed `as const` constants. Prefer dedicated domain value objects with Zod validation over primitive obsession for core business concepts.
+4. **Comment Hygiene:** Prefer self-documenting code over obvious comments. Commented-out dead code blocks and closing-brace comments (`// end if`) are strictly forbidden. Use comments exclusively to document non-obvious business invariants, architectural trade-offs, or race condition hazards.
+5. **Source Code Structure:** Maintain vertical separation between distinct concepts and vertical proximity (declare variables near their use). Organize files in a top-down newspaper flow with public contracts at the top and low-level helpers below.
+6. **Objects vs. Data Structures:** Strictly distinguish plain Data Transfer Objects (DTOs without behavior) from rich Domain Entities/Services (cohesive operations with encapsulated private state).
+7. **Testing Excellence:** Follow the Arrange-Act-Assert (AAA) pattern with descriptive, intention-revealing test names. Each test MUST verify exactly one logical concept or business rule. Unit tests must be fast, in-memory, order-independent, and free of shared mutable state. Never weaken assertions or delete tests to force CI to pass.
+8. **Error Handling & Resilience:** All exceptions must extend `AppError` and map to RFC 7807 problem details. Swallowing errors with empty `catch {}` blocks is strictly prohibited.
+9. **Scoped Refactoring (The Boy Scout Rule):** Boy Scout cleanups (typos, typing fixes, renaming, dead code removal) are strictly bounded to the files within the active ticket's blast radius. Sweeping un-ticketed refactors across unrelated packages are strictly prohibited.
+10. **Code Smell Monitoring:** Actively prevent and address rigidity, fragility, immobility, needless repetition, and opacity during code review.
+
 ### Rule 6: Mandatory Local Quality Gates
 Before any commit or push is accepted, run the complete local gate:
 ```bash
