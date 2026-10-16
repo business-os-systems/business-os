@@ -46,6 +46,7 @@ coverage/
 
 
 .archify
+specs/
 .specify/*
 !.specify/memory/
 .specify/memory/*
