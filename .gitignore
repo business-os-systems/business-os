@@ -46,6 +46,9 @@ coverage/
 
 
 .archify
-.specify
+.specify/*
+!.specify/memory/
+.specify/memory/*
+!.specify/memory/constitution.md
 .agents
 skills-lock.json
