@@ -65,5 +65,7 @@ export {
 export {
   PERMISSIONS,
   type PermissionCode,
+  AUDIT_EVENT_TYPES,
+  type AuditEventType,
 } from "./constants/index.js";
 

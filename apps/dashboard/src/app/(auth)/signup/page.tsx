@@ -15,6 +15,7 @@ export default function SignupPage() {
   const handleSignup = async (data: {
     email: string;
     password: string;
+    turnstileToken?: string | null;
   }) => {
     setErrorMessage(null);
     setIsLoading(true);
@@ -26,6 +27,7 @@ export default function SignupPage() {
         body: JSON.stringify({
           email: data.email,
           password: data.password,
+          turnstileToken: data.turnstileToken,
         }),
       });
 

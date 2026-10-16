@@ -8,7 +8,10 @@ import {
   encodeSessionPayload,
   createSessionCookieOptions,
   SESSION_COOKIE_NAME,
+  recordSecurityAuditLog,
+  getUserOnboardingState,
 } from "@suite/auth";
+import { AUDIT_EVENT_TYPES } from "@suite/core";
 
 const resetPasswordSchema = z
   .object({
@@ -99,12 +102,24 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       select: { name: true, email: true, metadata: true },
     });
 
-    const metadata = (userRecord?.metadata as Record<string, unknown>) || {};
-    const rawStatus = metadata.onboarding_status;
-    const onboardingStatus =
-      rawStatus === "IN_PROGRESS" || rawStatus === "COMPLETED" || rawStatus === "NOT_STARTED"
-        ? (rawStatus as "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED")
-        : "COMPLETED";
+    const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+    const userAgent = request.headers.get("user-agent");
+
+    // Record security audit trail entry (SPEC-04 / OWASP ASVS 4.0.3 Non-Repudiation)
+    await recordSecurityAuditLog({
+      prisma,
+      organizationId: membership?.organizationId,
+      userId: result.userId,
+      action: AUDIT_EVENT_TYPES.AUTH_PASSWORD_RESET,
+      ipAddress: clientIp,
+      userAgent,
+      details: {
+        email: result.email,
+        sessionsRevoked: true,
+      },
+    });
+
+    const onboardingState = getUserOnboardingState(userRecord?.metadata);
 
     // Issue fresh session token and cookie for current client
     const sessionToken = await signSessionToken(
@@ -115,7 +130,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         organizationId: membership?.organizationId,
         organizationName: membership?.organization.name,
         role: "owner",
-        onboardingStatus,
+        onboardingStatus: onboardingState.onboardingStatus,
         timestamp: Date.now(),
       })
     );

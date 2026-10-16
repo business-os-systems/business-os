@@ -147,6 +147,8 @@ export {
   type CreateAccountLinkingTicketParams,
   type LinkOAuthAccountParams,
   type LinkOAuthAccountResult,
+  recordSecurityAuditLog,
+  type SecurityAuditParams,
 } from "./security/index.js";
 
 

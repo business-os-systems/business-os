@@ -18,3 +18,8 @@ export {
   type LinkOAuthAccountParams,
   type LinkOAuthAccountResult,
 } from "./account-security.js";
+
+export {
+  recordSecurityAuditLog,
+  type SecurityAuditParams,
+} from "./audit-logger.js";

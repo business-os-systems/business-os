@@ -3,9 +3,11 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { AuthCard } from "@/components/auth/auth-card";
+import { Turnstile } from "@/components/auth/turnstile";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -21,7 +23,7 @@ export default function ForgotPasswordPage() {
       const response = await fetch("/api/auth/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim() }),
+        body: JSON.stringify({ email: email.trim(), turnstileToken }),
       });
 
       if (!response.ok && response.status !== 404) {
@@ -148,6 +150,9 @@ export default function ForgotPasswordPage() {
               className="w-full px-3 py-2 text-sm rounded-lg bg-surface border border-border text-text placeholder:text-text-disabled focus:outline-none focus:border-action focus:ring-1 focus:ring-action transition-colors"
             />
           </div>
+
+          {/* Cloudflare Turnstile Bot Defense (SPEC-02) */}
+          <Turnstile onVerify={(token) => setTurnstileToken(token)} />
 
           <button
             type="submit"

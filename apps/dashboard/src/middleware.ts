@@ -4,9 +4,13 @@ import {
   SESSION_COOKIE_NAME,
   verifySessionToken,
   decodeSessionPayload,
+  encodeSessionPayload,
+  signSessionToken,
+  createSessionCookieOptions,
   isSessionPayloadExpired,
   type SessionPayload,
 } from "@/lib/auth-constants";
+import { isProduction } from "@/lib/env";
 
 const STATIC_ASSET_REGEX = /\.(ico|png|jpg|jpeg|svg|css|js|woff|woff2|ttf|eot)$/i;
 
@@ -85,12 +89,17 @@ function handleUnauthenticatedGate(
   return NextResponse.redirect(loginUrl);
 }
 
-function handleAuthenticatedGate(
+async function handleAuthenticatedGate(
   request: NextRequest,
   payload: SessionPayload,
   pathname: string
-): NextResponse {
+): Promise<NextResponse> {
   if (isInvitationRoute(pathname) || isVerificationRecoveryRoute(pathname)) {
+    return createAuthenticatedResponse(request, payload);
+  }
+
+  // Multi-tenancy disambiguation: Allow workspace selection route for authenticated users
+  if (pathname.startsWith("/choose-tenant")) {
     return createAuthenticatedResponse(request, payload);
   }
 
@@ -105,7 +114,11 @@ function handleAuthenticatedGate(
 
   if (isAuthRoute) {
     const destinationUrl = new URL(
-      isOnboardingIncomplete ? onboardingStepPath : "/dashboard",
+      isOnboardingIncomplete
+        ? onboardingStepPath
+        : payload.organizationId
+        ? "/dashboard"
+        : "/choose-tenant",
       request.url
     );
     return NextResponse.redirect(destinationUrl);
@@ -113,7 +126,11 @@ function handleAuthenticatedGate(
 
   if (pathname === "/") {
     const destinationUrl = new URL(
-      isOnboardingIncomplete ? onboardingStepPath : "/dashboard",
+      isOnboardingIncomplete
+        ? onboardingStepPath
+        : payload.organizationId
+        ? "/dashboard"
+        : "/choose-tenant",
       request.url
     );
     return NextResponse.redirect(destinationUrl);
@@ -125,17 +142,24 @@ function handleAuthenticatedGate(
       return NextResponse.redirect(onboardingUrl);
     }
   } else if (pathname.startsWith("/onboarding")) {
-    const dashboardUrl = new URL("/dashboard", request.url);
-    return NextResponse.redirect(dashboardUrl);
+    const destinationUrl = new URL(
+      payload.organizationId ? "/dashboard" : "/choose-tenant",
+      request.url
+    );
+    return NextResponse.redirect(destinationUrl);
+  } else if (!payload.organizationId && !pathname.startsWith("/api/")) {
+    // Multi-tenant disambiguation (SPEC-05): redirect completed onboarding users with no active workspace to /choose-tenant
+    const chooseTenantUrl = new URL("/choose-tenant", request.url);
+    return NextResponse.redirect(chooseTenantUrl);
   }
 
   return createAuthenticatedResponse(request, payload);
 }
 
-function createAuthenticatedResponse(
+async function createAuthenticatedResponse(
   request: NextRequest,
   payload: SessionPayload
-): NextResponse {
+): Promise<NextResponse> {
   const requestHeaders = new Headers(request.headers);
 
   // Strip client-supplied internal headers to prevent header injection
@@ -190,6 +214,27 @@ function createAuthenticatedResponse(
     response.headers.set("x-tenant-id", payload.organizationId);
   }
 
+  // SPEC-03: Rolling session sliding window: refresh session cookie maxAge on active requests if > 1 hour elapsed
+  const ONE_HOUR_MS = 60 * 60 * 1000;
+  const elapsedMs = Date.now() - (payload.timestamp || 0);
+  if (elapsedMs > ONE_HOUR_MS) {
+    const refreshedPayload: SessionPayload = {
+      ...payload,
+      timestamp: Date.now(),
+    };
+    const refreshedToken = await signSessionToken(encodeSessionPayload(refreshedPayload));
+    const cookieOptions = createSessionCookieOptions(isProduction, true);
+    response.cookies.set({
+      name: SESSION_COOKIE_NAME,
+      value: refreshedToken,
+      httpOnly: cookieOptions.httpOnly,
+      secure: cookieOptions.secure,
+      sameSite: cookieOptions.sameSite,
+      maxAge: cookieOptions.maxAge,
+      path: cookieOptions.path,
+    });
+  }
+
   return response;
 }
 
@@ -206,7 +251,7 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
     return handleUnauthenticatedGate(request, pathname, search);
   }
 
-  return handleAuthenticatedGate(request, payload, pathname);
+  return await handleAuthenticatedGate(request, payload, pathname);
 }
 
 export const config = {

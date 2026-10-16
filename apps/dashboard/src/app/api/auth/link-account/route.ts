@@ -13,7 +13,9 @@ import {
   SESSION_COOKIE_NAME,
   getUserOnboardingState,
   extractEffectivePermissions,
+  recordSecurityAuditLog,
 } from "@suite/auth";
+import { AUDIT_EVENT_TYPES } from "@suite/core";
 
 
 const linkAccountSchema = z.object({
@@ -184,6 +186,24 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     // Extract permissions
     const userPermissions = extractEffectivePermissions(dbUser.branchRoles);
+
+    const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+    const userAgent = request.headers.get("user-agent");
+
+    // Record security audit trail entry (SPEC-04 / OWASP ASVS 4.0.3 Non-Repudiation)
+    await recordSecurityAuditLog({
+      prisma,
+      organizationId: organization?.id,
+      userId: dbUser.id,
+      action: AUDIT_EVENT_TYPES.AUTH_ACCOUNT_LINKED,
+      ipAddress: clientIp,
+      userAgent,
+      details: {
+        providerId: result.providerId,
+        accountId: result.accountId,
+        linkedAt: new Date().toISOString(),
+      },
+    });
 
     // Resolve post-login route
     const redirectUrl = resolvePostLoginRoute({

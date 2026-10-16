@@ -4,6 +4,7 @@ import React, { useState, useEffect, useId, useRef } from "react";
 import Link from "next/link";
 import { validatePasswordComplexity } from "@suite/auth/rules";
 import { SSORedirectCard } from "./sso-redirect-card";
+import { Turnstile } from "./turnstile";
 import { isBrowser } from "@/lib/env";
 
 /**
@@ -13,6 +14,7 @@ export interface AuthCredentialsData {
   email: string;
   password: string;
   keepSignedIn?: boolean;
+  turnstileToken?: string | null;
 }
 
 /**
@@ -58,6 +60,7 @@ export function EmailPasswordForm({
   const [keepSignedIn, setKeepSignedIn] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [hasInteractedWithPassword, setHasInteractedWithPassword] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   // Home Realm Discovery (HRD) State
   const [ssoData, setSsoData] = useState<{
@@ -149,6 +152,7 @@ export function EmailPasswordForm({
       email: email.trim(),
       password,
       keepSignedIn: mode === "login" ? keepSignedIn : undefined,
+      turnstileToken,
     });
   };
 
@@ -362,6 +366,9 @@ export function EmailPasswordForm({
               </label>
             </div>
           )}
+
+          {/* Cloudflare Turnstile Bot Defense (SPEC-02) */}
+          <Turnstile onVerify={(token) => setTurnstileToken(token)} />
 
           {/* Submit Action */}
           <button
