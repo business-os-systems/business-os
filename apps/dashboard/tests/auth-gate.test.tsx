@@ -473,6 +473,16 @@ describe("Platform Auth Gate & Login Route (@suite/dashboard)", () => {
       expect(res.status).toBe(200);
     });
 
+    it("allows unauthenticated guest to access /verify-expired without being redirected to /login", async () => {
+      const { middleware } = await import("../src/middleware");
+      const { NextRequest } = await import("next/server");
+
+      const req = new NextRequest("http://localhost:3000/verify-expired?expired=true");
+      const res = await middleware(req);
+
+      expect(res.status).toBe(200);
+    });
+
     it("Rule 1 (Guest Guard): redirects authenticated user with COMPLETED onboarding away from /login to /dashboard", async () => {
       const { middleware } = await import("../src/middleware");
       const { NextRequest } = await import("next/server");

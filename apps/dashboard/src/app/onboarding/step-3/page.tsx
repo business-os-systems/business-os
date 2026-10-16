@@ -38,18 +38,17 @@ function ConfettiBurst() {
   const particles = React.useMemo(() => {
     const items: React.ReactNode[] = [];
     const colors = [
-      "bg-[#F59E0B]", // Gold
-      "bg-[#FBBF24]", // Amber
-      "bg-[#10B981]", // Emerald
-      "bg-[#34D399]", // Mint
-      "bg-[#0284C7]", // Blue
-      "bg-[#38BDF8]", // Sky
-      "bg-[#8B5CF6]", // Violet
-      "bg-[#A855F7]", // Purple
-      "bg-[#F43F5E]", // Rose
-      "bg-[#FB7185]", // Coral
-      "bg-[#14B8A6]", // Teal
-      "bg-[#F97316]", // Orange
+      "bg-brand",
+      "bg-brand-tint",
+      "bg-action",
+      "bg-action-tint",
+      "bg-success",
+      "bg-warning",
+      "bg-warning-fill",
+      "bg-danger",
+      "bg-info",
+      "bg-primary",
+      "bg-secondary",
     ];
 
     const shapes = ["rect", "ribbon", "circle", "diamond"] as const;

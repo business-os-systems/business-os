@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   ForbiddenError,
   SUPERUSER_WILDCARD,
+  PERMISSIONS,
   evaluateBranchAccess,
   hasAllPermissions,
   hasAnyPermission,
@@ -118,4 +119,24 @@ describe("@suite/core - Hierarchical RBAC Permission Evaluator", () => {
       expect(evaluateBranchAccess(staffCtx, "branch_east", "pms:reservations:read", roleRegistry)).toBe(false);
     });
   });
+
+  describe("Canonical PERMISSIONS Constants Registry", () => {
+    it("exports strongly-typed immutable permission keys", () => {
+      expect(PERMISSIONS.WILDCARD).toBe("*");
+      expect(PERMISSIONS.APPS.INSTALL).toBe("apps:install");
+      expect(PERMISSIONS.APPS.ALL).toBe("apps:*");
+      expect(PERMISSIONS.CORE.APPS_MANAGE).toBe("core:apps:manage");
+      expect(PERMISSIONS.LODGING_PMS.RESERVATIONS_READ).toBe("lodging_pms:reservations:read");
+      expect(PERMISSIONS.RESTAURANT_POS.ORDERS_CREATE).toBe("restaurant_pos:orders:create");
+      expect(PERMISSIONS.STOCK_INVENTORY.ITEMS_READ).toBe("stock_inventory:items:read");
+    });
+
+    it("evaluates permission checks using PERMISSIONS constants seamlessly", () => {
+      const userPerms = [PERMISSIONS.APPS.INSTALL, PERMISSIONS.LODGING_PMS.ALL];
+      expect(hasPermission(userPerms, PERMISSIONS.APPS.INSTALL)).toBe(true);
+      expect(hasPermission(userPerms, PERMISSIONS.LODGING_PMS.RESERVATIONS_READ)).toBe(true);
+      expect(hasPermission(userPerms, PERMISSIONS.RESTAURANT_POS.ORDERS_CREATE)).toBe(false);
+    });
+  });
 });
+

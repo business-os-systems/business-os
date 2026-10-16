@@ -17,6 +17,7 @@ import {
   encodeSessionPayload,
   SESSION_COOKIE_NAME,
 } from "@suite/auth";
+import { PERMISSIONS } from "@suite/core";
 
 let mockSearchParams = new URLSearchParams();
 
@@ -45,6 +46,10 @@ vi.mock("@suite/db", () => {
     },
     installedApp: {
       upsert: vi.fn(),
+    },
+    userBranchRole: {
+      findFirst: vi.fn(),
+      findMany: vi.fn(),
     },
     $transaction: vi.fn(async (ops: unknown) => ops),
   };
@@ -185,6 +190,28 @@ describe("Deferred Email Verification & Marketplace Installation Gate (@suite/da
       const data = await res.json();
       expect(data.code).toBe("RATE_LIMIT_EXCEEDED");
     });
+
+    it("ignores forged or tampered session cookie and requires valid body email", async () => {
+      const forgedCookie = `${encodeSessionPayload({
+        userId: "hacker",
+        email: "victim@enterprise.com",
+        userName: "Hacker",
+        timestamp: Date.now(),
+      })}.invalid_hmac_signature`;
+
+      const req = new NextRequest("http://localhost:3001/api/auth/verify-email/request", {
+        method: "POST",
+        headers: {
+          Cookie: `${SESSION_COOKIE_NAME}=${forgedCookie}`,
+        },
+        body: JSON.stringify({}),
+      });
+
+      const res = await requestVerifyEmailRoute(req);
+      expect(res.status).toBe(400);
+      const data = await res.json();
+      expect(data.code).toBe("VALIDATION_FAILED");
+    });
   });
 
   describe("API: /api/auth/verify-email/confirm", () => {
@@ -296,7 +323,7 @@ describe("Deferred Email Verification & Marketplace Installation Gate (@suite/da
         organizationId: "org_alpha",
         organizationName: "Alpha Corp",
         role: "owner",
-        permissions: ["apps:install"],
+        permissions: [PERMISSIONS.APPS.INSTALL],
         timestamp: Date.now(),
         onboardingStatus: "COMPLETED",
         currentOnboardingStep: null,
@@ -334,6 +361,52 @@ describe("Deferred Email Verification & Marketplace Installation Gate (@suite/da
       const data = await res.json();
       expect(data.success).toBe(true);
       expect(data.appId).toBe("restaurant_pos");
+    });
+
+    it("blocks verified user without apps:install or admin/owner role with HTTP 403 INSUFFICIENT_PERMISSIONS", async () => {
+      const payload = encodeSessionPayload({
+        userId: "user_member_1",
+        email: "member@company.com",
+        userName: "Member User",
+        organizationId: "org_alpha",
+        organizationName: "Alpha Corp",
+        role: "member",
+        permissions: ["sites:read"],
+        timestamp: Date.now(),
+        onboardingStatus: "COMPLETED",
+        currentOnboardingStep: null,
+      });
+
+      const token = await signSessionToken(payload);
+
+      (prisma.user.findUnique as unknown as Mock).mockResolvedValueOnce({
+        id: "user_member_1",
+        emailVerified: true,
+      });
+
+      (prisma.userBranchRole.findMany as unknown as Mock).mockResolvedValueOnce([
+        {
+          role: {
+            slug: "member",
+            permissions: [],
+          },
+        },
+      ]);
+
+      const req = new NextRequest("http://localhost:3001/api/v1/apps/restaurant_pos/install", {
+        method: "POST",
+        headers: {
+          Cookie: `${SESSION_COOKIE_NAME}=${token}`,
+        },
+      });
+
+      const params = Promise.resolve({ id: "restaurant_pos" });
+      const res = await installAppRoute(req, { params });
+
+      expect(res.status).toBe(403);
+      const data = await res.json();
+      expect(data.code).toBe("INSUFFICIENT_PERMISSIONS");
+      expect(data.detail).toContain("You do not have permission to install applications");
     });
   });
 });

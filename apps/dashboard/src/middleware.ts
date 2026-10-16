@@ -34,6 +34,10 @@ function isInvitationRoute(pathname: string): boolean {
   return pathname.startsWith("/invite");
 }
 
+function isVerificationRecoveryRoute(pathname: string): boolean {
+  return pathname.startsWith("/verify-expired");
+}
+
 async function resolveSessionPayload(request: NextRequest): Promise<SessionPayload | null> {
   const sessionToken = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   if (!sessionToken) return null;
@@ -53,7 +57,11 @@ function handleUnauthenticatedGate(
   pathname: string,
   search: string
 ): NextResponse {
-  if (isAuthenticationRoute(pathname) || isInvitationRoute(pathname)) {
+  if (
+    isAuthenticationRoute(pathname) ||
+    isInvitationRoute(pathname) ||
+    isVerificationRecoveryRoute(pathname)
+  ) {
     return NextResponse.next();
   }
 
@@ -82,7 +90,7 @@ function handleAuthenticatedGate(
   payload: SessionPayload,
   pathname: string
 ): NextResponse {
-  if (isInvitationRoute(pathname)) {
+  if (isInvitationRoute(pathname) || isVerificationRecoveryRoute(pathname)) {
     return createAuthenticatedResponse(request, payload);
   }
 
