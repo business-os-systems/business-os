@@ -6,11 +6,25 @@ import { useRouter } from "next/navigation";
 import { AuthCard } from "@/components/auth/auth-card";
 import { OAuthProviders } from "@/components/auth/oauth-providers";
 import { EmailPasswordForm } from "@/components/auth/email-password-form";
+import { isBrowser } from "@/lib/env";
 
 export default function SignupPage() {
   const router = useRouter();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  const clearError = () => {
+    setErrorMessage(null);
+    if (isBrowser) {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has("error")) {
+        url.searchParams.delete("error");
+        const query = url.searchParams.toString();
+        const cleanUrl = url.pathname + (query ? `?${query}` : "");
+        window.history.replaceState({}, "", cleanUrl);
+      }
+    }
+  };
 
   const handleSignup = async (data: {
     email: string;
@@ -69,7 +83,7 @@ export default function SignupPage() {
       }
     >
       {/* OAuth Fast Registration */}
-      <OAuthProviders disabled={isLoading} />
+      <OAuthProviders disabled={isLoading} onActionTrigger={clearError} />
 
       {/* Registration Form with Real-Time Password Complexity */}
       <EmailPasswordForm
@@ -77,6 +91,7 @@ export default function SignupPage() {
         onSubmit={handleSignup}
         isLoading={isLoading}
         errorMessage={errorMessage}
+        onClearError={clearError}
       />
 
       {/* Legal & Compliance Microcopy */}

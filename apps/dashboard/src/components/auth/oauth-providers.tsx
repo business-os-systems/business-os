@@ -17,6 +17,7 @@ export interface OAuthRedirectConfig {
  */
 export interface OAuthInteractionProps {
   onProviderSelect?: (providerId: string) => void;
+  onActionTrigger?: () => void;
   disabled?: boolean;
 }
 
@@ -82,12 +83,14 @@ export function OAuthProviders({
   redirectUri = "/auth/callback",
   state = "auth_state",
   onProviderSelect,
+  onActionTrigger,
   disabled = false,
 }: OAuthProvidersProps) {
   const providers = oauthRegistry.getActiveProviders();
 
   const handleProviderClick = (provider: OAuthProviderDescriptor) => {
     if (disabled) return;
+    onActionTrigger?.();
     if (onProviderSelect) {
       onProviderSelect(provider.id);
       return;

@@ -170,7 +170,10 @@ function ResetPasswordForm() {
                 aria-invalid={Boolean(errorMessage || (newPassword.length > 0 && !complexity.isValid))}
                 aria-describedby={errorMessage ? "reset-password-error" : undefined}
                 value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
+                onChange={(e) => {
+                  setNewPassword(e.target.value);
+                  if (errorMessage) setErrorMessage(null);
+                }}
                 disabled={isLoading}
                 placeholder="••••••••••••"
                 className="w-full pl-3 pr-11 py-2 text-sm rounded-lg bg-surface border border-border text-text placeholder:text-text-disabled focus:outline-none focus:border-action focus:ring-1 focus:ring-action transition-colors"
@@ -233,7 +236,10 @@ function ResetPasswordForm() {
                 aria-invalid={Boolean(errorMessage || (confirmPassword.length > 0 && !passwordsMatch))}
                 aria-describedby={errorMessage ? "reset-password-error" : undefined}
                 value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value);
+                  if (errorMessage) setErrorMessage(null);
+                }}
                 disabled={isLoading}
                 placeholder="••••••••••••"
                 className="w-full pl-3 pr-11 py-2 text-sm rounded-lg bg-surface border border-border text-text placeholder:text-text-disabled focus:outline-none focus:border-action focus:ring-1 focus:ring-action transition-colors"

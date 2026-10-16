@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AuthCard } from "@/components/auth/auth-card";
 import { OAuthProviders } from "@/components/auth/oauth-providers";
 import { EmailPasswordForm } from "@/components/auth/email-password-form";
@@ -28,26 +28,47 @@ export function sanitizeRedirect(
   return isSafe ? queryRedirect : null;
 }
 
-export default function LoginPage() {
+function LoginFormContent() {
   const router = useRouter();
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+
+  const getInitialErrorMessage = (): string | null => {
+    const errorParam = searchParams?.get("error");
+    if (!errorParam) return null;
+    if (errorParam === "sso_unconfigured") {
+      const org = searchParams.get("org") || searchParams.get("domain") || "your organization";
+      return `Enterprise SSO is not yet configured for ${org}. Please sign in with your email and password.`;
+    }
+    if (errorParam === "sso_not_found") {
+      return "Enterprise SSO connection not found. Please sign in with your email and password.";
+    }
+    if (errorParam === "oauth_cancelled") {
+      return "Sign-in was cancelled. You can sign in using your email and password or try another provider.";
+    }
+    if (errorParam === "oauth_failed") {
+      return "Authentication failed. Please check your credentials or try again.";
+    }
+    return null;
+  };
+
+  const [errorMessage, setErrorMessage] = useState<string | null>(getInitialErrorMessage);
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    if (!isBrowser) return;
-    const params = new URLSearchParams(window.location.search);
-    const errorParam = params.get("error");
-    if (errorParam === "sso_unconfigured") {
-      const org = params.get("org") || params.get("domain") || "your organization";
-      setErrorMessage(
-        `Enterprise SSO is not yet configured for ${org}. Please sign in with your email and password.`
-      );
-    } else if (errorParam === "sso_not_found") {
-      setErrorMessage(
-        "Enterprise SSO connection not found. Please sign in with your email and password."
-      );
+  const clearError = () => {
+    setErrorMessage(null);
+    if (isBrowser) {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has("error")) {
+        url.searchParams.delete("error");
+        url.searchParams.delete("org");
+        url.searchParams.delete("domain");
+        url.searchParams.delete("provider");
+        const query = url.searchParams.toString();
+        const cleanUrl = url.pathname + (query ? `?${query}` : "");
+        window.history.replaceState({}, "", cleanUrl);
+      }
     }
-  }, []);
+  };
 
   const handleLogin = async (data: {
     email: string;
@@ -139,7 +160,7 @@ export default function LoginPage() {
       }
     >
       {/* OAuth Fast Providers */}
-      <OAuthProviders disabled={isLoading} />
+      <OAuthProviders disabled={isLoading} onActionTrigger={clearError} />
 
       {/* Primary Email & Password Form */}
       <EmailPasswordForm
@@ -147,14 +168,24 @@ export default function LoginPage() {
         onSubmit={handleLogin}
         isLoading={isLoading}
         errorMessage={errorMessage}
+        onClearError={clearError}
       />
 
       {/* FIDO2 / WebAuthn Passkeys */}
       <PasskeyButton
         disabled={isLoading}
+        onActionTrigger={clearError}
         onSuccess={handleAuthSuccess}
         onError={(err) => setErrorMessage(err.message)}
       />
     </AuthCard>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginFormContent />
+    </Suspense>
   );
 }
