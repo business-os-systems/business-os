@@ -21,6 +21,7 @@ module.exports = {
       { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" },
     ],
     "@typescript-eslint/ban-ts-comment": "error",
+    "no-empty": ["error", { "allowEmptyCatch": false }],
   },
   ignorePatterns: [
     "node_modules/",

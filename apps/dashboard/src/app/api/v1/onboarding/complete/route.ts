@@ -6,6 +6,7 @@ import {
   createSessionCookieOptions,
   getUserOnboardingState,
   mergeUserOnboardingState,
+  extractEffectivePermissions,
   ONBOARDING_STATUS,
 } from "@suite/auth";
 import { isProduction } from "@/lib/env";
@@ -39,7 +40,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           include: { organization: true },
         },
         branchRoles: {
-          include: { branch: true },
+          include: {
+            branch: true,
+            role: {
+              include: {
+                permissions: {
+                  include: {
+                    permission: true,
+                  },
+                },
+              },
+            },
+          },
         },
       },
     });
@@ -118,7 +130,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     });
 
     const activeOrg = dbUser.organizations.find((o) => o.organizationId === orgId)?.organization;
-    const activeBranch = dbUser.branchRoles.find((b) => b.organizationId === orgId)?.branch;
+    const activeBranchRole = dbUser.branchRoles.find((b) => b.organizationId === orgId);
+    const activeBranch = activeBranchRole?.branch;
+    const activeRole = activeBranchRole?.role;
+
+    // Dynamically resolve permissions from database relations
+    const extractedPermissions = extractEffectivePermissions(dbUser.branchRoles || [], {
+      branchId: activeBranch?.id,
+    });
+    const userPermissions =
+      extractedPermissions.length > 0
+        ? extractedPermissions
+        : (session.permissions || []);
 
     // Issue updated session token reflecting COMPLETED onboarding status
     const updatedPayload = encodeSessionPayload({
@@ -129,8 +152,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       organizationName: activeOrg?.name || session.organizationName,
       activeBranchId: activeBranch?.id || session.activeBranchId,
       activeBranchName: activeBranch?.name || session.activeBranchName,
-      role: session.role || "owner",
-      permissions: session.permissions,
+      role: activeRole?.name || session.role,
+      permissions: userPermissions,
       themePreference: session.themePreference || "system",
       timestamp: Date.now(),
       onboardingStatus: "COMPLETED",

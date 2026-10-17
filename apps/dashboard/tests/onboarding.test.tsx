@@ -66,6 +66,19 @@ vi.mock("@suite/db", () => {
       findUnique: vi.fn(),
       update: vi.fn(),
     },
+    permission: {
+      findMany: vi.fn().mockResolvedValue([
+        { id: "perm-1", action: "settings:read" },
+        { id: "perm-2", action: "settings:organization:view" },
+      ]),
+    },
+    rolePermission: {
+      createMany: vi.fn().mockResolvedValue({ count: 2 }),
+      findMany: vi.fn().mockResolvedValue([
+        { roleId: "role-1", permission: { action: "settings:read" } },
+        { roleId: "role-1", permission: { action: "settings:organization:view" } },
+      ]),
+    },
     $transaction: vi.fn(async (cb) => {
       return cb(mockPrisma);
     }),

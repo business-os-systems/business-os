@@ -213,7 +213,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         },
       });
 
-      // 4. Provision system "owner" role
+      // 4. Provision system "owner" role and seed canonical capabilities
       let ownerRole = await tx.role.findFirst({
         where: { organizationId: org.id, slug: "owner" },
       });
@@ -226,6 +226,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             isSystem: true,
           },
         });
+
+        if (tx.permission && tx.rolePermission) {
+          const allPermissions = await tx.permission.findMany({ select: { id: true } });
+          if (allPermissions.length > 0) {
+            await tx.rolePermission.createMany({
+              data: allPermissions.map((p) => ({
+                roleId: ownerRole!.id,
+                permissionId: p.id,
+              })),
+              skipDuplicates: true,
+            });
+          }
+        }
       }
 
       // 5. Grant organization-wide master owner role (branchId: null)
@@ -248,7 +261,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         });
       }
 
-      // 6. Advance onboarding state in user metadata
+      // 6. Query effective capabilities dynamically from DB relations
+      let userPermissions: string[] = [];
+      if (tx.rolePermission) {
+        const rolePerms = await tx.rolePermission.findMany({
+          where: { roleId: ownerRole.id },
+          include: { permission: true },
+        });
+        userPermissions = rolePerms
+          .map((rp: { permission?: { action?: string } }) => rp.permission?.action)
+          .filter((action: string | undefined): action is string => typeof action === "string");
+      }
+
+      // 7. Advance onboarding state in user metadata
       const dbUser = await tx.user.findUnique({
         where: { id: session.userId },
         select: { metadata: true, email: true, name: true },
@@ -267,7 +292,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         },
       });
 
-      return { org, branch, dbUser };
+      return { org, branch, dbUser, ownerRole, userPermissions };
     });
 
     // Re-issue updated session token with new organization context
@@ -279,7 +304,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       organizationName: result.org.name,
       activeBranchId: result.branch.id,
       activeBranchName: result.branch.name,
-      role: "owner",
+      role: result.ownerRole.name,
+      permissions: result.userPermissions,
       themePreference: session.themePreference || "system",
       timestamp: Date.now(),
       onboardingStatus: "IN_PROGRESS",

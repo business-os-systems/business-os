@@ -34,15 +34,22 @@ export interface TenantBranchContext {
 }
 
 /**
- * Active operator identity in navigation shell (ISP).
+ * Operator Identity segment (ISP & SRP).
+ * Strictly enforces mandatory presence of user credentials and permissions for active sessions.
  */
-export interface TenantUserProfile {
-  userName?: string;
-  userEmail?: string;
-  userEmailVerified?: boolean;
+export interface OperatorIdentityContext {
+  userName: string;
+  userEmail: string;
+  userEmailVerified: boolean;
+  userPermissions: readonly string[];
   userRole?: string;
   userInitials?: string;
 }
+
+/**
+ * Backward compatibility alias during progressive migration.
+ */
+export type TenantUserProfile = OperatorIdentityContext;
 
 /**
  * Composite Tenant context for workspace navigation shell.
@@ -50,4 +57,4 @@ export interface TenantUserProfile {
 export interface TenantContext
   extends TenantOrganizationContext,
     TenantBranchContext,
-    TenantUserProfile {}
+    OperatorIdentityContext {}

@@ -33,11 +33,11 @@ export const PERMISSIONS = {
     UNINSTALL: "apps:uninstall",
   },
 
-  // Tenant Settings & Governance
+  // Tenant Settings & Governance (Mapped to canonical platform core database actions)
   SETTINGS: {
-    ALL: "settings:*",
-    READ: "settings:read",
-    MANAGE: "settings:manage",
+    ALL: "core:*",
+    READ: "core:organization:read",
+    MANAGE: "core:organization:update",
     ORGANIZATION_VIEW: "core:organization:read",
     ORGANIZATION_MANAGE: "core:organization:update",
     BRANCHES_VIEW: "core:branches:read",

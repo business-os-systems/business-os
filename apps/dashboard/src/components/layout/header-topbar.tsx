@@ -10,7 +10,7 @@ import { isBrowser } from "@/lib/env";
 import { WorkspaceSwitcher } from "./workspace-switcher";
 
 interface HeaderTopbarProps {
-  tenant?: TenantContext;
+  tenant?: Partial<TenantContext>;
   onToggleSidebar?: () => void;
 }
 

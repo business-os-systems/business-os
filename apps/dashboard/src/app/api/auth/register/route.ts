@@ -131,7 +131,6 @@ export async function POST(request: Request) {
       userId: newUser.id,
       email: newUser.email,
       userName: newUser.name,
-      role: "owner",
       permissions: [],
       themePreference: "system",
       timestamp: Date.now(),
