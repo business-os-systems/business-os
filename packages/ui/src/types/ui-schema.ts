@@ -1,20 +1,35 @@
 import type React from "react";
 
 // ==========================================
-// 1. NAVIGATION SCHEMA CONTRACTS
+// 1. NAVIGATION SCHEMA CONTRACTS (ISP)
 // ==========================================
 
-export interface NavItemConfig {
+export interface NavItemIdentity {
   id: string;
   name: string;
   href: string;
   icon: string;
+}
+
+export interface NavItemPresentation {
   badge?: string;
   description?: string;
-  permission?: string;
   isBottomPinned?: boolean;
+}
+
+export interface NavItemAuthorization {
+  permission?: string;
+}
+
+export interface NavItemHierarchy {
   children?: NavItemConfig[];
 }
+
+export interface NavItemConfig
+  extends NavItemIdentity,
+    NavItemPresentation,
+    NavItemAuthorization,
+    NavItemHierarchy {}
 
 export interface NavigationConfig {
   topItems: NavItemConfig[];
@@ -22,13 +37,12 @@ export interface NavigationConfig {
 }
 
 // ==========================================
-// 2. FORM & CARD SCHEMA CONTRACTS
+// 2. FORM FIELD SCHEMA CONTRACTS (ISP & SRP)
 // ==========================================
 
-export type FormFieldType =
+export type StandardFormFieldType =
   | "text"
   | "number"
-  | "select"
   | "switch"
   | "textarea"
   | "password"
@@ -39,104 +53,222 @@ export interface FormFieldOption {
   value: string;
 }
 
-export interface FormFieldConfig<T = Record<string, unknown>> {
+export interface FieldIdentity<T extends object> {
   name: keyof T & string;
   label: string;
-  type: FormFieldType;
-  description?: string;
+}
+
+export interface FieldPresentation {
   placeholder?: string;
-  options?: FormFieldOption[];
+  description?: string;
+}
+
+export interface FieldLayout {
+  colSpan?: 1 | 2;
+}
+
+export interface FieldConstraints<T extends object> {
+  required?: boolean;
   defaultValue?: unknown;
   disabled?: boolean | ((values: T) => boolean);
-  required?: boolean;
-  colSpan?: 1 | 2;
+}
+
+export interface FieldAuthorization {
   permission?: string;
 }
 
-export interface FormCardSection<T = Record<string, unknown>> {
+export interface FieldSelectOptions {
+  options: FormFieldOption[];
+}
+
+export interface BaseFormFieldConfig<T extends object>
+  extends FieldIdentity<T>,
+    FieldPresentation,
+    FieldLayout,
+    FieldConstraints<T>,
+    FieldAuthorization {}
+
+export interface StandardFormFieldConfig<T extends object = Record<string, unknown>>
+  extends BaseFormFieldConfig<T> {
+  type: StandardFormFieldType;
+}
+
+export interface SelectFormFieldConfig<T extends object = Record<string, unknown>>
+  extends BaseFormFieldConfig<T>,
+    FieldSelectOptions {
+  type: "select";
+}
+
+export type FormFieldType = StandardFormFieldType | "select";
+
+export type FormFieldConfig<T extends object = Record<string, unknown>> =
+  | StandardFormFieldConfig<T>
+  | SelectFormFieldConfig<T>;
+
+// ==========================================
+// 3. FORM CARD SECTION & CONFIG CONTRACTS
+// ==========================================
+
+export interface SectionIdentity {
   id: string;
   title: string;
   description?: string;
-  fields: FormFieldConfig<T>[];
-  isDangerZone?: boolean;
-  dangerConfirmationSlug?: string;
+}
+
+export interface SectionAuthorization {
   permission?: string;
 }
 
-export interface FormConfig<T = Record<string, unknown>> {
+export interface StandardFormSection<T extends object = Record<string, unknown>>
+  extends SectionIdentity,
+    SectionAuthorization {
+  isDangerZone?: false;
+  dangerConfirmationSlug?: never;
+  fields: FormFieldConfig<T>[];
+}
+
+export interface DangerZoneFormSection<T extends object = Record<string, unknown>>
+  extends SectionIdentity,
+    SectionAuthorization {
+  isDangerZone: true;
+  dangerConfirmationSlug: string;
+  fields?: FormFieldConfig<T>[];
+}
+
+export type FormCardSection<T extends object = Record<string, unknown>> =
+  | StandardFormSection<T>
+  | DangerZoneFormSection<T>;
+
+export interface FormStickyActionBarConfig {
+  saveLabel?: string;
+  discardLabel?: string;
+  showDiscard?: boolean;
+}
+
+export interface FormConfig<T extends object = Record<string, unknown>> {
   id: string;
   title: string;
   description?: string;
   sections: FormCardSection<T>[];
-  stickyActionBar?: {
-    saveLabel?: string;
-    discardLabel?: string;
-    showDiscard?: boolean;
-  };
+  stickyActionBar?: FormStickyActionBarConfig;
 }
 
 // ==========================================
-// 3. TABLE SCHEMA CONTRACTS
+// 4. TABLE SCHEMA CONTRACTS (ISP)
 // ==========================================
 
-export interface TableColumnConfig<T = Record<string, unknown>> {
+export interface ColumnIdentity<T extends object> {
   key: keyof T & string;
   header: string;
+}
+
+export interface ColumnPresentation {
   width?: string;
   align?: "left" | "center" | "right";
-  render?: (value: unknown, row: T) => React.ReactNode;
+}
+
+export interface ColumnSorting {
   sortable?: boolean;
 }
 
-export interface TableActionConfig<T = Record<string, unknown>> {
+export interface ColumnCustomRenderer<T extends object> {
+  render?: (value: unknown, row: T) => React.ReactNode;
+}
+
+export interface TableColumnConfig<T extends object = Record<string, unknown>>
+  extends ColumnIdentity<T>,
+    ColumnPresentation,
+    ColumnSorting,
+    ColumnCustomRenderer<T> {}
+
+export interface TableActionIdentity {
   id: string;
   label: string;
   icon?: string;
+}
+
+export interface TableActionPresentation {
   variant?: "default" | "destructive" | "outline" | "ghost";
+}
+
+export interface TableActionAuthorization {
   permission?: string;
+}
+
+export interface TableActionHandler<T extends object> {
+  onClick: (row: T) => void | Promise<void>;
+}
+
+export interface TableActionVerification<T extends object> {
   requiresConfirmation?: boolean;
   confirmationTitle?: string;
   confirmationMessage?: string;
   dangerVerificationSlug?: (row: T) => string;
-  onClick: (row: T) => void | Promise<void>;
 }
 
-export interface TableConfig<T = Record<string, unknown>> {
+export interface TableActionConfig<T extends object = Record<string, unknown>>
+  extends TableActionIdentity,
+    TableActionPresentation,
+    TableActionAuthorization,
+    TableActionHandler<T>,
+    TableActionVerification<T> {}
+
+export interface TableEmptyStateConfig {
+  title: string;
+  description: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}
+
+export interface TablePaginationConfig {
+  pageSize: number;
+}
+
+export interface TableConfig<T extends object = Record<string, unknown>> {
   id: string;
   columns: TableColumnConfig<T>[];
   actions?: TableActionConfig<T>[];
-  emptyState: {
-    title: string;
-    description: string;
-    actionLabel?: string;
-    onAction?: () => void;
-  };
-  pagination?: {
-    pageSize: number;
-  };
+  emptyState: TableEmptyStateConfig;
+  pagination?: TablePaginationConfig;
 }
 
 // ==========================================
-// 4. SETTINGS HUB CONFIG CONTRACTS
+// 5. SETTINGS HUB CONFIG CONTRACTS (ISP)
 // ==========================================
 
-export interface SettingsSubTabConfig {
+export interface SubTabIdentity {
   id: string;
   label: string;
   href: string;
+}
+
+export interface SubTabAuthorization {
   permission?: string;
   type?: "form" | "table" | "custom";
 }
 
-export interface SettingsCategoryConfig {
+export interface SettingsSubTabConfig extends SubTabIdentity, SubTabAuthorization {}
+
+export interface CategoryIdentity {
   id: string;
   label: string;
   description: string;
   href: string;
   icon: string;
+}
+
+export interface CategoryAuthorization {
   permission?: string;
+}
+
+export interface CategoryHierarchy {
   subTabs?: SettingsSubTabConfig[];
 }
+
+export interface SettingsCategoryConfig
+  extends CategoryIdentity,
+    CategoryAuthorization,
+    CategoryHierarchy {}
 
 export interface SettingsHubConfig {
   categories: SettingsCategoryConfig[];
