@@ -9,3 +9,4 @@ export * from "./components/badge.js";
 export * from "./components/checkbox.js";
 export * from "./tokens.js";
 export * from "./icons/index.js";
+export * from "./types/ui-schema.js";

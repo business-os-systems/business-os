@@ -64,7 +64,9 @@ export {
 // Canonical Domain & Permission Constants
 export {
   PERMISSIONS,
+  SETTINGS_PERMISSIONS,
   type PermissionCode,
+  type SettingsPermissionCode,
   AUDIT_EVENT_TYPES,
   type AuditEventType,
 } from "./constants/index.js";

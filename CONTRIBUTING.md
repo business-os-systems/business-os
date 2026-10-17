@@ -234,6 +234,7 @@ You are **STRICTLY PROHIBITED** from:
 - ❌ Writing undocumented API endpoints: Every HTTP route **MUST** be registered with `@hono/zod-openapi`'s `createRoute()` with schemas for params, request body, and RFC 7807 problem details responses.
 - ❌ Exposing `/doc` and `/openapi.json` without environment guards: Internal documentation must be protected or restricted in production.
 - ❌ Consuming undeclared or phantom environment variables in code without pre-declaring them in `.env` and `.env.example` templates (Env-First Pre-Declaration Law).
+- ❌ Hardcoding UI presentation strings, repetitive JSX input blocks, or static column definitions directly in component JSX/TSX (Config-Based UI Primacy Law). All navigation sidebars, dashboard layouts, settings tabs, card sections, forms, and data tables MUST be strictly declarative and driven by strongly typed configuration schemas (`*.config.ts`) and generic rendering engines (`<ConfigFormRenderer />`, `<ConfigTableRenderer />`). Freeform visual authoring canvases (such as Website Builder Studio Canvas) are the sole exception. Existing sidebars and dashboard views must be progressively migrated to this config-driven standard.
 
 ---
 

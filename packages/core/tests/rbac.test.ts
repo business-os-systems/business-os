@@ -3,6 +3,7 @@ import {
   ForbiddenError,
   SUPERUSER_WILDCARD,
   PERMISSIONS,
+  SETTINGS_PERMISSIONS,
   evaluateBranchAccess,
   hasAllPermissions,
   hasAnyPermission,
@@ -136,6 +137,23 @@ describe("@suite/core - Hierarchical RBAC Permission Evaluator", () => {
       expect(hasPermission(userPerms, PERMISSIONS.APPS.INSTALL)).toBe(true);
       expect(hasPermission(userPerms, PERMISSIONS.LODGING_PMS.RESERVATIONS_READ)).toBe(true);
       expect(hasPermission(userPerms, PERMISSIONS.RESTAURANT_POS.ORDERS_CREATE)).toBe(false);
+    });
+
+    it("evaluates SETTINGS_PERMISSIONS codes seamlessly", () => {
+      expect(SETTINGS_PERMISSIONS.ORGANIZATION_VIEW).toBe("core:organization:read");
+      expect(SETTINGS_PERMISSIONS.ORGANIZATION_MANAGE).toBe("core:organization:update");
+      expect(SETTINGS_PERMISSIONS.BRANCHES_VIEW).toBe("core:branches:read");
+      expect(SETTINGS_PERMISSIONS.BRANCHES_MANAGE).toBe("core:branches:write");
+      expect(SETTINGS_PERMISSIONS.MEMBERS_VIEW).toBe("users:read");
+      expect(SETTINGS_PERMISSIONS.MEMBERS_INVITE).toBe("users:invite");
+      expect(SETTINGS_PERMISSIONS.MEMBERS_MANAGE).toBe("users:manage");
+      expect(SETTINGS_PERMISSIONS.ROLES_VIEW).toBe("core:roles:read");
+      expect(SETTINGS_PERMISSIONS.ROLES_MANAGE).toBe("core:roles:manage");
+
+      const managerPerms = [SETTINGS_PERMISSIONS.ORGANIZATION_VIEW, SETTINGS_PERMISSIONS.MEMBERS_INVITE];
+      expect(hasPermission(managerPerms, SETTINGS_PERMISSIONS.ORGANIZATION_VIEW)).toBe(true);
+      expect(hasPermission(managerPerms, SETTINGS_PERMISSIONS.MEMBERS_INVITE)).toBe(true);
+      expect(hasPermission(managerPerms, SETTINGS_PERMISSIONS.ROLES_MANAGE)).toBe(false);
     });
   });
 });
