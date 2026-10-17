@@ -170,6 +170,13 @@ You are **STRICTLY PROHIBITED** from:
   Under the Boy Scout Rule, cleanup (fixing typos, improving variable names, typing fixes) MUST be strictly bounded to files in the active ticket's blast radius. Sweeping refactors across unrelated modules or packages without an explicit ticket are strictly forbidden.
 - ❌ **Undeclared & Phantom Environment Variables (Env-First Pre-Declaration Law):**
   AI agents and engineers are **STRICTLY FORBIDDEN** from consuming, accessing, or introducing any environment variable (`process.env.*`, `import.meta.env.*`) in runtime code, configuration, scripts, or test utilities without **FIRST** pre-declaring and documenting it in the root and package-level `.env.example` templates and local `.env` files with safe, intention-revealing default or placeholder values. Referencing undeclared, undocumented, or phantom environment variables is strictly prohibited.
+- ❌ **Hardcoded UI Presentation & Repetitive Markup (Config-Based UI Primacy Law):**
+  Except for freeform visual authoring canvas engines (such as the Website Builder Studio Canvas), all user interface presentation throughout Business OS—including navigation sidebars, dashboard layouts, settings tabs, card sections, forms, and data tables—MUST be strictly declarative and driven by strongly-typed configuration schemas (`*.config.ts`).
+  1. AI agents and developers are **STRICTLY PROHIBITED** from hardcoding raw UI presentation strings, repetitive JSX input blocks, or static column definitions directly inside component JSX/TSX.
+  2. All form fields, input types, labels, descriptions, placeholders, default values, validation rules (Zod), and capability permission guards MUST be codified in dedicated configuration schemas and rendered dynamically via reusable generic schema engines (`<ConfigFormRenderer />`, `<ConfigTableRenderer />`) consuming standardized `@suite/ui` primitives.
+  3. Navigation hierarchies (including the primary installed apps sidebar and the settings sub-navigation sidebar) MUST be generated from typed navigation configuration schemas where each node declares its icon, route, label, badge, and required RBAC permission.
+  4. Data tables MUST derive columns, header labels, cell formatters, and row action triggers from typed table configuration schemas.
+  5. The primary dashboard sidebar and all existing dashboard views MUST be progressively migrated to this config-driven standard.
 
 ---
 

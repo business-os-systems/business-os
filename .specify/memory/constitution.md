@@ -1,10 +1,10 @@
 <!--
 SYNC IMPACT REPORT
-- Version change: 1.4.0 -> 1.4.1 (formalization of Env-First Pre-Declaration Law in Principle XII.2)
+- Version change: 1.4.1 -> 1.5.0 (Addition of Principle XIII: Declarative Schema-Driven & Config-Based UI Presentation Law)
 - List of modified principles:
-  - Principle XII.2: Added explicit Env-First Pre-Declaration Law requiring all environment variables to be pre-declared and documented in .env.example and .env files before code reference.
+  - Principle XIII: Codified mandatory Declarative Schema-Driven & Config-Based UI Presentation Law across all non-canvas UI surfaces (Navigation, Settings, Forms, Tables, Dashboards).
 - Follow-up TODOs:
-  - None.
+  - Refactor dashboard primary sidebar and views to adhere to config-based UI schemas.
 -->
 
 # Business OS Constitution
@@ -121,6 +121,15 @@ Every engineer and AI agent contributing to Business OS MUST write code that is 
    - Engineers and AI agents MUST monitor and proactively remediate code smells during review: Rigidity, Fragility, Immobility, Needless Repetition, and Opacity.
 *Rationale: Code maintainability and cognitive clarity directly govern velocity and bug prevention in enterprise systems. Clean, disciplined code with minimal abstractions, explicit boundaries, and focused functions ensures long-term system survivability.*
 
+### XIII. Declarative Schema-Driven & Config-Based UI Presentation Law
+Except for freeform visual authoring canvas engines (such as the Website Builder Studio Canvas), all user interface presentation throughout Business OS—including navigation hierarchies, sidebars, dashboard views, settings hubs, data tables, card sections, and forms—MUST be strictly declarative and driven by strongly-typed configuration schemas (`*.config.ts`).
+1. **Zero Hardcoded Presentation Markup:** Engineers and AI agents are STRICTLY FORBIDDEN from hardcoding raw UI presentation strings, repetitive JSX input blocks, or static column definitions directly inside component JSX/TSX.
+2. **Schema-Driven Forms & Cards:** All form inputs, card sections, input types, labels, descriptions, placeholders, default values, validation rules (Zod), and capability permission guards MUST be codified in dedicated configuration schemas and rendered dynamically via reusable generic schema engines (`<ConfigFormRenderer />`) consuming standardized `@suite/ui` primitives.
+3. **Declarative Navigation Hierarchies:** Navigation trees (including the primary installed apps sidebar and the settings sub-navigation sidebar) MUST be generated from typed navigation configuration schemas where each node declares its icon, route, label, badge, and required RBAC permission.
+4. **Declarative Data Tables:** Data tables MUST derive columns, header labels, cell formatters, and row action triggers from typed table configuration schemas (`<ConfigTableRenderer />`).
+5. **Dashboard & Sidebar Alignment:** All existing and future dashboard views and navigation sidebars MUST adhere to this config-driven standard, ensuring complete layout consistency and internationalization readiness across the entire operating system.
+*Rationale: Config-driven presentation eliminates string duplication, ensures 100% design system token uniformity, enables effortless internationalization (i18n), allows modular apps to dynamically register new settings and views without editing core templates, and centralizes declarative permission gating.*
+
 ## Architectural Constraints & Technical Standards
 
 ### 1. Monorepo Orchestration & Workspace Topology
@@ -203,4 +212,4 @@ The Constitution version follows strict Semantic Versioning (`MAJOR.MINOR.PATCH`
 ### Compliance Review Expectations
 Every code contribution, pull request review, and architectural plan MUST explicitly verify compliance with this Constitution. Architectural violations (such as leaky multi-tenancy, cross-module tight coupling, core schema mutation, hardcoded mock data, off-token styling, or unapproved PR merges) are non-negotiable blockers that mandate immediate PR rejection.
 
-**Version**: 1.4.1 | **Ratified**: 2026-10-15 | **Last Amended**: 2026-10-16
+**Version**: 1.5.0 | **Ratified**: 2026-10-15 | **Last Amended**: 2026-10-17

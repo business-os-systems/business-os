@@ -38,6 +38,15 @@ export const PERMISSIONS = {
     ALL: "settings:*",
     READ: "settings:read",
     MANAGE: "settings:manage",
+    ORGANIZATION_VIEW: "core:organization:read",
+    ORGANIZATION_MANAGE: "core:organization:update",
+    BRANCHES_VIEW: "core:branches:read",
+    BRANCHES_MANAGE: "core:branches:write",
+    MEMBERS_VIEW: "users:read",
+    MEMBERS_INVITE: "users:invite",
+    MEMBERS_MANAGE: "users:manage",
+    ROLES_VIEW: "core:roles:read",
+    ROLES_MANAGE: "core:roles:manage",
   },
 
   // Team & User Management
@@ -106,3 +115,7 @@ export type PermissionCode =
   | (typeof PERMISSIONS.LODGING_PMS)[keyof typeof PERMISSIONS.LODGING_PMS]
   | (typeof PERMISSIONS.RESTAURANT_POS)[keyof typeof PERMISSIONS.RESTAURANT_POS]
   | (typeof PERMISSIONS.STOCK_INVENTORY)[keyof typeof PERMISSIONS.STOCK_INVENTORY];
+
+export const SETTINGS_PERMISSIONS = PERMISSIONS.SETTINGS;
+export type SettingsPermissionCode =
+  (typeof SETTINGS_PERMISSIONS)[keyof typeof SETTINGS_PERMISSIONS];
