@@ -1,4 +1,5 @@
 import React from "react";
+import { CheckIcon } from "@suite/ui/icons";
 
 export interface OnboardingStepperProps {
   currentStep: 1 | 2 | 3;
@@ -30,23 +31,12 @@ export function OnboardingStepper({ currentStep }: OnboardingStepperProps) {
                 }`}
               >
                 {isDone ? (
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2.5}
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
+                  <CheckIcon size={16} />
                 ) : (
                   `0${item.step}`
                 )}
               </div>
+
               <span
                 className={`hidden sm:inline text-xs font-medium tracking-tight ${
                   isActive

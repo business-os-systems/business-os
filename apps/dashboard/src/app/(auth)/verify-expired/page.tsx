@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { AuthCard } from "@/components/auth/auth-card";
-import { Button } from "@suite/ui";
+import { Button, Input, Label } from "@suite/ui";
+import { AlertTriangleIcon } from "@suite/ui/icons";
 import { isBrowser } from "@/lib/env";
 
 export default function VerifyExpiredPage() {
@@ -80,20 +81,9 @@ export default function VerifyExpiredPage() {
     >
       <div className="flex flex-col gap-4 text-center">
         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-status-warning/15 text-status-warning border border-status-warning/30">
-          <svg
-            className="h-6 w-6 text-status-warning"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth="2"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-            />
-          </svg>
+          <AlertTriangleIcon size={24} className="text-status-warning" />
         </div>
+
 
         <p className="text-xs text-text-muted leading-relaxed">
           For your security, verification links expire after 24 hours. Request a new link below to verify your email and unlock marketplace app installation.
@@ -113,56 +103,34 @@ export default function VerifyExpiredPage() {
 
         <form onSubmit={handleResend} className="flex flex-col gap-3 mt-1">
           <div className="flex flex-col text-left gap-1.5">
-            <label
+            <Label
               htmlFor="verify-email-input"
-              className="text-xs font-medium text-text"
+              required
             >
               Account Email
-            </label>
-            <input
+            </Label>
+            <Input
               id="verify-email-input"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="name@company.com"
               required
-              className="w-full px-3 py-2 rounded-lg border border-border bg-surface text-text text-sm placeholder:text-text-muted focus:outline-hidden focus:ring-2 focus:ring-action/20 focus:border-action transition-all"
             />
           </div>
 
           <Button
             type="submit"
+            variant="primary"
+            fullWidth
             disabled={isSubmitting || cooldown > 0 || !email}
-            className="w-full bg-action hover:bg-action-hover text-white font-semibold py-2.5 rounded-lg text-sm transition-all disabled:opacity-50"
+            isLoading={isSubmitting}
           >
-            {isSubmitting ? (
-              <span className="flex items-center justify-center gap-2">
-                <svg
-                  className="animate-spin h-4 w-4 text-white"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                  />
-                </svg>
-                Sending...
-              </span>
-            ) : cooldown > 0 ? (
-              `Resend available in ${cooldown}s`
-            ) : (
-              "Resend Verification Email"
-            )}
+            {isSubmitting
+              ? "Sending..."
+              : cooldown > 0
+              ? `Resend available in ${cooldown}s`
+              : "Resend Verification Email"}
           </Button>
         </form>
 

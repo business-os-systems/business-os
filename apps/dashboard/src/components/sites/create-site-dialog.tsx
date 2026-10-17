@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { z } from "zod";
-import { Button, Input } from "@suite/ui";
+import { Button, Input, Label } from "@suite/ui";
 
 export const CreateSiteSchema = z.object({
   name: z.string().min(2, "Site name must be at least 2 characters").max(60),
@@ -81,10 +81,11 @@ export function CreateSiteDialog({ isOpen, onClose, onSubmit }: CreateSiteDialog
 
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-text mb-1">
-              Website Name *
-            </label>
+            <Label htmlFor="create-site-name" required className="mb-1">
+              Website Name
+            </Label>
             <Input
+              id="create-site-name"
               value={name}
               onChange={(e) => {
                 setName(e.target.value);
@@ -106,15 +107,16 @@ export function CreateSiteDialog({ isOpen, onClose, onSubmit }: CreateSiteDialog
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-text mb-1">
-              Platform Subdomain *
-            </label>
+            <Label htmlFor="create-site-subdomain" required className="mb-1">
+              Platform Subdomain
+            </Label>
             <div className="flex items-center rounded-lg border border-border-strong bg-surface overflow-hidden focus-within:ring-2 focus-within:ring-focus-ring">
-              <input
+              <Input
+                id="create-site-subdomain"
                 value={subdomain}
                 onChange={(e) => setSubdomain(e.target.value.toLowerCase())}
                 placeholder="acme-corp"
-                className="w-full px-3 py-2 text-sm text-text bg-transparent outline-none"
+                className="w-full border-0 bg-transparent rounded-none focus:ring-0 focus:outline-none shadow-none"
               />
               <span className="bg-surface-muted px-3 py-2 text-xs font-mono text-text-muted border-l border-border">
                 .business-os.site
@@ -126,10 +128,11 @@ export function CreateSiteDialog({ isOpen, onClose, onSubmit }: CreateSiteDialog
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-text mb-1">
+            <Label htmlFor="create-site-custom-domain" className="mb-1">
               Custom Domain (Optional)
-            </label>
+            </Label>
             <Input
+              id="create-site-custom-domain"
               value={customDomain}
               onChange={(e) => setCustomDomain(e.target.value)}
               placeholder="e.g. riverside.com"
@@ -144,7 +147,7 @@ export function CreateSiteDialog({ isOpen, onClose, onSubmit }: CreateSiteDialog
             <Button type="button" variant="outline" size="sm" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" variant="default" size="sm">
+            <Button type="submit" variant="primary" size="sm">
               Create Website
             </Button>
           </div>

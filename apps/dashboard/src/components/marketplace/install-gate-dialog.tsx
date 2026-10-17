@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Button } from "@suite/ui";
+import { AlertTriangleIcon } from "@suite/ui/icons";
 
 export interface InstallGateDialogProps {
   isOpen: boolean;
@@ -82,20 +83,9 @@ export function InstallGateDialog({
       <div className="w-full max-w-[400px] rounded-2xl border border-border bg-surface p-6 shadow-2xl flex flex-col gap-4 text-center">
         {/* Warning Icon Badge */}
         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-warning/15 text-warning border border-warning/30">
-          <svg
-            className="h-6 w-6 text-warning"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth="2"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-            />
-          </svg>
+          <AlertTriangleIcon size={24} className="text-warning" />
         </div>
+
 
         {/* Headline */}
         <div className="flex flex-col gap-1.5">
@@ -126,39 +116,20 @@ export function InstallGateDialog({
         <div className="flex flex-col gap-2 pt-2 border-t border-border-hairline">
           <Button
             type="button"
+            variant="primary"
+            fullWidth
             disabled={isSubmitting || cooldown > 0}
+            isLoading={isSubmitting}
             onClick={handleResend}
-            className="w-full bg-action hover:bg-action-hover text-white font-semibold py-2.5 rounded-lg text-xs transition-all disabled:opacity-50"
+            className="py-2.5 text-xs font-semibold"
           >
-            {isSubmitting ? (
-              <span className="flex items-center justify-center gap-2">
-                <svg
-                  className="animate-spin h-3.5 w-3.5 text-white"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                  />
-                </svg>
-                Sending...
-              </span>
-            ) : cooldown > 0 ? (
-              `Resend available in ${cooldown}s`
-            ) : (
-              "Resend verification email"
-            )}
+            {isSubmitting
+              ? "Sending..."
+              : cooldown > 0
+              ? `Resend available in ${cooldown}s`
+              : "Resend verification email"}
           </Button>
+
 
           <Button
             type="button"

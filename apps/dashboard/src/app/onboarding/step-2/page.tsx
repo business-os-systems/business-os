@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Button, Checkbox } from "@suite/ui";
+import { AlertTriangleIcon, ArrowLeftIcon, ArrowRightIcon } from "@suite/ui/icons";
 import { OnboardingStepper } from "@/components/onboarding/onboarding-stepper";
 
 export interface CatalogApp {
@@ -215,12 +217,11 @@ export default function OnboardingStep2Page() {
 
       {formError && (
         <div className="mb-6 p-3.5 bg-danger/10 border border-danger/30 text-danger rounded-lg text-xs font-medium flex items-center gap-2">
-          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
+          <AlertTriangleIcon size={16} className="shrink-0" />
           <span>{formError}</span>
         </div>
       )}
+
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Section 1: Recommended Apps */}
@@ -268,11 +269,10 @@ export default function OnboardingStep2Page() {
                             </span>
                           </div>
                         </div>
-                        <input
-                          type="checkbox"
+                        <Checkbox
                           checked={isSelected}
-                          onChange={() => {}} // handled by parent div click
-                          className="h-4 w-4 mt-1 rounded border-border text-action focus:ring-action"
+                          readOnly
+                          className="mt-1"
                         />
                       </div>
                       <p className="text-xs text-text-secondary line-clamp-2">
@@ -327,11 +327,10 @@ export default function OnboardingStep2Page() {
                             </span>
                           </div>
                         </div>
-                        <input
-                          type="checkbox"
+                        <Checkbox
                           checked={isSelected}
-                          onChange={() => {}}
-                          className="h-4 w-4 mt-1 rounded border-border text-action focus:ring-action"
+                          readOnly
+                          className="mt-1"
                         />
                       </div>
                       <p className="text-xs text-text-secondary line-clamp-2">
@@ -347,39 +346,34 @@ export default function OnboardingStep2Page() {
 
         {/* Navigation & Submit Actions */}
         <div className="pt-4 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-3">
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="sm"
             onClick={() => router.push("/onboarding/step-1")}
-            className="w-full sm:w-auto px-4 py-2.5 text-xs font-semibold text-text-secondary hover:text-text rounded-lg border border-border hover:bg-surface-muted transition-colors flex items-center justify-center gap-2 group"
+            className="w-full sm:w-auto"
+            startIcon={
+              <ArrowLeftIcon size={16} className="shrink-0 transition-transform group-hover:-translate-x-0.5" />
+            }
           >
-            <svg className="w-4 h-4 shrink-0 transition-transform group-hover:-translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            <span>Back to Organization</span>
-          </button>
+            Back to Organization
+          </Button>
 
-          <button
+          <Button
             type="submit"
+            variant="primary"
             disabled={isPending || selectedApps.length === 0}
-            className="w-full sm:w-auto px-6 py-2.5 bg-action text-on-action rounded-lg text-sm font-semibold hover:opacity-95 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none transition-all duration-fast flex items-center justify-center gap-2 shadow-xs group"
+            isLoading={isPending}
+            className="w-full sm:w-auto px-6 py-2.5"
+            endIcon={
+              !isPending && (
+                <ArrowRightIcon size={16} className="shrink-0 transition-transform group-hover:translate-x-0.5" />
+              )
+            }
           >
-            {isPending ? (
-              <>
-                <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                </svg>
-                <span>Saving selection...</span>
-              </>
-            ) : (
-              <span className="flex items-center gap-2">
-                <span>Continue to Workspace Setup ({selectedApps.length} apps)</span>
-                <svg className="w-4 h-4 shrink-0 transition-transform group-hover:translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                </svg>
-              </span>
-            )}
-          </button>
+
+            {isPending ? "Saving selection..." : `Continue to Workspace Setup (${selectedApps.length} apps)`}
+          </Button>
         </div>
       </form>
     </div>

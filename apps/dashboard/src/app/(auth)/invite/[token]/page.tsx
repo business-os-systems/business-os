@@ -3,6 +3,7 @@
 import React, { useState, useTransition } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import { Button } from "@suite/ui";
 import { AuthCard } from "@/components/auth/auth-card";
 
 export default function AcceptInvitationPage() {
@@ -76,24 +77,16 @@ export default function AcceptInvitationPage() {
           </p>
         </div>
 
-        <button
+        <Button
           type="button"
+          variant="primary"
+          fullWidth
           onClick={handleAccept}
-          disabled={isPending || !token}
-          className="w-full py-2.5 px-4 bg-action text-on-action rounded-lg text-sm font-semibold hover:opacity-95 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none transition-all duration-fast flex items-center justify-center gap-2 shadow-xs"
+          isLoading={isPending}
+          disabled={!token}
         >
-          {isPending ? (
-            <>
-              <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-              </svg>
-              <span>Joining workspace...</span>
-            </>
-          ) : (
-            <span>Accept Invitation & Join Workspace →</span>
-          )}
-        </button>
+          {isPending ? "Joining workspace..." : "Accept Invitation & Join Workspace →"}
+        </Button>
       </div>
     </AuthCard>
   );

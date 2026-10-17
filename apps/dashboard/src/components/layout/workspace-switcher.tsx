@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { Badge } from "@suite/ui";
+import { Badge, Button, Spinner } from "@suite/ui";
 import { ChevronDownIcon, CheckIcon } from "@suite/ui/icons";
 import { isBrowser } from "@/lib/env";
 
@@ -124,12 +124,13 @@ export function WorkspaceSwitcher({
 
   return (
     <div ref={containerRef} className="relative">
-      <button
+      <Button
         type="button"
+        variant="ghost"
         onClick={() => setIsOpen(!isOpen)}
         aria-expanded={isOpen}
         aria-haspopup="listbox"
-        className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-border/70 bg-surface hover:bg-surface-hover hover:border-border transition-all text-left focus:outline-hidden focus:ring-2 focus:ring-action/20 group"
+        className="flex items-center gap-2 h-auto px-2.5 py-1.5 rounded-lg border border-border/70 bg-surface hover:bg-surface-hover hover:border-border transition-all text-left group font-normal"
       >
         <div className="flex h-6 w-6 items-center justify-center rounded-md bg-action/10 text-[11px] font-bold text-action border border-action/20 shrink-0">
           {initials}
@@ -147,7 +148,7 @@ export function WorkspaceSwitcher({
             isOpen ? "rotate-180" : ""
           }`}
         />
-      </button>
+      </Button>
 
       {isOpen && (
         <div className="absolute left-0 top-full mt-2 w-72 rounded-xl border border-border bg-surface p-2 shadow-xl z-50 animate-in fade-in slide-in-from-top-1 duration-150">
@@ -174,14 +175,15 @@ export function WorkspaceSwitcher({
                 const orgInitials = t.name.slice(0, 2).toUpperCase();
 
                 return (
-                  <button
+                  <Button
                     key={t.organizationId}
                     type="button"
+                    variant="ghost"
                     disabled={isSwitchingThis || switchingId !== null}
                     onClick={() => handleSwitchTenant(t.organizationId)}
-                    className={`w-full flex items-center justify-between p-2 rounded-lg text-left transition-colors ${
+                    className={`w-full h-auto flex items-center justify-between p-2 rounded-lg text-left transition-colors font-normal ${
                       isActive
-                        ? "bg-action/10 text-action font-semibold"
+                        ? "bg-action/10 text-action font-semibold hover:bg-action/15"
                         : "hover:bg-surface-hover text-on-surface"
                     }`}
                   >
@@ -200,29 +202,11 @@ export function WorkspaceSwitcher({
                     </div>
 
                     {isSwitchingThis ? (
-                      <svg
-                        className="animate-spin h-3.5 w-3.5 text-action shrink-0"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        />
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                        />
-                      </svg>
+                      <Spinner size="sm" color="action" />
                     ) : isActive ? (
                       <CheckIcon className="h-4 w-4 text-action shrink-0" />
                     ) : null}
-                  </button>
+                  </Button>
                 );
               })
             )}

@@ -34,12 +34,15 @@ export function PreviewHeader({
     <header className="h-14 border-b border-border bg-surface px-4 flex items-center justify-between text-text select-none z-30">
       {/* Left: Navigation & Preview Indicator */}
       <div className="flex items-center gap-3">
-        <Link
-          href={`/sites/${siteId}/pages`}
-          className="text-xs font-medium text-text-secondary hover:text-text transition-colors flex items-center gap-1.5 px-2.5 py-1.5 rounded-DEFAULT hover:bg-surface-hover"
-        >
-          <span>&larr;</span>
-          <span>Exit Preview</span>
+        <Link href={`/sites/${siteId}/pages`}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 gap-1.5 text-xs text-text-secondary hover:text-text"
+            startIcon={<span>&larr;</span>}
+          >
+            Exit Preview
+          </Button>
         </Link>
 
         <div className="h-4 w-px bg-border" />
@@ -63,19 +66,21 @@ export function PreviewHeader({
           const isActive = device === btn.id;
 
           return (
-            <button
+            <Button
               key={btn.id}
               type="button"
+              variant="ghost"
+              size="sm"
               onClick={() => onDeviceChange(btn.id)}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-DEFAULT text-xs font-medium transition-all ${
+              className={`h-auto flex items-center gap-1.5 px-3 py-1 rounded-DEFAULT text-xs font-medium transition-all ${
                 isActive
-                  ? "bg-brand-tint text-brand shadow-xs"
+                  ? "bg-brand-tint text-brand shadow-xs hover:bg-brand-tint hover:text-brand"
                   : "text-text-secondary hover:text-text hover:bg-surface-hover"
               }`}
             >
               <Icon className="w-3.5 h-3.5" />
               <span>{btn.label}</span>
-            </button>
+            </Button>
           );
         })}
       </div>

@@ -11,6 +11,7 @@ import {
   CardFooter,
   Button,
   Input,
+  Label,
   Badge,
 } from "@suite/ui";
 import {
@@ -193,9 +194,9 @@ export default function SiteOnboardingWizard() {
           </CardHeader>
           <CardContent className="space-y-6 pt-4">
             <div>
-              <label className="block text-sm font-medium text-text mb-1.5">
+              <Label className="mb-1.5">
                 Website or Brand Name
-              </label>
+              </Label>
               <Input
                 placeholder="e.g. Acme Corporation"
                 value={title}
@@ -205,9 +206,9 @@ export default function SiteOnboardingWizard() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-text mb-1.5">
+              <Label className="mb-1.5">
                 Staging Subdomain (.business-os.site)
-              </label>
+              </Label>
               <div className="flex items-center gap-2">
                 <Input
                   placeholder="acme-corp"
@@ -236,14 +237,16 @@ export default function SiteOnboardingWizard() {
                     </span>
                     <div className="flex flex-wrap gap-2 pt-1">
                       {suggestions.map((sug) => (
-                        <button
+                        <Button
                           key={sug}
                           type="button"
+                          variant="secondary"
+                          size="sm"
                           onClick={() => setSubdomain(sug)}
-                          className="rounded border border-border bg-surface-muted px-2.5 py-1 text-xs font-medium text-text hover:bg-surface-hover"
+                          className="h-auto py-1 px-2.5 text-xs font-medium"
                         >
                           {sug}
-                        </button>
+                        </Button>
                       ))}
                     </div>
                   </div>
