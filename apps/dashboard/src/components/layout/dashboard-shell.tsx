@@ -1,80 +1,62 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { SidebarNav } from "./sidebar-nav";
+import { SettingsNav } from "./settings-nav";
 import { HeaderTopbar } from "./header-topbar";
 import { UnverifiedEmailBanner } from "./unverified-email-banner";
 import { VerifiedSuccessBanner } from "./verified-success-banner";
-import type { TenantContext, NavigationItem } from "./types";
-import { BASE_NAV_ITEMS } from "./types";
+import type { TenantContext } from "./types";
+import {
+  buildNavigationConfig,
+  type InstalledAppNavInput,
+} from "./navigation.config";
+import { isSettingsHubRoute } from "./settings.config";
 
 interface DashboardShellProps {
   tenant?: TenantContext;
-  initialNavItems?: NavigationItem[];
+  initialInstalledApps?: readonly InstalledAppNavInput[];
   children: React.ReactNode;
 }
 
 export function DashboardShell({
   tenant,
-  initialNavItems,
+  initialInstalledApps = [],
   children,
 }: DashboardShellProps) {
+  const pathname = usePathname();
+  const isSettingsActive = isSettingsHubRoute(pathname);
+
   const [collapsed, setCollapsed] = useState(false);
-  const [navItems, setNavItems] = useState<NavigationItem[]>(
-    initialNavItems && initialNavItems.length > 0 ? initialNavItems : BASE_NAV_ITEMS,
+  const [installedApps, setInstalledApps] = useState<readonly InstalledAppNavInput[]>(
+    initialInstalledApps
   );
 
   useEffect(() => {
-    if (initialNavItems && initialNavItems.length > 0) {
-      setNavItems(initialNavItems);
+    if (initialInstalledApps) {
+      setInstalledApps(initialInstalledApps);
     }
-  }, [initialNavItems]);
+  }, [initialInstalledApps]);
 
-  useEffect(() => {
-    async function fetchApps() {
-      if (!tenant?.organizationId) return;
-      try {
-        const res = await fetch(
-          `/api/v1/organizations/${tenant.organizationId}/installed-apps`,
-        );
-        if (res.ok) {
-          const data = await res.json();
-          const rawApps = Array.isArray(data.apps)
-            ? data.apps
-            : data.installedApps || [];
+  const navConfig = buildNavigationConfig(installedApps);
 
-          const items: NavigationItem[] = [
-            ...BASE_NAV_ITEMS,
-            ...rawApps.map((app: {
-              appId: string;
-              name?: string;
-              title?: string;
-              href?: string;
-              iconName?: string;
-              code?: string;
-              description?: string;
-            }) => ({
-              id: app.appId,
-              name: app.name || app.title || app.appId,
-              href: app.href || `/${app.appId}`,
-              icon: app.iconName || app.appId,
-              badge: app.code,
-              description: app.description || "",
-            })),
-          ];
-
-          setNavItems(items);
-        }
-      } catch {
-        // Retain existing navItems gracefully
-      }
-    }
-    fetchApps();
-  }, [tenant?.organizationId]);
+  // Auto-collapse primary sidebar when entering Core Settings Hub
+  const isSidebarCollapsed = isSettingsActive || collapsed;
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background text-text">
-      <SidebarNav collapsed={collapsed} items={navItems} />
+      <SidebarNav
+        collapsed={isSidebarCollapsed}
+        config={navConfig}
+        userPermissions={tenant?.userPermissions}
+      />
+      {isSettingsActive && (
+        <SettingsNav
+          className="hidden md:flex flex-shrink-0"
+          userPermissions={tenant?.userPermissions}
+        />
+      )}
       <div className="flex flex-1 flex-col overflow-hidden">
         <HeaderTopbar
           tenant={tenant}

@@ -46,3 +46,13 @@ export const settingsCategoriesConfig: SettingsCategoryConfig[] = [
     permission: PERMISSIONS.SETTINGS.ROLES_VIEW,
   },
 ];
+
+export const SETTINGS_HUB_ROOT = "/settings";
+
+/**
+ * Declaratively determines if a given pathname belongs to the Core Settings Hub.
+ */
+export function isSettingsHubRoute(pathname: string | null | undefined): boolean {
+  if (!pathname) return false;
+  return pathname === SETTINGS_HUB_ROOT || pathname.startsWith(`${SETTINGS_HUB_ROOT}/`);
+}

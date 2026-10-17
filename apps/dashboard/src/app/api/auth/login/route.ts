@@ -134,7 +134,7 @@ export async function POST(request: Request) {
     const membership = dbUser.organizations[0];
     const organization = membership?.organization;
     const branchRole = dbUser.branchRoles[0];
-    const roleName = branchRole?.role?.name || (onboardingStatus === "IN_PROGRESS" ? "owner" : "member");
+    const roleName = branchRole?.role?.name;
     const roleSlug = branchRole?.role?.slug;
     const branchName = branchRole?.branch?.name ?? undefined;
     const branchId = branchRole?.branchId ?? undefined;

@@ -181,6 +181,37 @@ You are **STRICTLY PROHIBITED** from:
   3. Navigation hierarchies (including the primary installed apps sidebar and the settings sub-navigation sidebar) MUST be generated from typed navigation configuration schemas where each node declares its icon, route, label, badge, and required RBAC permission.
   4. Data tables MUST derive columns, header labels, cell formatters, and row action triggers from typed table configuration schemas.
   5. The primary dashboard sidebar and all existing dashboard views MUST be progressively migrated to this config-driven standard.
+- ❌ **Defensive Cascading Fallbacks & Heuristic Guessing (Deterministic Registry Law):**
+  AI agents and developers are **STRICTLY PROHIBITED** from using cascading `||` or heuristic guessing chains (e.g. `ICONS[category.icon] || ICONS[category.id] || BuildingIcon`, `item.name || item.title || item.appId`, or falling back across divergent object fields) to resolve assets, icons, titles, or presentation components.
+  1. Every domain entity and configuration item must declare its canonical key, and lookup must be deterministic via strongly-typed registries (`ICON_REGISTRY`, `getNavIcon()`, `getSettingsIcon()`) that fail loudly if an unregistered key is supplied.
+  2. We do not guess at runtime; the system must know in advance and declare exactly what and where it will render.
+- ❌ **Fail-Open Authorization Flaws (Strict Fail-Closed Permission Gate Law):**
+  In any capability or authorization evaluation (UI navigation items, action buttons, route handlers, middleware), missing, null, or empty permissions context (`userPermissions === undefined || userPermissions.length === 0`) **MUST STRICTLY DENY ACCESS** (`return false`) whenever a capability requirement is present.
+  1. Returning `true` or granting non-restricted fallback access when a permission is required but permissions context is omitted (`if (!userPermissions) return true;`) is a critical security vulnerability and is strictly forbidden.
+  2. Unrestricted access is permitted ONLY for platform anchors that explicitly declare zero permission requirement (`!item.permission`).
+- ❌ **Runtime Layout Array Partitioning & Negative ID Filtering (Pure Config Layout Law):**
+  1. UI navigation components (such as `SidebarNav`) **MUST NOT** perform runtime heuristic filtering or array partitioning (e.g. `items.filter(item => item.id !== "settings")` or `items.filter(item => item.href.startsWith("/settings"))`) to separate layout sections (such as top items vs bottom pinned items). Layout sectioning must be codified directly in strongly-typed configurations (`NavigationConfig.topItems`, `NavigationConfig.bottomItems`) and consumed declaratively.
+  2. Components MUST NOT filter collections by checking against hardcoded negative string IDs (e.g. `item.id !== "home" && item.id !== "settings"`). Dynamic domain collections (such as installed apps) must be managed and passed as distinct, dedicated typed arrays (`InstalledAppNavInput[]`), completely separated from baseline platform core anchors.
+- ❌ **Scattered Pathname Matching & Fragile Navigation Hub Detection (Declarative Navigation Hub State Law):**
+  Sidebar collapsing, sub-navigation rendering, and layout modes **MUST NOT** rely on raw ad-hoc pathname substring matching scattered across components (e.g. `pathname?.startsWith("/settings")`).
+  Active hub detection must be centralized in declarative helper functions (e.g. `isSettingsHubRoute(pathname)`) exported from dedicated configuration modules.
+- ❌ **Nested Ternary Operators in Render Logic (Clean Route Matching & Cognitive Clarity Law):**
+  Chaining nested ternary operators (`a ? b : c ? d : e`) in JSX, component bodies, or routing logic is strictly forbidden.
+  Route activation detection and complex status determinations must reside in dedicated, single-responsibility helper functions (`isRouteActive(currentPath, itemHref)`) adhering to SLAP, handling exact matches and sub-routes cleanly without nested ternary chains.
+- ❌ **Static Role String Assignment & Autonomous Bypass (Sign-up / Tenant Bootstrap Capability Seeding Law):**
+  As soon as a user signs up and provisions an organization, all canonical capability permissions from PostgreSQL must be immediately linked to the tenant's administrative role via database relation (`role_permissions`).
+  Routes, session encoders, and middleware must NEVER assign hardcoded role strings (`role: "owner"`) or wildcard capabilities (`permissions: ["*"]`) as static fallbacks. All permissions must be resolved dynamically from PostgreSQL relations via `extractEffectivePermissions`.
+- ❌ **Open String Registries (Exhaustive Compile-Time Mapped Types Law):**
+  Registries mapping system identifiers, modular app IDs, route keys, or category icons MUST NOT be typed as open string dictionaries (`Record<string, ...>`).
+  1. All keys must be defined as `as const` string tuples (`CANONICAL_NAV_ICON_KEYS`, `CANONICAL_SETTINGS_CATEGORY_KEYS`).
+  2. Registries MUST be typed as exhaustive mapped types (`Record<NavIconKey, IconComponent>`). If a new modular app or category is added to the system, the TypeScript compiler (`tsc --noEmit`) MUST fail at compile time until its corresponding entry is registered.
+  3. Runtime lookups from external/DB data MUST be protected by type guards (`isKnownNavIconKey(key)`).
+- ❌ **Deprecation Scaffolding & Residue (Immediate Dead Code Deletion Law):**
+  When introducing a new replacement prop, data model, or schema (such as `initialInstalledApps` replacing `initialNavItems`), engineers and AI agents MUST completely remove the superseded prop, its legacy filtering logic, and any associated dead code in the same change.
+  Introducing temporary "backward compatibility" bridges or dual-path state initializers in the same component is strictly forbidden unless explicitly requested in a numbered migration issue.
+- ❌ **ESLint-Enforced Zero Empty Catch Blocks (Strict Error Transparency Law):**
+  Empty `catch {}` blocks are completely banned across the monorepo via ESLint (`"no-empty": ["error", { "allowEmptyCatch": false }]`).
+  Every catch block must either handle the exception with domain recovery, log the error with typed context via `@suite/logger` or `console.error`, or rethrow as a typed `AppError` subclass.
 
 ---
 
