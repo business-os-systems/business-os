@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useCallback, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Button, Input, Label } from "@suite/ui";
+import { AlertTriangleIcon, ArrowRightIcon } from "@suite/ui/icons";
 import { OnboardingStepper } from "@/components/onboarding/onboarding-stepper";
 
 const INDUSTRY_OPTIONS = [
@@ -223,36 +225,34 @@ export default function OnboardingStep1Page() {
 
       {formError && (
         <div className="mb-6 p-3.5 bg-danger/10 border border-danger/30 text-danger rounded-lg text-xs font-medium flex items-center gap-2">
-          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
+          <AlertTriangleIcon size={16} className="shrink-0" />
           <span>{formError}</span>
         </div>
       )}
 
+
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Field 1: Organization Name */}
-        <div>
-          <label htmlFor="orgName" className="block text-xs font-semibold uppercase tracking-wider text-text-secondary mb-1.5">
-            Organization Name <span className="text-danger">*</span>
-          </label>
-          <input
+        <div className="space-y-1.5">
+          <Label htmlFor="orgName" required>
+            Organization Name
+          </Label>
+          <Input
             id="orgName"
             type="text"
             required
             value={orgName}
             onChange={(e) => handleNameChange(e.target.value)}
             placeholder="e.g. Acme Corporation or Starlight Resorts"
-            className="w-full px-3.5 py-2.5 bg-background border border-border rounded-lg text-sm text-text placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-brand focus:border-brand transition-colors duration-fast"
           />
         </div>
 
         {/* Field 2: Workspace Domain */}
-        <div>
-          <div className="flex items-center justify-between mb-1.5">
-            <label htmlFor="slug" className="block text-xs font-semibold uppercase tracking-wider text-text-secondary">
-              Workspace Domain <span className="text-danger">*</span>
-            </label>
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="slug" required>
+              Workspace Domain
+            </Label>
             {slugStatus === "available" && (
               <span className="text-[11px] font-semibold text-action flex items-center gap-1">
                 ✓ Available
@@ -264,18 +264,18 @@ export default function OnboardingStep1Page() {
               </span>
             )}
           </div>
-          <div className="flex items-center rounded-lg border border-border bg-background focus-within:border-brand focus-within:ring-1 focus-within:ring-brand overflow-hidden transition-colors duration-fast">
+          <div className="flex items-center rounded-lg border border-border bg-surface focus-within:border-action focus-within:ring-1 focus-within:ring-action overflow-hidden transition-colors duration-fast">
             <span className="px-3 py-2.5 text-xs text-text-muted bg-surface-muted border-r border-border select-none">
               https://
             </span>
-            <input
+            <Input
               id="slug"
               type="text"
               required
               value={slug}
               onChange={(e) => handleSlugChange(e.target.value)}
               placeholder="acme-corp"
-              className="flex-1 px-3 py-2.5 bg-transparent text-sm text-text placeholder:text-text-muted focus:outline-none"
+              className="flex-1 border-0 bg-transparent rounded-none focus:ring-0 focus:outline-none shadow-none"
             />
             <span className="px-3 py-2.5 text-xs font-medium text-text-secondary bg-surface-muted border-l border-border select-none">
               .businessos.app
@@ -299,9 +299,9 @@ export default function OnboardingStep1Page() {
         {/* Field 3: Industry Multi-Select */}
         <div>
           <div className="flex items-center justify-between mb-1.5">
-            <label className="block text-xs font-semibold uppercase tracking-wider text-text-secondary">
-              Industry Domains <span className="text-danger">*</span>
-            </label>
+            <Label required>
+              Industry Domains
+            </Label>
             <span className="text-xs text-text-muted">
               {selectedIndustries.length} selected
             </span>
@@ -314,27 +314,28 @@ export default function OnboardingStep1Page() {
           {selectedIndustries.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mb-3 p-2.5 bg-surface-muted border border-border/80 rounded-lg">
               {selectedIndustries.map((ind) => (
-                <button
+                <Button
                   key={ind}
                   type="button"
+                  variant="primary"
+                  size="sm"
                   onClick={() => toggleIndustry(ind)}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-action text-on-action shadow-xs hover:opacity-90 transition-opacity"
+                  className="h-auto py-1 px-2.5 text-xs rounded-md"
                 >
                   <span>{ind}</span>
-                  <span className="text-on-action/80 hover:text-on-action">×</span>
-                </button>
+                  <span className="text-on-action/80 hover:text-on-action ml-1">×</span>
+                </Button>
               ))}
             </div>
           )}
 
           {/* Search box for industries */}
           <div className="mb-2.5">
-            <input
-              type="text"
+            <Input
+              inputSize="sm"
               value={industrySearch}
               onChange={(e) => setIndustrySearch(e.target.value)}
               placeholder="Search industries (e.g. Hospitality, Healthcare, Retail)..."
-              className="w-full px-3 py-2 text-xs bg-background border border-border rounded-md text-text placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-brand focus:border-brand"
             />
           </div>
 
@@ -343,18 +344,20 @@ export default function OnboardingStep1Page() {
             {filteredIndustries.map((item) => {
               const isSelected = selectedIndustries.includes(item.name);
               return (
-                <button
+                <Button
                   key={item.id}
                   type="button"
+                  variant={isSelected ? "primary" : "outline"}
+                  size="sm"
                   onClick={() => toggleIndustry(item.name)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors duration-fast ${
+                  className={
                     isSelected
-                      ? "bg-action/15 border-action text-action font-semibold"
-                      : "bg-surface border-border text-text-secondary hover:border-text-secondary/40 hover:text-text"
-                  }`}
+                      ? "h-auto py-1.5 px-3 rounded-lg text-xs"
+                      : "h-auto py-1.5 px-3 rounded-lg text-xs font-medium text-text-secondary hover:text-text"
+                  }
                 >
                   {isSelected ? `✓ ${item.name}` : `+ ${item.name}`}
-                </button>
+                </Button>
               );
             })}
             {filteredIndustries.length === 0 && (
@@ -367,8 +370,9 @@ export default function OnboardingStep1Page() {
 
         {/* Submit action */}
         <div className="pt-4 border-t border-border flex justify-end">
-          <button
+          <Button
             type="submit"
+            variant="primary"
             disabled={
               isPending ||
               !orgName.trim() ||
@@ -377,25 +381,17 @@ export default function OnboardingStep1Page() {
               slugStatus === "invalid" ||
               selectedIndustries.length === 0
             }
-            className="w-full sm:w-auto px-6 py-2.5 bg-action text-on-action rounded-lg text-sm font-semibold hover:opacity-95 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none transition-all duration-fast flex items-center justify-center gap-2 shadow-xs"
+            isLoading={isPending}
+            className="w-full sm:w-auto px-6 py-2.5"
+            endIcon={
+              !isPending && (
+                <ArrowRightIcon size={16} className="shrink-0 transition-transform group-hover:translate-x-0.5" />
+              )
+            }
+
           >
-            {isPending ? (
-              <>
-                <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                </svg>
-                <span>Creating workspace...</span>
-              </>
-            ) : (
-              <span className="flex items-center gap-2">
-                <span>Continue to App Selection</span>
-                <svg className="w-4 h-4 shrink-0 transition-transform group-hover:translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                </svg>
-              </span>
-            )}
-          </button>
+            {isPending ? "Creating workspace..." : "Continue to App Selection"}
+          </Button>
         </div>
       </form>
     </div>

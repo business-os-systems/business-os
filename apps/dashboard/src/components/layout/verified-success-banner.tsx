@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { Button } from "@suite/ui";
+import { CheckIcon, XIcon } from "@suite/ui/icons";
 
 export function VerifiedSuccessBannerContent() {
   const searchParams = useSearchParams();
@@ -31,30 +33,23 @@ export function VerifiedSuccessBannerContent() {
       className="w-full bg-action/10 text-action border-b border-action/20 px-4 py-2.5 flex items-center justify-between gap-3 text-xs animate-in fade-in duration-200"
     >
       <div className="flex items-center gap-2 min-w-0">
-        <svg
-          className="h-4 w-4 text-action shrink-0"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth="2"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-        </svg>
+        <CheckIcon size={16} className="text-action shrink-0" />
         <span className="font-semibold text-text truncate">
           Email verified successfully! Full workspace access and application installations are now unlocked.
         </span>
       </div>
-      <button
+      <Button
         type="button"
+        variant="ghost"
+        size="sm"
         onClick={handleDismiss}
-        className="text-text-muted hover:text-text p-1 rounded-sm transition-colors shrink-0"
+        className="h-auto p-1 text-text-muted hover:text-text shrink-0"
         aria-label="Dismiss notification"
       >
-        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      </button>
+        <XIcon size={14} />
+      </Button>
     </aside>
+
   );
 }
 

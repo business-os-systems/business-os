@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Button } from "@suite/ui";
+import { AlertTriangleIcon } from "@suite/ui/icons";
 
 interface UnverifiedEmailBannerProps {
   email?: string;
@@ -57,20 +58,9 @@ export function UnverifiedEmailBanner({ email }: UnverifiedEmailBannerProps) {
       className="w-full bg-warning/15 text-warning-text border-b border-warning/30 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs"
     >
       <div className="flex items-center gap-2 min-w-0">
-        <svg
-          className="h-4 w-4 text-warning shrink-0"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth="2"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-          />
-        </svg>
+        <AlertTriangleIcon size={16} className="text-warning shrink-0" />
         <span className="font-semibold text-warning-text truncate">
+
           Your email address {email ? `(${email})` : ""} is unverified. Application installation is restricted until verified.
         </span>
         {feedback && (

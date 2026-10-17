@@ -145,7 +145,7 @@ describe("Website Builder Sites & Pages Explorer", () => {
         <CreateSiteDialog isOpen={true} onClose={() => {}} onSubmit={() => {}} />
       );
       expect(html).toContain("Create New Website");
-      expect(html).toContain("Website Name *");
+      expect(html).toContain("Website Name");
       expect(html).toContain(".business-os.site");
     });
 
@@ -154,7 +154,7 @@ describe("Website Builder Sites & Pages Explorer", () => {
         <CreatePageDialog isOpen={true} onClose={() => {}} onSubmit={() => {}} />
       );
       expect(html).toContain("Create New Page");
-      expect(html).toContain("Page Title *");
+      expect(html).toContain("Page Title");
       expect(html).toContain("Set as Homepage");
     });
   });

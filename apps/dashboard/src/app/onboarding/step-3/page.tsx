@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "@suite/ui";
+import { AlertTriangleIcon, CheckIcon, ArrowRightIcon } from "@suite/ui/icons";
 import { OnboardingStepper } from "@/components/onboarding/onboarding-stepper";
 
 interface SetupStep {
@@ -248,20 +250,21 @@ export default function OnboardingStep3Page() {
       {error ? (
         <div className="space-y-4">
           <div className="p-4 bg-danger/10 border border-danger/30 text-danger rounded-xl flex items-start gap-3">
-            <svg className="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
+            <AlertTriangleIcon size={20} className="shrink-0 mt-0.5" />
             <div>
               <h3 className="text-sm font-bold">Workspace Configuration Error</h3>
+
               <p className="text-xs mt-1 text-danger/90">{error}</p>
             </div>
           </div>
-          <button
+          <Button
+            type="button"
+            variant="outline"
+            fullWidth
             onClick={() => window.location.reload()}
-            className="w-full px-4 py-2 bg-surface border border-border text-xs font-semibold text-text rounded-lg hover:bg-surface-muted"
           >
             Retry Setup
-          </button>
+          </Button>
         </div>
       ) : phase === "provisioning" ? (
         <div className="space-y-6">
@@ -308,9 +311,7 @@ export default function OnboardingStep3Page() {
                   <div className="shrink-0 mt-0.5">
                     {isCompleted ? (
                       <div className="h-5 w-5 rounded-full bg-action text-on-action flex items-center justify-center">
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                        </svg>
+                        <CheckIcon size={12} strokeWidth={3} />
                       </div>
                     ) : isCurrent ? (
                       <div className="h-5 w-5 rounded-full border-2 border-action border-t-transparent animate-spin" />
@@ -337,10 +338,9 @@ export default function OnboardingStep3Page() {
         /* Phase B: Celebration & Ready State */
         <div className="text-center py-4 space-y-6 animate-in fade-in duration-500">
           <div className="mx-auto w-16 h-16 rounded-full bg-action/15 text-action border border-action/30 flex items-center justify-center shadow-sm">
-            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-            </svg>
+            <CheckIcon size={32} strokeWidth={2.5} />
           </div>
+
 
           <div>
             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-action/15 text-action border border-action/30 mb-2">
@@ -375,16 +375,20 @@ export default function OnboardingStep3Page() {
           )}
 
           {/* Auto-redirect Button */}
-          <div className="pt-2">
-            <button
+          <div className="pt-2 flex flex-col items-center">
+            <Button
+              type="button"
+              variant="primary"
+              size="lg"
               onClick={handleGoToDashboard}
-              className="w-full sm:w-auto px-8 py-3 bg-action text-on-action rounded-xl text-sm font-bold hover:opacity-95 active:scale-[0.98] transition-all duration-fast shadow-md flex items-center justify-center gap-2.5 mx-auto group"
+              className="w-full sm:w-auto px-8 font-bold shadow-md"
+              endIcon={
+                <ArrowRightIcon size={16} className="shrink-0 transition-transform group-hover:translate-x-0.5" />
+              }
+
             >
-              <span>Go to dashboard ({countdown}s)</span>
-              <svg className="w-4 h-4 shrink-0 transition-transform group-hover:translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-              </svg>
-            </button>
+              Go to dashboard ({countdown}s)
+            </Button>
             <p className="text-[11px] text-text-muted mt-2">
               Automatically redirecting to your workspace dashboard in {countdown} seconds...
             </p>

@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Button, Spinner } from "@suite/ui";
+import { AlertTriangleIcon, ChevronRightIcon } from "@suite/ui/icons";
 import { AuthCard } from "@/components/auth/auth-card";
 
 interface TenantCardItem {
@@ -98,29 +100,19 @@ export default function ChooseTenantPage() {
           role="alert"
           className="p-3 text-xs rounded-lg border border-danger/30 bg-danger/10 text-danger flex items-start gap-2"
         >
-          <svg
-            className="w-4 h-4 shrink-0 mt-0.5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            aria-hidden="true"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-            />
-          </svg>
+          <AlertTriangleIcon size={16} className="shrink-0 mt-0.5" aria-hidden="true" />
+
           <div className="flex-1">
             <span>{errorMessage}</span>
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="sm"
               onClick={fetchTenants}
-              className="ml-2 font-semibold underline hover:no-underline"
+              className="ml-2 h-auto p-0 font-semibold underline hover:no-underline text-danger hover:text-danger hover:bg-transparent"
             >
               Retry
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -152,12 +144,13 @@ export default function ChooseTenantPage() {
             const initials = t.name.slice(0, 2).toUpperCase();
 
             return (
-              <button
+              <Button
                 key={t.organizationId}
                 type="button"
+                variant="outline"
                 onClick={() => handleSelectTenant(t.organizationId)}
                 disabled={switchingId !== null}
-                className="w-full text-left p-3.5 rounded-xl border border-border bg-surface hover:border-action/60 hover:bg-surface-hover active:scale-[0.99] transition-all flex items-center justify-between group disabled:opacity-50 disabled:cursor-not-allowed shadow-2xs"
+                className="w-full h-auto text-left p-3.5 rounded-xl border border-border bg-surface hover:border-action/60 hover:bg-surface-hover active:scale-[0.99] transition-all flex items-center justify-between group disabled:opacity-50 disabled:cursor-not-allowed shadow-2xs font-normal"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   {/* Organization Avatar */}
@@ -190,43 +183,17 @@ export default function ChooseTenantPage() {
                 {/* Right Action / Spinner */}
                 <div className="shrink-0 pl-2">
                   {isPendingThis ? (
-                    <svg
-                      className="animate-spin h-4 w-4 text-action"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      />
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      />
-                    </svg>
+                    <Spinner size="sm" color="action" />
                   ) : (
-                    <svg
-                      className="w-4 h-4 text-text-muted group-hover:text-action group-hover:translate-x-0.5 transition-all"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
+                    <ChevronRightIcon
+                      size={16}
+                      className="text-text-muted group-hover:text-action group-hover:translate-x-0.5 transition-all"
                       aria-hidden="true"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 5l7 7-7 7"
-                      />
-                    </svg>
+                    />
+
                   )}
                 </div>
-              </button>
+              </Button>
             );
           })}
         </div>

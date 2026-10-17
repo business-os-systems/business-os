@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { z } from "zod";
-import { Button, Input, Checkbox } from "@suite/ui";
+import { Button, Input, Checkbox, Label } from "@suite/ui";
 
 export const CreatePageSchema = z.object({
   name: z.string().min(2, "Page title must be at least 2 characters").max(80),
@@ -75,10 +75,11 @@ export function CreatePageDialog({ isOpen, onClose, onSubmit }: CreatePageDialog
 
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-text mb-1">
-              Page Title *
-            </label>
+            <Label htmlFor="create-page-title-input" required className="mb-1">
+              Page Title
+            </Label>
             <Input
+              id="create-page-title-input"
               value={name}
               onChange={(e) => {
                 setName(e.target.value);
@@ -100,19 +101,20 @@ export function CreatePageDialog({ isOpen, onClose, onSubmit }: CreatePageDialog
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-text mb-1">
-              URL Slug *
-            </label>
+            <Label htmlFor="create-page-slug-input" required className="mb-1">
+              URL Slug
+            </Label>
             <div className="flex items-center rounded-lg border border-border-strong bg-surface overflow-hidden focus-within:ring-2 focus-within:ring-focus-ring">
               <span className="bg-surface-muted px-3 py-2 text-xs font-mono text-text-muted border-r border-border">
                 /
               </span>
-              <input
+              <Input
+                id="create-page-slug-input"
                 disabled={isHome}
                 value={isHome ? "index (Root)" : slug}
                 onChange={(e) => setSlug(e.target.value.toLowerCase())}
                 placeholder="about-us"
-                className="w-full px-3 py-2 text-sm text-text bg-transparent outline-none disabled:bg-surface-muted disabled:text-text-disabled font-mono text-xs"
+                className="w-full border-0 bg-transparent rounded-none focus:ring-0 focus:outline-none shadow-none font-mono text-xs"
               />
             </div>
             {errors["slug"] && (
@@ -133,7 +135,7 @@ export function CreatePageDialog({ isOpen, onClose, onSubmit }: CreatePageDialog
             <Button type="button" variant="outline" size="sm" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" variant="default" size="sm">
+            <Button type="submit" variant="primary" size="sm">
               Create Page
             </Button>
           </div>

@@ -2,6 +2,8 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { Button, Input, Label } from "@suite/ui";
+import { CheckIcon, AlertTriangleIcon } from "@suite/ui/icons";
 import { AuthCard } from "@/components/auth/auth-card";
 import { Turnstile } from "@/components/auth/turnstile";
 
@@ -71,19 +73,7 @@ export default function ForgotPasswordPage() {
       {isSubmitted ? (
         <div className="flex flex-col items-center gap-3 py-2 text-center">
           <div className="w-10 h-10 rounded-full bg-success/10 text-success flex items-center justify-center">
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M5 13l4 4L19 7"
-              />
-            </svg>
+            <CheckIcon size={20} />
           </div>
           <p className="text-sm font-semibold text-text">Check your inbox</p>
           <p className="text-xs text-text-secondary leading-relaxed">
@@ -91,13 +81,15 @@ export default function ForgotPasswordPage() {
             <span className="font-medium text-text">{email}</span>, we have
             dispatched a secure password reset link. Please check your email.
           </p>
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
             onClick={() => setIsSubmitted(false)}
-            className="mt-2 text-xs text-action hover:text-action-hover font-medium underline underline-offset-2"
+            className="mt-2 text-xs text-action hover:text-action-hover font-medium underline underline-offset-2 hover:bg-transparent h-auto p-0"
           >
             Try another email
-          </button>
+          </Button>
         </div>
       ) : (
         <form
@@ -111,31 +103,20 @@ export default function ForgotPasswordPage() {
               role="alert"
               className="p-3 text-xs rounded-lg border border-danger/30 bg-danger/10 text-danger flex items-start gap-2"
             >
-              <svg
-                className="w-4 h-4 shrink-0 mt-0.5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                />
-              </svg>
+              <AlertTriangleIcon size={16} className="shrink-0 mt-0.5" />
               <span className="leading-tight">{errorMessage}</span>
             </div>
           )}
 
+
           <div className="flex flex-col gap-1.5">
-            <label
+            <Label
               htmlFor="recovery-email"
-              className="text-xs font-semibold text-text"
+              required
             >
               Email Address
-            </label>
-            <input
+            </Label>
+            <Input
               id="recovery-email"
               name="email"
               type="email"
@@ -150,20 +131,23 @@ export default function ForgotPasswordPage() {
               }}
               disabled={isLoading}
               placeholder="operator@company.com"
-              className="w-full px-3 py-2 text-sm rounded-lg bg-surface border border-border text-text placeholder:text-text-disabled focus:outline-none focus:border-action focus:ring-1 focus:ring-action transition-colors"
+              hasError={Boolean(errorMessage)}
             />
           </div>
 
           {/* Cloudflare Turnstile Bot Defense (SPEC-02) */}
           <Turnstile onVerify={(token) => setTurnstileToken(token)} />
 
-          <button
+          <Button
             type="submit"
+            variant="primary"
+            fullWidth
             disabled={isLoading || !email.trim()}
-            className="w-full mt-1 py-2.5 px-4 min-h-[44px] rounded-lg bg-action hover:bg-action-hover active:bg-action-active text-on-action font-semibold text-sm shadow-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            isLoading={isLoading}
+            className="mt-1 min-h-[44px]"
           >
             {isLoading ? "Sending recovery link..." : "Send reset link"}
-          </button>
+          </Button>
         </form>
       )}
     </AuthCard>
