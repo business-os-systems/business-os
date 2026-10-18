@@ -113,6 +113,16 @@ async function handleAuthenticatedGate(
   const onboardingStepPath = `/onboarding/step-${currentStep}`;
 
   if (isAuthRoute) {
+    if (
+      pathname.startsWith("/login") &&
+      request.nextUrl.searchParams.get("notice") === "archived"
+    ) {
+      const response = NextResponse.next();
+      const cookieOptions = createSessionCookieOptions(isProduction, true);
+      response.cookies.delete(cookieOptions.name);
+      return response;
+    }
+
     const destinationUrl = new URL(
       isOnboardingIncomplete
         ? onboardingStepPath

@@ -10,6 +10,7 @@ import {
   generalSettingsValidationSchema,
   type GeneralSettingsFormValues,
 } from "./general.config";
+import { isBrowser } from "@/lib/env";
 
 export interface GeneralSettingsClientProps {
   initialData: GeneralSettingsFormValues;
@@ -92,7 +93,7 @@ export function GeneralSettingsClient({
       });
 
       // Dispatch event for instant header synchronization
-      if (typeof window !== "undefined") {
+      if (isBrowser) {
         window.dispatchEvent(
           new CustomEvent("suite:org-name-updated", {
             detail: { organizationName: updated.name },
@@ -130,7 +131,9 @@ export function GeneralSettingsClient({
       }
 
       toast.success("Organization has been archived.");
-      router.push("/login");
+      if (isBrowser) {
+        window.location.assign("/login?notice=archived");
+      }
     } catch (error) {
       console.error("[GeneralSettingsClient] Archival network error:", error);
       toast.error("Network error occurred while archiving organization.");

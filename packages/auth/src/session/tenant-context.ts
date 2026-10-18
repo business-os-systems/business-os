@@ -38,6 +38,9 @@ export async function listUserTenants(
     where: {
       userId,
       status: "ACTIVE",
+      organization: {
+        status: { not: "ARCHIVED" },
+      },
     },
     include: {
       organization: true,
@@ -121,6 +124,13 @@ export async function switchActiveTenant(
     throw new ForbiddenError(
       "You do not have active access to the requested organization.",
       { code: "FORBIDDEN" }
+    );
+  }
+
+  if (userOrg.organization.status === "ARCHIVED") {
+    throw new ForbiddenError(
+      "This organization has been archived and cannot be accessed.",
+      { code: "ORGANIZATION_ARCHIVED" }
     );
   }
 

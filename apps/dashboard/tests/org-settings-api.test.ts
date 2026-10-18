@@ -32,10 +32,6 @@ describe("Organization Settings API & Config Engine (Issue #154)", () => {
       "test-secret-key-that-is-at-least-32-chars-long!";
   });
 
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   const baseSession: SessionPayload = {
     userId: "usr_owner_1",
     email: "owner@company.com",
@@ -64,6 +60,11 @@ describe("Organization Settings API & Config Engine (Issue #154)", () => {
     registeredAddress: null,
     taxProfile: null,
   };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(prisma.organization.findUnique).mockResolvedValue(mockOrgData as never);
+  });
 
   async function createSignedRequest(
     url: string,
@@ -154,6 +155,23 @@ describe("Organization Settings API & Config Engine (Issue #154)", () => {
       expect(res.status).toBe(404);
       const data = await res.json();
       expect(data.code).toBe("ORGANIZATION_NOT_FOUND");
+    });
+
+    it("returns 403 ORGANIZATION_ARCHIVED when organization is archived", async () => {
+      vi.mocked(prisma.organization.findUnique).mockResolvedValueOnce({
+        ...mockOrgData,
+        status: "ARCHIVED",
+      } as never);
+
+      const req = await createSignedRequest(
+        "http://localhost:3001/api/v1/settings/organization",
+        { session: baseSession }
+      );
+      const res = await GET(req);
+
+      expect(res.status).toBe(403);
+      const data = await res.json();
+      expect(data.code).toBe("ORGANIZATION_ARCHIVED");
     });
 
     it("returns 200 with model-complete organization profile when authorized", async () => {
@@ -283,7 +301,28 @@ describe("Organization Settings API & Config Engine (Issue #154)", () => {
       expect(sessionCookie).toBeDefined();
     });
 
-    it("returns 200 when executing Danger Zone archive action", async () => {
+    it("returns 403 ORGANIZATION_ARCHIVED when organization is already archived", async () => {
+      vi.mocked(prisma.organization.findUnique).mockResolvedValueOnce({
+        ...mockOrgData,
+        status: "ARCHIVED",
+      } as never);
+
+      const req = await createSignedRequest(
+        "http://localhost:3001/api/v1/settings/organization",
+        {
+          method: "PATCH",
+          body: { name: "Updated Resort" },
+          session: baseSession,
+        }
+      );
+      const res = await PATCH(req);
+
+      expect(res.status).toBe(403);
+      const data = await res.json();
+      expect(data.code).toBe("ORGANIZATION_ARCHIVED");
+    });
+
+    it("returns 200 when executing Danger Zone archive action and clears session cookie", async () => {
       vi.mocked(prisma.organization.update).mockResolvedValueOnce({
         ...mockOrgData,
         status: "ARCHIVED",
@@ -310,6 +349,8 @@ describe("Organization Settings API & Config Engine (Issue #154)", () => {
           }),
         })
       );
+      const sessionCookie = res.cookies.get(SESSION_COOKIE_NAME);
+      expect(sessionCookie?.value === "" || sessionCookie?.maxAge === 0).toBe(true);
     });
   });
 

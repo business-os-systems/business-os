@@ -16,6 +16,7 @@ export interface DashboardInstalledAppNav {
 export interface DashboardLayoutData {
   tenant: TenantContext;
   installedApps: DashboardInstalledAppNav[];
+  isArchived: boolean;
 }
 
 /**
@@ -37,7 +38,7 @@ export async function getDashboardTenantContext(
     }),
     prisma.organization.findUnique({
       where: { id: session.organizationId },
-      select: { name: true },
+      select: { name: true, status: true },
     }),
     prisma.installedApp.findMany({
       where: {
@@ -52,6 +53,7 @@ export async function getDashboardTenantContext(
 
   const userEmailVerified = dbUser ? dbUser.emailVerified : true;
   const effectiveOrgName = dbOrg?.name ?? session.organizationName;
+  const isArchived = !dbOrg || dbOrg.status === "ARCHIVED";
 
   let userPermissions: readonly string[] = session.permissions ?? [];
 
@@ -113,5 +115,5 @@ export async function getDashboardTenantContext(
     };
   });
 
-  return { tenant, installedApps };
+  return { tenant, installedApps, isArchived };
 }

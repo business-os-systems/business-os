@@ -98,6 +98,19 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    if (organization.status === "ARCHIVED") {
+      return NextResponse.json(
+        {
+          type: "/errors/forbidden",
+          title: "Organization Archived",
+          status: 403,
+          detail: `Organization '${session.organizationId}' has been archived and cannot be accessed.`,
+          code: "ORGANIZATION_ARCHIVED",
+        },
+        { status: 403, headers: { "Content-Type": "application/problem+json" } }
+      );
+    }
+
     return NextResponse.json(organization, { status: 200 });
   } catch (error) {
     return NextResponse.json(
@@ -270,6 +283,24 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
+    const currentOrg = await prisma.organization.findUnique({
+      where: { id: session.organizationId },
+      select: { status: true },
+    });
+
+    if (!currentOrg || currentOrg.status === "ARCHIVED") {
+      return NextResponse.json(
+        {
+          type: "/errors/forbidden",
+          title: "Organization Archived",
+          status: 403,
+          detail: "This organization has been archived and cannot be modified.",
+          code: "ORGANIZATION_ARCHIVED",
+        },
+        { status: 403, headers: { "Content-Type": "application/problem+json" } }
+      );
+    }
+
     const payloadResult = await parseAndValidateUpdateBody(request);
     if (!payloadResult.ok) {
       return payloadResult.response;
@@ -289,7 +320,17 @@ export async function PATCH(request: NextRequest) {
     );
 
     const response = NextResponse.json(updated, { status: 200 });
-    await syncSessionCookieOnNameChange(response, session, payloadResult.data.name);
+
+    if (payloadResult.data.status === "ARCHIVED") {
+      const cookieOptions = createSessionCookieOptions(isProduction, true);
+      response.cookies.delete(cookieOptions.name);
+    } else {
+      await syncSessionCookieOnNameChange(
+        response,
+        session,
+        payloadResult.data.name
+      );
+    }
 
     return response;
   } catch (error) {
