@@ -44,13 +44,22 @@ export default async function DashboardLayout({
   const session = rawSession;
 
   let userEmailVerified = true;
-  const dbUser = await prisma.user.findUnique({
-    where: { id: session.userId },
-    select: { emailVerified: true },
-  });
+  const [dbUser, dbOrg] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: session.userId },
+      select: { emailVerified: true },
+    }),
+    prisma.organization.findUnique({
+      where: { id: session.organizationId },
+      select: { name: true },
+    }),
+  ]);
+
   if (dbUser) {
     userEmailVerified = dbUser.emailVerified;
   }
+
+  const effectiveOrgName = dbOrg?.name ?? session.organizationName;
 
   // Resolve effective capabilities dynamically from DB relations (Zero Role Name Checking)
   let userPermissions: readonly string[] = session.permissions ?? [];
@@ -89,7 +98,7 @@ export default async function DashboardLayout({
 
   const tenant: TenantContext = {
     organizationId: session.organizationId,
-    organizationName: session.organizationName,
+    organizationName: effectiveOrgName,
     userName: session.userName,
     userEmail: session.email,
     userEmailVerified,

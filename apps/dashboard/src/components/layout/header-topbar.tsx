@@ -21,8 +21,8 @@ export function HeaderTopbar({
   const handleSignOut = async () => {
     try {
       await fetch("/api/auth/logout", { method: "POST" });
-    } catch {
-      // Ignore network errors on logout
+    } catch (error) {
+      console.error("[HeaderTopbar] Logout network error:", error);
     }
     if (isBrowser) {
       window.location.assign("/login");
@@ -40,8 +40,8 @@ export function HeaderTopbar({
     : "");
 
   return (
-    <header className="flex h-16 w-full items-center justify-between border-b border-border-hairline bg-surface-container-lowest px-6">
-      <div className="flex items-center gap-4">
+    <header className="flex h-16 w-full items-center justify-between border-b border-border-hairline bg-surface-container-lowest px-4 sm:px-6">
+      <div className="flex items-center gap-2 sm:gap-4">
         {onToggleSidebar && (
           <Button
             variant="ghost"
@@ -53,13 +53,15 @@ export function HeaderTopbar({
             <MenuIcon className="h-5 w-5" />
           </Button>
         )}
-        <WorkspaceSwitcher
-          activeOrganizationId={tenant?.organizationId}
-          activeOrganizationName={tenant?.organizationName}
-        />
+        <div className="hidden sm:flex items-center">
+          <WorkspaceSwitcher
+            activeOrganizationId={tenant?.organizationId}
+            activeOrganizationName={tenant?.organizationName}
+          />
+        </div>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 sm:gap-4">
         {tenant?.activeBranchName && (
           <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-tertiary-container/20 border border-tertiary/20 text-xs font-semibold text-tertiary">
             <BuildingIcon className="h-4 w-4 text-tertiary" />

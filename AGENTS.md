@@ -212,6 +212,12 @@ You are **STRICTLY PROHIBITED** from:
 - ❌ **ESLint-Enforced Zero Empty Catch Blocks (Strict Error Transparency Law):**
   Empty `catch {}` blocks are completely banned across the monorepo via ESLint (`"no-empty": ["error", { "allowEmptyCatch": false }]`).
   Every catch block must either handle the exception with domain recovery, log the error with typed context via `@suite/logger` or `console.error`, or rethrow as a typed `AppError` subclass.
+- ❌ **Raw HTML Form & Interactive Primitives (Mandatory Shared UI Component Primacy Law):**
+  AI agents and developers are **STRICTLY FORBIDDEN** from using raw HTML form, interactive, or feedback elements (such as raw `<button>`, `<select>`, `<input>`, `<textarea>`, `<dialog>`, or ad-hoc unstyled notification divs) in application views, features, or components when standardized `@suite/ui` primitives (`Button`, `Select`, `AsyncSelect`, `Input`, `Textarea`, `Checkbox`, `Alert`, `Card`, `Badge`, `StickyActionBar`) exist.
+  1. All buttons MUST consume `<Button>` from `@suite/ui` with designated variants (`default`, `outline`, `ghost`, `destructive`, etc.) and size tokens.
+  2. All dropdown selections MUST consume shared `@suite/ui` select primitives (`<Select />` for static options, `<AsyncSelect />` for dynamic remote datasets).
+  3. All status alerts, banners, and toast notifications MUST consume `<Alert />` from `@suite/ui`.
+  4. Bypassing shared UI library primitives with raw HTML elements creates accessibility regressions, inconsistent design token usage, and divergent interaction states.
 
 ---
 

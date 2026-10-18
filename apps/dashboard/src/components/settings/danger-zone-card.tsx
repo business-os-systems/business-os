@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Button, Input, Spinner, AlertTriangleIcon } from "@suite/ui";
+import { Button, Input, Spinner, AlertTriangleIcon, Modal, cn } from "@suite/ui";
 
 export interface DangerZoneCardProps {
   /**
@@ -45,6 +45,7 @@ export interface DangerZoneCardProps {
  *
  * Dedicated protective card requiring exact identifier typing verification
  * prior to unlocking high-stakes destructive or organization-altering actions.
+ * Consumes standardized Modal wrapper from @suite/ui and Terracotta brand tokens.
  */
 export function DangerZoneCard({
   title,
@@ -83,13 +84,21 @@ export function DangerZoneCard({
   return (
     <>
       <div
-        className={`rounded-xl border border-danger/30 bg-danger/5 p-5 sm:p-6 transition-colors ${className}`}
+        className={cn(
+          "rounded-xl border-2 border-brand bg-brand-tint/30 dark:bg-brand-tint/40 p-5 sm:p-6 transition-colors shadow-sm",
+          className,
+        )}
       >
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <AlertTriangleIcon className="h-5 w-5 text-danger shrink-0" aria-hidden="true" />
-              <h3 className="text-sm font-semibold text-text">{title}</h3>
+              <AlertTriangleIcon
+                className="h-5 w-5 text-brand dark:text-brand-text shrink-0"
+                aria-hidden="true"
+              />
+              <h3 className="text-sm font-bold text-brand dark:text-brand-text">
+                {title}
+              </h3>
             </div>
             <p className="text-xs text-text-secondary leading-relaxed max-w-xl">
               {description}
@@ -98,85 +107,89 @@ export function DangerZoneCard({
 
           <Button
             type="button"
-            variant="destructive"
             size="sm"
             disabled={disabled}
             onClick={handleOpen}
-            className="shrink-0 self-start sm:self-auto font-medium"
+            className="shrink-0 self-start sm:self-auto font-semibold bg-brand hover:bg-brand-hover text-on-brand shadow-sm"
           >
             {actionLabel}
           </Button>
         </div>
       </div>
 
-      {isOpen && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="danger-dialog-title"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-scrim backdrop-blur-sm"
-        >
-          <div
-            className="w-full max-w-md rounded-2xl border border-danger/40 bg-surface p-6 shadow-xl space-y-4 animate-in fade-in zoom-in-95 duration-150"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center gap-2.5">
-              <div className="rounded-full bg-danger/10 p-2 text-danger">
-                <AlertTriangleIcon className="h-5 w-5" aria-hidden="true" />
-              </div>
-              <div>
-                <h3 id="danger-dialog-title" className="text-base font-semibold text-text">
-                  Confirm {title}
-                </h3>
-                <p className="text-xs text-text-muted">This action cannot be undone.</p>
-              </div>
+      <Modal
+        isOpen={isOpen}
+        onClose={handleClose}
+        size="sm"
+        className="border-2 border-brand"
+        title={
+          <div className="flex items-center gap-2.5">
+            <div className="rounded-full bg-brand-tint p-2 text-brand dark:text-brand-text">
+              <AlertTriangleIcon className="h-5 w-5" aria-hidden="true" />
             </div>
-
-            <p className="text-xs text-text-secondary leading-relaxed">
-              {confirmationPrompt ?? (
-                <>
-                  To proceed, please type <strong className="font-mono text-danger select-all">{expectedSlug}</strong> below to confirm.
-                </>
-              )}
-            </p>
-
-            <div className="space-y-2">
-              <Input
-                type="text"
-                value={typedSlug}
-                onChange={(e) => setTypedSlug(e.target.value)}
-                placeholder={expectedSlug}
-                disabled={isProcessing}
-                className="font-mono text-sm border-danger/40 focus:border-danger focus:ring-danger/20"
-                autoFocus
-              />
-            </div>
-
-            <div className="flex items-center justify-end gap-3 pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleClose}
-                disabled={isProcessing}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                variant="destructive"
-                size="sm"
-                disabled={!isMatch || isProcessing}
-                onClick={handleConfirm}
-                className="inline-flex items-center gap-1.5"
-              >
-                {isProcessing && <Spinner size="sm" className="h-3 w-3" />}
-                <span>{isProcessing ? "Processing..." : `I understand, ${actionLabel}`}</span>
-              </Button>
+            <div>
+              <span className="text-base font-bold text-text">Confirm {title}</span>
+              <p className="text-xs text-brand dark:text-brand-text font-medium">
+                This action cannot be undone.
+              </p>
             </div>
           </div>
+        }
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleClose}
+              disabled={isProcessing}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={!isMatch || isProcessing}
+              onClick={handleConfirm}
+              className={cn(
+                "inline-flex items-center gap-1.5 font-semibold transition-all",
+                isMatch
+                  ? "bg-brand hover:bg-brand-hover text-on-brand shadow-sm"
+                  : "bg-surface-muted text-text-muted border border-border cursor-not-allowed opacity-60",
+              )}
+            >
+              {isProcessing && <Spinner size="sm" className="h-3 w-3" />}
+              <span>
+                {isProcessing ? "Processing..." : `I understand, ${actionLabel}`}
+              </span>
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <p className="text-xs text-text-secondary leading-relaxed">
+            {confirmationPrompt ?? (
+              <>
+                To proceed, please type{" "}
+                <code className="px-1.5 py-0.5 rounded bg-brand-tint border border-brand/40 font-mono text-brand dark:text-brand-text font-bold text-xs select-all">
+                  {expectedSlug}
+                </code>{" "}
+                below to confirm.
+              </>
+            )}
+          </p>
+
+          <Input
+            type="text"
+            value={typedSlug}
+            onChange={(e) => setTypedSlug(e.target.value)}
+            placeholder="Type slug to confirm"
+            disabled={isProcessing}
+            className="font-mono text-sm border-border-strong focus:border-brand focus:ring-brand/20"
+            autoFocus
+          />
         </div>
-      )}
+      </Modal>
     </>
   );
 }

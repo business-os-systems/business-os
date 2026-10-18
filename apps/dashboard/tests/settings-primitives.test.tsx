@@ -64,7 +64,7 @@ describe("Settings Hub Specialized Primitives", () => {
 
       expect(html).toContain("Delete Workspace");
       expect(html).toContain("Irreversibly erase all branches and folios");
-      expect(html).toContain("bg-danger/5");
+      expect(html).toContain("border-brand");
     });
   });
 
