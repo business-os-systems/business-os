@@ -195,23 +195,23 @@ async function validateDomainConflict(
   return null;
 }
 
+function buildPrismaUpdatePayload(data: UpdateOrganizationDto) {
+  const updatePayload: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (value !== undefined) {
+      updatePayload[key] = key === "customDomain" && !value ? null : value;
+    }
+  }
+  return updatePayload;
+}
+
 async function updateOrganizationRecord(
   organizationId: string,
   data: UpdateOrganizationDto,
 ) {
   return prisma.organization.update({
     where: { id: organizationId },
-    data: {
-      ...(data.name !== undefined && { name: data.name }),
-      ...(data.customDomain !== undefined && {
-        customDomain: data.customDomain ? data.customDomain : null,
-      }),
-      ...(data.currency !== undefined && { currency: data.currency }),
-      ...(data.country !== undefined && { country: data.country }),
-      ...(data.defaultLocale !== undefined && { defaultLocale: data.defaultLocale }),
-      ...(data.jurisdiction !== undefined && { jurisdiction: data.jurisdiction }),
-      ...(data.status !== undefined && { status: data.status }),
-    },
+    data: buildPrismaUpdatePayload(data),
     include: {
       registeredAddress: true,
       taxProfile: true,

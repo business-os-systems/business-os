@@ -12,6 +12,7 @@ export * from "./components/select.js";
 export * from "./components/async-select.js";
 export * from "./components/sticky-action-bar.js";
 export * from "./components/modal.js";
+export * from "./components/toast.js";
 export * from "./tokens.js";
 export * from "./icons/index.js";
 export * from "./types/ui-schema.js";

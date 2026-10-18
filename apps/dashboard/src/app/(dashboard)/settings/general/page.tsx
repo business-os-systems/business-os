@@ -1,58 +1,12 @@
 import React from "react";
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
-import { prisma } from "@suite/db";
-import {
-  SESSION_COOKIE_NAME,
-  decodeSessionPayload,
-  type SessionPayload,
-} from "@/lib/auth-constants";
 import { Alert } from "@suite/ui";
+import { requireAuth } from "@/lib/auth-guard";
+import { getOrganizationSettings } from "@/services/organization-settings.service";
 import { GeneralSettingsClient } from "./general-client";
 
-function isAuthenticatedSession(
-  session: SessionPayload | null,
-): session is SessionPayload & {
-  organizationId: string;
-  organizationName: string;
-  userName: string;
-  email: string;
-} {
-  return Boolean(
-    session &&
-    session.userId &&
-    session.organizationId &&
-    session.organizationName &&
-    session.userName &&
-    session.email,
-  );
-}
-
 export default async function GeneralSettingsPage() {
-  const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME)?.value;
-  const rawSession = sessionCookie ? decodeSessionPayload(sessionCookie) : null;
-
-  if (!isAuthenticatedSession(rawSession)) {
-    redirect("/login");
-  }
-
-  const session = rawSession;
-
-  const organization = await prisma.organization.findUnique({
-    where: { id: session.organizationId },
-    select: {
-      id: true,
-      name: true,
-      slug: true,
-      customDomain: true,
-      currency: true,
-      country: true,
-      defaultLocale: true,
-      jurisdiction: true,
-      status: true,
-    },
-  });
+  const session = await requireAuth();
+  const organization = await getOrganizationSettings(session.organizationId);
 
   if (!organization) {
     return (
