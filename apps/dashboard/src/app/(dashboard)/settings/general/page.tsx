@@ -1,17 +1,38 @@
 import React from "react";
+import { Alert } from "@suite/ui";
+import { requireAuth } from "@/lib/auth-guard";
+import { getOrganizationSettings } from "@/services/organization-settings.service";
+import { GeneralSettingsClient } from "./general-client";
 
-export default function GeneralSettingsPage() {
+export default async function GeneralSettingsPage() {
+  const session = await requireAuth();
+  const organization = await getOrganizationSettings(session.organizationId);
+
+  if (!organization) {
+    return (
+      <div className="max-w-4xl py-6">
+        <Alert variant="error" title="Organization Not Found">
+          Active organization could not be found. Please contact support.
+        </Alert>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 max-w-4xl">
-      <div>
-        <h1 className="text-xl font-bold tracking-tight text-text">General Settings</h1>
-        <p className="text-sm text-text-muted mt-1">
-          Manage organization profile, currency, country, and statutory jurisdiction.
-        </p>
-      </div>
-      <div className="rounded-xl border border-dashed border-border bg-surface p-8 text-center text-sm text-text-muted">
-        Organization Profile form and Danger Zone will be fully wired in Issue #154.
-      </div>
+      <GeneralSettingsClient
+        initialData={{
+          name: organization.name,
+          customDomain: organization.customDomain ?? "",
+          currency: organization.currency,
+          country: organization.country,
+          defaultLocale: organization.defaultLocale,
+          jurisdiction: organization.jurisdiction,
+        }}
+        organizationId={organization.id}
+        slug={organization.slug}
+        userPermissions={session.permissions ?? []}
+      />
     </div>
   );
 }

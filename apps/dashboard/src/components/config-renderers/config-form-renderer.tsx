@@ -1,4 +1,6 @@
-import React, { useState, useId } from "react";
+"use client";
+
+import React, { useState, useId, useEffect } from "react";
 import type { z } from "zod";
 import {
   Input,
@@ -10,6 +12,8 @@ import {
   CardTitle,
   CardDescription,
   CardContent,
+  Select,
+  StickyActionBar,
 } from "@suite/ui";
 import type {
   FormConfig,
@@ -17,7 +21,6 @@ import type {
   FormCardSection,
 } from "@suite/ui";
 import { hasPermission } from "@suite/core";
-import { StickyActionBar } from "../settings/sticky-action-bar.js";
 import { DangerZoneCard } from "../settings/danger-zone-card.js";
 
 export interface ConfigFormRendererProps<T extends object> {
@@ -68,7 +71,7 @@ export interface ConfigFormRendererProps<T extends object> {
  */
 function isAuthorized(permission?: string, userPermissions?: readonly string[]): boolean {
   if (!permission) return true;
-  if (!userPermissions) return true;
+  if (!userPermissions || userPermissions.length === 0) return false;
   return hasPermission(userPermissions, permission);
 }
 
@@ -123,6 +126,11 @@ export function ConfigFormRenderer<T extends object>({
   const [values, setValues] = useState<T>(() => buildInitialState(config.sections, initialValues));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isDirty, setIsDirty] = useState<boolean>(false);
+
+  useEffect(() => {
+    setValues(buildInitialState(config.sections, initialValues));
+    setIsDirty(false);
+  }, [initialValues, config.sections]);
 
   const handleFieldChange = (name: keyof T & string, val: unknown) => {
     setValues((prev) => ({ ...prev, [name]: val }));
@@ -198,8 +206,8 @@ export function ConfigFormRenderer<T extends object>({
 
         return (
           <Card key={section.id} className="border-border bg-surface">
-            <CardHeader>
-              <CardTitle className="text-base font-semibold text-text">
+            <CardHeader className="px-5 py-3.5 sm:px-6 sm:py-4 space-y-0.5">
+              <CardTitle className="text-sm sm:text-base font-semibold text-text">
                 {section.title}
               </CardTitle>
               {section.description && (
@@ -209,7 +217,7 @@ export function ConfigFormRenderer<T extends object>({
               )}
             </CardHeader>
 
-            <CardContent>
+            <CardContent className="px-5 pb-5 sm:px-6 sm:pb-6 pt-0">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {section.fields.map((field) => {
                   if (!isAuthorized(field.permission, userPermissions)) {
@@ -359,20 +367,16 @@ function FieldControl<T extends object>({
 
   if (field.type === "select") {
     return (
-      <select
+      <Select
         id={inputId}
         name={field.name}
         value={String(value ?? "")}
+        options={field.options}
+        placeholder={field.placeholder}
         disabled={isDisabled}
-        onChange={(e) => onChange(e.target.value)}
-        className={`w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-action/20 focus:border-action transition-colors disabled:opacity-50 ${errorBorder}`}
-      >
-        {field.options.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
+        hasError={Boolean(error)}
+        onChange={(val) => onChange(val)}
+      />
     );
   }
 
@@ -392,3 +396,4 @@ function FieldControl<T extends object>({
     />
   );
 }
+

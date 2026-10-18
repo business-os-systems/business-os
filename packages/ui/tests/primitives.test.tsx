@@ -6,6 +6,12 @@ import {
   Input,
   Label,
   Spinner,
+  Alert,
+  Toast,
+  Modal,
+  Select,
+  AsyncSelect,
+  StickyActionBar,
   AlertTriangleIcon,
   AlertCircleIcon,
   XIcon,
@@ -214,6 +220,105 @@ describe("@suite/ui Standardized Primitives (SPEC-UI-001)", () => {
       const keyHtml = renderToString(<KeyIcon size={16} />);
       expect(keyHtml).toContain("<svg");
       expect(keyHtml).toContain('width="16"');
+    });
+  });
+
+  describe("Alert Component (DESIGN.md Status Tokens)", () => {
+    it("renders success alert with token classes and check icon", () => {
+      const html = renderToString(
+        <Alert variant="success" message="Changes saved successfully" />
+      );
+      expect(html).toContain("Changes saved successfully");
+      expect(html).toContain("border-success/40");
+      expect(html).toContain("bg-success/10");
+      expect(html).toContain("<svg");
+    });
+
+    it("renders error alert with danger tokens and dismiss button", () => {
+      const html = renderToString(
+        <Alert
+          variant="error"
+          title="Validation Error"
+          message="Invalid input provided"
+          dismissible
+        />
+      );
+      expect(html).toContain("Validation Error");
+      expect(html).toContain("Invalid input provided");
+      expect(html).toContain("border-danger/40");
+      expect(html).toContain("aria-label=\"Dismiss alert\"");
+    });
+  });
+
+  describe("Select & AsyncSelect Dropdowns (DESIGN.md Tokens)", () => {
+    it("renders Select dropdown trigger with options and rotating chevron", () => {
+      const options = [
+        { label: "Option 1", value: "opt-1" },
+        { label: "Option 2", value: "opt-2" },
+      ];
+      const html = renderToString(
+        <Select
+          id="test-select"
+          options={options}
+          value="opt-1"
+          placeholder="Choose an option"
+        />
+      );
+      expect(html).toContain("Option 1");
+      expect(html).toContain("<svg");
+      expect(html).toContain("type=\"button\"");
+    });
+
+    it("renders AsyncSelect in loading state initially", () => {
+      const html = renderToString(
+        <AsyncSelect
+          loadOptions={async () => []}
+          loadingMessage="Fetching workspaces..."
+        />
+      );
+      expect(html).toContain("Fetching workspaces...");
+    });
+  });
+
+  describe("StickyActionBar Component", () => {
+    it("renders sticky action bar with status prompt and action buttons", () => {
+      const html = renderToString(
+        <StickyActionBar
+          isDirty={true}
+          statusPrompt="Unsaved modifications"
+          saveLabel="Commit Changes"
+          discardLabel="Revert"
+        />
+      );
+      expect(html).toContain("Unsaved modifications");
+      expect(html).toContain("Commit Changes");
+      expect(html).toContain("Revert");
+      expect(html).toContain("sticky bottom-0");
+    });
+  });
+
+  describe("Modal Component (DESIGN.md Modal Wrapper)", () => {
+    it("returns null when isOpen is false", () => {
+      const html = renderToString(
+        <Modal isOpen={false} onClose={() => {}} title="Test Modal">
+          <p>Modal body content</p>
+        </Modal>
+      );
+      expect(html).toBe("");
+    });
+  });
+
+  describe("Toast Floating Component", () => {
+    it("renders inline alert or toast content properly", () => {
+      const html = renderToString(
+        <Toast
+          position="inline"
+          variant="success"
+          message="Toast message verified"
+        />
+      );
+      expect(html).toContain("Toast message verified");
+      expect(html).toContain("border-success/40");
     });
   });
 });

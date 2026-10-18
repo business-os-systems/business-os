@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 import { Button, Spinner } from "@suite/ui";
 
@@ -50,7 +52,7 @@ export interface StickyActionBarProps {
  * StickyActionBar
  *
  * Persistent sticky footer action bar anchored to the bottom of the viewport.
- * Provides backdrop blur and save/discard triggers for settings forms.
+ * Provides save/discard triggers for settings forms with responsive layout.
  */
 export function StickyActionBar({
   visible = true,
@@ -79,9 +81,9 @@ export function StickyActionBar({
     <div
       role="region"
       aria-label="Form actions"
-      className={`sticky bottom-0 left-0 right-0 z-30 w-full border-t border-border bg-surface/90 backdrop-blur-md px-4 py-3 sm:px-6 transition-all duration-200 ${className}`}
+      className={`sticky bottom-0 left-0 right-0 z-30 w-full border-t border-border bg-surface shadow-md px-4 py-3 sm:px-6 transition-all duration-200 ${className}`}
     >
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
+      <div className="mx-auto flex max-w-7xl flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4">
         <div className="flex items-center gap-2">
           {isDirty ? (
             <span className="flex items-center gap-2 text-xs font-medium text-warning">
@@ -96,7 +98,7 @@ export function StickyActionBar({
           )}
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 w-full sm:w-auto">
           {showDiscard && (
             <Button
               type="button"
@@ -104,7 +106,7 @@ export function StickyActionBar({
               size="sm"
               disabled={isSaving || !isDirty}
               onClick={onDiscard}
-              className="text-xs font-medium"
+              className="text-xs font-medium flex-1 sm:flex-initial justify-center"
             >
               {discardLabel}
             </Button>
@@ -116,7 +118,7 @@ export function StickyActionBar({
             size="sm"
             disabled={isSaving || !isDirty}
             onClick={onSave ? handleSaveClick : undefined}
-            className="text-xs font-medium inline-flex items-center gap-1.5"
+            className="text-xs font-medium inline-flex items-center justify-center gap-1.5 flex-1 sm:flex-initial"
           >
             {isSaving && <Spinner size="sm" className="h-3 w-3" />}
             <span>{isSaving ? "Saving..." : saveLabel}</span>

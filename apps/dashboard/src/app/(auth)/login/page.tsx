@@ -33,6 +33,11 @@ function LoginFormContent() {
   const searchParams = useSearchParams();
 
   const getInitialErrorMessage = (): string | null => {
+    const noticeParam = searchParams?.get("notice");
+    if (noticeParam === "archived") {
+      return "This organization has been archived. Please sign in to an active organization.";
+    }
+
     const errorParam = searchParams?.get("error");
     if (!errorParam) return null;
     if (errorParam === "sso_unconfigured") {
@@ -58,8 +63,9 @@ function LoginFormContent() {
     setErrorMessage(null);
     if (isBrowser) {
       const url = new URL(window.location.href);
-      if (url.searchParams.has("error")) {
+      if (url.searchParams.has("error") || url.searchParams.has("notice")) {
         url.searchParams.delete("error");
+        url.searchParams.delete("notice");
         url.searchParams.delete("org");
         url.searchParams.delete("domain");
         url.searchParams.delete("provider");
