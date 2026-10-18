@@ -52,9 +52,24 @@ export function Select({
     controlledValue ?? defaultValue ?? "",
   );
   const [isOpen, setIsOpen] = useState(false);
+  const [openUpward, setOpenUpward] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const activeValue = controlledValue !== undefined ? controlledValue : internalValue;
+
+  useEffect(() => {
+    if (isOpen && containerRef.current && isBrowser) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      // If space below is less than dropdown menu height (~250px) and there's more space above, open upward
+      if (spaceBelow < 250 && spaceAbove > spaceBelow) {
+        setOpenUpward(true);
+      } else {
+        setOpenUpward(false);
+      }
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -130,7 +145,12 @@ export function Select({
         <ul
           role="listbox"
           aria-labelledby={id}
-          className="absolute left-0 right-0 top-full mt-1.5 max-h-60 overflow-y-auto rounded-md border border-border bg-surface p-1 shadow-lg z-50 animate-in fade-in slide-in-from-top-1 duration-150"
+          className={cn(
+            "absolute left-0 right-0 max-h-60 overflow-y-auto rounded-md border border-border bg-surface p-1 shadow-lg z-50 animate-in fade-in duration-150",
+            openUpward
+              ? "bottom-full mb-1.5 slide-in-from-bottom-1"
+              : "top-full mt-1.5 slide-in-from-top-1",
+          )}
         >
           {options.length === 0 ? (
             <li className="px-3 py-2 text-xs text-text-muted text-center select-none">

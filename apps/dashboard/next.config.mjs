@@ -22,12 +22,16 @@ const nextConfig = {
     if (!apiUrl) {
       return [];
     }
-    return [
-      {
-        source: "/api/v1/:path*",
-        destination: `${apiUrl}/api/v1/:path*`,
-      },
-    ];
+    return {
+      beforeFiles: [],
+      afterFiles: [],
+      fallback: [
+        {
+          source: "/api/v1/:path*",
+          destination: `${apiUrl}/api/v1/:path*`,
+        },
+      ],
+    };
   },
 };
 

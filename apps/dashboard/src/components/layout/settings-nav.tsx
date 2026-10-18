@@ -3,14 +3,15 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { SettingsCategoryConfig } from "@suite/ui";
+import type { SettingsCategoryConfig, SettingsGroupConfig } from "@suite/ui";
 import { hasPermission } from "@suite/core";
 import { SettingsIcon } from "@suite/ui/icons";
-import { settingsCategoriesConfig } from "./settings.config";
+import { settingsGroupsConfig } from "./settings.config";
 import { getSettingsIcon } from "./icon-registry";
 
 export interface SettingsNavProps {
   userPermissions?: readonly string[];
+  groups?: SettingsGroupConfig[];
   categories?: SettingsCategoryConfig[];
   className?: string;
   isMobile?: boolean;
@@ -19,12 +20,19 @@ export interface SettingsNavProps {
 
 export function SettingsNav({
   userPermissions,
-  categories = settingsCategoriesConfig,
+  groups,
+  categories,
   className,
   isMobile = false,
   onSelectCategory,
 }: SettingsNavProps) {
   const pathname = usePathname();
+
+  const resolvedGroups: SettingsGroupConfig[] =
+    groups ??
+    (categories
+      ? [{ id: "categories", items: categories }]
+      : settingsGroupsConfig);
 
   // Capability-based permission evaluator: STRICTLY FAIL-CLOSED
   const isCategoryAuthorized = (category: SettingsCategoryConfig): boolean => {
@@ -33,62 +41,68 @@ export function SettingsNav({
     return hasPermission(userPermissions, category.permission);
   };
 
-  const authorizedCategories = categories.filter(isCategoryAuthorized);
+  const renderCategoryItem = (category: SettingsCategoryConfig) => {
+    const currentPath = pathname ?? "";
+    const isActive =
+      currentPath === category.href ||
+      currentPath.startsWith(`${category.href}/`);
+    const IconComponent = getSettingsIcon(category.icon);
+
+    return (
+      <Link
+        key={category.id}
+        href={category.href}
+        onClick={() => onSelectCategory?.(category.id)}
+        className={`group relative flex items-center gap-3 rounded-lg px-3 py-2 text-xs sm:text-[13px] min-h-[38px] transition-colors ${
+          isActive
+            ? "bg-brand-tint/70 text-brand font-semibold shadow-2xs before:absolute before:left-0 before:top-2 before:bottom-2 before:w-1 before:bg-brand before:rounded-r-sm"
+            : "text-text-secondary hover:bg-surface-hover hover:text-text font-medium"
+        }`}
+      >
+        <IconComponent
+          className={`h-4 w-4 flex-shrink-0 transition-colors ${
+            isActive ? "text-brand" : "text-text-muted group-hover:text-text"
+          }`}
+        />
+        <span className="truncate">{category.label}</span>
+      </Link>
+    );
+  };
 
   return (
     <aside
       className={`flex flex-col border-r border-border bg-surface ${
-        isMobile ? "w-full" : "w-64"
+        isMobile ? "w-full" : "w-56 sm:w-60"
       } ${className || ""}`}
     >
-      <div className="flex h-16 items-center border-b border-border px-5 bg-surface flex-shrink-0">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-brand-tint text-brand">
-            <SettingsIcon className="h-4 w-4" />
+      <div className="flex h-12 items-center border-b border-border px-4 bg-surface flex-shrink-0">
+        <div className="flex items-center gap-2">
+          <div className="flex h-6 w-6 items-center justify-center rounded-md bg-brand-tint text-brand">
+            <SettingsIcon className="h-3.5 w-3.5" />
           </div>
-          <div className="flex flex-col">
-            <h2 className="font-bold text-text text-sm tracking-tight">Settings</h2>
-            <p className="text-[11px] text-text-muted font-medium">Core Workspace Hub</p>
-          </div>
+          <span className="font-bold text-text text-xs tracking-tight">
+            Settings
+          </span>
         </div>
       </div>
 
-      <nav className="flex-1 space-y-1 p-3 overflow-y-auto">
-        <div className="px-3 pb-2 pt-1 text-[11px] font-semibold uppercase tracking-wider text-text-muted">
-          Core Settings
-        </div>
-        {authorizedCategories.map((category) => {
-          const currentPath = pathname ?? "";
-          const isActive =
-            currentPath === category.href ||
-            currentPath.startsWith(`${category.href}/`);
-          const IconComponent = getSettingsIcon(category.icon);
+      <nav className="flex-1 space-y-3 p-2.5 overflow-y-auto">
+        {resolvedGroups.map((group, groupIdx) => {
+          const authorizedItems = group.items.filter(isCategoryAuthorized);
+          if (authorizedItems.length === 0) return null;
 
           return (
-            <Link
-              key={category.id}
-              href={category.href}
-              onClick={() => onSelectCategory?.(category.id)}
-              className={`flex items-start gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${
-                isActive
-                  ? "border border-brand bg-brand-tint text-brand font-semibold shadow-xs"
-                  : "text-text-secondary hover:bg-surface-hover hover:text-text font-medium"
-              }`}
+            <div
+              key={group.id}
+              className={`space-y-0.5 ${groupIdx > 0 ? "pt-2.5 border-t border-border" : ""}`}
             >
-              <IconComponent
-                className={`h-5 w-5 mt-0.5 flex-shrink-0 ${
-                  isActive ? "text-brand" : "text-text-muted"
-                }`}
-              />
-              <div className="flex flex-col flex-1 overflow-hidden">
-                <span className="truncate">{category.label}</span>
-                {category.description && (
-                  <span className="text-xs text-text-muted line-clamp-1 mt-0.5 font-normal">
-                    {category.description}
-                  </span>
-                )}
-              </div>
-            </Link>
+              {group.label && (
+                <div className="px-3 pb-1.5 pt-0.5 text-[10px] font-semibold uppercase tracking-wider text-text-muted">
+                  {group.label}
+                </div>
+              )}
+              {authorizedItems.map(renderCategoryItem)}
+            </div>
           );
         })}
       </nav>
