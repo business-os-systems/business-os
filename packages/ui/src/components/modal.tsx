@@ -58,6 +58,10 @@ export interface ModalProps {
    */
   className?: string;
   /**
+   * Optional custom CSS class name for the modal body content wrapper.
+   */
+  contentClassName?: string;
+  /**
    * Optional custom CSS class name for the backdrop overlay.
    */
   overlayClassName?: string;
@@ -90,6 +94,7 @@ export function Modal({
   closeOnEscape = true,
   showCloseButton = true,
   className,
+  contentClassName,
   overlayClassName,
 }: ModalProps) {
   const [isMounted, setIsMounted] = useState(false);
@@ -176,7 +181,12 @@ export function Modal({
           </div>
         )}
 
-        <div className="py-4 flex-1 text-sm leading-normal">
+        <div
+          className={cn(
+            "py-4 flex-1 text-sm leading-normal",
+            contentClassName,
+          )}
+        >
           {children}
         </div>
 

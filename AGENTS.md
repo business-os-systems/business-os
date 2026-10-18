@@ -212,12 +212,28 @@ You are **STRICTLY PROHIBITED** from:
 - ❌ **ESLint-Enforced Zero Empty Catch Blocks (Strict Error Transparency Law):**
   Empty `catch {}` blocks are completely banned across the monorepo via ESLint (`"no-empty": ["error", { "allowEmptyCatch": false }]`).
   Every catch block must either handle the exception with domain recovery, log the error with typed context via `@suite/logger` or `console.error`, or rethrow as a typed `AppError` subclass.
-- ❌ **Raw HTML Form & Interactive Primitives (Mandatory Shared UI Component Primacy Law):**
-  AI agents and developers are **STRICTLY FORBIDDEN** from using raw HTML form, interactive, or feedback elements (such as raw `<button>`, `<select>`, `<input>`, `<textarea>`, `<dialog>`, or ad-hoc unstyled notification divs) in application views, features, or components when standardized `@suite/ui` primitives (`Button`, `Select`, `AsyncSelect`, `Input`, `Textarea`, `Checkbox`, `Alert`, `Card`, `Badge`, `StickyActionBar`) exist.
-  1. All buttons MUST consume `<Button>` from `@suite/ui` with designated variants (`default`, `outline`, `ghost`, `destructive`, etc.) and size tokens.
-  2. All dropdown selections MUST consume shared `@suite/ui` select primitives (`<Select />` for static options, `<AsyncSelect />` for dynamic remote datasets).
-  3. All status alerts, banners, and toast notifications MUST consume `<Alert />` from `@suite/ui`.
-  4. Bypassing shared UI library primitives with raw HTML elements creates accessibility regressions, inconsistent design token usage, and divergent interaction states.
+- ❌ **Hardcoded Domain & Form Defaults (Dynamic Attribute & Canonical Constants Law):**
+  AI agents and engineers are **STRICTLY FORBIDDEN** from hardcoding magic domain defaults or fallback values (e.g., `timezone: "Asia/Kolkata"`, `currency: "INR"`, `nightAuditHour: 4`, `locale: "en-IN"`, `dateFormat: "YYYY-MM-DD"`, `timeFormat: "12h"`, `capabilities: ["lodging"]`, `parentBranchId: ""`) in client state, component forms, or API route fallbacks.
+  1. Default values for operational entities (such as branches, outlets, or pos profiles) **MUST** be derived dynamically from the active tenant/organization profile (`activeOrganization.timezone`, `activeOrganization.currency`, `activeOrganization.locale`) or canonical platform configuration constants.
+  2. Fallback options for parent hierarchies or relations must be loaded dynamically from the database or passed via typed context props—never hardcoded as static in-component arrays (`[{ label: "None...", value: "" }]`).
+- ❌ **Masked & Generic Error Messages (Transparent RFC 7807 Error Presentation Law):**
+  AI agents and developers are **STRICTLY FORBIDDEN** from displaying generic catch-all toast notifications or error banners (such as `toast.error("Network error while updating branch.")`) that mask the underlying server error or validation details.
+  1. All HTTP error handling in client services and components MUST parse RFC 7807 problem details payloads (`detail`, `title`, and `invalidParams` / Zod issues) and present the genuine backend error reason to the user.
+  2. If a non-RFC network error occurs, the actual exception message must be formatted transparently rather than replaced with a generic boilerplate string.
+- ❌ **Custom Ad-Hoc Modal Forms (Declarative Modal & Form Schema Primacy Law):**
+  Except for the freeform website builder canvas, all modal forms (including creation, editing, and confirmation dialogs) **MUST NOT** be hand-crafted with custom, repetitive JSX input markup inside feature components.
+  1. Form fields, input controls, section groupings, validation rules (Zod), and layout grids MUST be declared in strongly-typed configuration schemas (`*.config.ts`).
+  2. Modals MUST render these schemas through reusable config-driven form engines (`<ConfigFormRenderer />`) consuming `@suite/ui` primitives.
+- ❌ **Monolithic Multi-Concern Feature Components (Sub-Component Segregation Law):**
+  AI agents and developers are **STRICTLY FORBIDDEN** from cramming the primary listing table, filter toolbar, add modal, edit modal, and danger confirmation dialog into a single monolithic client component (>150 lines).
+  1. Directory views MUST be cleanly decomposed into atomic, single-responsibility sub-components (e.g. `BranchTableToolbar`, `BranchFormModal`, `BranchDangerModal`) housed in a dedicated sub-components directory.
+  2. The parent orchestrator component is responsible solely for state coordination and data fetching.
+- ❌ **Runtime Navigation Partitioning & Hardcoded Group Headers (Declarative Navigation Grouping Law):**
+  Navigation sidebars and sub-navigation menus (including Settings Navigation) **MUST NOT** partition categories at runtime using heuristic ID arrays (e.g., `categories.filter(c => c.id === "general" || ...)`).
+  1. All category groupings (e.g. "Workspace", "Access & Security") MUST be declared directly in navigation configuration schemas (`settings.config.ts`, `navigation.config.ts`).
+  2. Section headers and group titles MUST NOT be hardcoded string literals in JSX; they must be rendered dynamically from configuration properties (`group.label`).
+- ❌ **Inaccessible Navigation Sizing & Missing Active Highlights (Navigation Usability & Visual Clarity Law):**
+  Navigation items in both sub-navigation sidebars and the primary app sidebar MUST provide comfortable, accessible touch targets (`py-2` or `h-9` minimum height) and MUST render a subtle background highlight (`bg-surface-hover` / `bg-surface-subtle`) in active states in addition to the left accent bar indicator.
 
 ---
 

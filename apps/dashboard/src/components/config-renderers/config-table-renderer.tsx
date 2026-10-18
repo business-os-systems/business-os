@@ -141,7 +141,11 @@ export function ConfigTableRenderer<T extends object>({
 
   return (
     <>
-      <div className={`w-full overflow-x-auto rounded-xl border border-border bg-surface ${className}`}>
+      <div
+        className={
+          className || "w-full overflow-x-auto rounded-xl border border-border bg-surface"
+        }
+      >
         <table className="w-full text-left text-xs border-collapse">
           <thead>
             <tr className="border-b border-border bg-surface-muted/50 text-text-secondary font-medium">
@@ -217,32 +221,58 @@ export function ConfigTableRenderer<T extends object>({
                 })}
 
                 {authorizedActions.length > 0 && (
-                  <td className="px-4 py-3 text-right space-x-2 whitespace-nowrap">
-                    {authorizedActions.map((action) => (
-                      <Button
-                        key={action.id}
-                        type="button"
-                        variant={action.variant ?? "outline"}
-                        size="sm"
-                        onClick={() => {
-                          if (action.dangerVerificationSlug) {
-                            setDangerConfirmRow({ row, action });
-                          } else if (action.requiresConfirmation) {
-                            const confirmed = window.confirm(
-                              action.confirmationMessage ?? `Confirm ${action.label}?`
-                            );
-                            if (confirmed) {
+                  <td className="px-4 py-3 text-right space-x-1.5 whitespace-nowrap">
+                    {authorizedActions.map((action) => {
+                      if (action.isVisible && !action.isVisible(row)) {
+                        return null;
+                      }
+                      const actionLabel =
+                        typeof action.label === "function"
+                          ? action.label(row)
+                          : action.label;
+                      const actionTooltip =
+                        typeof action.tooltip === "function"
+                          ? action.tooltip(row)
+                          : action.tooltip ?? actionLabel;
+
+                      const isIconOnly = action.iconOnly || Boolean(action.renderIcon);
+
+                      return (
+                        <Button
+                          key={action.id}
+                          type="button"
+                          variant={action.variant ?? "outline"}
+                          size="sm"
+                          title={actionTooltip}
+                          aria-label={actionLabel}
+                          onClick={() => {
+                            if (action.dangerVerificationSlug) {
+                              setDangerConfirmRow({ row, action });
+                            } else if (action.requiresConfirmation) {
+                              const confirmed = window.confirm(
+                                action.confirmationMessage ?? `Confirm ${actionLabel}?`
+                              );
+                              if (confirmed) {
+                                void action.onClick(row);
+                              }
+                            } else {
                               void action.onClick(row);
                             }
-                          } else {
-                            void action.onClick(row);
+                          }}
+                          className={
+                            isIconOnly
+                              ? "h-7 w-7 p-0 inline-flex items-center justify-center text-xs"
+                              : "text-xs py-1 px-2.5 h-auto font-medium"
                           }
-                        }}
-                        className="text-xs py-1 px-2.5 h-auto font-medium"
-                      >
-                        {action.label}
-                      </Button>
-                    ))}
+                        >
+                          {action.renderIcon ? (
+                            action.renderIcon(row)
+                          ) : (
+                            actionLabel
+                          )}
+                        </Button>
+                      );
+                    })}
                   </td>
                 )}
               </tr>
@@ -259,12 +289,21 @@ export function ConfigTableRenderer<T extends object>({
         >
           <div className="w-full max-w-lg">
             <DangerZoneCard
-              title={dangerConfirmRow.action.confirmationTitle ?? dangerConfirmRow.action.label}
+              title={
+                dangerConfirmRow.action.confirmationTitle ??
+                (typeof dangerConfirmRow.action.label === "function"
+                  ? dangerConfirmRow.action.label(dangerConfirmRow.row)
+                  : dangerConfirmRow.action.label)
+              }
               description={
                 dangerConfirmRow.action.confirmationMessage ??
                 "This action requires explicit verification before proceeding."
               }
-              actionLabel={dangerConfirmRow.action.label}
+              actionLabel={
+                typeof dangerConfirmRow.action.label === "function"
+                  ? dangerConfirmRow.action.label(dangerConfirmRow.row)
+                  : dangerConfirmRow.action.label
+              }
               expectedSlug={
                 dangerConfirmRow.action.dangerVerificationSlug
                   ? dangerConfirmRow.action.dangerVerificationSlug(dangerConfirmRow.row)

@@ -148,7 +148,7 @@ describe("Settings Hub Navigation Shell & Auto-Collapse Primitives (User Story 1
           userPermissions={["*"]}
         />
       );
-      expect(html).toContain("border-brand");
+      expect(html).toContain("before:bg-brand");
       expect(html).toContain("/settings/branches");
     });
   });
@@ -173,7 +173,7 @@ describe("Settings Hub Navigation Shell & Auto-Collapse Primitives (User Story 1
       expect(html).toContain("w-64");
       expect(html).toContain("Dashboard Content");
       // Secondary SettingsNav header should not be present
-      expect(html).not.toContain("Core Workspace Hub");
+      expect(html).not.toContain("Workspace Settings");
     });
 
     it("auto-collapses sidebar to w-16 and docks SettingsNav when on /settings/*", () => {
@@ -193,7 +193,7 @@ describe("Settings Hub Navigation Shell & Auto-Collapse Primitives (User Story 1
         </DashboardShell>
       );
       expect(html).toContain("w-16");
-      expect(html).toContain("Core Workspace Hub");
+      expect(html).toContain("Settings");
       expect(html).toContain("General");
       expect(html).toContain("Settings Content");
     });

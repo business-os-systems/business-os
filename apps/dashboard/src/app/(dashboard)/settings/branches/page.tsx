@@ -1,17 +1,34 @@
 import React from "react";
+import { prisma } from "@suite/db";
+import { requireAuth } from "@/lib/auth-guard";
+import { listOrganizationBranches } from "@/services/branches.service";
+import { BranchesClient } from "./branches-client";
 
-export default function BranchesSettingsPage() {
+export default async function BranchesSettingsPage() {
+  const session = await requireAuth();
+
+  const [branches, org] = await Promise.all([
+    listOrganizationBranches(session.organizationId),
+    prisma.organization.findUnique({
+      where: { id: session.organizationId },
+      select: {
+        currency: true,
+        defaultLocale: true,
+      },
+    }),
+  ]);
+
   return (
-    <div className="space-y-6 max-w-5xl">
-      <div>
-        <h1 className="text-xl font-bold tracking-tight text-text">Branches &amp; Operational Sites</h1>
-        <p className="text-sm text-text-muted mt-1">
-          Manage operational sites, homestays, outlets, and physical facilities.
-        </p>
-      </div>
-      <div className="rounded-xl border border-dashed border-border bg-surface p-8 text-center text-sm text-text-muted">
-        Branches directory and registration modal will be fully wired in Issue #155.
-      </div>
-    </div>
+    <BranchesClient
+      initialBranches={branches}
+      organizationId={session.organizationId}
+      activeBranchId={session.activeBranchId}
+      userPermissions={session.permissions}
+      organizationDefaults={{
+        currency: org?.currency ?? "INR",
+        locale: org?.defaultLocale ?? "en-IN",
+      }}
+    />
   );
 }
+

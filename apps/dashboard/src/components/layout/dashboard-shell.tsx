@@ -29,9 +29,8 @@ export function DashboardShell({
   const isSettingsActive = isSettingsHubRoute(pathname);
 
   const [collapsed, setCollapsed] = useState(false);
-  const [installedApps, setInstalledApps] = useState<readonly InstalledAppNavInput[]>(
-    initialInstalledApps
-  );
+  const [installedApps, setInstalledApps] =
+    useState<readonly InstalledAppNavInput[]>(initialInstalledApps);
 
   useEffect(() => {
     if (initialInstalledApps) {
@@ -66,7 +65,7 @@ export function DashboardShell({
         {tenant?.userEmailVerified === false && (
           <UnverifiedEmailBanner email={tenant?.userEmail} />
         )}
-        <main className="flex-1 overflow-y-auto p-6 md:p-8">{children}</main>
+        <main className="flex-1 overflow-y-auto p-4 md:p-6">{children}</main>
       </div>
     </div>
   );

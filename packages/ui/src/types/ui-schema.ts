@@ -181,14 +181,17 @@ export interface TableColumnConfig<T extends object = Record<string, unknown>>
     ColumnSorting,
     ColumnCustomRenderer<T> {}
 
-export interface TableActionIdentity {
+export interface TableActionIdentity<T extends object = Record<string, unknown>> {
   id: string;
-  label: string;
+  label: string | ((row: T) => string);
   icon?: string;
+  tooltip?: string | ((row: T) => string);
 }
 
-export interface TableActionPresentation {
+export interface TableActionPresentation<T extends object = Record<string, unknown>> {
   variant?: "default" | "destructive" | "outline" | "ghost";
+  renderIcon?: (row: T) => React.ReactNode;
+  iconOnly?: boolean;
 }
 
 export interface TableActionAuthorization {
@@ -206,12 +209,17 @@ export interface TableActionVerification<T extends object> {
   dangerVerificationSlug?: (row: T) => string;
 }
 
+export interface TableActionPredicate<T extends object = Record<string, unknown>> {
+  isVisible?: (row: T) => boolean;
+}
+
 export interface TableActionConfig<T extends object = Record<string, unknown>>
-  extends TableActionIdentity,
-    TableActionPresentation,
+  extends TableActionIdentity<T>,
+    TableActionPresentation<T>,
     TableActionAuthorization,
     TableActionHandler<T>,
-    TableActionVerification<T> {}
+    TableActionVerification<T>,
+    TableActionPredicate<T> {}
 
 export interface TableEmptyStateConfig {
   title: string;
@@ -270,6 +278,13 @@ export interface SettingsCategoryConfig
     CategoryAuthorization,
     CategoryHierarchy {}
 
+export interface SettingsGroupConfig {
+  id: string;
+  label?: string;
+  items: SettingsCategoryConfig[];
+}
+
 export interface SettingsHubConfig {
   categories: SettingsCategoryConfig[];
+  groups?: SettingsGroupConfig[];
 }
