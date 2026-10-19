@@ -49,6 +49,11 @@ const updateOrganizationSchema = z.object({
   status: z
     .enum(["ACTIVE", "TRIAL", "PAST_DUE", "SUSPENDED", "ARCHIVED"])
     .optional(),
+  registeredAddressId: z
+    .string()
+    .trim()
+    .nullable()
+    .optional(),
 });
 
 export async function GET(request: NextRequest) {
@@ -212,7 +217,11 @@ function buildPrismaUpdatePayload(data: UpdateOrganizationDto) {
   const updatePayload: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(data)) {
     if (value !== undefined) {
-      updatePayload[key] = key === "customDomain" && !value ? null : value;
+      if ((key === "customDomain" || key === "registeredAddressId") && !value) {
+        updatePayload[key] = null;
+      } else {
+        updatePayload[key] = value;
+      }
     }
   }
   return updatePayload;

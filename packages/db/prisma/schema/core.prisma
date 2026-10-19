@@ -34,7 +34,8 @@ model Organization {
 
   // Physical Geography & Ground Reality
   registeredAddressId String?
-  registeredAddress   Address?           @relation(fields: [registeredAddressId], references: [id], onDelete: SetNull)
+  registeredAddress   Address?           @relation("OrgRegisteredAddress", fields: [registeredAddressId], references: [id], onDelete: SetNull)
+  addresses           Address[]          @relation("OrgAddresses")
   branches            Branch[]           // Ground Operational Execution Units (Homestays, Cafes, Warehouses)
 
   // 1:N Core Identity, Access & Entitlements
@@ -57,11 +58,17 @@ model Organization {
 
 model Address {
   id             String              @id @default(cuid())
+  organizationId String?
+  organization   Organization?       @relation("OrgAddresses", fields: [organizationId], references: [id], onDelete: Cascade)
 
   // Human-Readable Postal Coordinates
-  streetAddress  String              @db.VarChar(255) // Flat/Building, Street, Area
+  addressType    String              @default("URBAN") @db.VarChar(16) // "URBAN" | "RURAL"
+  streetAddress  String?             @db.VarChar(255) // Flat/Building, Street, Area (mandatory for URBAN)
   landmark       String?             @db.VarChar(191) // e.g. "Near Hadimba Temple, Old Manali"
-  city           String              @db.VarChar(100)
+  city           String?             @db.VarChar(100) // (mandatory for URBAN)
+  village        String?             @db.VarChar(191) // Village name (mandatory for RURAL)
+  postOffice     String?             @db.VarChar(191) // Post Office (mandatory for RURAL)
+  district       String?             @db.VarChar(100) // District (mandatory for RURAL)
   state          String              @db.VarChar(100)
   postalCode     String              @db.VarChar(20)
   country        String              @default("IN") @db.VarChar(2) // ISO 3166-1 alpha-2
@@ -77,9 +84,12 @@ model Address {
 
   // Relationships
   branches       Branch[]
-  organizations  Organization[]
+  organizations  Organization[]      @relation("OrgRegisteredAddress")
 
+  @@index([organizationId])
+  @@index([addressType])
   @@index([city, state, country])
+  @@index([district, state, country])
   @@map("addresses")
 }
 

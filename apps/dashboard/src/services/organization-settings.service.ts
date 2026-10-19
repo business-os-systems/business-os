@@ -1,5 +1,13 @@
 import { prisma } from "@suite/db";
 
+export interface OrganizationAddressSummary {
+  id: string;
+  streetAddress: string | null;
+  city: string | null;
+  state: string;
+  postalCode: string;
+}
+
 export interface OrganizationSettingsDto {
   id: string;
   name: string;
@@ -10,6 +18,8 @@ export interface OrganizationSettingsDto {
   defaultLocale: string;
   jurisdiction: string;
   status: string;
+  registeredAddressId: string | null;
+  registeredAddress: OrganizationAddressSummary | null;
 }
 
 /**
@@ -31,6 +41,16 @@ export async function getOrganizationSettings(
       defaultLocale: true,
       jurisdiction: true,
       status: true,
+      registeredAddressId: true,
+      registeredAddress: {
+        select: {
+          id: true,
+          streetAddress: true,
+          city: true,
+          state: true,
+          postalCode: true,
+        },
+      },
     },
   });
 }
