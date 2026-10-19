@@ -143,19 +143,19 @@ export function ConfigTableRenderer<T extends object>({
     <>
       <div
         className={
-          className || "w-full overflow-x-auto rounded-xl border border-border bg-surface"
+          className || "w-full flex-1 min-h-0 overflow-auto rounded-xl border border-border bg-surface"
         }
       >
         <table className="w-full text-left text-xs border-collapse">
-          <thead>
-            <tr className="border-b border-border bg-surface-muted/50 text-text-secondary font-medium">
+          <thead className="sticky top-0 z-10 bg-surface shadow-xs">
+            <tr className="border-b border-border bg-surface text-text-secondary font-medium">
               {config.columns.map((column) => (
                 <th
                   key={column.key}
                   scope="col"
                   style={{ width: column.width }}
                   onClick={() => handleHeaderClick(column)}
-                  className={`px-4 py-3 text-xs font-medium uppercase tracking-wider select-none ${
+                  className={`bg-surface px-4 py-3 text-xs font-medium uppercase tracking-wider select-none ${
                     column.sortable ? "cursor-pointer hover:text-text" : ""
                   } ${
                     column.align === "right"
@@ -186,7 +186,7 @@ export function ConfigTableRenderer<T extends object>({
               {authorizedActions.length > 0 && (
                 <th
                   scope="col"
-                  className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider"
+                  className="bg-surface px-4 py-3 text-right text-xs font-medium uppercase tracking-wider"
                 >
                   Actions
                 </th>

@@ -19,36 +19,12 @@ const CORE_PERMISSIONS: PermissionDef[] = [
   { appId: "core", action: "core:audit:read", description: "View compliance and audit log trails" },
   { appId: "core", action: "core:apps:manage", description: "Install and activate modular apps" },
 
-  // Lodging PMS Module
-  { appId: "lodging_pms", action: "lodging_pms:properties:read", description: "View lodging property setup" },
-  { appId: "lodging_pms", action: "lodging_pms:properties:write", description: "Modify lodging property configurations" },
-  { appId: "lodging_pms", action: "lodging_pms:units:read", description: "View rooms and physical unit inventory" },
-  { appId: "lodging_pms", action: "lodging_pms:units:write", description: "Modify units and maintenance status" },
-  { appId: "lodging_pms", action: "lodging_pms:reservations:read", description: "View guest reservations and booking calendar" },
-  { appId: "lodging_pms", action: "lodging_pms:reservations:create", description: "Create new guest reservations" },
-  { appId: "lodging_pms", action: "lodging_pms:reservations:update", description: "Modify existing reservations and dates" },
-  { appId: "lodging_pms", action: "lodging_pms:reservations:cancel", description: "Cancel reservations" },
-  { appId: "lodging_pms", action: "lodging_pms:folios:read", description: "View guest folios and charges" },
-  { appId: "lodging_pms", action: "lodging_pms:folios:write", description: "Post room charges and payments to folios" },
-  { appId: "lodging_pms", action: "lodging_pms:folios:void", description: "Void folio items (requires manager PIN)" },
-  { appId: "lodging_pms", action: "lodging_pms:night_audit:run", description: "Execute 4:00 AM operational day rollover" },
-
-  // Restaurant POS Module
-  { appId: "restaurant_pos", action: "restaurant_pos:tables:read", description: "View floor plan and dining tables" },
-  { appId: "restaurant_pos", action: "restaurant_pos:tables:manage", description: "Manage table status and seat assignments" },
-  { appId: "restaurant_pos", action: "restaurant_pos:menu:read", description: "View food and beverage catalog" },
-  { appId: "restaurant_pos", action: "restaurant_pos:menu:write", description: "Modify recipes, menu items, and pricing" },
-  { appId: "restaurant_pos", action: "restaurant_pos:orders:create", description: "Punch KOT tickets and customer orders" },
-  { appId: "restaurant_pos", action: "restaurant_pos:orders:update", description: "Add items or update order status" },
-  { appId: "restaurant_pos", action: "restaurant_pos:orders:void", description: "Void ordered items (anti-theft override)" },
-  { appId: "restaurant_pos", action: "restaurant_pos:payments:process", description: "Settle bills and process card/cash/UPI payments" },
-  { appId: "restaurant_pos", action: "restaurant_pos:shifts:manage", description: "Open and reconcile cash register shifts" },
-
-  // Stock & Inventory Module
-  { appId: "stock_inventory", action: "stock_inventory:items:read", description: "View inventory items and current levels" },
-  { appId: "stock_inventory", action: "stock_inventory:items:write", description: "Create and update inventory items" },
-  { appId: "stock_inventory", action: "stock_inventory:transfers:create", description: "Transfer stock between branches" },
-  { appId: "stock_inventory", action: "stock_inventory:counts:manage", description: "Conduct physical inventory audits" },
+  // Modular App: Website Builder (App 01)
+  { appId: "cms", action: "cms:sites:read", description: "View published and draft website sites" },
+  { appId: "cms", action: "cms:sites:write", description: "Create and modify websites and custom domains" },
+  { appId: "cms", action: "cms:pages:read", description: "View pages and draft visual canvas revisions" },
+  { appId: "cms", action: "cms:pages:write", description: "Edit canvas pages, layout blocks, and SEO tags" },
+  { appId: "cms", action: "cms:publish", description: "Publish website revisions to edge live production" },
 ];
 
 interface RoleDef {
@@ -61,87 +37,28 @@ interface RoleDef {
 const MASTER_ROLES: RoleDef[] = [
   {
     slug: "tenant-owner",
-    name: "Tenant Owner",
-    description: "Full administrative access across all organization branches and installed apps",
+    name: "Organization Owner",
+    description: "Full administrative authority across all organization branches, capability permissions, and installed apps",
     permissionActions: CORE_PERMISSIONS.map((p) => p.action),
-  },
-  {
-    slug: "branch-manager",
-    name: "Branch Manager",
-    description: "Full operational authority within assigned physical branch location",
-    permissionActions: [
-      "core:organization:read",
-      "core:branches:read",
-      "core:users:read",
-      "lodging_pms:properties:read",
-      "lodging_pms:units:read",
-      "lodging_pms:units:write",
-      "lodging_pms:reservations:read",
-      "lodging_pms:reservations:create",
-      "lodging_pms:reservations:update",
-      "lodging_pms:reservations:cancel",
-      "lodging_pms:folios:read",
-      "lodging_pms:folios:write",
-      "lodging_pms:folios:void",
-      "lodging_pms:night_audit:run",
-      "restaurant_pos:tables:read",
-      "restaurant_pos:tables:manage",
-      "restaurant_pos:menu:read",
-      "restaurant_pos:orders:create",
-      "restaurant_pos:orders:update",
-      "restaurant_pos:orders:void",
-      "restaurant_pos:payments:process",
-      "restaurant_pos:shifts:manage",
-      "stock_inventory:items:read",
-      "stock_inventory:items:write",
-      "stock_inventory:transfers:create",
-      "stock_inventory:counts:manage",
-    ],
-  },
-  {
-    slug: "front-desk-agent",
-    name: "Front Desk Agent",
-    description: "Guest check-in, reservations, unit allocations, and guest folio management",
-    permissionActions: [
-      "core:organization:read",
-      "core:branches:read",
-      "lodging_pms:properties:read",
-      "lodging_pms:units:read",
-      "lodging_pms:reservations:read",
-      "lodging_pms:reservations:create",
-      "lodging_pms:reservations:update",
-      "lodging_pms:folios:read",
-      "lodging_pms:folios:write",
-    ],
-  },
-  {
-    slug: "pos-cashier",
-    name: "POS Cashier",
-    description: "POS order entry, bill generation, and payment processing",
-    permissionActions: [
-      "core:organization:read",
-      "core:branches:read",
-      "restaurant_pos:tables:read",
-      "restaurant_pos:menu:read",
-      "restaurant_pos:orders:create",
-      "restaurant_pos:orders:update",
-      "restaurant_pos:payments:process",
-      "restaurant_pos:shifts:manage",
-    ],
-  },
-  {
-    slug: "kitchen-staff",
-    name: "Kitchen Staff",
-    description: "Kitchen display system (KDS) order viewing and preparation status updates",
-    permissionActions: [
-      "restaurant_pos:tables:read",
-      "restaurant_pos:orders:update",
-    ],
   },
 ];
 
 export async function seed() {
   console.log("🌱 Starting Platform Core database seed...");
+
+  // Purge any deprecated unbuilt app permissions from database
+  await prisma.rolePermission.deleteMany({
+    where: {
+      permission: {
+        appId: { in: ["lodging_pms", "restaurant_pos", "stock_inventory"] },
+      },
+    },
+  });
+  await prisma.permission.deleteMany({
+    where: {
+      appId: { in: ["lodging_pms", "restaurant_pos", "stock_inventory"] },
+    },
+  });
 
   // 1. Seed Core Permissions
   console.log("  • Seeding permissions registry...");
@@ -161,6 +78,30 @@ export async function seed() {
 
   // 2. Seed Master Roles (Global system roles: organizationId = null, isSystem = true)
   console.log("  • Seeding master system roles and permissions...");
+  // Purge any deprecated legacy global system roles (retaining strictly Owner)
+  const legacyRoles = await prisma.role.findMany({
+    where: {
+      organizationId: null,
+      slug: { notIn: ["tenant-owner", "owner"] },
+    },
+    select: { id: true },
+  });
+  if (legacyRoles.length > 0) {
+    const legacyRoleIds = legacyRoles.map((r) => r.id);
+    await prisma.userBranchRole.deleteMany({
+      where: { roleId: { in: legacyRoleIds } },
+    });
+    await prisma.rolePermission.deleteMany({
+      where: { roleId: { in: legacyRoleIds } },
+    });
+    await prisma.organizationInvitation.deleteMany({
+      where: { roleId: { in: legacyRoleIds } },
+    });
+    await prisma.role.deleteMany({
+      where: { id: { in: legacyRoleIds } },
+    });
+  }
+
   const roleMap = new Map<string, string>();
   for (const roleDef of MASTER_ROLES) {
     // Unique constraint on Role is (organizationId, slug)
@@ -605,24 +546,6 @@ export async function seed() {
       name: "Rohit Bahuguna",
       roleSlug: "tenant-owner",
       branchId: null, // Organization-Wide access
-    },
-    {
-      email: "manager@riverviewstay.com",
-      name: "Kiran Sharma",
-      roleSlug: "branch-manager",
-      branchId: homestayBranch.id,
-    },
-    {
-      email: "frontdesk@riverviewstay.com",
-      name: "Pooja Verma",
-      roleSlug: "front-desk-agent",
-      branchId: homestayBranch.id,
-    },
-    {
-      email: "cashier@riverviewstay.com",
-      name: "Amit Patel",
-      roleSlug: "pos-cashier",
-      branchId: cafeBranch.id,
     },
   ];
 

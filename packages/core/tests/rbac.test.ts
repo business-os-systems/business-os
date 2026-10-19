@@ -127,16 +127,16 @@ describe("@suite/core - Hierarchical RBAC Permission Evaluator", () => {
       expect(PERMISSIONS.APPS.INSTALL).toBe("apps:install");
       expect(PERMISSIONS.APPS.ALL).toBe("apps:*");
       expect(PERMISSIONS.CORE.APPS_MANAGE).toBe("core:apps:manage");
-      expect(PERMISSIONS.LODGING_PMS.RESERVATIONS_READ).toBe("lodging_pms:reservations:read");
-      expect(PERMISSIONS.RESTAURANT_POS.ORDERS_CREATE).toBe("restaurant_pos:orders:create");
-      expect(PERMISSIONS.STOCK_INVENTORY.ITEMS_READ).toBe("stock_inventory:items:read");
+      expect(PERMISSIONS.WEBSITE_BUILDER.SITES_READ).toBe("cms:sites:read");
+      expect(PERMISSIONS.WEBSITE_BUILDER.PAGES_WRITE).toBe("cms:pages:write");
+      expect(PERMISSIONS.WEBSITE_BUILDER.PUBLISH).toBe("cms:publish");
     });
 
     it("evaluates permission checks using PERMISSIONS constants seamlessly", () => {
-      const userPerms = [PERMISSIONS.APPS.INSTALL, PERMISSIONS.LODGING_PMS.ALL];
+      const userPerms = [PERMISSIONS.APPS.INSTALL, PERMISSIONS.WEBSITE_BUILDER.ALL];
       expect(hasPermission(userPerms, PERMISSIONS.APPS.INSTALL)).toBe(true);
-      expect(hasPermission(userPerms, PERMISSIONS.LODGING_PMS.RESERVATIONS_READ)).toBe(true);
-      expect(hasPermission(userPerms, PERMISSIONS.RESTAURANT_POS.ORDERS_CREATE)).toBe(false);
+      expect(hasPermission(userPerms, PERMISSIONS.WEBSITE_BUILDER.SITES_READ)).toBe(true);
+      expect(hasPermission(userPerms, "unauthorized:action")).toBe(false);
     });
 
     it("evaluates SETTINGS_PERMISSIONS codes seamlessly", () => {
@@ -144,9 +144,9 @@ describe("@suite/core - Hierarchical RBAC Permission Evaluator", () => {
       expect(SETTINGS_PERMISSIONS.ORGANIZATION_MANAGE).toBe("core:organization:update");
       expect(SETTINGS_PERMISSIONS.BRANCHES_VIEW).toBe("core:branches:read");
       expect(SETTINGS_PERMISSIONS.BRANCHES_MANAGE).toBe("core:branches:write");
-      expect(SETTINGS_PERMISSIONS.MEMBERS_VIEW).toBe("users:read");
-      expect(SETTINGS_PERMISSIONS.MEMBERS_INVITE).toBe("users:invite");
-      expect(SETTINGS_PERMISSIONS.MEMBERS_MANAGE).toBe("users:manage");
+      expect(SETTINGS_PERMISSIONS.MEMBERS_VIEW).toBe("core:users:read");
+      expect(SETTINGS_PERMISSIONS.MEMBERS_INVITE).toBe("core:users:manage");
+      expect(SETTINGS_PERMISSIONS.MEMBERS_MANAGE).toBe("core:users:manage");
       expect(SETTINGS_PERMISSIONS.ROLES_VIEW).toBe("core:roles:read");
       expect(SETTINGS_PERMISSIONS.ROLES_MANAGE).toBe("core:roles:manage");
 

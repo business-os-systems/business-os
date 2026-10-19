@@ -1,4 +1,5 @@
 import React from "react";
+import { cn } from "@suite/ui";
 
 /**
  * Brand & Title header configuration for authentication card (ISP).
@@ -17,14 +18,26 @@ export interface AuthCardSlotProps {
   footer?: React.ReactNode;
 }
 
+export type AuthCardSize = "sm" | "md" | "lg" | "xl";
+
 /**
  * Composite AuthCard properties.
  */
-export interface AuthCardProps extends AuthCardHeaderProps, AuthCardSlotProps {}
+export interface AuthCardProps extends AuthCardHeaderProps, AuthCardSlotProps {
+  size?: AuthCardSize;
+  className?: string;
+}
+
+const sizeStyles: Record<AuthCardSize, string> = {
+  sm: "max-w-[400px]",
+  md: "max-w-md",
+  lg: "max-w-xl",
+  xl: "max-w-3xl",
+};
 
 /**
- * Centered 400px envelope card layout container complying with DESIGN.md modal-sm:
- * - Fixed/max-width: 400px
+ * Centered envelope card layout container complying with DESIGN.md:
+ * - Default fixed/max-width: 400px (sm) or configurable wide rectangle (xl: max-w-3xl)
  * - Border: 1px border-border
  * - Elevation: shadow-level-2
  * - Radii: rounded-xl
@@ -36,11 +49,19 @@ export function AuthCard({
   children,
   footer,
   badge,
+  size = "sm",
+  className,
 }: AuthCardProps) {
   return (
-    <div className="w-full flex items-center justify-center text-text transition-colors duration-base">
-      {/* 400px Modal-SM Envelope Card with all branding, content, and footer inside */}
-      <div className="w-full max-w-[400px] bg-surface border border-border rounded-xl shadow-level-2 p-5 sm:p-6 flex flex-col gap-3.5">
+    <div className="w-full min-h-[calc(100vh-6rem)] flex items-center justify-center p-4 sm:p-6 text-text transition-colors duration-base my-auto">
+      {/* Envelope Card with all branding, content, and footer inside */}
+      <div
+        className={cn(
+          "w-full bg-surface border border-border rounded-xl shadow-level-2 p-5 sm:p-6 flex flex-col gap-3.5",
+          sizeStyles[size],
+          className
+        )}
+      >
         {/* Brand Header inside card */}
         <div className="flex flex-col items-center text-center">
           <div className="h-9 w-9 rounded-lg bg-brand flex items-center justify-center shadow-xs mb-2 text-on-brand font-bold text-sm tracking-wider">

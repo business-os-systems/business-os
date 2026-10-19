@@ -1,17 +1,28 @@
 import React from "react";
+import { requireAuth } from "@/lib/auth-guard";
+import {
+  listOrganizationMembers,
+  listOrganizationRoles,
+} from "@/services/members.service";
+import { listOrganizationBranches } from "@/services/branches.service";
+import { MembersClient } from "./members-client";
 
-export default function MembersSettingsPage() {
+export default async function MembersSettingsPage() {
+  const session = await requireAuth();
+
+  const [members, roles, branches] = await Promise.all([
+    listOrganizationMembers(session.organizationId),
+    listOrganizationRoles(session.organizationId),
+    listOrganizationBranches(session.organizationId),
+  ]);
+
   return (
-    <div className="space-y-6 max-w-5xl">
-      <div>
-        <h1 className="text-xl font-bold tracking-tight text-text">Team Members &amp; Invitations</h1>
-        <p className="text-sm text-text-muted mt-1">
-          View active team members, dispatch multi-channel invitations, and manage membership.
-        </p>
-      </div>
-      <div className="rounded-xl border border-dashed border-border bg-surface p-8 text-center text-sm text-text-muted">
-        Team directory, multi-channel invites, and safeguards will be fully wired in Issue #156.
-      </div>
-    </div>
+    <MembersClient
+      initialMembers={members}
+      roles={roles}
+      branches={branches.map((b) => ({ id: b.id, name: b.name }))}
+      organizationId={session.organizationId}
+      userPermissions={session.permissions}
+    />
   );
 }

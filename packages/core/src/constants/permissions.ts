@@ -42,19 +42,19 @@ export const PERMISSIONS = {
     ORGANIZATION_MANAGE: "core:organization:update",
     BRANCHES_VIEW: "core:branches:read",
     BRANCHES_MANAGE: "core:branches:write",
-    MEMBERS_VIEW: "users:read",
-    MEMBERS_INVITE: "users:invite",
-    MEMBERS_MANAGE: "users:manage",
+    MEMBERS_VIEW: "core:users:read",
+    MEMBERS_INVITE: "core:users:manage",
+    MEMBERS_MANAGE: "core:users:manage",
     ROLES_VIEW: "core:roles:read",
     ROLES_MANAGE: "core:roles:manage",
   },
 
   // Team & User Management
   USERS: {
-    ALL: "users:*",
-    READ: "users:read",
-    INVITE: "users:invite",
-    MANAGE: "users:manage",
+    ALL: "core:users:*",
+    READ: "core:users:read",
+    INVITE: "core:users:manage",
+    MANAGE: "core:users:manage",
   },
 
   // Subscription & Billing Governance
@@ -64,44 +64,14 @@ export const PERMISSIONS = {
     MANAGE: "billing:manage",
   },
 
-  // Modular App 01: Lodging PMS
-  LODGING_PMS: {
-    ALL: "lodging_pms:*",
-    PROPERTIES_READ: "lodging_pms:properties:read",
-    PROPERTIES_WRITE: "lodging_pms:properties:write",
-    UNITS_READ: "lodging_pms:units:read",
-    UNITS_WRITE: "lodging_pms:units:write",
-    RESERVATIONS_READ: "lodging_pms:reservations:read",
-    RESERVATIONS_CREATE: "lodging_pms:reservations:create",
-    RESERVATIONS_UPDATE: "lodging_pms:reservations:update",
-    RESERVATIONS_CANCEL: "lodging_pms:reservations:cancel",
-    FOLIOS_READ: "lodging_pms:folios:read",
-    FOLIOS_WRITE: "lodging_pms:folios:write",
-    FOLIOS_VOID: "lodging_pms:folios:void",
-    NIGHT_AUDIT_RUN: "lodging_pms:night_audit:run",
-  },
-
-  // Modular App 02: Restaurant POS
-  RESTAURANT_POS: {
-    ALL: "restaurant_pos:*",
-    TABLES_READ: "restaurant_pos:tables:read",
-    TABLES_MANAGE: "restaurant_pos:tables:manage",
-    MENU_READ: "restaurant_pos:menu:read",
-    MENU_WRITE: "restaurant_pos:menu:write",
-    ORDERS_CREATE: "restaurant_pos:orders:create",
-    ORDERS_UPDATE: "restaurant_pos:orders:update",
-    ORDERS_VOID: "restaurant_pos:orders:void",
-    PAYMENTS_PROCESS: "restaurant_pos:payments:process",
-    SHIFTS_MANAGE: "restaurant_pos:shifts:manage",
-  },
-
-  // Modular App 03: Stock & Inventory
-  STOCK_INVENTORY: {
-    ALL: "stock_inventory:*",
-    ITEMS_READ: "stock_inventory:items:read",
-    ITEMS_WRITE: "stock_inventory:items:write",
-    TRANSFERS_CREATE: "stock_inventory:transfers:create",
-    COUNTS_MANAGE: "stock_inventory:counts:manage",
+  // Modular App: Website Builder (App 01)
+  WEBSITE_BUILDER: {
+    ALL: "cms:*",
+    SITES_READ: "cms:sites:read",
+    SITES_WRITE: "cms:sites:write",
+    PAGES_READ: "cms:pages:read",
+    PAGES_WRITE: "cms:pages:write",
+    PUBLISH: "cms:publish",
   },
 } as const;
 
@@ -112,10 +82,9 @@ export type PermissionCode =
   | (typeof PERMISSIONS.SETTINGS)[keyof typeof PERMISSIONS.SETTINGS]
   | (typeof PERMISSIONS.USERS)[keyof typeof PERMISSIONS.USERS]
   | (typeof PERMISSIONS.BILLING)[keyof typeof PERMISSIONS.BILLING]
-  | (typeof PERMISSIONS.LODGING_PMS)[keyof typeof PERMISSIONS.LODGING_PMS]
-  | (typeof PERMISSIONS.RESTAURANT_POS)[keyof typeof PERMISSIONS.RESTAURANT_POS]
-  | (typeof PERMISSIONS.STOCK_INVENTORY)[keyof typeof PERMISSIONS.STOCK_INVENTORY];
+  | (typeof PERMISSIONS.WEBSITE_BUILDER)[keyof typeof PERMISSIONS.WEBSITE_BUILDER];
 
 export const SETTINGS_PERMISSIONS = PERMISSIONS.SETTINGS;
 export type SettingsPermissionCode =
   (typeof SETTINGS_PERMISSIONS)[keyof typeof SETTINGS_PERMISSIONS];
+
