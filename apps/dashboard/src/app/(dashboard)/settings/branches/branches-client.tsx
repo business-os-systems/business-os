@@ -30,6 +30,7 @@ export interface BranchesClientProps {
   activeBranchId?: string | null;
   userPermissions?: string[];
   organizationDefaults?: OrganizationDefaults;
+  addressOptions?: FormFieldOption[];
 }
 
 interface ApiProblemDetails {
@@ -66,6 +67,7 @@ export function BranchesClient({
   activeBranchId,
   userPermissions = [],
   organizationDefaults,
+  addressOptions = [],
 }: BranchesClientProps) {
   const router = useRouter();
   const [branches, setBranches] = useState<BranchListItemDto[]>(initialBranches);
@@ -87,6 +89,7 @@ export function BranchesClient({
       code: "",
       type: DEFAULT_BRANCH_CONFIG.type,
       parentBranchId: "",
+      addressId: "",
       timezone: organizationDefaults?.timezone ?? DEFAULT_BRANCH_CONFIG.timezone,
       nightAuditHour: DEFAULT_BRANCH_CONFIG.nightAuditHour,
       currency: organizationDefaults?.currency ?? DEFAULT_BRANCH_CONFIG.currency,
@@ -106,6 +109,7 @@ export function BranchesClient({
       code: editingBranch.code,
       type: editingBranch.type,
       parentBranchId: editingBranch.parentBranchId || "",
+      addressId: editingBranch.addressId || "",
       timezone: editingBranch.timezone,
       nightAuditHour: editingBranch.nightAuditHour,
       currency: editingBranch.currency,
@@ -321,6 +325,7 @@ export function BranchesClient({
         mode="create"
         initialValues={defaultCreateValues}
         parentBranchOptions={parentBranchOptions}
+        addressOptions={addressOptions}
         onSubmit={handleCreateSubmit}
         isSubmitting={isSubmitting}
       />
@@ -331,6 +336,7 @@ export function BranchesClient({
         mode="edit"
         initialValues={editInitialValues}
         parentBranchOptions={parentBranchOptions}
+        addressOptions={addressOptions}
         onSubmit={handleEditSubmit}
         isSubmitting={isSubmitting}
       />

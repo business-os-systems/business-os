@@ -21,6 +21,7 @@ export interface BranchFormModalProps {
   mode: "create" | "edit";
   initialValues: BranchFormValues;
   parentBranchOptions: FormFieldOption[];
+  addressOptions?: FormFieldOption[];
   onSubmit: (values: BranchFormValues) => void | Promise<void>;
   isSubmitting?: boolean;
 }
@@ -31,6 +32,7 @@ export function BranchFormModal({
   mode,
   initialValues,
   parentBranchOptions,
+  addressOptions = [],
   onSubmit,
   isSubmitting = false,
 }: BranchFormModalProps) {
@@ -165,11 +167,11 @@ export function BranchFormModal({
           </div>
         </div>
 
-        {/* Row 2: Hierarchy, Tax & Currency */}
+        {/* Row 2: Hierarchy, Physical Site Address, Tax & Currency */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
-          <div className="sm:col-span-2 lg:col-span-2">
+          <div className="lg:col-span-1">
             <label className="block text-xs font-medium text-text mb-1">
-              Parent Branch / Hierarchy
+              Parent Hierarchy
             </label>
             <Select
               value={form.parentBranchId ?? ""}
@@ -180,6 +182,25 @@ export function BranchFormModal({
                 }))
               }
               options={parentBranchOptions}
+              className="text-xs"
+            />
+          </div>
+          <div className="lg:col-span-1">
+            <label className="block text-xs font-medium text-text mb-1">
+              Operational Site Address
+            </label>
+            <Select
+              value={form.addressId ?? ""}
+              onChange={(val) =>
+                setForm((p) => ({
+                  ...p,
+                  addressId: val || undefined,
+                }))
+              }
+              options={[
+                { label: "None (Unassigned)", value: "" },
+                ...addressOptions,
+              ]}
               className="text-xs"
             />
           </div>

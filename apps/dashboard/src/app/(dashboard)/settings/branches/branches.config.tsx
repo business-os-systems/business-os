@@ -26,6 +26,7 @@ export interface BranchFormValues {
   dateFormat: string;
   timeFormat: string;
   taxIdentifier?: string;
+  addressId?: string;
   capabilities: string[];
 }
 
@@ -34,6 +35,7 @@ export const DEFAULT_BRANCH_CONFIG: BranchFormValues = {
   code: "",
   type: "homestay",
   parentBranchId: "",
+  addressId: "",
   timezone: "Asia/Kolkata",
   nightAuditHour: 4,
   currency: "INR",
@@ -101,6 +103,7 @@ export const branchValidationSchema = z.object({
   dateFormat: z.string().trim().min(2, "Date format is required"),
   timeFormat: z.string().trim().min(2, "Time format is required"),
   taxIdentifier: z.string().trim().max(64).optional(),
+  addressId: z.string().trim().optional(),
   capabilities: z.array(z.string()).default([]),
 });
 

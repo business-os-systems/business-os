@@ -359,7 +359,7 @@ describe("Organization Settings API & Config Engine (Issue #154)", () => {
       const config = createGeneralSettingsFormConfig("my-org-slug");
 
       expect(config.id).toBe("general-settings-form");
-      expect(config.sections.length).toBe(3);
+      expect(config.sections.length).toBe(4);
 
       const dangerSection = config.sections.find((s) => s.isDangerZone);
       expect(dangerSection).toBeDefined();
@@ -370,6 +370,12 @@ describe("Organization Settings API & Config Engine (Issue #154)", () => {
       expect(identitySection).toBeDefined();
       if (identitySection && !identitySection.isDangerZone) {
         expect(identitySection.fields.some((f) => (f.name as string) === "slug")).toBe(false);
+      }
+
+      const addressSection = config.sections.find((s) => s.id === "statutory-address");
+      expect(addressSection).toBeDefined();
+      if (addressSection && !addressSection.isDangerZone) {
+        expect(addressSection.fields.some((f) => (f.name as string) === "registeredAddressId")).toBe(true);
       }
     });
 

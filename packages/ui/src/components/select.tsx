@@ -25,6 +25,7 @@ export interface SelectProps {
   hasError?: boolean;
   className?: string;
   onChange?: (value: string) => void;
+  direction?: "auto" | "down" | "up";
 }
 
 /**
@@ -47,6 +48,7 @@ export function Select({
   hasError = false,
   className,
   onChange,
+  direction = "auto",
 }: SelectProps) {
   const [internalValue, setInternalValue] = useState<string>(
     controlledValue ?? defaultValue ?? "",
@@ -59,17 +61,25 @@ export function Select({
 
   useEffect(() => {
     if (isOpen && containerRef.current && isBrowser) {
+      if (direction === "down") {
+        setOpenUpward(false);
+        return;
+      }
+      if (direction === "up") {
+        setOpenUpward(true);
+        return;
+      }
       const rect = containerRef.current.getBoundingClientRect();
       const spaceBelow = window.innerHeight - rect.bottom;
       const spaceAbove = rect.top;
-      // If space below is less than dropdown menu height (~250px) and there's more space above, open upward
-      if (spaceBelow < 250 && spaceAbove > spaceBelow) {
+      // Only open upward if space below is critically constrained (< 140px) AND space above has plenty of clearance (> 240px)
+      if (spaceBelow < 140 && spaceAbove > 240) {
         setOpenUpward(true);
       } else {
         setOpenUpward(false);
       }
     }
-  }, [isOpen]);
+  }, [isOpen, direction]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -146,7 +156,7 @@ export function Select({
           role="listbox"
           aria-labelledby={id}
           className={cn(
-            "absolute left-0 right-0 max-h-60 overflow-y-auto rounded-md border border-border bg-surface p-1 shadow-lg z-50 animate-in fade-in duration-150",
+            "absolute left-0 right-0 max-h-52 overflow-y-auto rounded-md border border-border bg-surface p-1 shadow-xl z-[70] animate-in fade-in duration-150",
             openUpward
               ? "bottom-full mb-1.5 slide-in-from-bottom-1"
               : "top-full mt-1.5 slide-in-from-top-1",

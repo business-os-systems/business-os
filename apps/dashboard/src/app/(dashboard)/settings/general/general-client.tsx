@@ -17,6 +17,7 @@ export interface GeneralSettingsClientProps {
   organizationId: string;
   slug: string;
   userPermissions?: readonly string[];
+  addressOptions?: { label: string; value: string }[];
 }
 
 interface OrganizationApiResponse {
@@ -28,6 +29,7 @@ interface OrganizationApiResponse {
   country: string;
   defaultLocale: string;
   jurisdiction: string;
+  registeredAddressId?: string | null;
   code?: string;
   detail?: string;
   invalidParams?: Array<{ name: string; reason: string }>;
@@ -37,13 +39,17 @@ export function GeneralSettingsClient({
   initialData,
   slug,
   userPermissions = [],
+  addressOptions = [],
 }: GeneralSettingsClientProps) {
   const router = useRouter();
   const [formData, setFormData] = useState<GeneralSettingsFormValues>(initialData);
   const [isSaving, setIsSaving] = useState(false);
   const [serverErrors, setServerErrors] = useState<Record<string, string>>({});
 
-  const formConfig = useMemo(() => createGeneralSettingsFormConfig(slug), [slug]);
+  const formConfig = useMemo(
+    () => createGeneralSettingsFormConfig(slug, addressOptions),
+    [slug, addressOptions]
+  );
 
   const handleSubmit = async (values: GeneralSettingsFormValues) => {
     setIsSaving(true);
@@ -59,6 +65,7 @@ export function GeneralSettingsClient({
           country: values.country,
           defaultLocale: values.defaultLocale,
           jurisdiction: values.jurisdiction,
+          registeredAddressId: values.registeredAddressId || null,
         }
       );
 
@@ -90,6 +97,7 @@ export function GeneralSettingsClient({
         country: updated.country,
         defaultLocale: updated.defaultLocale,
         jurisdiction: updated.jurisdiction,
+        registeredAddressId: updated.registeredAddressId ?? "",
       });
 
       // Dispatch event for instant header synchronization

@@ -2,12 +2,13 @@ import React from "react";
 import { prisma } from "@suite/db";
 import { requireAuth } from "@/lib/auth-guard";
 import { listOrganizationBranches } from "@/services/branches.service";
+import { listOrganizationAddresses } from "@/services/addresses.service";
 import { BranchesClient } from "./branches-client";
 
 export default async function BranchesSettingsPage() {
   const session = await requireAuth();
 
-  const [branches, org] = await Promise.all([
+  const [branches, org, addresses] = await Promise.all([
     listOrganizationBranches(session.organizationId),
     prisma.organization.findUnique({
       where: { id: session.organizationId },
@@ -16,7 +17,13 @@ export default async function BranchesSettingsPage() {
         defaultLocale: true,
       },
     }),
+    listOrganizationAddresses(session.organizationId),
   ]);
+
+  const addressOptions = addresses.map((a) => ({
+    label: `${a.formattedAddress} (${a.postalCode})`,
+    value: a.id,
+  }));
 
   return (
     <BranchesClient
@@ -24,6 +31,7 @@ export default async function BranchesSettingsPage() {
       organizationId={session.organizationId}
       activeBranchId={session.activeBranchId}
       userPermissions={session.permissions}
+      addressOptions={addressOptions}
       organizationDefaults={{
         currency: org?.currency ?? "INR",
         locale: org?.defaultLocale ?? "en-IN",

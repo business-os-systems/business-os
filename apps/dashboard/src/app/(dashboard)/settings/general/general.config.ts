@@ -9,6 +9,7 @@ export interface GeneralSettingsFormValues {
   country: string;
   defaultLocale: string;
   jurisdiction: string;
+  registeredAddressId?: string;
 }
 
 export const generalSettingsValidationSchema = z.object({
@@ -41,10 +42,16 @@ export const generalSettingsValidationSchema = z.object({
     .trim()
     .min(2, "Jurisdiction must be at least 2 characters")
     .max(50, "Jurisdiction cannot exceed 50 characters"),
+  registeredAddressId: z
+    .string()
+    .trim()
+    .optional()
+    .or(z.literal("")),
 });
 
 export function createGeneralSettingsFormConfig(
-  slug: string
+  slug: string,
+  addressOptions: { label: string; value: string }[] = []
 ): FormConfig<GeneralSettingsFormValues> {
   return {
     id: "general-settings-form",
@@ -77,6 +84,26 @@ export function createGeneralSettingsFormConfig(
             placeholder: "e.g. app.acmecorp.com",
             description: "Optional custom CNAME domain mapped to this tenant.",
             colSpan: 1,
+            permission: PERMISSIONS.CORE.ORGANIZATION_UPDATE,
+          },
+        ],
+      },
+      {
+        id: "statutory-address",
+        title: "Statutory Headquarters Address",
+        description: "Official registered postal address used for corporate tax invoices and legal profile.",
+        permission: PERMISSIONS.CORE.ORGANIZATION_READ,
+        fields: [
+          {
+            name: "registeredAddressId",
+            label: "Registered HQ Address",
+            type: "select",
+            colSpan: 2,
+            options: [
+              { label: "None (Unassigned)", value: "" },
+              ...addressOptions,
+            ],
+            description: "Select an address from your operational addresses directory or register a new one under Settings > Addresses.",
             permission: PERMISSIONS.CORE.ORGANIZATION_UPDATE,
           },
         ],
