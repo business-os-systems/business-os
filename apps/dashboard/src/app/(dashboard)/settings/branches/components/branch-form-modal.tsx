@@ -81,10 +81,38 @@ export function BranchFormModal({
       onClose={onClose}
       title={isEdit ? "Edit Operational Branch" : "Register Operational Branch"}
       size="xl"
-      className="max-w-4xl p-4 sm:p-5"
-      contentClassName="py-2.5 flex-1 text-sm leading-normal"
+      className="max-w-4xl"
+      footer={
+        <div className="flex items-center justify-end gap-2.5 w-full">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onClose}
+            disabled={isSubmitting}
+            className="text-xs h-8 px-3"
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            form="branch-form"
+            size="sm"
+            disabled={isSubmitting}
+            className="text-xs font-semibold h-8 px-4"
+          >
+            {isSubmitting
+              ? isEdit
+                ? "Saving..."
+                : "Registering..."
+              : isEdit
+              ? "Save Changes"
+              : "Register Branch"}
+          </Button>
+        </div>
+      }
     >
-      <form onSubmit={handleSubmit} className="space-y-3">
+      <form id="branch-form" onSubmit={handleSubmit} className="space-y-3">
         {/* Row 1: Identity & Classification */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
           <div className="sm:col-span-2 lg:col-span-2">
@@ -281,34 +309,6 @@ export function BranchFormModal({
               })}
             </div>
           </div>
-        </div>
-
-        {/* Modal Footer Actions */}
-        <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-border mt-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onClose}
-            disabled={isSubmitting}
-            className="text-xs h-8 px-3"
-          >
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            size="sm"
-            disabled={isSubmitting}
-            className="text-xs font-semibold h-8 px-4"
-          >
-            {isSubmitting
-              ? isEdit
-                ? "Saving..."
-                : "Registering..."
-              : isEdit
-              ? "Save Changes"
-              : "Register Branch"}
-          </Button>
         </div>
       </form>
     </Modal>

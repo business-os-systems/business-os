@@ -134,6 +134,12 @@ You are **STRICTLY PROHIBITED** from:
   1. All visual elements of an authentication or modal card (branding emblems, application titles, subtitles, badges, form controls, OAuth provider buttons, passkey triggers, and secondary navigation links like "Sign up" or "Sign in") MUST be encapsulated strictly **inside** the card container (`AuthCard`). Floating text or external wrappers outside the card are strictly forbidden.
   2. Superfluous external trust badges (such as "TLS Encrypted", "Zero-Trust Gate", "Kernel Tenant Isolated") MUST NOT be added.
   3. The card layout MUST maintain a compact vertical rhythm so that on a standard desktop/laptop viewport at 100% zoom, the complete card is visible with **zero vertical scrolling**. Natural vertical scrolling must only engage when the viewport height is reduced below the card height.
+- ❌ **Tall Vertically-Stacked Popups & Screen-Edge Touching (Standardized Wide-Rectangle Modals & Popups Law):**
+  AI agents and developers are **STRICTLY FORBIDDEN** from creating tall, narrow popups or vertically stacking multiple input sections that touch or overflow the top and bottom screen edges, or trigger vertical page scrolling on desktop/laptop viewports.
+  1. Every modal dialog, popup, and centered auth/invitation card MUST follow the standardized wide-rectangular layout standard established in branch, member, and invite modals (`size="xl"`, `max-w-2xl` to `max-w-3xl`).
+  2. Multi-field forms and attribute displays MUST leverage horizontal width using multi-column responsive grids (`grid grid-cols-1 sm:grid-cols-2` or `sm:grid-cols-4`).
+  3. All popups and dialogs MUST maintain generous breathing margins (minimum 24px-32px padding/margin from screen edges) and compact vertical rhythm (`p-4` or `p-5`, `gap-3`).
+  4. On a standard desktop/laptop viewport at 100% zoom, the entire popup/modal/card MUST fit comfortably on screen with **zero vertical scrolling**. Natural vertical scrolling (`overflow-y-auto`) inside the body container MUST strictly serve as a responsive safeguard for low-height mobile viewports only.
 - ❌ **Unnecessary Form Inputs for Deterministic Data (Minimalist Input Law):**
   Do NOT demand user inputs for fields that can be deterministically derived. On initial sign up / registration, do NOT demand a "Full Name" field if the user's name can be automatically derived from the email address local-part. The backend MUST dynamically derive fallback display names.
 - ❌ **Blocking Public Auth Routes in Edge Middleware (Public Auth Whitelist Law):**

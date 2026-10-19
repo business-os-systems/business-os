@@ -146,13 +146,13 @@ export function Modal({
       <div
         ref={cardRef}
         className={cn(
-          "relative rounded-2xl border border-border bg-surface p-6 shadow-2xl text-text animate-in zoom-in-95 duration-150 flex flex-col",
+          "relative rounded-2xl border border-border bg-surface px-5 py-3.5 sm:px-6 sm:py-4 shadow-2xl text-text animate-in zoom-in-95 duration-150 flex flex-col my-auto max-h-[calc(100vh-3rem)] sm:max-h-[calc(100vh-4rem)]",
           sizeClasses[size],
           className,
         )}
       >
         {(title || showCloseButton) && (
-          <div className="flex items-start justify-between gap-4 pb-3 border-b border-border-hairline">
+          <div className="flex items-start justify-between gap-4 pb-2.5 border-b border-border-hairline">
             <div className="flex flex-col min-w-0 pr-2">
               {title && (
                 <h2 className="text-base sm:text-lg font-bold text-text truncate">
@@ -160,7 +160,7 @@ export function Modal({
                 </h2>
               )}
               {description && (
-                <p className="text-xs text-text-muted mt-1 leading-relaxed">
+                <p className="text-xs text-text-muted mt-0.5 leading-relaxed">
                   {description}
                 </p>
               )}
@@ -173,7 +173,7 @@ export function Modal({
                 size="icon"
                 onClick={onClose}
                 aria-label="Close dialog"
-                className="h-8 w-8 p-1.5 text-text-muted hover:text-text hover:bg-surface-muted rounded-lg shrink-0"
+                className="h-7 w-7 p-1 text-text-muted hover:text-text hover:bg-surface-muted rounded-lg shrink-0"
               >
                 <XIcon className="h-4 w-4 stroke-[2.5]" />
               </Button>
@@ -183,7 +183,7 @@ export function Modal({
 
         <div
           className={cn(
-            "py-4 flex-1 text-sm leading-normal",
+            "py-2.5 sm:py-3 px-1.5 sm:px-2 flex-1 overflow-y-auto text-sm leading-normal",
             contentClassName,
           )}
         >
@@ -191,7 +191,7 @@ export function Modal({
         </div>
 
         {footer && (
-          <div className="pt-4 border-t border-border-hairline flex items-center justify-end gap-3">
+          <div className="pt-2.5 sm:pt-3 border-t border-border-hairline flex items-center justify-end gap-2.5">
             {footer}
           </div>
         )}

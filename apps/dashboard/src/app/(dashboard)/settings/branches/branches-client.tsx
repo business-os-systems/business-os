@@ -279,9 +279,9 @@ export function BranchesClient({
   );
 
   return (
-    <div className="space-y-4">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-border">
+    <div className="flex flex-col h-full min-h-0 space-y-4">
+      {/* Page Header (Sticky) */}
+      <div className="shrink-0 bg-background pb-3 border-b border-border sticky top-0 z-20">
         <div>
           <h1 className="text-xl font-bold tracking-tight text-text">
             Operational Branches &amp; Sites
@@ -292,23 +292,25 @@ export function BranchesClient({
         </div>
       </div>
 
-      {/* Decomposed Search & Filter Toolbar */}
-      <BranchTableToolbar
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        statusFilter={statusFilter}
-        onStatusFilterChange={setStatusFilter}
-        canWrite={canWrite}
-        onAddBranch={() => setIsCreateOpen(true)}
-      />
+      {/* Decomposed Search & Filter Toolbar (Sticky) */}
+      <div className="shrink-0 bg-background sticky top-[57px] z-20">
+        <BranchTableToolbar
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          statusFilter={statusFilter}
+          onStatusFilterChange={setStatusFilter}
+          canWrite={canWrite}
+          onAddBranch={() => setIsCreateOpen(true)}
+        />
+      </div>
 
-      {/* Table Data View */}
-      <Card className={cn("overflow-hidden border border-border bg-surface p-0 shadow-2xs")}>
+      {/* Table Data View (Scrollable Rows) */}
+      <Card className={cn("flex-1 min-h-[300px] overflow-hidden border border-border bg-surface p-0 shadow-2xs flex flex-col")}>
         <ConfigTableRenderer
           config={tableConfig}
           data={filteredBranches}
           userPermissions={userPermissions}
-          className="border-0 rounded-none shadow-none"
+          className="border-0 rounded-none shadow-none flex-1 min-h-0 overflow-auto"
         />
       </Card>
 

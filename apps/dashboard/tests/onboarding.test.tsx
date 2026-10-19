@@ -54,6 +54,13 @@ vi.mock("@suite/db", () => {
     userBranchRole: {
       findFirst: vi.fn(),
       create: vi.fn(),
+      deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+    },
+    account: {
+      upsert: vi.fn().mockResolvedValue({}),
+    },
+    session: {
+      create: vi.fn().mockResolvedValue({}),
     },
     user: {
       findUnique: vi.fn(),
@@ -136,11 +143,11 @@ describe("Platform Onboarding Pipeline & Tenant Bootstrapping (@suite/dashboard)
       expect(html).toContain("Role &amp; Permission Matrix");
     });
 
-    it("renders AcceptInvitationPage with invitation join card", () => {
+    it("renders AcceptInvitationPage with invitation verification container", () => {
       const html = renderToString(<AcceptInvitationPage />);
       expect(html).toContain("Workspace Invitation");
-      expect(html).toContain("You have been invited to join an organization workspace");
-      expect(html).toContain("Accept Invitation &amp; Join Workspace");
+      expect(html).toContain("Verifying invitation details...");
+      expect(html).toContain("Loading invitation...");
     });
   });
 
@@ -658,6 +665,7 @@ describe("Platform Onboarding Pipeline & Tenant Bootstrapping (@suite/dashboard)
       (prisma.organizationInvitation.findUnique as unknown as Mock).mockResolvedValueOnce({
         id: "inv-1",
         token: "valid-test-token",
+        email: "invited@company.com",
         organizationId: "org-joined-1",
         roleId: "role-member-1",
         status: "PENDING",
