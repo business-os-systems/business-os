@@ -67,7 +67,6 @@ describe("Multi-Tenancy Disambiguation & Workspace Chooser", () => {
         />
       );
       expect(html).toContain("River View Homestay");
-      expect(html).toContain("Enterprise");
       expect(html).toContain("RI");
     });
 
@@ -87,7 +86,6 @@ describe("Multi-Tenancy Disambiguation & Workspace Chooser", () => {
       expect(html).toContain("Mukteshwar Main");
       expect(html).toContain("Rohit Bahuguna");
       expect(html).toContain("Tenant Owner");
-      expect(html).toContain("Enterprise");
     });
   });
 

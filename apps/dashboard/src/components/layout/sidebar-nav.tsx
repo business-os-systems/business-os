@@ -88,6 +88,11 @@ export function SidebarNav({
         {!collapsed && (
           <div className="flex flex-1 items-center justify-between gap-1 overflow-hidden">
             <span className="truncate">{item.name}</span>
+            {item.badge && (
+              <span className="text-[10px] font-medium text-text-muted px-1.5 py-0.5 rounded bg-surface-muted border border-border shrink-0">
+                {item.badge}
+              </span>
+            )}
           </div>
         )}
       </Link>
