@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@suite/db";
 import { verifyPassword } from "@suite/auth/password";
@@ -16,6 +15,7 @@ import { AUDIT_EVENT_TYPES } from "@suite/core";
 import { isProduction } from "@/lib/env";
 import { verifyTurnstileToken, isTurnstileConfigured } from "@/lib/turnstile";
 import { resolvePostLoginRoute } from "@/lib/route-dispatcher";
+import { problemResponse, successResponse } from "@/lib/api-response";
 
 const LoginSchema = z.object({
   email: z.string().email("A valid email address is required"),
@@ -30,15 +30,12 @@ export async function POST(request: Request) {
     const parseResult = LoginSchema.safeParse(rawBody);
 
     if (!parseResult.success) {
-      return NextResponse.json(
-        {
-          type: "/errors/validation-failed",
-          title: "Bad Request",
-          status: 400,
-          detail: parseResult.error.issues[0]?.message ?? "Validation failed",
-        },
-        { status: 400, headers: { "Content-Type": "application/problem+json" } }
-      );
+      return problemResponse({
+        status: 400,
+        code: "VALIDATION_FAILED",
+        title: "Bad Request",
+        detail: parseResult.error.issues[0]?.message ?? "Validation failed",
+      });
     }
 
     const { email, password, keepSignedIn, turnstileToken } = parseResult.data;
@@ -50,15 +47,12 @@ export async function POST(request: Request) {
       const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
       const turnstileResult = await verifyTurnstileToken(turnstileToken, clientIp);
       if (!turnstileResult.success) {
-        return NextResponse.json(
-          {
-            type: "/errors/bot-verification-failed",
-            title: "Forbidden",
-            status: 403,
-            detail: "Security verification failed. Please complete the security check and try again.",
-          },
-          { status: 403, headers: { "Content-Type": "application/problem+json" } }
-        );
+        return problemResponse({
+          status: 403,
+          code: "BOT_VERIFICATION_FAILED",
+          title: "Forbidden",
+          detail: "Security verification failed. Please complete the security check and try again.",
+        });
       }
     }
 
@@ -92,42 +86,33 @@ export async function POST(request: Request) {
     });
 
     if (!dbUser) {
-      return NextResponse.json(
-        {
-          type: "/errors/invalid-credentials",
-          title: "Unauthorized",
-          status: 401,
-          detail: "Invalid email or password. Please check your credentials.",
-        },
-        { status: 401, headers: { "Content-Type": "application/problem+json" } }
-      );
+      return problemResponse({
+        status: 401,
+        code: "INVALID_CREDENTIALS",
+        title: "Unauthorized",
+        detail: "Invalid email or password. Please check your credentials.",
+      });
     }
 
     // Verify credential account and password exist
     const credentialAccount = dbUser.accounts.find((a) => a.providerId === "credential");
     if (!credentialAccount || !credentialAccount.password) {
-      return NextResponse.json(
-        {
-          type: "/errors/invalid-credentials",
-          title: "Unauthorized",
-          status: 401,
-          detail: "Invalid email or password. Please check your credentials.",
-        },
-        { status: 401, headers: { "Content-Type": "application/problem+json" } }
-      );
+      return problemResponse({
+        status: 401,
+        code: "INVALID_CREDENTIALS",
+        title: "Unauthorized",
+        detail: "Invalid email or password. Please check your credentials.",
+      });
     }
 
     const isPasswordValid = await verifyPassword(password, credentialAccount.password);
     if (!isPasswordValid) {
-      return NextResponse.json(
-        {
-          type: "/errors/invalid-credentials",
-          title: "Unauthorized",
-          status: 401,
-          detail: "Invalid email or password. Please check your credentials.",
-        },
-        { status: 401, headers: { "Content-Type": "application/problem+json" } }
-      );
+      return problemResponse({
+        status: 401,
+        code: "INVALID_CREDENTIALS",
+        title: "Unauthorized",
+        detail: "Invalid email or password. Please check your credentials.",
+      });
     }
 
     const onboardingState = getUserOnboardingState(dbUser.metadata);
@@ -145,15 +130,12 @@ export async function POST(request: Request) {
 
     // Check workspace membership if onboarding is completed
     if (onboardingStatus !== "IN_PROGRESS" && !organization) {
-      return NextResponse.json(
-        {
-          type: "/errors/workspace-access-denied",
-          title: "Forbidden",
-          status: 403,
-          detail: "Account is not associated with an active enterprise workspace.",
-        },
-        { status: 403, headers: { "Content-Type": "application/problem+json" } }
-      );
+      return problemResponse({
+        status: 403,
+        code: "WORKSPACE_ACCESS_DENIED",
+        title: "Forbidden",
+        detail: "Account is not associated with an active enterprise workspace.",
+      });
     }
 
     // Extract dynamic permissions scoped to the active branch or organization-wide assignments
@@ -201,7 +183,7 @@ export async function POST(request: Request) {
     const token = await signSessionToken(rawPayload);
     const cookieOptions = createSessionCookieOptions(isProduction, keepSignedIn);
 
-    const response = NextResponse.json({
+    const response = successResponse({
       success: true,
       redirectUrl,
       themePreference,
@@ -244,14 +226,12 @@ export async function POST(request: Request) {
 
     return response;
   } catch (error) {
-    return NextResponse.json(
-      {
-        type: "/errors/internal-error",
-        title: "Internal Server Error",
-        status: 500,
-        detail: error instanceof Error ? error.message : "Failed to authenticate session",
-      },
-      { status: 500, headers: { "Content-Type": "application/problem+json" } }
-    );
+    console.error("Error authenticating session:", error);
+    return problemResponse({
+      status: 500,
+      code: "INTERNAL_ERROR",
+      title: "Internal Server Error",
+      detail: error instanceof Error ? error.message : "Failed to authenticate session",
+    });
   }
 }

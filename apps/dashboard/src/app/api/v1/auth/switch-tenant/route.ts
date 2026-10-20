@@ -11,6 +11,7 @@ import {
 import { isProduction } from "@/lib/env";
 import { resolvePostLoginRoute } from "@/lib/route-dispatcher";
 import { getAuthenticatedSession } from "@/lib/session-helper";
+import { problemResponse, successResponse } from "@/lib/api-response";
 
 const switchTenantSchema = z.object({
   organizationId: z.string().min(1, "Organization ID is required"),
@@ -28,16 +29,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const body = await request.json().catch(() => null);
     const parseResult = switchTenantSchema.safeParse(body);
     if (!parseResult.success) {
-      return NextResponse.json(
-        {
-          type: "/errors/validation-failed",
-          title: "Bad Request",
-          status: 400,
-          detail: parseResult.error.issues[0]?.message || "Validation failed",
-          code: "VALIDATION_FAILED",
-        },
-        { status: 400, headers: { "Content-Type": "application/problem+json" } }
-      );
+      return problemResponse({
+        status: 400,
+        code: "VALIDATION_FAILED",
+        title: "Bad Request",
+        detail: parseResult.error.issues[0]?.message || "Validation failed",
+      });
     }
 
     const { organizationId } = parseResult.data;
@@ -88,7 +85,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       remainingSeconds
     );
 
-    const response = NextResponse.json({
+    const response = successResponse({
       success: true,
       redirectUrl: redirectUrl || "/dashboard",
     });
@@ -109,28 +106,20 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       error instanceof ForbiddenError ||
       (error && typeof error === "object" && ("status" in error && error.status === 403 || "statusCode" in error && error.statusCode === 403))
     ) {
-      return NextResponse.json(
-        {
-          type: "/errors/forbidden",
-          title: "Forbidden",
-          status: 403,
-          detail: (error as Error).message || "You do not have access to this organization.",
-          code: "FORBIDDEN",
-        },
-        { status: 403, headers: { "Content-Type": "application/problem+json" } }
-      );
+      return problemResponse({
+        status: 403,
+        code: "FORBIDDEN",
+        title: "Forbidden",
+        detail: (error as Error).message || "You do not have access to this organization.",
+      });
     }
 
     console.error("Error switching workspace context:", error);
-    return NextResponse.json(
-      {
-        type: "/errors/internal-error",
-        title: "Internal Server Error",
-        status: 500,
-        detail: "An unexpected error occurred while switching workspaces.",
-        code: "INTERNAL_SERVER_ERROR",
-      },
-      { status: 500, headers: { "Content-Type": "application/problem+json" } }
-    );
+    return problemResponse({
+      status: 500,
+      code: "INTERNAL_SERVER_ERROR",
+      title: "Internal Server Error",
+      detail: "An unexpected error occurred while switching workspaces.",
+    });
   }
 }

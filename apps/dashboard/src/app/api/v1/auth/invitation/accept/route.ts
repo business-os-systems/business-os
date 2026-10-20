@@ -9,6 +9,7 @@ import {
 } from "@suite/auth";
 import { isProduction } from "@/lib/env";
 import { getAuthenticatedSession } from "@/lib/session-helper";
+import { problemResponse, successResponse } from "@/lib/api-response";
 import { z } from "zod";
 
 const acceptInvitationSchema = z.object({
@@ -26,16 +27,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const token = searchParams.get("token");
 
     if (!token) {
-      return NextResponse.json(
-        {
-          type: "/errors/validation-error",
-          title: "Bad Request",
-          status: 400,
-          detail: "Invitation token parameter is required.",
-          code: "VALIDATION_ERROR",
-        },
-        { status: 400, headers: { "Content-Type": "application/problem+json" } }
-      );
+      return problemResponse({
+        status: 400,
+        code: "VALIDATION_ERROR",
+        title: "Bad Request",
+        detail: "Invitation token parameter is required.",
+      });
     }
 
     const hashedToken = hashToken(token);
@@ -67,55 +64,39 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     }
 
     if (!invitation) {
-      return NextResponse.json(
-        {
-          type: "/errors/not-found",
-          title: "Not Found",
-          status: 404,
-          detail: "Invitation not found or has already been consumed.",
-          code: "INVITATION_NOT_FOUND",
-        },
-        { status: 404, headers: { "Content-Type": "application/problem+json" } }
-      );
+      return problemResponse({
+        status: 404,
+        code: "INVITATION_NOT_FOUND",
+        title: "Not Found",
+        detail: "Invitation not found or has already been consumed.",
+      });
     }
 
     if (invitation.status !== "PENDING") {
       if (invitation.status === "ACCEPTED") {
-        return NextResponse.json(
-          {
-            type: "/errors/invitation-accepted",
-            title: "Invitation Already Accepted",
-            status: 409,
-            detail: "This invitation has already been accepted. You can log in directly to access your workspace.",
-            code: "INVITATION_ACCEPTED",
-            isAccepted: true,
-          },
-          { status: 409, headers: { "Content-Type": "application/problem+json" } }
-        );
-      }
-      return NextResponse.json(
-        {
-          type: "/errors/invitation-invalid",
-          title: "Conflict",
+        return problemResponse({
           status: 409,
-          detail: `Invitation is no longer active (status: ${invitation.status}).`,
-          code: "INVITATION_INACTIVE",
-        },
-        { status: 409, headers: { "Content-Type": "application/problem+json" } }
-      );
+          code: "INVITATION_ACCEPTED",
+          title: "Invitation Already Accepted",
+          detail: "This invitation has already been accepted. You can log in directly to access your workspace.",
+          extra: { isAccepted: true },
+        });
+      }
+      return problemResponse({
+        status: 409,
+        code: "INVITATION_INACTIVE",
+        title: "Conflict",
+        detail: `Invitation is no longer active (status: ${invitation.status}).`,
+      });
     }
 
     if (new Date(invitation.expiresAt) < new Date()) {
-      return NextResponse.json(
-        {
-          type: "/errors/invitation-expired",
-          title: "Gone",
-          status: 410,
-          detail: "This invitation link has expired. Please request a new invitation from your administrator.",
-          code: "INVITATION_EXPIRED",
-        },
-        { status: 410, headers: { "Content-Type": "application/problem+json" } }
-      );
+      return problemResponse({
+        status: 410,
+        code: "INVITATION_EXPIRED",
+        title: "Gone",
+        detail: "This invitation link has expired. Please request a new invitation from your administrator.",
+      });
     }
 
     // Check if user is already registered in DB and verify not suspended/revoked
@@ -134,16 +115,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     if (user?.organizations?.[0]) {
       const userOrg = user.organizations[0];
       if (userOrg.status === "SUSPENDED" || userOrg.status === "REVOKED") {
-        return NextResponse.json(
-          {
-            type: "/errors/forbidden",
-            title: "Access Revoked",
-            status: 403,
-            detail: "Your workspace access has been suspended or revoked. Contact your organization administrator.",
-            code: "INVITATION_REVOKED",
-          },
-          { status: 403, headers: { "Content-Type": "application/problem+json" } }
-        );
+        return problemResponse({
+          status: 403,
+          code: "INVITATION_REVOKED",
+          title: "Access Revoked",
+          detail: "Your workspace access has been suspended or revoked. Contact your organization administrator.",
+        });
       }
     }
 
@@ -158,7 +135,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       }
     }
 
-    return NextResponse.json({
+    return successResponse({
       isValid: true,
       token: invitation.token,
       email: invitation.email,
@@ -171,16 +148,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     });
   } catch (error) {
     console.error("Error fetching invitation details:", error);
-    return NextResponse.json(
-      {
-        type: "/errors/internal-error",
-        title: "Internal Server Error",
-        status: 500,
-        detail: "Failed to resolve invitation details.",
-        code: "INTERNAL_SERVER_ERROR",
-      },
-      { status: 500, headers: { "Content-Type": "application/problem+json" } }
-    );
+    return problemResponse({
+      status: 500,
+      code: "INTERNAL_SERVER_ERROR",
+      title: "Internal Server Error",
+      detail: "Failed to resolve invitation details.",
+    });
   }
 }
 
@@ -190,20 +163,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const parseResult = acceptInvitationSchema.safeParse(body);
 
     if (!parseResult.success) {
-      return NextResponse.json(
-        {
-          type: "/errors/validation-error",
-          title: "Bad Request",
-          status: 400,
-          detail: parseResult.error.errors[0]?.message || "Invalid invitation input.",
+      return problemResponse({
+        status: 400,
+        code: "VALIDATION_ERROR",
+        title: "Bad Request",
+        detail: parseResult.error.errors[0]?.message || "Invalid invitation input.",
+        extra: {
           errors: parseResult.error.errors.map((e) => ({
             field: e.path.join("."),
             message: e.message,
           })),
-          code: "VALIDATION_ERROR",
         },
-        { status: 400, headers: { "Content-Type": "application/problem+json" } }
-      );
+      });
     }
 
     const { token, password, name } = parseResult.data;
@@ -245,56 +216,40 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     if (!invitation) {
-      return NextResponse.json(
-        {
-          type: "/errors/not-found",
-          title: "Not Found",
-          status: 404,
-          detail: "Invitation not found or has already been consumed.",
-          code: "INVITATION_NOT_FOUND",
-        },
-        { status: 404, headers: { "Content-Type": "application/problem+json" } }
-      );
+      return problemResponse({
+        status: 404,
+        code: "INVITATION_NOT_FOUND",
+        title: "Not Found",
+        detail: "Invitation not found or has already been consumed.",
+      });
     }
 
     if (invitation.status !== "PENDING") {
       if (invitation.status === "ACCEPTED") {
-        return NextResponse.json(
-          {
-            type: "/errors/invitation-accepted",
-            title: "Invitation Already Accepted",
-            status: 409,
-            detail: "This invitation link has already been used and expired. Please sign in directly.",
-            code: "INVITATION_ACCEPTED",
-            isAccepted: true,
-          },
-          { status: 409, headers: { "Content-Type": "application/problem+json" } }
-        );
+        return problemResponse({
+          status: 409,
+          code: "INVITATION_ACCEPTED",
+          title: "Invitation Already Accepted",
+          detail: "This invitation link has already been used and expired. Please sign in directly.",
+          extra: { isAccepted: true },
+        });
       }
 
-      return NextResponse.json(
-        {
-          type: "/errors/invitation-invalid",
-          title: "Conflict",
-          status: 409,
-          detail: `Invitation is no longer active (status: ${invitation.status}).`,
-          code: "INVITATION_INACTIVE",
-        },
-        { status: 409, headers: { "Content-Type": "application/problem+json" } }
-      );
+      return problemResponse({
+        status: 409,
+        code: "INVITATION_INACTIVE",
+        title: "Conflict",
+        detail: `Invitation is no longer active (status: ${invitation.status}).`,
+      });
     }
 
     if (new Date(invitation.expiresAt) < new Date()) {
-      return NextResponse.json(
-        {
-          type: "/errors/invitation-expired",
-          title: "Gone",
-          status: 410,
-          detail: "This invitation link has expired. Please request a new invitation.",
-          code: "INVITATION_EXPIRED",
-        },
-        { status: 410, headers: { "Content-Type": "application/problem+json" } }
-      );
+      return problemResponse({
+        status: 410,
+        code: "INVITATION_EXPIRED",
+        title: "Gone",
+        detail: "This invitation link has expired. Please request a new invitation.",
+      });
     }
 
     const normalizedEmail = (invitation.email || "").toLowerCase().trim();
@@ -310,16 +265,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       : null;
 
     if (existingUserOrg && (existingUserOrg.status === "SUSPENDED" || existingUserOrg.status === "REVOKED")) {
-      return NextResponse.json(
-        {
-          type: "/errors/forbidden",
-          title: "Access Revoked",
-          status: 403,
-          detail: "Your workspace access has been suspended or revoked. Contact your organization administrator.",
-          code: "INVITATION_REVOKED",
-        },
-        { status: 403, headers: { "Content-Type": "application/problem+json" } }
-      );
+      return problemResponse({
+        status: 403,
+        code: "INVITATION_REVOKED",
+        title: "Access Revoked",
+        detail: "Your workspace access has been suspended or revoked. Contact your organization administrator.",
+      });
     }
 
     // Determine target user (either existing authenticated session or newly registered/authenticated via password)
@@ -329,22 +280,29 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     let targetName: string;
 
     if (sessionResult.ok) {
+      // Issue 27: Invitation account hijacking prevention
+      const sessionEmail = sessionResult.session.email.toLowerCase().trim();
+      if (sessionEmail !== normalizedEmail) {
+        return problemResponse({
+          status: 403,
+          code: "INVITATION_EMAIL_MISMATCH",
+          title: "Forbidden",
+          detail: `This invitation was issued to ${invitation.email}. You are currently signed in as ${sessionResult.session.email}. Please sign in to the matching account or accept in a private window.`,
+        });
+      }
+
       targetUserId = sessionResult.session.userId;
       targetEmail = sessionResult.session.email;
       targetName = sessionResult.session.userName;
     } else {
       // User is not signed in: password is required to establish credentials
       if (!password) {
-        return NextResponse.json(
-          {
-            type: "/errors/validation-error",
-            title: "Password Required",
-            status: 422,
-            detail: "A password is required to set up your account and join the workspace.",
-            code: "PASSWORD_REQUIRED",
-          },
-          { status: 422, headers: { "Content-Type": "application/problem+json" } }
-        );
+        return problemResponse({
+          status: 422,
+          code: "PASSWORD_REQUIRED",
+          title: "Password Required",
+          detail: "A password is required to set up your account and join the workspace.",
+        });
       }
 
       const hashedPassword = await hashPassword(password);
@@ -514,15 +472,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return response;
   } catch (error) {
     console.error("Error accepting invitation:", error);
-    return NextResponse.json(
-      {
-        type: "/errors/internal-error",
-        title: "Internal Server Error",
-        status: 500,
-        detail: "Failed to accept organization invitation.",
-        code: "INTERNAL_SERVER_ERROR",
-      },
-      { status: 500, headers: { "Content-Type": "application/problem+json" } }
-    );
+    return problemResponse({
+      status: 500,
+      code: "INTERNAL_SERVER_ERROR",
+      title: "Internal Server Error",
+      detail: "Failed to accept organization invitation.",
+    });
   }
 }

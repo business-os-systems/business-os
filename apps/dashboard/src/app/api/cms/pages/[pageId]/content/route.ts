@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { PageService } from "@suite/website-builder/services";
+import { validatePageAst } from "@suite/website-builder";
+import { resolveTenantContext } from "@/lib/tenant-context";
+import { problemResponse } from "@/lib/problem-response";
 
 const PatchContentSchema = z.object({
   expectedRevision: z.number().int().positive(),
@@ -13,34 +16,21 @@ export async function GET(
 ) {
   try {
     const { pageId } = await params;
-    const tenantId = request.headers.get("x-tenant-id");
-    if (!tenantId) {
-      return NextResponse.json(
-        {
-          type: "/errors/unauthorized",
-          code: "UNAUTHORIZED",
-          title: "Missing Tenant Context",
-          status: 401,
-          detail: "Organization context header (x-tenant-id) is required to view page content.",
-        },
-        { status: 401 }
-      );
+    const tenantContext = await resolveTenantContext(request);
+    if (!tenantContext.ok) {
+      return tenantContext.response;
     }
 
     const service = new PageService();
-    const page = await service.getPage(tenantId, pageId);
+    const page = await service.getPage(tenantContext.organizationId, pageId);
 
     if (!page) {
-      return NextResponse.json(
-        {
-          type: "/errors/not-found",
-          code: "PAGE_NOT_FOUND",
-          title: "Page Not Found",
-          status: 404,
-          detail: `Page ${pageId} not found under tenant organization.`,
-        },
-        { status: 404 }
-      );
+      return problemResponse({
+        status: 404,
+        code: "PAGE_NOT_FOUND",
+        title: "Page Not Found",
+        detail: `Page ${pageId} not found under tenant organization.`,
+      });
     }
 
     return NextResponse.json(
@@ -56,10 +46,13 @@ export async function GET(
       { status: 200 }
     );
   } catch (err: unknown) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Failed to load page content" },
-      { status: 500 }
-    );
+    console.error("Error loading CMS page content:", err);
+    return problemResponse({
+      status: 500,
+      code: "INTERNAL_ERROR",
+      title: "Internal Server Error",
+      detail: "An unexpected error occurred while loading page content.",
+    });
   }
 }
 
@@ -69,70 +62,64 @@ export async function PATCH(
 ) {
   try {
     const { pageId } = await params;
-    const tenantId = request.headers.get("x-tenant-id");
-    if (!tenantId) {
-      return NextResponse.json(
-        {
-          type: "/errors/unauthorized",
-          code: "UNAUTHORIZED",
-          title: "Missing Tenant Context",
-          status: 401,
-          detail: "Organization context header (x-tenant-id) is required to update page content.",
-        },
-        { status: 401 }
-      );
+    const tenantContext = await resolveTenantContext(request);
+    if (!tenantContext.ok) {
+      return tenantContext.response;
     }
+
     const rawBody = await request.json().catch(() => ({}));
 
     const parsed = PatchContentSchema.safeParse(rawBody);
     if (!parsed.success) {
-      return NextResponse.json(
-        {
-          type: "/errors/validation-error",
-          code: "VALIDATION_ERROR",
-          title: "Invalid Content Mutation Payload",
-          status: 400,
-          detail: parsed.error.issues[0]?.message ?? "Validation failed",
-        },
-        { status: 400 }
-      );
+      return problemResponse({
+        status: 400,
+        code: "VALIDATION_ERROR",
+        title: "Invalid Content Mutation Payload",
+        detail: parsed.error.issues[0]?.message ?? "Validation failed",
+      });
     }
 
     const { expectedRevision, draftAst } = parsed.data;
 
+    // Issue 40: Enforce strict AST JSON structural schema validation at API boundary
+    const astValidation = validatePageAst(draftAst);
+    if (!astValidation.success) {
+      return problemResponse({
+        status: 422,
+        code: "INVALID_AST_PAYLOAD",
+        title: "Invalid Page AST Schema",
+        detail: astValidation.message || "Page AST failed structural schema validation.",
+        extra: {
+          errors: astValidation.errors,
+        },
+      });
+    }
+
     const service = new PageService();
     const result = await service.updateDraftContent({
-      organizationId: tenantId,
+      organizationId: tenantContext.organizationId,
       pageId,
       expectedRevision,
-      draftAst,
+      draftAst: astValidation.data as unknown as Record<string, unknown>,
     });
 
     if (!result.success) {
       if (result.errorCode === "CMS_CONCURRENCY_CONFLICT") {
-        return NextResponse.json(
-          {
-            type: "/errors/concurrency-conflict",
-            code: "CMS_CONCURRENCY_CONFLICT",
-            title: "Concurrency Conflict",
-            status: 409,
-            detail: result.message ?? "Page revision conflict.",
-            activeRevision: result.revision,
-          },
-          { status: 409 }
-        );
+        return problemResponse({
+          status: 409,
+          code: "CMS_CONCURRENCY_CONFLICT",
+          title: "Concurrency Conflict",
+          detail: result.message ?? "Page revision conflict.",
+          extra: { activeRevision: result.revision },
+        });
       }
 
-      return NextResponse.json(
-        {
-          type: "/errors/not-found",
-          code: result.errorCode ?? "CMS_PAGE_NOT_FOUND",
-          title: "Page Not Found",
-          status: 404,
-          detail: result.message ?? "Page not found.",
-        },
-        { status: 404 }
-      );
+      return problemResponse({
+        status: 404,
+        code: result.errorCode ?? "CMS_PAGE_NOT_FOUND",
+        title: "Page Not Found",
+        detail: result.message ?? "Page not found.",
+      });
     }
 
     return NextResponse.json(
@@ -145,9 +132,12 @@ export async function PATCH(
       { status: 200 }
     );
   } catch (err: unknown) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Failed to update page content" },
-      { status: 500 }
-    );
+    console.error("Error updating CMS page content:", err);
+    return problemResponse({
+      status: 500,
+      code: "INTERNAL_ERROR",
+      title: "Internal Server Error",
+      detail: "An unexpected error occurred while updating page content.",
+    });
   }
 }

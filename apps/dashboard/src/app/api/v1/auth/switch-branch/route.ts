@@ -11,6 +11,7 @@ import {
 } from "@suite/auth";
 import { isProduction } from "@/lib/env";
 import { getAuthenticatedSession } from "@/lib/session-helper";
+import { problemResponse, successResponse } from "@/lib/api-response";
 
 const switchBranchSchema = z.object({
   branchId: z.string().min(1, "Branch ID is required"),
@@ -29,16 +30,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const body = await request.json().catch(() => null);
     const parseResult = switchBranchSchema.safeParse(body);
     if (!parseResult.success) {
-      return NextResponse.json(
-        {
-          type: "/errors/validation-failed",
-          title: "Bad Request",
-          status: 400,
-          detail: parseResult.error.issues[0]?.message || "Validation failed",
-          code: "VALIDATION_FAILED",
-        },
-        { status: 400, headers: { "Content-Type": "application/problem+json" } }
-      );
+      return problemResponse({
+        status: 400,
+        code: "VALIDATION_FAILED",
+        title: "Bad Request",
+        detail: parseResult.error.issues[0]?.message || "Validation failed",
+      });
     }
 
     const { branchId } = parseResult.data;
@@ -77,7 +74,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       remainingSeconds
     );
 
-    const response = NextResponse.json({
+    const response = successResponse({
       success: true,
       activeBranchId: branchContext.activeBranchId,
       activeBranchName: branchContext.branch.name,
@@ -102,27 +99,20 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         (("status" in error && error.status === 403) ||
           ("statusCode" in error && error.statusCode === 403)))
     ) {
-      return NextResponse.json(
-        {
-          type: "/errors/forbidden",
-          title: "Forbidden",
-          status: 403,
-          detail: error instanceof Error ? error.message : "Access denied to branch.",
-          code: "FORBIDDEN",
-        },
-        { status: 403, headers: { "Content-Type": "application/problem+json" } }
-      );
+      return problemResponse({
+        status: 403,
+        code: "FORBIDDEN",
+        title: "Forbidden",
+        detail: error instanceof Error ? error.message : "Access denied to branch.",
+      });
     }
 
-    return NextResponse.json(
-      {
-        type: "/errors/internal-server-error",
-        title: "Internal Server Error",
-        status: 500,
-        detail: error instanceof Error ? error.message : "Internal server error.",
-        code: "INTERNAL_SERVER_ERROR",
-      },
-      { status: 500, headers: { "Content-Type": "application/problem+json" } }
-    );
+    console.error("Error switching branch:", error);
+    return problemResponse({
+      status: 500,
+      code: "INTERNAL_SERVER_ERROR",
+      title: "Internal Server Error",
+      detail: error instanceof Error ? error.message : "Internal server error.",
+    });
   }
 }

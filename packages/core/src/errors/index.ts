@@ -283,3 +283,35 @@ export function createProblemEnvelope(input: ProblemPayloadInput): ProblemEnvelo
   };
 }
 
+export interface SuccessEnvelope<T> {
+  body: T;
+  init: {
+    status: number;
+    headers: Record<string, string>;
+  };
+}
+
+export interface SuccessPayloadInput<T> {
+  data: T;
+  status?: number;
+  headers?: Record<string, string>;
+}
+
+/**
+ * Canonical JSON success response envelope builder.
+ * Guarantees standard application/json Content-Type and custom status / headers.
+ */
+export function createSuccessEnvelope<T>(input: SuccessPayloadInput<T>): SuccessEnvelope<T> {
+  return {
+    body: input.data,
+    init: {
+      status: input.status ?? 200,
+      headers: {
+        "Content-Type": "application/json",
+        ...(input.headers ?? {}),
+      },
+    },
+  };
+}
+
+

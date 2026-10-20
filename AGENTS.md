@@ -262,6 +262,11 @@ You are **STRICTLY PROHIBITED** from:
   1. Common domain mechanisms (such as multi-tier rate limiting or RFC 7807 problem details generation) MUST be extracted into a centralized, single-responsibility utility or shared package (`@suite/redis`, `@suite/core`, `@suite/auth`).
   2. Infrastructural capabilities (such as rate limiting) MUST rely on clean abstraction interfaces (`RateLimitRule[]`, `checkRateLimit()`) so they remain reusable across all modular apps (App 01 through App 12) and can seamlessly offload to upstream API Gateways or reverse proxies in the future without modifying application route handlers.
   3. All API error responses MUST use centralized helpers (`problemResponse()` / `createProblemEnvelope()`) rather than constructing manual RFC 7807 JSON boilerplate in every route.
+- ❌ **Ad-Hoc API Response Payloads & Unstandardized JSON Formatting (Universal API Response Law):**
+  Constructing inline raw JSON responses, ad-hoc error structures, or manual response headers across Next.js route handlers is **STRICTLY PROHIBITED**.
+  1. **Mandatory Standardized Error Responses:** Every error response MUST be returned using `problemResponse({ status, code, title, detail, ... })`. Constructing manual `NextResponse.json({ type: "/errors/...", ... }, { status: ..., headers: { "Content-Type": "application/problem+json" } })` is strictly forbidden.
+  2. **Mandatory Standardized Success Responses:** Every successful API response MUST be returned using `successResponse(data, { status?: number, headers?: Record<string, string> })` from `@/lib/api-response` (or `@suite/core`).
+  3. **Option A Relative URIs:** All error responses MUST strictly use relative URIs (`/errors/<slug>`), deterministically mapped from the uppercase error code (e.g. `PASSWORD_REQUIRED` $\rightarrow$ `/errors/password-required`). Hardcoded domain names or raw placeholder URIs (`about:blank`) are strictly prohibited.
 
 ---
 

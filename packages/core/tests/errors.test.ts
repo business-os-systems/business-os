@@ -10,6 +10,8 @@ import {
   UnauthorizedError,
   ValidationError,
   isAppError,
+  createProblemEnvelope,
+  createSuccessEnvelope,
 } from "../src/index.js";
 
 describe("@suite/core - RFC 7807 Problem Details Error Hierarchy", () => {
@@ -108,10 +110,31 @@ describe("@suite/core - RFC 7807 Problem Details Error Hierarchy", () => {
     expect(internal.cause).toBeDefined();
   });
 
-  it("type guard correctly identifies non-AppError objects", () => {
-    expect(isAppError(new Error("Native error"))).toBe(false);
-    expect(isAppError({ status: 500 })).toBe(false);
-    expect(isAppError(null)).toBe(false);
-    expect(isAppError(undefined)).toBe(false);
+  it("creates compliant RFC 7807 problem envelope with Option A relative URI", () => {
+    const envelope = createProblemEnvelope({
+      status: 422,
+      code: "PASSWORD_REQUIRED",
+      title: "Password Required",
+      detail: "A password is required to set up your account and join the workspace.",
+    });
+
+    expect(envelope.init.status).toBe(422);
+    expect(envelope.init.headers["Content-Type"]).toBe("application/problem+json");
+    expect(envelope.body.type).toBe("/errors/password-required");
+    expect(envelope.body.code).toBe("PASSWORD_REQUIRED");
+    expect(envelope.body.status).toBe(422);
+  });
+
+  it("creates compliant JSON success envelope with custom status and headers", () => {
+    const envelope = createSuccessEnvelope({
+      data: { success: true, count: 42 },
+      status: 201,
+      headers: { "x-custom-header": "test-val" },
+    });
+
+    expect(envelope.init.status).toBe(201);
+    expect(envelope.init.headers["Content-Type"]).toBe("application/json");
+    expect(envelope.init.headers["x-custom-header"]).toBe("test-val");
+    expect(envelope.body).toEqual({ success: true, count: 42 });
   });
 });

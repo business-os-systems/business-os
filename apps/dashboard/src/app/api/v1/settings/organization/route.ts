@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@suite/db";
 import { PERMISSIONS, hasPermission } from "@suite/core";
 import { getAuthenticatedSession } from "@/lib/session-helper";
+import { problemResponse, successResponse } from "@/lib/api-response";
 import {
   signSessionToken,
   encodeSessionPayload,
@@ -70,16 +71,13 @@ export async function GET(request: NextRequest) {
     const userPermissions = session.permissions ?? [];
 
     if (!hasPermission(userPermissions, PERMISSIONS.CORE.ORGANIZATION_READ)) {
-      return NextResponse.json(
-        {
-          type: "/errors/forbidden",
-          title: "Access Denied",
-          status: 403,
-          detail: `Required permission '${PERMISSIONS.CORE.ORGANIZATION_READ}' is missing from user claims.`,
-          code: "FORBIDDEN",
-        },
-        { status: 403, headers: { "Content-Type": "application/problem+json" } }
-      );
+      return problemResponse({
+        type: "/errors/forbidden",
+        title: "Access Denied",
+        status: 403,
+        detail: `Required permission '${PERMISSIONS.CORE.ORGANIZATION_READ}' is missing from user claims.`,
+        code: "FORBIDDEN",
+      });
     }
 
     const organization = await prisma.organization.findUnique({
@@ -91,43 +89,34 @@ export async function GET(request: NextRequest) {
     });
 
     if (!organization) {
-      return NextResponse.json(
-        {
-          type: "/errors/not-found",
-          title: "Organization Not Found",
-          status: 404,
-          detail: `Organization '${session.organizationId}' was not found.`,
-          code: "ORGANIZATION_NOT_FOUND",
-        },
-        { status: 404, headers: { "Content-Type": "application/problem+json" } }
-      );
+      return problemResponse({
+        type: "/errors/not-found",
+        title: "Organization Not Found",
+        status: 404,
+        detail: `Organization '${session.organizationId}' was not found.`,
+        code: "ORGANIZATION_NOT_FOUND",
+      });
     }
 
     if (organization.status === "ARCHIVED") {
-      return NextResponse.json(
-        {
-          type: "/errors/forbidden",
-          title: "Organization Archived",
-          status: 403,
-          detail: `Organization '${session.organizationId}' has been archived and cannot be accessed.`,
-          code: "ORGANIZATION_ARCHIVED",
-        },
-        { status: 403, headers: { "Content-Type": "application/problem+json" } }
-      );
+      return problemResponse({
+        type: "/errors/forbidden",
+        title: "Organization Archived",
+        status: 403,
+        detail: `Organization '${session.organizationId}' has been archived and cannot be accessed.`,
+        code: "ORGANIZATION_ARCHIVED",
+      });
     }
 
-    return NextResponse.json(organization, { status: 200 });
+    return successResponse(organization);
   } catch (error) {
-    return NextResponse.json(
-      {
-        type: "/errors/internal-server-error",
-        title: "Internal Server Error",
-        status: 500,
-        detail: error instanceof Error ? error.message : "Internal server error.",
-        code: "INTERNAL_SERVER_ERROR",
-      },
-      { status: 500, headers: { "Content-Type": "application/problem+json" } }
-    );
+    return problemResponse({
+      type: "/errors/internal-server-error",
+      title: "Internal Server Error",
+      status: 500,
+      detail: error instanceof Error ? error.message : "Internal server error.",
+      code: "INTERNAL_SERVER_ERROR",
+    });
   }
 }
 
@@ -145,16 +134,13 @@ async function parseAndValidateUpdateBody(
   } catch {
     return {
       ok: false,
-      response: NextResponse.json(
-        {
-          type: "/errors/bad-request",
-          title: "Invalid JSON",
-          status: 400,
-          detail: "Malformed JSON payload in request body.",
-          code: "INVALID_JSON",
-        },
-        { status: 400, headers: { "Content-Type": "application/problem+json" } }
-      ),
+      response: problemResponse({
+        type: "/errors/bad-request",
+        title: "Invalid JSON",
+        status: 400,
+        detail: "Malformed JSON payload in request body.",
+        code: "INVALID_JSON",
+      }),
     };
   }
 
@@ -167,17 +153,14 @@ async function parseAndValidateUpdateBody(
 
     return {
       ok: false,
-      response: NextResponse.json(
-        {
-          type: "/errors/validation-error",
-          title: "Validation Error",
-          status: 400,
-          detail: "One or more organization fields failed validation.",
-          code: "VALIDATION_ERROR",
-          invalidParams,
-        },
-        { status: 400, headers: { "Content-Type": "application/problem+json" } }
-      ),
+      response: problemResponse({
+        type: "/errors/validation-error",
+        title: "Validation Error",
+        status: 400,
+        detail: "One or more organization fields failed validation.",
+        code: "VALIDATION_ERROR",
+        invalidParams,
+      }),
     };
   }
 
@@ -198,16 +181,13 @@ async function validateDomainConflict(
   });
 
   if (existingDomain) {
-    return NextResponse.json(
-      {
-        type: "/errors/conflict",
-        title: "Domain Conflict",
-        status: 409,
-        detail: `The custom domain '${customDomain}' is already claimed by another organization.`,
-        code: "DOMAIN_ALREADY_EXISTS",
-      },
-      { status: 409, headers: { "Content-Type": "application/problem+json" } }
-    );
+    return problemResponse({
+      type: "/errors/conflict",
+      title: "Domain Conflict",
+      status: 409,
+      detail: `The custom domain '${customDomain}' is already claimed by another organization.`,
+      code: "DOMAIN_ALREADY_EXISTS",
+    });
   }
 
   return null;
@@ -280,16 +260,13 @@ export async function PATCH(request: NextRequest) {
     const userPermissions = session.permissions ?? [];
 
     if (!hasPermission(userPermissions, PERMISSIONS.CORE.ORGANIZATION_UPDATE)) {
-      return NextResponse.json(
-        {
-          type: "/errors/forbidden",
-          title: "Access Denied",
-          status: 403,
-          detail: `Required permission '${PERMISSIONS.CORE.ORGANIZATION_UPDATE}' is missing from user claims.`,
-          code: "FORBIDDEN",
-        },
-        { status: 403, headers: { "Content-Type": "application/problem+json" } }
-      );
+      return problemResponse({
+        type: "/errors/forbidden",
+        title: "Access Denied",
+        status: 403,
+        detail: `Required permission '${PERMISSIONS.CORE.ORGANIZATION_UPDATE}' is missing from user claims.`,
+        code: "FORBIDDEN",
+      });
     }
 
     const currentOrg = await prisma.organization.findUnique({
@@ -298,16 +275,13 @@ export async function PATCH(request: NextRequest) {
     });
 
     if (!currentOrg || currentOrg.status === "ARCHIVED") {
-      return NextResponse.json(
-        {
-          type: "/errors/forbidden",
-          title: "Organization Archived",
-          status: 403,
-          detail: "This organization has been archived and cannot be modified.",
-          code: "ORGANIZATION_ARCHIVED",
-        },
-        { status: 403, headers: { "Content-Type": "application/problem+json" } }
-      );
+      return problemResponse({
+        type: "/errors/forbidden",
+        title: "Organization Archived",
+        status: 403,
+        detail: "This organization has been archived and cannot be modified.",
+        code: "ORGANIZATION_ARCHIVED",
+      });
     }
 
     const payloadResult = await parseAndValidateUpdateBody(request);
@@ -328,7 +302,7 @@ export async function PATCH(request: NextRequest) {
       payloadResult.data
     );
 
-    const response = NextResponse.json(updated, { status: 200 });
+    const response = successResponse(updated);
 
     if (payloadResult.data.status === "ARCHIVED") {
       const cookieOptions = createSessionCookieOptions(isProduction, true);
@@ -343,16 +317,13 @@ export async function PATCH(request: NextRequest) {
 
     return response;
   } catch (error) {
-    return NextResponse.json(
-      {
-        type: "/errors/internal-server-error",
-        title: "Internal Server Error",
-        status: 500,
-        detail: error instanceof Error ? error.message : "Internal server error.",
-        code: "INTERNAL_SERVER_ERROR",
-      },
-      { status: 500, headers: { "Content-Type": "application/problem+json" } }
-    );
+    return problemResponse({
+      type: "/errors/internal-server-error",
+      title: "Internal Server Error",
+      status: 500,
+      detail: error instanceof Error ? error.message : "Internal server error.",
+      code: "INTERNAL_SERVER_ERROR",
+    });
   }
 }
 

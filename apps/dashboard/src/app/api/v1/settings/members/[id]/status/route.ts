@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { PERMISSIONS, hasPermission } from "@suite/core";
 import { getAuthenticatedSession } from "@/lib/session-helper";
+import { problemResponse, successResponse } from "@/lib/api-response";
 import {
   updateMemberStatus,
   SafeguardViolationError,
@@ -31,16 +32,13 @@ export async function PATCH(
     const userPermissions = session.permissions ?? [];
 
     if (!hasPermission(userPermissions, PERMISSIONS.CORE.USERS_MANAGE)) {
-      return NextResponse.json(
-        {
-          type: "/errors/forbidden",
-          title: "Access Denied",
-          status: 403,
-          detail: `Required permission '${PERMISSIONS.CORE.USERS_MANAGE}' is missing from user claims.`,
-          code: "FORBIDDEN",
-        },
-        { status: 403, headers: { "Content-Type": "application/problem+json" } }
-      );
+      return problemResponse({
+        type: "/errors/forbidden",
+        title: "Access Denied",
+        status: 403,
+        detail: `Required permission '${PERMISSIONS.CORE.USERS_MANAGE}' is missing from user claims.`,
+        code: "FORBIDDEN",
+      });
     }
 
     const { id } = await context.params;
@@ -48,20 +46,19 @@ export async function PATCH(
     const parseResult = updateStatusSchema.safeParse(body);
 
     if (!parseResult.success) {
-      return NextResponse.json(
-        {
-          type: "/errors/validation-error",
-          title: "Validation Failed",
-          status: 422,
-          detail: parseResult.error.errors[0]?.message || "Invalid input payload.",
+      return problemResponse({
+        type: "/errors/validation-error",
+        title: "Validation Failed",
+        status: 422,
+        detail: parseResult.error.errors[0]?.message || "Invalid input payload.",
+        extra: {
           errors: parseResult.error.errors.map((e) => ({
             field: e.path.join("."),
             message: e.message,
           })),
-          code: "VALIDATION_ERROR",
         },
-        { status: 422, headers: { "Content-Type": "application/problem+json" } }
-      );
+        code: "VALIDATION_ERROR",
+      });
     }
 
     const updated = await updateMemberStatus(
@@ -70,43 +67,34 @@ export async function PATCH(
       parseResult.data
     );
 
-    return NextResponse.json({ member: updated }, { status: 200 });
+    return successResponse({ member: updated }, { status: 200 });
   } catch (error) {
     if (error instanceof SafeguardViolationError) {
-      return NextResponse.json(
-        {
-          type: "/errors/safeguard-violation",
-          title: "Action Prohibited by Security Safeguard",
-          status: 403,
-          detail: error.message,
-          code: "LAST_ADMIN_PROTECTION",
-        },
-        { status: 403, headers: { "Content-Type": "application/problem+json" } }
-      );
+      return problemResponse({
+        type: "/errors/safeguard-violation",
+        title: "Action Prohibited by Security Safeguard",
+        status: 403,
+        detail: error.message,
+        code: "LAST_ADMIN_PROTECTION",
+      });
     }
 
     if (error instanceof NotFoundError) {
-      return NextResponse.json(
-        {
-          type: "/errors/not-found",
-          title: "Member Not Found",
-          status: 404,
-          detail: error.message,
-          code: "NOT_FOUND",
-        },
-        { status: 404, headers: { "Content-Type": "application/problem+json" } }
-      );
+      return problemResponse({
+        type: "/errors/not-found",
+        title: "Member Not Found",
+        status: 404,
+        detail: error.message,
+        code: "NOT_FOUND",
+      });
     }
 
-    return NextResponse.json(
-      {
-        type: "/errors/internal-server-error",
-        title: "Internal Server Error",
-        status: 500,
-        detail: error instanceof Error ? error.message : "Internal server error.",
-        code: "INTERNAL_SERVER_ERROR",
-      },
-      { status: 500, headers: { "Content-Type": "application/problem+json" } }
-    );
+    return problemResponse({
+      type: "/errors/internal-server-error",
+      title: "Internal Server Error",
+      status: 500,
+      detail: error instanceof Error ? error.message : "Internal server error.",
+      code: "INTERNAL_SERVER_ERROR",
+    });
   }
 }

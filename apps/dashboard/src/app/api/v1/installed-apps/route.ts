@@ -1,41 +1,16 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { prisma } from "@suite/db";
-import { SESSION_COOKIE_NAME, verifySessionToken, decodeSessionPayload } from "@/lib/auth-constants";
-
-
-
+import { resolveTenantContext } from "@/lib/tenant-context";
+import { problemResponse } from "@/lib/problem-response";
 
 export async function GET(request: Request) {
   try {
-    let orgId = request.headers.get("x-tenant-id") || request.headers.get("x-organization-id");
-
-    if (!orgId) {
-      const cookieStore = await cookies();
-      const sessionToken = cookieStore.get(SESSION_COOKIE_NAME)?.value;
-      if (sessionToken) {
-        const isValid = await verifySessionToken(sessionToken);
-        if (isValid) {
-          const payload = decodeSessionPayload(sessionToken);
-          if (payload?.organizationId) {
-            orgId = payload.organizationId;
-          }
-        }
-      }
+    const tenantContext = await resolveTenantContext(request);
+    if (!tenantContext.ok) {
+      return tenantContext.response;
     }
 
-    if (!orgId) {
-      return NextResponse.json(
-        {
-          type: "/errors/unauthorized",
-          code: "UNAUTHORIZED",
-          title: "Missing Tenant Context",
-          status: 401,
-          detail: "Active tenant session is required to retrieve installed apps.",
-        },
-        { status: 401 }
-      );
-    }
+    const orgId = tenantContext.organizationId;
 
     const dbRecords = await prisma.installedApp.findMany({
       where: {
@@ -72,15 +47,12 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ organizationId: orgId, apps, installedApps: apps }, { status: 200 });
   } catch (error) {
-    return NextResponse.json(
-      {
-        type: "/errors/internal-server-error",
-        title: "Installed Apps Query Failed",
-        status: 500,
-        code: "INTERNAL_SERVER_ERROR",
-        detail: error instanceof Error ? error.message : "Internal server error.",
-      },
-      { status: 500 }
-    );
+    console.error("Error retrieving installed apps:", error);
+    return problemResponse({
+      status: 500,
+      code: "INTERNAL_SERVER_ERROR",
+      title: "Installed Apps Query Failed",
+      detail: "An unexpected error occurred while retrieving installed apps.",
+    });
   }
 }

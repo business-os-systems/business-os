@@ -12,6 +12,7 @@ import {
 import { isProduction } from "@/lib/env";
 import { getAuthenticatedSession } from "@/lib/session-helper";
 import { getAppManifest, APP_MANIFESTS } from "@suite/core";
+import { problemResponse, successResponse } from "@/lib/api-response";
 import { z } from "zod";
 
 
@@ -59,16 +60,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     });
 
     if (!dbUser) {
-      return NextResponse.json(
-        {
-          type: "/errors/user-not-found",
-          title: "Not Found",
-          status: 404,
-          detail: "User account could not be found.",
-          code: "USER_NOT_FOUND",
-        },
-        { status: 404, headers: { "Content-Type": "application/problem+json" } }
-      );
+      return problemResponse({
+        status: 404,
+        code: "USER_NOT_FOUND",
+        title: "Not Found",
+        detail: "User account could not be found.",
+      });
     }
 
     const orgId =
@@ -76,16 +73,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       dbUser.organizations[0]?.organizationId;
 
     if (!orgId) {
-      return NextResponse.json(
-        {
-          type: "/errors/missing-organization",
-          title: "Bad Request",
-          status: 400,
-          detail: "User must create or be part of an organization before completing onboarding.",
-          code: "MISSING_ORGANIZATION",
-        },
-        { status: 400, headers: { "Content-Type": "application/problem+json" } }
-      );
+      return problemResponse({
+        status: 400,
+        code: "MISSING_ORGANIZATION",
+        title: "Bad Request",
+        detail: "User must create or be part of an organization before completing onboarding.",
+      });
     }
 
     const onboardingState = getUserOnboardingState(dbUser.metadata);
@@ -181,7 +174,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const token = await signSessionToken(updatedPayload);
     const cookieOptions = createSessionCookieOptions(isProduction, true);
 
-    const response = NextResponse.json({
+    const response = successResponse({
       success: true,
       onboardingStatus: "COMPLETED",
       installedApps: appsToInstall,
@@ -201,15 +194,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return response;
   } catch (error) {
     console.error("Error completing onboarding:", error);
-    return NextResponse.json(
-      {
-        type: "/errors/internal-error",
-        title: "Internal Server Error",
-        status: 500,
-        detail: "Failed to finalize workspace activation.",
-        code: "INTERNAL_SERVER_ERROR",
-      },
-      { status: 500, headers: { "Content-Type": "application/problem+json" } }
-    );
+    return problemResponse({
+      status: 500,
+      code: "INTERNAL_SERVER_ERROR",
+      title: "Internal Server Error",
+      detail: "Failed to finalize workspace activation.",
+    });
   }
 }

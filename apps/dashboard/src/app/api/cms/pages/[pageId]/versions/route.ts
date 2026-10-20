@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { PageService } from "@suite/website-builder/services";
+import { resolveTenantContext } from "@/lib/tenant-context";
+import { problemResponse } from "@/lib/problem-response";
 
 export async function GET(
   request: Request,
@@ -7,28 +9,22 @@ export async function GET(
 ) {
   try {
     const { pageId } = await params;
-    const tenantId = request.headers.get("x-tenant-id");
-    if (!tenantId) {
-      return NextResponse.json(
-        {
-          type: "/errors/unauthorized",
-          code: "UNAUTHORIZED",
-          title: "Missing Tenant Context",
-          status: 401,
-          detail: "Organization context header (x-tenant-id) is required to view versions.",
-        },
-        { status: 401 }
-      );
+    const tenantContext = await resolveTenantContext(request);
+    if (!tenantContext.ok) {
+      return tenantContext.response;
     }
 
     const service = new PageService();
-    const versions = await service.listPageVersions(tenantId, pageId);
+    const versions = await service.listPageVersions(tenantContext.organizationId, pageId);
 
     return NextResponse.json({ versions }, { status: 200 });
   } catch (err: unknown) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Failed to fetch versions" },
-      { status: 500 }
-    );
+    console.error("Error fetching CMS page versions:", err);
+    return problemResponse({
+      status: 500,
+      code: "INTERNAL_ERROR",
+      title: "Internal Server Error",
+      detail: "An unexpected error occurred while fetching versions.",
+    });
   }
 }
