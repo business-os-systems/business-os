@@ -7,6 +7,9 @@ interface PermissionDef {
 }
 
 const CORE_PERMISSIONS: PermissionDef[] = [
+  // Universal Platform Superuser Wildcard
+  { appId: "core", action: "*", description: "Universal platform administrator access across all domains and modular apps" },
+
   // Core Platform & Identity
   { appId: "core", action: "core:organization:read", description: "View organization details and settings" },
   { appId: "core", action: "core:organization:update", description: "Update organization settings" },
@@ -39,9 +42,10 @@ const MASTER_ROLES: RoleDef[] = [
     slug: "tenant-owner",
     name: "Organization Owner",
     description: "Full administrative authority across all organization branches, capability permissions, and installed apps",
-    permissionActions: CORE_PERMISSIONS.map((p) => p.action),
+    permissionActions: ["*", ...CORE_PERMISSIONS.map((p) => p.action)],
   },
 ];
+
 
 export async function seed() {
   console.log("🌱 Starting Platform Core database seed...");

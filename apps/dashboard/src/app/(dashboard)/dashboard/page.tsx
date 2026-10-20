@@ -2,15 +2,15 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  Button,
-  Badge,
-} from "@suite/ui";
+import { Badge } from "@suite/ui";
+import { ArrowRightIcon } from "@suite/ui/icons";
+import { hasPermission } from "@suite/core";
 import { resolveAppIcon } from "@/lib/app-registry";
+
+import {
+  defaultDashboardOverviewConfig,
+  type DashboardOverviewConfig,
+} from "./dashboard.config";
 
 export interface AppLauncherCard {
   title: string;
@@ -20,6 +20,7 @@ export interface AppLauncherCard {
   icon: React.ComponentType<{ className?: string }>;
   status: "Available" | "Coming Soon";
   isAvailable: boolean;
+  permission?: string;
   accent?: "primary" | "secondary" | "tertiary";
 }
 
@@ -27,6 +28,8 @@ export interface OverviewPageProps {
   initialApps?: AppLauncherCard[];
   installedAppIds?: string[];
   organizationId?: string;
+  userPermissions?: readonly string[];
+  config?: DashboardOverviewConfig;
 }
 
 const DEFAULT_APPS: AppLauncherCard[] = [];
@@ -35,11 +38,22 @@ export default function OverviewPage({
   initialApps = DEFAULT_APPS,
   installedAppIds,
   organizationId,
+  userPermissions,
+  config,
 }: OverviewPageProps = {}) {
   const [apps, setApps] = useState<AppLauncherCard[]>(initialApps);
   const [loading, setLoading] = useState(initialApps.length === 0);
+  const [resolvedPermissions, setResolvedPermissions] = useState<
+    readonly string[] | undefined
+  >(userPermissions);
 
   const installedIdsKey = installedAppIds ? installedAppIds.join(",") : "";
+
+  useEffect(() => {
+    if (userPermissions) {
+      setResolvedPermissions(userPermissions);
+    }
+  }, [userPermissions]);
 
   useEffect(() => {
     if (initialApps.length > 0) {
@@ -57,6 +71,9 @@ export default function OverviewPage({
         const res = await fetch(endpoint);
         if (res.ok) {
           const data = await res.json();
+          if (data.userPermissions && !userPermissions) {
+            setResolvedPermissions(data.userPermissions);
+          }
           const list = Array.isArray(data.apps)
             ? data.apps
             : data.installedApps || [];
@@ -68,28 +85,34 @@ export default function OverviewPage({
               list.map(
                 (a: {
                   appId: string;
-                  title: string;
-                  code: string;
-                  description: string;
-                  href: string;
+                  title?: string;
+                  name?: string;
+                  code?: string;
+                  description?: string;
+                  href?: string;
                   iconName?: string;
+                  permission?: string;
+                  isEnabled?: boolean;
                 }) => {
+                  const appId = a.appId || a.code || "";
                   const isAvailable = installedSet
-                    ? installedSet.has(a.appId)
-                    : true;
+                    ? installedSet.has(appId)
+                    : a.isEnabled !== false;
+                  const title = a.title || a.name || appId;
                   return {
-                    title: a.title,
-                    code: a.code,
-                    desc: a.description,
-                    href: a.href,
-                    icon: resolveAppIcon(a.iconName || a.appId),
+                    title,
+                    code: a.code || appId,
+                    desc: a.description || "",
+                    href: a.href || `/${appId}`,
+                    icon: resolveAppIcon(a.iconName || appId),
                     status: isAvailable
                       ? ("Available" as const)
                       : ("Coming Soon" as const),
                     isAvailable,
+                    permission: a.permission || `${appId}:read`,
                   };
-                },
-              ),
+                }
+              )
             );
           }
         }
@@ -104,87 +127,107 @@ export default function OverviewPage({
     return () => {
       isMounted = false;
     };
-  }, [initialApps, installedIdsKey, organizationId]);
+  }, [initialApps, installedIdsKey, organizationId, userPermissions]);
+
+  const effectivePermissions = userPermissions ?? resolvedPermissions;
+
+  // Pure capability-based filtering (Principle VIII)
+  const authorizedApps = apps.filter((app) => {
+    if (effectivePermissions === undefined) return true;
+    const requiredPermission = app.permission;
+    if (!requiredPermission) return true;
+    return hasPermission(effectivePermissions, requiredPermission);
+  });
+
+
+  const title = config?.title || defaultDashboardOverviewConfig.title;
+  const subtitle = config?.subtitle || defaultDashboardOverviewConfig.subtitle;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold font-heading tracking-tight text-on-surface">
-          Executive App Launcher
+        <h1 className="text-xl sm:text-2xl font-bold font-heading tracking-tight text-text">
+          {title}
         </h1>
-        <p className="text-sm text-on-surface-variant mt-1">
-          Welcome to your Business OS workspace. Select an installed module to
-          launch its environment.
+        <p className="text-xs sm:text-sm text-text-secondary mt-1">
+          {subtitle}
         </p>
       </div>
 
-      {apps.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border-hairline p-8 text-center">
-          <p className="text-sm text-on-surface-variant">
+      {authorizedApps.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-border p-8 text-center bg-surface">
+          <p className="text-xs sm:text-sm text-text-secondary">
             {loading
               ? "Loading installed applications..."
               : "No applications installed for this workspace."}
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {apps.map((app) => {
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {authorizedApps.map((app) => {
             const Icon = app.icon;
-            return (
-              <Card
-                key={app.code}
-                className="hover:shadow-md transition-shadow border-border-hairline bg-surface-container-lowest"
-              >
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`p-2.5 rounded-lg ${
-                        app.isAvailable
-                          ? "bg-surface-brand-tint text-primary"
-                          : "bg-surface-container text-outline"
-                      }`}
-                    >
-                      <Icon className="h-6 w-6" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-base font-semibold font-heading text-on-surface">
-                        {app.title}
-                      </CardTitle>
-                    </div>
+
+            const cardInner = (
+              <>
+                <div className="flex items-center justify-between gap-2">
+                  <div
+                    className={`flex h-8 w-8 items-center justify-center rounded-lg flex-shrink-0 transition-colors ${
+                      app.isAvailable
+                        ? "bg-brand-tint text-brand group-hover:bg-brand group-hover:text-white"
+                        : "bg-surface-hover text-text-muted"
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" />
                   </div>
                   <Badge
                     variant={app.isAvailable ? "default" : "secondary"}
-                    className="text-xs font-semibold"
+                    className="text-[10px] py-0 px-1.5 font-medium flex-shrink-0"
                   >
                     {app.status}
                   </Badge>
-                </CardHeader>
-                <CardContent className="space-y-4 pt-2">
-                  <p className="text-xs text-on-surface-variant leading-relaxed">
+                </div>
+
+                <div className="mt-3 flex-1">
+                  <h2 className="text-sm font-semibold text-text truncate group-hover:text-brand transition-colors">
+                    {app.title}
+                  </h2>
+                  <p className="text-xs text-text-secondary leading-relaxed line-clamp-2 mt-1">
                     {app.desc}
                   </p>
-                  {app.isAvailable ? (
-                    <Link href={app.href} className="inline-block">
-                      <Button
-                        variant="default"
-                        size="sm"
-                        className="bg-primary hover:bg-brand-hover text-white text-xs font-medium"
-                      >
-                        Open Application
-                      </Button>
-                    </Link>
-                  ) : (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled
-                      className="opacity-60 cursor-not-allowed text-xs"
-                    >
-                      Coming Soon
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
+                </div>
+
+                {app.isAvailable ? (
+                  <div className="flex items-center text-xs font-medium text-brand group-hover:text-brand-hover gap-1 pt-3 mt-auto">
+                    <span>Open Application</span>
+                    <ArrowRightIcon className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                  </div>
+                ) : (
+                  <div className="flex items-center text-xs font-medium text-text-muted gap-1 pt-3 mt-auto">
+                    <span>Coming Soon</span>
+                  </div>
+                )}
+              </>
+            );
+
+            if (app.isAvailable) {
+              return (
+                <Link
+                  key={app.code}
+                  href={app.href}
+                  className="group relative flex flex-col justify-between p-4 rounded-xl border border-border bg-surface hover:border-brand/40 hover:shadow-2xs transition-all duration-150 min-h-[148px]"
+                >
+                  {cardInner}
+                </Link>
+              );
+            }
+
+            return (
+              <div
+                key={app.code}
+                className="relative flex flex-col justify-between p-4 rounded-xl border border-border bg-surface/60 opacity-70 cursor-not-allowed min-h-[148px]"
+              >
+                {cardInner}
+              </div>
             );
           })}
         </div>

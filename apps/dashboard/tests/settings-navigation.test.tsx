@@ -41,7 +41,7 @@ describe("Settings Hub Navigation Shell & Auto-Collapse Primitives (User Story 1
       expect(html).toContain("Overview");
       expect(html).toContain("Settings");
       expect(html).toContain("Business OS");
-      expect(html).toContain("w-64");
+      expect(html).toContain("w-52 sm:w-56");
     });
 
     it("collapses to w-16 icon strip when collapsed=true and hides text labels", () => {
@@ -154,7 +154,7 @@ describe("Settings Hub Navigation Shell & Auto-Collapse Primitives (User Story 1
   });
 
   describe("DashboardShell Auto-Collapse & Sub-Nav Docking", () => {
-    it("renders expanded sidebar (w-64) and no SettingsNav on non-settings routes", () => {
+    it("renders expanded sidebar (w-52 sm:w-56) and no SettingsNav on non-settings routes", () => {
       mockPathname.mockReturnValue("/dashboard");
       const html = renderToString(
         <DashboardShell
@@ -170,7 +170,7 @@ describe("Settings Hub Navigation Shell & Auto-Collapse Primitives (User Story 1
           <div>Dashboard Content</div>
         </DashboardShell>
       );
-      expect(html).toContain("w-64");
+      expect(html).toContain("w-52 sm:w-56");
       expect(html).toContain("Dashboard Content");
       // Secondary SettingsNav header should not be present
       expect(html).not.toContain("Workspace Settings");
@@ -193,6 +193,8 @@ describe("Settings Hub Navigation Shell & Auto-Collapse Primitives (User Story 1
         </DashboardShell>
       );
       expect(html).toContain("w-16");
+      expect(html).toContain("h-12");
+      expect(html).not.toContain("h-16");
       expect(html).toContain("Settings");
       expect(html).toContain("General");
       expect(html).toContain("Settings Content");

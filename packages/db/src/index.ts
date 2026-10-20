@@ -13,6 +13,8 @@ export {
 } from "./extension.js";
 
 export { seed } from "./seed.js";
+export { backfillAppMetadata } from "./backfill-app-metadata.js";
+
 
 export {
   Prisma,

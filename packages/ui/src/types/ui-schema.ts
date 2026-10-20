@@ -288,3 +288,37 @@ export interface SettingsHubConfig {
   categories: SettingsCategoryConfig[];
   groups?: SettingsGroupConfig[];
 }
+
+// ==========================================
+// 6. DASHBOARD LAUNCHER & OVERVIEW CONFIG CONTRACTS (ISP)
+// ==========================================
+
+export interface AppLauncherItemIdentity {
+  id: string;
+  title: string;
+  href: string;
+  icon: string;
+}
+
+export interface AppLauncherItemPresentation {
+  description: string;
+  badge?: string;
+  status?: "Available" | "Coming Soon";
+  isAvailable?: boolean;
+}
+
+export interface AppLauncherItemAuthorization {
+  permission?: string;
+}
+
+export interface AppLauncherItemConfig
+  extends AppLauncherItemIdentity,
+    AppLauncherItemPresentation,
+    AppLauncherItemAuthorization {}
+
+export interface DashboardOverviewConfig {
+  title: string;
+  subtitle: string;
+  apps?: AppLauncherItemConfig[];
+}
+

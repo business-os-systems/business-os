@@ -3,6 +3,9 @@ import { cookies } from "next/headers";
 import { prisma } from "@suite/db";
 import { SESSION_COOKIE_NAME, verifySessionToken, decodeSessionPayload } from "@/lib/auth-constants";
 
+
+
+
 export async function GET(request: Request) {
   try {
     let orgId = request.headers.get("x-tenant-id") || request.headers.get("x-organization-id");
@@ -46,20 +49,26 @@ export async function GET(request: Request) {
 
     const apps = dbRecords.map((record) => {
       const settings = (record.settings as Record<string, unknown>) || {};
+      const title =
+        (settings.title as string) ||
+        (settings.name as string) ||
+        record.appId;
       return {
         id: record.id,
         appId: record.appId,
-        name: (settings.name as string) || record.appId,
-        title: (settings.title as string) || (settings.name as string) || record.appId,
+        name: (settings.name as string) || title,
+        title,
         code: (settings.code as string) || record.appId,
         description: (settings.description as string) || "",
         href: (settings.href as string) || `/${record.appId}`,
         iconName: (settings.iconName as string) || record.appId,
+        permission: (settings.permission as string) || `${record.appId}:read`,
         version: record.version,
         isEnabled: record.isEnabled,
         installedAt: record.installedAt.toISOString(),
       };
     });
+
 
     return NextResponse.json({ organizationId: orgId, apps, installedApps: apps }, { status: 200 });
   } catch (error) {

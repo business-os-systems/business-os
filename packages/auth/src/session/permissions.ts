@@ -23,9 +23,10 @@ export interface PermissionExtractionOptions {
  * Optionally filters to organization-wide (branchId == null) and target branch assignments.
  */
 export function extractEffectivePermissions(
-  branchRoles: readonly BranchRoleWithPermissions[],
+  branchRoles: readonly BranchRoleWithPermissions[] = [],
   options?: PermissionExtractionOptions
 ): string[] {
+
   const targetBranchId = options?.branchId;
   const permissionsSet = new Set<string>();
 
