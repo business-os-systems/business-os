@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
   prisma,
   createTenantPrismaClient,
+  getTenantDb,
   TenantIsolationViolationError,
   seed,
 } from "../src/index.js";
@@ -207,6 +208,102 @@ describe("Platform Core Database & Multi-Tenant Isolation (@suite/db)", () => {
         data: { name: "Hijacked Branch" },
       })
     ).rejects.toThrow(TenantIsolationViolationError);
+  });
+
+  it("allows deleting tenant's own records without double-query P2025 errors", async () => {
+    const clientA = createTenantPrismaClient(prisma, {
+      organizationId: TEST_ORG_A_ID,
+    });
+
+    // Create a temporary branch under Tenant A to delete
+    const tempBranch = await clientA.branch.create({
+      data: {
+        organizationId: TEST_ORG_A_ID,
+        code: "ALPHA-TEMP-DEL",
+        name: "Temporary Branch for Deletion",
+        type: "warehouse",
+        nightAuditHour: 4,
+      },
+    });
+
+    expect(tempBranch.organizationId).toBe(TEST_ORG_A_ID);
+
+    // Deleting via tenant client MUST succeed exactly once without P2025 errors
+    const deleted = await clientA.branch.delete({
+      where: { id: tempBranch.id },
+    });
+
+    expect(deleted.id).toBe(tempBranch.id);
+
+    // Verify it is truly gone
+    const checkGone = await prisma.branch.findUnique({
+      where: { id: tempBranch.id },
+    });
+    expect(checkGone).toBeNull();
+  });
+
+  it("blocks deleting records belonging to another tenant", async () => {
+    const clientA = createTenantPrismaClient(prisma, {
+      organizationId: TEST_ORG_A_ID,
+    });
+
+    // Attempting to delete Tenant B's branch using Tenant A's client MUST be blocked
+    await expect(
+      clientA.branch.delete({
+        where: { id: TEST_BRANCH_B1_ID },
+      })
+    ).rejects.toThrow(TenantIsolationViolationError);
+
+    // Verify Tenant B's branch was NOT deleted
+    const checkB = await prisma.branch.findUnique({
+      where: { id: TEST_BRANCH_B1_ID },
+    });
+    expect(checkB).not.toBeNull();
+  });
+
+  it("blocks deleting global system roles via tenant client", async () => {
+    const clientA = createTenantPrismaClient(prisma, {
+      organizationId: TEST_ORG_A_ID,
+    });
+
+    const globalRole = await prisma.role.findFirst({
+      where: { organizationId: null, isSystem: true },
+    });
+
+    if (globalRole) {
+      await expect(
+        clientA.role.delete({
+          where: { id: globalRole.id },
+        })
+      ).rejects.toThrow(TenantIsolationViolationError);
+    }
+  });
+
+  it("executes operations with immutable arguments without throwing on frozen objects", async () => {
+    const clientA = createTenantPrismaClient(prisma, {
+      organizationId: TEST_ORG_A_ID,
+    });
+
+    const frozenArgs = Object.freeze({
+      where: Object.freeze({ id: TEST_BRANCH_A1_ID }),
+      data: Object.freeze({ name: "Alpha Main Renamed" }),
+    });
+
+    // If extension attempts in-place mutation (e.g. args.where = ...), Object.freeze throws TypeError
+    await expect(clientA.branch.update(frozenArgs)).resolves.toBeDefined();
+
+    // Revert name back
+    await clientA.branch.update({
+      where: { id: TEST_BRANCH_A1_ID },
+      data: { name: "Alpha Main Branch" },
+    });
+  });
+
+  it("getTenantDb returns functional tenant-isolated client", async () => {
+    const tenantDb = getTenantDb(TEST_ORG_A_ID);
+    const branches = await tenantDb.branch.findMany();
+    expect(branches.length).toBe(1);
+    expect(branches[0]?.organizationId).toBe(TEST_ORG_A_ID);
   });
 
   it("allows tenant client to read global system roles", async () => {
