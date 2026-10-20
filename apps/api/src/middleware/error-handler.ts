@@ -39,7 +39,7 @@ export const globalErrorHandler: ErrorHandler = (err, c) => {
   if (err instanceof HTTPException) {
     const status = err.status;
     const problem = {
-      type: "about:blank",
+      type: status >= 500 ? "/errors/internal-server-error" : "/errors/http-exception",
       title: status >= 500 ? "Internal Server Error" : "Bad Request",
       status,
       detail: err.message,

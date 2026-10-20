@@ -18,7 +18,7 @@ export async function GET(request: Request) {
     if (!tenantId) {
       return NextResponse.json(
         {
-          type: "about:blank",
+          type: "/errors/unauthorized",
           code: "UNAUTHORIZED",
           title: "Missing Tenant Context",
           status: 401,
@@ -44,7 +44,7 @@ export async function POST(request: Request) {
     if (!tenantId) {
       return NextResponse.json(
         {
-          type: "about:blank",
+          type: "/errors/unauthorized",
           code: "UNAUTHORIZED",
           title: "Missing Tenant Context",
           status: 401,
@@ -59,7 +59,7 @@ export async function POST(request: Request) {
     if (!parsed.success) {
       return NextResponse.json(
         {
-          type: "about:blank",
+          type: "/errors/validation-error",
           code: "VALIDATION_ERROR",
           title: "Invalid Site Provisioning Payload",
           status: 400,

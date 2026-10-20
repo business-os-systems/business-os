@@ -73,7 +73,7 @@ describe("Public Form Ingestion Engine & Turnstile Defense (S1-5)", () => {
 
     expect(res.status).toBe(400);
     const data = (await res.json()) as { type: string; status: number; code?: string };
-    expect(data.type).toBe("about:blank");
+    expect(data.type).toBe("/errors/bot-detected");
     expect(data.code).toBe("BOT_DETECTED");
   });
 
@@ -94,7 +94,7 @@ describe("Public Form Ingestion Engine & Turnstile Defense (S1-5)", () => {
 
     expect(res.status).toBe(400);
     const data = (await res.json()) as { type: string; status: number; code?: string };
-    expect(data.type).toBe("about:blank");
+    expect(data.type).toBe("/errors/invalid-captcha");
     expect(data.code).toBe("INVALID_CAPTCHA");
   });
 
@@ -117,7 +117,7 @@ describe("Public Form Ingestion Engine & Turnstile Defense (S1-5)", () => {
 
     expect(res.status).toBe(413);
     const data = (await res.json()) as { type: string; status: number; code?: string };
-    expect(data.type).toBe("about:blank");
+    expect(data.type).toBe("/errors/payload-too-large");
     expect(data.code).toBe("PAYLOAD_TOO_LARGE");
   });
 

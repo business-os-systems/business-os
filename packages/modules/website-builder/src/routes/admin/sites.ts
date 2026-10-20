@@ -2,7 +2,7 @@ import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { SiteService } from "../../services/site-service.js";
 
 const ProblemDetailsSchema = z.object({
-  type: z.string().url(),
+  type: z.string().url().or(z.string().regex(/^\/[a-zA-Z0-9_\-/]+$/)),
   title: z.string(),
   status: z.number().int(),
   detail: z.string(),
@@ -201,7 +201,7 @@ export function createAdminSitesRouter(
     } catch (err: unknown) {
       return c.json(
         {
-          type: "about:blank",
+          type: "/errors/cms-site-creation-failed",
           title: "Site Creation Failed",
           status: 400,
           code: "CMS_SITE_CREATION_FAILED",
@@ -222,7 +222,7 @@ export function createAdminSitesRouter(
     if (!site) {
       return c.json(
         {
-          type: "about:blank",
+          type: "/errors/cms-site-not-found",
           title: "Site Not Found",
           status: 404,
           code: "CMS_SITE_NOT_FOUND",

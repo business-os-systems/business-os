@@ -96,12 +96,25 @@ describe("Integration: Health & Readiness Probes Under Failure Modes", () => {
   });
 
   describe("Prometheus Metrics Exposition (/metrics)", () => {
-    it("exports HTTP request metrics conforming to Prometheus format", async () => {
+    beforeEach(() => {
+      process.env.METRICS_AUTH_TOKEN = "metrics-secure-telemetry-token-dev";
+    });
+
+    it("rejects unauthenticated requests to /metrics with 401", async () => {
+      const res = await app.request("/metrics");
+      expect(res.status).toBe(401);
+    });
+
+    it("exports HTTP request metrics conforming to Prometheus format when authenticated", async () => {
       // Send sample requests to trigger metric observation
       await app.request("/health/live");
       await app.request("/health/ready");
 
-      const res = await app.request("/metrics");
+      const res = await app.request("/metrics", {
+        headers: {
+          Authorization: `Bearer ${process.env.METRICS_AUTH_TOKEN}`,
+        },
+      });
       expect(res.status).toBe(200);
       expect(res.headers.get("content-type")).toContain("text/plain");
 

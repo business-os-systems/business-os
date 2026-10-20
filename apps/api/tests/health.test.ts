@@ -86,9 +86,26 @@ describe("Health & Telemetry Routes", () => {
     });
   });
 
-  describe("GET /metrics", () => {
-    it("returns Prometheus text formatted metrics with status 200", async () => {
+  describe("GET /metrics (Telemetry Authentication Guard)", () => {
+    beforeEach(() => {
+      process.env.METRICS_AUTH_TOKEN = "metrics-secure-telemetry-token-dev";
+    });
+
+    it("rejects anonymous unauthenticated requests to /metrics with 401", async () => {
       const res = await app.request("/metrics");
+      expect(res.status).toBe(401);
+
+      const json = (await res.json()) as { code: string };
+      expect(json.code).toBe("METRICS_AUTH_REQUIRED");
+    });
+
+    it("returns Prometheus text formatted metrics with status 200 when authenticated", async () => {
+      const token = process.env.METRICS_AUTH_TOKEN ?? "metrics-secure-telemetry-token-dev";
+      const res = await app.request("/metrics", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
       expect(res.status).toBe(200);
       expect(res.headers.get("content-type")).toContain("text/plain");
 

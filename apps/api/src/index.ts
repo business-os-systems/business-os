@@ -10,9 +10,12 @@ export {
   securityHeadersMiddleware,
   corsMiddleware,
   rateLimitMiddleware,
+  requireAuth,
+  requireMetricsAuth,
   globalErrorHandler,
   type CorsOptions,
   type RateLimitOptions,
+  type RequireAuthOptions,
 } from "./middleware/index.js";
 export {
   healthRouter,

@@ -17,7 +17,7 @@ export async function POST(
     if (!tenantId) {
       return NextResponse.json(
         {
-          type: "about:blank",
+          type: "/errors/unauthorized",
           code: "UNAUTHORIZED",
           title: "Missing Tenant Context",
           status: 401,
@@ -32,7 +32,7 @@ export async function POST(
     if (!parsed.success) {
       return NextResponse.json(
         {
-          type: "about:blank",
+          type: "/errors/validation-error",
           code: "VALIDATION_ERROR",
           title: "Invalid Publish Payload",
           status: 400,
@@ -56,7 +56,7 @@ export async function POST(
       const status = result.errorCode === "CMS_CONCURRENCY_CONFLICT" ? 409 : 400;
       return NextResponse.json(
         {
-          type: "about:blank",
+          type: status === 409 ? "/errors/concurrency-conflict" : "/errors/publish-failed",
           code: result.errorCode ?? "CMS_PUBLISH_FAILED",
           title: "Publish Failed",
           status,

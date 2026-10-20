@@ -5,6 +5,7 @@ import {
   prisma,
 } from "@suite/db";
 import { createApp } from "../../src/app.js";
+import { createAuthHeaders } from "../helpers/auth.js";
 
 describe("Integration: Multi-Tenant Leak Defense", () => {
   const app = createApp({ enableRateLimiting: false });
@@ -106,8 +107,19 @@ describe("Integration: Multi-Tenant Leak Defense", () => {
   });
 
   describe("API Gateway Tenant Defense", () => {
+    it("rejects unauthenticated requests to tenant endpoints with 401", async () => {
+      const resOrg = await app.request(`/api/v1/organizations/${TENANT_A_ID}`);
+      expect(resOrg.status).toBe(401);
+
+      const resBranches = await app.request("/api/v1/branches");
+      expect(resBranches.status).toBe(401);
+    });
+
     it("returns 404 for non-existent or foreign organization ID lookup", async () => {
-      const res = await app.request("/api/v1/organizations/org_non_existent_tenant_999");
+      const authHeaders = await createAuthHeaders({ organizationId: TENANT_A_ID });
+      const res = await app.request("/api/v1/organizations/org_non_existent_tenant_999", {
+        headers: authHeaders,
+      });
       expect(res.status).toBe(404);
 
       interface ErrorResponse {
@@ -119,7 +131,10 @@ describe("Integration: Multi-Tenant Leak Defense", () => {
     });
 
     it("fetches correct tenant details without leaking foreign tenant configuration", async () => {
-      const resA = await app.request(`/api/v1/organizations/${TENANT_A_ID}`);
+      const authHeaders = await createAuthHeaders({ organizationId: TENANT_A_ID });
+      const resA = await app.request(`/api/v1/organizations/${TENANT_A_ID}`, {
+        headers: authHeaders,
+      });
       expect(resA.status).toBe(200);
 
       interface OrgResponse {
@@ -136,12 +151,18 @@ describe("Integration: Multi-Tenant Leak Defense", () => {
     });
 
     it("rejects GET /api/v1/branches when organizationId context is missing", async () => {
-      const res = await app.request("/api/v1/branches");
+      const authHeaders = await createAuthHeaders({ organizationId: TENANT_A_ID });
+      const res = await app.request("/api/v1/branches", {
+        headers: authHeaders,
+      });
       expect(res.status).toBe(422);
     });
 
     it("scopes GET /api/v1/branches strictly to requesting tenant without leaking foreign branches", async () => {
-      const res = await app.request(`/api/v1/branches?organizationId=${TENANT_A_ID}`);
+      const authHeaders = await createAuthHeaders({ organizationId: TENANT_A_ID });
+      const res = await app.request(`/api/v1/branches?organizationId=${TENANT_A_ID}`, {
+        headers: authHeaders,
+      });
       expect(res.status).toBe(200);
 
       interface BranchListResponse {
@@ -155,8 +176,12 @@ describe("Integration: Multi-Tenant Leak Defense", () => {
     });
 
     it("returns 404 when requesting a foreign branch with x-organization-id header set", async () => {
+      const authHeaders = await createAuthHeaders({ organizationId: TENANT_A_ID });
       const res = await app.request(`/api/v1/branches/${BRANCH_B_ID}`, {
-        headers: { "x-organization-id": TENANT_A_ID },
+        headers: {
+          ...authHeaders,
+          "x-organization-id": TENANT_A_ID,
+        },
       });
       expect(res.status).toBe(404);
     });

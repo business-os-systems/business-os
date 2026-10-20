@@ -17,7 +17,7 @@ export async function GET(
     if (!parsed.success) {
       return NextResponse.json(
         {
-          type: "about:blank",
+          type: "/errors/validation-error",
           title: "Invalid Organization Identifier",
           status: 400,
           code: "VALIDATION_ERROR",
@@ -68,7 +68,7 @@ export async function GET(
   } catch (error) {
     return NextResponse.json(
       {
-        type: "about:blank",
+        type: "/errors/internal-server-error",
         title: "Installed Apps Query Failed",
         status: 500,
         code: "INTERNAL_SERVER_ERROR",

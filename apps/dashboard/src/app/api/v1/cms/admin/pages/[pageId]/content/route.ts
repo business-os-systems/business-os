@@ -12,7 +12,7 @@ export async function PATCH(
     if (!tenantId) {
       return NextResponse.json(
         {
-          type: "about:blank",
+          type: "/errors/missing-tenant-header",
           title: "Missing Tenant Identifier",
           status: 400,
           code: "MISSING_TENANT_HEADER",
@@ -36,7 +36,7 @@ export async function PATCH(
       if (result.errorCode === "CMS_CONCURRENCY_CONFLICT") {
         return NextResponse.json(
           {
-            type: "about:blank",
+            type: "/errors/concurrency-conflict",
             title: "Concurrency Conflict",
             status: 409,
             code: "CMS_CONCURRENCY_CONFLICT",
@@ -49,7 +49,7 @@ export async function PATCH(
 
       return NextResponse.json(
         {
-          type: "about:blank",
+          type: "/errors/not-found",
           title: "Page Not Found",
           status: 404,
           code: "CMS_PAGE_NOT_FOUND",
@@ -71,7 +71,7 @@ export async function PATCH(
   } catch (err: unknown) {
     return NextResponse.json(
       {
-        type: "about:blank",
+        type: "/errors/internal-server-error",
         title: "Internal Server Error",
         status: 500,
         code: "INTERNAL_SERVER_ERROR",

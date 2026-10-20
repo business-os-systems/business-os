@@ -1,4 +1,4 @@
-import type { MiddlewareHandler } from "hono";
+import type { MiddlewareHandler, Context } from "hono";
 import { RateLimitError } from "@suite/core/errors";
 import { redis } from "@suite/redis";
 
@@ -23,48 +23,92 @@ export async function clearMemoryRateLimitStore(): Promise<void> {
   await clearRateLimitStore();
 }
 
+const RATE_LIMIT_LUA_SCRIPT = `
+local current = redis.call('INCR', KEYS[1])
+if tonumber(current) == 1 then
+  redis.call('EXPIRE', KEYS[1], ARGV[1])
+end
+local ttl = redis.call('TTL', KEYS[1])
+return {current, ttl}
+`;
+
+function resolveClientIp(c: Context): string {
+  const cfConnectingIp = c.req.header("cf-connecting-ip");
+  if (cfConnectingIp) return cfConnectingIp.trim();
+
+  const forwardedFor = c.req.header("x-forwarded-for");
+  if (forwardedFor) {
+    const firstIp = forwardedFor.split(",")[0]?.trim();
+    if (firstIp) return firstIp;
+  }
+
+  const realIp = c.req.header("x-real-ip");
+  if (realIp) return realIp.trim();
+
+  return "127.0.0.1";
+}
+
+async function executeAtomicRateLimit(
+  key: string,
+  windowSeconds: number
+): Promise<{ currentCount: number; resetSeconds: number }> {
+  try {
+    const result = (await redis.eval(
+      RATE_LIMIT_LUA_SCRIPT,
+      1,
+      key,
+      windowSeconds
+    )) as [number, number] | null;
+
+    if (Array.isArray(result) && result.length >= 2) {
+      const current = Number(result[0]);
+      const ttl = Number(result[1]);
+      return {
+        currentCount: Number.isFinite(current) ? current : 1,
+        resetSeconds: Number.isFinite(ttl) && ttl > 0 ? ttl : windowSeconds,
+      };
+    }
+  } catch {
+    // Fallback to atomic pipeline if eval is disabled or running in lightweight mock
+    const pipeline = redis.pipeline();
+    pipeline.incr(key);
+    pipeline.expire(key, windowSeconds);
+    pipeline.ttl(key);
+    const results = await pipeline.exec();
+    const count = Number(results?.[0]?.[1] ?? 1);
+    const ttl = Number(results?.[2]?.[1] ?? windowSeconds);
+    return {
+      currentCount: Number.isFinite(count) ? count : 1,
+      resetSeconds: Number.isFinite(ttl) && ttl > 0 ? ttl : windowSeconds,
+    };
+  }
+
+  return { currentCount: 1, resetSeconds: windowSeconds };
+}
+
 /**
  * Sliding window rate limiting middleware.
- * Uses @suite/redis for distributed multi-instance token tracking without in-memory state.
+ * Uses atomic Redis Lua scripting to guarantee atomic increment and key expiration.
  */
 export function rateLimitMiddleware(options: RateLimitOptions = {}): MiddlewareHandler {
   const { limit = 60, windowSeconds = 60, keyPrefix = "rl:global" } = options;
 
   return async (c, next) => {
-    // Exclude health and metrics endpoints from rate limiting
     const path = c.req.path;
     if (path.startsWith("/health") || path === "/metrics") {
       return next();
     }
 
-    const clientIp =
-      c.req.header("cf-connecting-ip") ||
-      c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ||
-      c.req.header("x-real-ip") ||
-      "127.0.0.1";
-
+    const clientIp = resolveClientIp(c);
     const key = `${keyPrefix}:${clientIp}`;
+
     let currentCount = 0;
     let resetSeconds = windowSeconds;
 
     try {
-      const pipeline = redis.pipeline();
-      pipeline.incr(key);
-      pipeline.ttl(key);
-      const results = await pipeline.exec();
-
-      const countResult = results?.[0]?.[1];
-      const ttlResult = results?.[1]?.[1];
-
-      currentCount = typeof countResult === "number" ? countResult : 1;
-      const ttl = typeof ttlResult === "number" ? ttlResult : -1;
-
-      if (ttl === -1) {
-        await redis.expire(key, windowSeconds);
-        resetSeconds = windowSeconds;
-      } else {
-        resetSeconds = ttl > 0 ? ttl : windowSeconds;
-      }
+      const rateLimitResult = await executeAtomicRateLimit(key, windowSeconds);
+      currentCount = rateLimitResult.currentCount;
+      resetSeconds = rateLimitResult.resetSeconds;
     } catch (error) {
       console.warn(
         `[RateLimit] Redis unavailable, bypassing rate limiting without in-memory state: ${
@@ -84,9 +128,7 @@ export function rateLimitMiddleware(options: RateLimitOptions = {}): MiddlewareH
       throw new RateLimitError(
         `Rate limit exceeded. Maximum ${limit} requests allowed per ${windowSeconds} seconds.`,
         resetSeconds,
-        {
-          code: "RATE_LIMIT_EXCEEDED",
-        }
+        { code: "RATE_LIMIT_EXCEEDED" }
       );
     }
 
