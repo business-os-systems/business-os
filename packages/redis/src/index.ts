@@ -25,6 +25,10 @@ export {
   createQueue,
   createWorker,
   DEFAULT_DLQ_JOB_OPTIONS,
+  EMAIL_QUEUE_NAME,
+  getEmailQueue,
+  enqueueEmail,
+  type EmailJobPayload,
 } from "./queue.js";
 
 export {

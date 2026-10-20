@@ -524,7 +524,7 @@ authRouter.openapi(ssoLoginRoute, async (c) => {
 
   const acceptHeader = c.req.header("accept") || "";
   const isBrowser = acceptHeader.includes("text/html");
-  const dashboardUrl = process.env.DASHBOARD_URL || "http://localhost:3001";
+  const dashboardUrl = process.env.DASHBOARD_URL || new URL(c.req.url).origin;
 
   if (!ssoRecord) {
     if (isBrowser) {
@@ -700,7 +700,7 @@ authRouter.openapi(requestVerifyEmailRoute, async (c) => {
 
   const { rawToken } = await createEmailVerificationToken(normalizedEmail, prisma);
 
-  const dashboardUrl = process.env.DASHBOARD_URL || "http://localhost:3001";
+  const dashboardUrl = process.env.DASHBOARD_URL || new URL(c.req.url).origin;
   const verificationUrl = `${dashboardUrl}/api/auth/verify-email/confirm?token=${rawToken}`;
 
   await sendEmail({

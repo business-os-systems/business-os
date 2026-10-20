@@ -46,11 +46,7 @@ export async function GET(
 ): Promise<NextResponse> {
   const resolvedParams = await context.params;
   const provider = resolvedParams.provider?.toLowerCase().trim();
-  const origin =
-    request.nextUrl.origin ||
-    process.env.NEXT_PUBLIC_APP_URL ||
-    process.env.BETTER_AUTH_URL ||
-    "http://localhost:3001";
+  const origin = request.nextUrl.origin;
 
   const { searchParams } = new URL(request.url);
   const error = searchParams.get("error");

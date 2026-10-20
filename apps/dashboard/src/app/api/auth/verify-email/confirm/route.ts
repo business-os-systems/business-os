@@ -9,7 +9,7 @@ const confirmBodySchema = z.object({
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const token = request.nextUrl.searchParams.get("token");
-  const origin = request.nextUrl.origin || "http://localhost:3001";
+  const origin = request.nextUrl.origin;
 
   if (!token) {
     return NextResponse.redirect(new URL("/verify-expired?error=missing_token", origin));

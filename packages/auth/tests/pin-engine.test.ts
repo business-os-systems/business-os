@@ -97,6 +97,17 @@ describe("High-Security PIN Verification Engine", () => {
       expect(result.permissions).toContain("pms:reservations:read");
       expect(result.permissions).toContain("pms:reservations:create");
       expect(result.switchedAt).toBeDefined();
+
+      // Second punch with same PIN hits the Redis key-derivation cache (Issue 30)
+      const cachedResult = await verifyTerminalPin({
+        pin: "4567",
+        organizationId: "org_resort_01",
+        terminalKey: "ipad_counter_1",
+        prisma: mockPrisma,
+      });
+
+      expect(cachedResult.switchedUserId).toBe("user_counter_01");
+      expect(cachedResult.name).toBe("Aman Negi");
     });
 
     it("rejects invalid PIN formats with ValidationError", async () => {

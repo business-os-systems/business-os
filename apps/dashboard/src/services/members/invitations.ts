@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { prisma } from "@suite/db";
-import { hashToken } from "@suite/auth";
+import { hashToken, invalidateUserPermissionsCache } from "@suite/auth";
+import { redis } from "@suite/redis";
 import type { InviteMemberInput, MemberListItemDto } from "./types";
 import { ConflictError, NotFoundError } from "./types";
 import { isAdministrativeRole } from "./safeguards";
@@ -46,15 +47,31 @@ export async function inviteOrganizationMember(
 ): Promise<{ invitation: MemberListItemDto; inviteUrl: string }> {
   const normalizedEmail = input.email.trim().toLowerCase();
 
-  // Check existing user membership in organization via declarative conflict lookup
-  const existingUser = await prisma.user.findUnique({
-    where: { email: normalizedEmail },
-    include: {
-      organizations: {
-        where: { organizationId },
+  // Targeted deduplication lock (Issue 23) to prevent double-click duplicates
+  const dedupeKey = `lock:invite:${organizationId}:${normalizedEmail}`;
+  let lockAcquired = false;
+  try {
+    const res = await redis.set(dedupeKey, "1", "PX", 5000, "NX");
+    if (res === "OK") {
+      lockAcquired = true;
+    } else {
+      throw new ConflictError("An invitation is already being processed for this recipient. Please wait a moment.");
+    }
+  } catch (err) {
+    if (err instanceof ConflictError) throw err;
+    // Fall back to proceeding if redis is offline or in mock test environment
+  }
+
+  try {
+    // Check existing user membership in organization via declarative conflict lookup
+    const existingUser = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+      include: {
+        organizations: {
+          where: { organizationId },
+        },
       },
-    },
-  });
+    });
 
   const existingOrg = existingUser?.organizations[0];
   if (existingOrg) {
@@ -247,7 +264,19 @@ export async function inviteOrganizationMember(
     createdAt: createdInvitation.createdAt,
   };
 
-  return { invitation: dto, inviteUrl };
+    // Invalidate cached role capability claims for target organization
+    void invalidateUserPermissionsCache(organizationId);
+
+    return { invitation: dto, inviteUrl };
+  } finally {
+    if (lockAcquired) {
+      try {
+        await redis.del(dedupeKey);
+      } catch {
+        // Non-blocking lock cleanup
+      }
+    }
+  }
 }
 
 /**

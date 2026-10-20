@@ -1,6 +1,9 @@
 import { prisma } from "@suite/db";
 import { PERMISSIONS } from "@suite/core";
-import { extractEffectivePermissions, type SessionPayload } from "@suite/auth";
+import {
+  getUserRolePermissions,
+  type SessionPayload,
+} from "@suite/auth";
 import type { TenantContext } from "@/components/layout/types";
 
 
@@ -65,28 +68,12 @@ export async function getDashboardTenantContext(
     (!userPermissions.includes(PERMISSIONS.CORE.ORGANIZATION_READ) &&
       !userPermissions.includes(PERMISSIONS.WILDCARD))
   ) {
-    const dbBranchRoles = await prisma.userBranchRole.findMany({
-      where: {
-        userId: session.userId,
-        organizationId: session.organizationId,
-      },
-      include: {
-        role: {
-          include: {
-            permissions: {
-              include: {
-                permission: true,
-              },
-            },
-          },
-        },
-      },
-    });
-
-    const dbPermissions = extractEffectivePermissions(dbBranchRoles ?? [], {
-      branchId: session.activeBranchId,
-    });
-
+    const dbPermissions = await getUserRolePermissions(
+      prisma,
+      session.userId,
+      session.organizationId,
+      session.activeBranchId
+    );
 
     if (dbPermissions.length > 0) {
       userPermissions = dbPermissions;

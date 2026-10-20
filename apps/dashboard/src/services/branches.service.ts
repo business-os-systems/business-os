@@ -1,5 +1,6 @@
 import { prisma } from "@suite/db";
 import type { Prisma } from "@suite/db";
+import { redis } from "@suite/redis";
 
 export interface BranchAddressDto {
   id: string;
@@ -133,39 +134,64 @@ export async function createBranchRecord(
   organizationId: string,
   input: CreateBranchInput
 ): Promise<BranchListItemDto> {
-  const org = await prisma.organization.findUnique({
-    where: { id: organizationId },
-    select: { currency: true, defaultLocale: true },
-  });
+  // Targeted deduplication lock (Issue 23) to prevent double-click duplicates
+  const dedupeKey = `lock:branch:${organizationId}:${input.code}`;
+  let lockAcquired = false;
+  try {
+    const res = await redis.set(dedupeKey, "1", "PX", 5000, "NX");
+    if (res === "OK") {
+      lockAcquired = true;
+    } else {
+      throw new Error("A branch creation request with this code is currently in progress.");
+    }
+  } catch (err) {
+    if (err instanceof Error && err.message.includes("currently in progress")) throw err;
+    // Fall back to proceeding if redis is offline or in mock test environment
+  }
 
-  const currency = input.currency || org?.currency || "INR";
-  const locale = input.locale || org?.defaultLocale || "en";
+  try {
+    const org = await prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: { currency: true, defaultLocale: true },
+    });
 
-  const created = await prisma.branch.create({
-    data: {
-      organizationId,
-      name: input.name,
-      code: input.code,
-      type: input.type,
-      capabilities: input.capabilities ?? [],
-      status: "ACTIVE",
-      timezone: input.timezone ?? "Asia/Kolkata",
-      nightAuditHour: input.nightAuditHour ?? 4,
-      currency,
-      locale,
-      dateFormat: input.dateFormat ?? "YYYY-MM-DD",
-      timeFormat: input.timeFormat ?? "12h",
-      taxIdentifier: input.taxIdentifier ?? null,
-      addressId: input.addressId ?? null,
-      parentBranchId: input.parentBranchId ?? null,
-      metadata: (input.metadata ?? {}) as Prisma.InputJsonValue,
-    },
-    include: {
-      address: true,
-    },
-  });
+    const currency = input.currency || org?.currency || "INR";
+    const locale = input.locale || org?.defaultLocale || "en";
 
-  return created as BranchListItemDto;
+    const created = await prisma.branch.create({
+      data: {
+        organizationId,
+        name: input.name,
+        code: input.code,
+        type: input.type,
+        capabilities: input.capabilities ?? [],
+        status: "ACTIVE",
+        timezone: input.timezone ?? "Asia/Kolkata",
+        nightAuditHour: input.nightAuditHour ?? 4,
+        currency,
+        locale,
+        dateFormat: input.dateFormat ?? "YYYY-MM-DD",
+        timeFormat: input.timeFormat ?? "12h",
+        taxIdentifier: input.taxIdentifier ?? null,
+        addressId: input.addressId ?? null,
+        parentBranchId: input.parentBranchId ?? null,
+        metadata: (input.metadata ?? {}) as Prisma.InputJsonValue,
+      },
+      include: {
+        address: true,
+      },
+    });
+
+    return created as BranchListItemDto;
+  } finally {
+    if (lockAcquired) {
+      try {
+        await redis.del(dedupeKey);
+      } catch {
+        // Non-blocking lock cleanup
+      }
+    }
+  }
 }
 
 export async function updateBranchRecord(

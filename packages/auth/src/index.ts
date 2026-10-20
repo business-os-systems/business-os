@@ -80,6 +80,11 @@ export {
   type PermissionExtractionOptions,
 } from "./session/index.js";
 
+export {
+  getUserRolePermissions,
+  invalidateUserPermissionsCache,
+} from "./session/role-permissions.js";
+
 
 export {
   resolveSsoProviderByEmail,

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { PrismaClient } from "@suite/db";
 import { UnauthorizedError, ValidationError, RateLimitError } from "@suite/core/errors";
 import { redis } from "@suite/redis";
@@ -97,6 +98,51 @@ export interface SwitchedTerminalUser {
   switchedAt: string;
 }
 
+interface MemberWithRoles {
+  userId: string;
+  terminalPinHash?: string | null;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    branchRoles: Array<{
+      role: {
+        slug: string;
+        isSystem: boolean;
+        permissions: Array<{
+          permission: {
+            action: string;
+          };
+        }>;
+      };
+    }>;
+  };
+}
+
+function extractSwitchedUser(member: MemberWithRoles): SwitchedTerminalUser {
+  const roles = new Set<string>();
+  const permissions = new Set<string>();
+
+  for (const assignment of member.user.branchRoles) {
+    roles.add(assignment.role.slug);
+    if (assignment.role.isSystem) {
+      permissions.add("*");
+    }
+    for (const rp of assignment.role.permissions) {
+      permissions.add(rp.permission.action);
+    }
+  }
+
+  return {
+    switchedUserId: member.user.id,
+    name: member.user.name,
+    email: member.user.email,
+    roles: Array.from(roles),
+    permissions: Array.from(permissions),
+    switchedAt: new Date().toISOString(),
+  };
+}
+
 /**
  * Verifies a 4-6 digit shift-switch PIN on a shared counter/POS device,
  * switching active staff context without requiring OS re-login.
@@ -147,33 +193,36 @@ export async function verifyTerminalPin(
     },
   });
 
+  // Issue 30: Check fast key-derivation cache in Redis to prevent Argon2 CPU starvation during rapid punches
+  const pinFingerprint = createHash("sha256").update(`${organizationId}:${pin}`).digest("hex");
+  const cacheKey = `cache:terminal:pin:${organizationId}:${pinFingerprint}`;
+  let cachedUserId: string | null = null;
+  try {
+    cachedUserId = await redis.get(cacheKey);
+  } catch {
+    // Redis unavailable, proceed to compute
+  }
+
+  if (cachedUserId) {
+    const cachedMember = members.find((m) => m.userId === cachedUserId || m.user.id === cachedUserId);
+    if (cachedMember) {
+      await clearTerminalRateLimit(rateLimitKey);
+      return extractSwitchedUser(cachedMember);
+    }
+  }
+
   // Verify PIN against candidate member hashes
   for (const member of members) {
     if (member.terminalPinHash && (await verifyPin(pin, member.terminalPinHash))) {
-      // Successful authentication: clear rate limit
+      // Successful authentication: clear rate limit and cache key-derivation for 5 minutes
       await clearTerminalRateLimit(rateLimitKey);
-
-      const roles = new Set<string>();
-      const permissions = new Set<string>();
-
-      for (const assignment of member.user.branchRoles) {
-        roles.add(assignment.role.slug);
-        if (assignment.role.isSystem) {
-          permissions.add("*");
-        }
-        for (const rp of assignment.role.permissions) {
-          permissions.add(rp.permission.action);
-        }
+      try {
+        await redis.set(cacheKey, member.user.id, "EX", 300);
+      } catch {
+        // Non-blocking
       }
 
-      return {
-        switchedUserId: member.user.id,
-        name: member.user.name,
-        email: member.user.email,
-        roles: Array.from(roles),
-        permissions: Array.from(permissions),
-        switchedAt: new Date().toISOString(),
-      };
+      return extractSwitchedUser(member);
     }
   }
 
@@ -219,6 +268,15 @@ export async function setTerminalPin(
       updatedAt: new Date(),
     },
   });
+
+  try {
+    const keys = await redis.keys(`cache:terminal:pin:${organizationId}:*`);
+    if (keys.length > 0) {
+      await redis.del(...keys);
+    }
+  } catch {
+    // Non-blocking
+  }
 
   return {
     updatedAt: new Date().toISOString(),
