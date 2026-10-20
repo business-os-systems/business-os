@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: "standalone",
   reactStrictMode: true,
   transpilePackages: ["@suite/website-builder", "@suite/ui", "@suite/auth"],
   serverExternalPackages: ["@node-rs/argon2", "@node-rs/argon2-linux-x64-gnu"],
