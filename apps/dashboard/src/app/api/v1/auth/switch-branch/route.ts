@@ -11,7 +11,7 @@ import {
 } from "@suite/auth";
 import { isProduction } from "@/lib/env";
 import { getAuthenticatedSession } from "@/lib/session-helper";
-import { problemResponse, successResponse } from "@/lib/api-response";
+import { problemResponse, successResponse, zodProblemResponse } from "@/lib/api-response";
 
 const switchBranchSchema = z.object({
   branchId: z.string().min(1, "Branch ID is required"),
@@ -30,10 +30,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const body = await request.json().catch(() => null);
     const parseResult = switchBranchSchema.safeParse(body);
     if (!parseResult.success) {
-      return problemResponse({
-        status: 400,
-        code: "VALIDATION_FAILED",
-        title: "Bad Request",
+      return zodProblemResponse(parseResult.error, {
         detail: parseResult.error.issues[0]?.message || "Validation failed",
       });
     }

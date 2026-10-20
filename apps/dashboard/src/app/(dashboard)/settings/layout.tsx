@@ -26,6 +26,7 @@ export default function SettingsLayout({
         <div className="md:hidden flex items-center justify-between pb-4 mb-4 border-b border-border">
           <Link
             href="/settings"
+            prefetch={false}
             className="inline-flex items-center gap-1.5 text-sm font-medium text-text-secondary hover:text-text transition-colors"
           >
             <ChevronLeftIcon className="h-4 w-4" />

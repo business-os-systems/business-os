@@ -314,4 +314,53 @@ export function createSuccessEnvelope<T>(input: SuccessPayloadInput<T>): Success
   };
 }
 
+export interface ZodErrorLike {
+  issues: Array<{
+    path: Array<string | number>;
+    message: string;
+  }>;
+}
+
+export interface ZodProblemOptions {
+  title?: string;
+  detail?: string;
+  status?: number;
+  code?: string;
+  type?: string;
+  instance?: string;
+}
+
+/**
+ * Formats a Zod validation error into RFC 7807 invalidParams array.
+ */
+export function formatZodInvalidParams(error: ZodErrorLike): InvalidParamDetail[] {
+  return error.issues.map((issue) => ({
+    name: issue.path.join(".") || "body",
+    reason: issue.message,
+  }));
+}
+
+/**
+ * Builds a standardized RFC 7807 problem details envelope from a Zod validation failure.
+ */
+export function createZodProblemEnvelope(
+  error: ZodErrorLike,
+  options: ZodProblemOptions = {}
+): ProblemEnvelope {
+  const invalidParams = formatZodInvalidParams(error);
+  const detail =
+    options.detail ??
+    (error.issues[0]?.message || "Validation failed for request parameters");
+
+  return createProblemEnvelope({
+    status: options.status ?? 400,
+    code: options.code ?? "VALIDATION_FAILED",
+    title: options.title ?? "Bad Request",
+    detail,
+    type: options.type,
+    instance: options.instance,
+    invalidParams,
+  });
+}
+
 

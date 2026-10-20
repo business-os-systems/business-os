@@ -4,7 +4,7 @@ import { prisma } from "@suite/db";
 import { checkRateLimit } from "@suite/redis";
 import { isProduction } from "@/lib/env";
 import { resolvePostLoginRoute } from "@/lib/route-dispatcher";
-import { problemResponse } from "@/lib/problem-response";
+import { problemResponse, zodProblemResponse } from "@/lib/problem-response";
 import {
   completePasswordReset,
   signSessionToken,
@@ -15,7 +15,7 @@ import {
   getUserOnboardingState,
   extractEffectivePermissions,
 } from "@suite/auth";
-import { AUDIT_EVENT_TYPES } from "@suite/core";
+import { AUDIT_EVENT_TYPES, RATE_LIMITS } from "@suite/core";
 
 const resetPasswordSchema = z
   .object({
@@ -28,20 +28,13 @@ const resetPasswordSchema = z
     path: ["confirmPassword"],
   });
 
-const MAX_RESET_ATTEMPTS_PER_WINDOW_TOKEN = 5;
-const MAX_RESET_ATTEMPTS_PER_WINDOW_IP = 20;
-const RATE_LIMIT_WINDOW_SECONDS = 900; // 15 minutes
-
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const body = await request.json().catch(() => ({}));
     const parseResult = resetPasswordSchema.safeParse(body);
 
     if (!parseResult.success) {
-      return problemResponse({
-        status: 400,
-        code: "VALIDATION_FAILED",
-        title: "Bad Request",
+      return zodProblemResponse(parseResult.error, {
         detail: parseResult.error.issues[0]?.message || "Invalid password reset parameters",
       });
     }
@@ -52,9 +45,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
     const rateLimit = await checkRateLimit([
       ...(clientIp !== "unknown"
-        ? [{ key: `ratelimit:reset-password:ip:${clientIp}`, max: MAX_RESET_ATTEMPTS_PER_WINDOW_IP, windowSeconds: RATE_LIMIT_WINDOW_SECONDS }]
+        ? [{ key: `ratelimit:reset-password:ip:${clientIp}`, max: RATE_LIMITS.MAX_RESET_ATTEMPTS_PER_WINDOW_IP, windowSeconds: RATE_LIMITS.WINDOW_15_MIN_SECONDS }]
         : []),
-      { key: `ratelimit:reset-password:token:${token.slice(-32)}`, max: MAX_RESET_ATTEMPTS_PER_WINDOW_TOKEN, windowSeconds: RATE_LIMIT_WINDOW_SECONDS },
+      { key: `ratelimit:reset-password:token:${token.slice(-32)}`, max: RATE_LIMITS.MAX_RESET_ATTEMPTS_PER_WINDOW_TOKEN, windowSeconds: RATE_LIMITS.WINDOW_15_MIN_SECONDS },
     ]);
 
     if (!rateLimit.allowed) {

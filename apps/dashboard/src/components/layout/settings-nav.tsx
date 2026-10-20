@@ -52,6 +52,7 @@ export function SettingsNav({
       <Link
         key={category.id}
         href={category.href}
+        prefetch={false}
         onClick={() => onSelectCategory?.(category.id)}
         className={`group relative flex items-center gap-3 rounded-lg px-3 py-2 text-xs sm:text-[13px] min-h-[38px] transition-colors ${
           isActive

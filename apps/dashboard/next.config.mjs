@@ -3,6 +3,9 @@ const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ["@suite/website-builder", "@suite/ui", "@suite/auth"],
   serverExternalPackages: ["@node-rs/argon2", "@node-rs/argon2-linux-x64-gnu"],
+  experimental: {
+    optimizePackageImports: ["lucide-react", "@suite/ui"],
+  },
   typescript: {
     ignoreBuildErrors: false,
   },

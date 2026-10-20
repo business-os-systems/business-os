@@ -11,7 +11,7 @@ import {
 import { isProduction } from "@/lib/env";
 import { resolvePostLoginRoute } from "@/lib/route-dispatcher";
 import { getAuthenticatedSession } from "@/lib/session-helper";
-import { problemResponse, successResponse } from "@/lib/api-response";
+import { problemResponse, successResponse, zodProblemResponse } from "@/lib/api-response";
 
 const switchTenantSchema = z.object({
   organizationId: z.string().min(1, "Organization ID is required"),
@@ -29,10 +29,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const body = await request.json().catch(() => null);
     const parseResult = switchTenantSchema.safeParse(body);
     if (!parseResult.success) {
-      return problemResponse({
-        status: 400,
-        code: "VALIDATION_FAILED",
-        title: "Bad Request",
+      return zodProblemResponse(parseResult.error, {
         detail: parseResult.error.issues[0]?.message || "Validation failed",
       });
     }

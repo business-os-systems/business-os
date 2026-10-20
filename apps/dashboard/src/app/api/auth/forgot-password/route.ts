@@ -3,18 +3,15 @@ import { z } from "zod";
 import { prisma } from "@suite/db";
 import { checkRateLimit, enqueueEmail } from "@suite/redis";
 import { createPasswordResetToken, sendEmail } from "@suite/auth";
+import { RATE_LIMITS } from "@suite/core";
 import { isProduction } from "@/lib/env";
 import { verifyTurnstileToken } from "@/lib/turnstile";
-import { problemResponse, successResponse } from "@/lib/api-response";
+import { problemResponse, successResponse, zodProblemResponse } from "@/lib/api-response";
 
 const requestBodySchema = z.object({
   email: z.string().email("Valid email address is required"),
   turnstileToken: z.string().optional().nullable(),
 });
-
-const MAX_REQUESTS_PER_HOUR_EMAIL = 5;
-const MAX_REQUESTS_PER_HOUR_IP = 20;
-const RATE_LIMIT_WINDOW_SECONDS = 3600; // 1 hour
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
@@ -22,10 +19,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const parseResult = requestBodySchema.safeParse(body);
 
     if (!parseResult.success) {
-      return problemResponse({
-        status: 400,
-        code: "VALIDATION_FAILED",
-        title: "Bad Request",
+      return zodProblemResponse(parseResult.error, {
         detail: parseResult.error.issues[0]?.message || "Valid email address is required",
       });
     }
@@ -51,9 +45,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
     const rateLimit = await checkRateLimit([
       ...(clientIp !== "unknown"
-        ? [{ key: `ratelimit:forgot-password:ip:${clientIp}`, max: MAX_REQUESTS_PER_HOUR_IP, windowSeconds: RATE_LIMIT_WINDOW_SECONDS }]
+        ? [{ key: `ratelimit:forgot-password:ip:${clientIp}`, max: RATE_LIMITS.MAX_PASSWORD_RESET_PER_HOUR_IP, windowSeconds: RATE_LIMITS.WINDOW_1_HOUR_SECONDS }]
         : []),
-      { key: `ratelimit:forgot-password:${normalizedEmail}`, max: MAX_REQUESTS_PER_HOUR_EMAIL, windowSeconds: RATE_LIMIT_WINDOW_SECONDS },
+      { key: `ratelimit:forgot-password:${normalizedEmail}`, max: RATE_LIMITS.MAX_PASSWORD_RESET_PER_HOUR_EMAIL, windowSeconds: RATE_LIMITS.WINDOW_1_HOUR_SECONDS },
     ]);
 
     if (!rateLimit.allowed) {

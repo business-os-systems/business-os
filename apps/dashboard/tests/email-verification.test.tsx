@@ -184,7 +184,41 @@ describe("Deferred Email Verification & Marketplace Installation Gate (@suite/da
       expect(res.status).toBe(200);
       const data = await res.json();
       expect(data.success).toBe(true);
-      expect(data.message).toBe("Verification link dispatched");
+      expect(data.message).toBe("If an account exists with this email, a verification link has been dispatched.");
+    });
+
+    it("returns identical generic response when email is already verified to prevent account enumeration", async () => {
+      (prisma.user.findUnique as unknown as Mock).mockResolvedValueOnce({
+        id: "user_verified",
+        email: "verified@enterprise.com",
+        emailVerified: true,
+      });
+
+      const req = new NextRequest("http://localhost:3001/api/auth/verify-email/request", {
+        method: "POST",
+        body: JSON.stringify({ email: "verified@enterprise.com" }),
+      });
+
+      const res = await requestVerifyEmailRoute(req);
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.success).toBe(true);
+      expect(data.message).toBe("If an account exists with this email, a verification link has been dispatched.");
+    });
+
+    it("returns identical generic response when email does not exist to prevent account enumeration", async () => {
+      (prisma.user.findUnique as unknown as Mock).mockResolvedValueOnce(null);
+
+      const req = new NextRequest("http://localhost:3001/api/auth/verify-email/request", {
+        method: "POST",
+        body: JSON.stringify({ email: "ghost@enterprise.com" }),
+      });
+
+      const res = await requestVerifyEmailRoute(req);
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.success).toBe(true);
+      expect(data.message).toBe("If an account exists with this email, a verification link has been dispatched.");
     });
 
     it("enforces rate limit of max 5 requests per hour (HTTP 429)", async () => {

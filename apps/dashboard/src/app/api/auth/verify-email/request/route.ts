@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@suite/db";
 import { checkRateLimit, enqueueEmail } from "@suite/redis";
-import { problemResponse, successResponse } from "@/lib/problem-response";
+import { problemResponse, successResponse, zodProblemResponse } from "@/lib/problem-response";
 import {
   createEmailVerificationToken,
   sendEmail,
@@ -10,14 +10,11 @@ import {
   decodeSessionPayload,
   SESSION_COOKIE_NAME,
 } from "@suite/auth";
+import { RATE_LIMITS } from "@suite/core";
 
 const requestBodySchema = z.object({
   email: z.string().email().optional(),
 });
-
-const MAX_REQUESTS_PER_HOUR_EMAIL = 5;
-const MAX_REQUESTS_PER_HOUR_IP = 20;
-const RATE_LIMIT_WINDOW_SECONDS = 3600; // 1 hour
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
@@ -39,7 +36,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (!targetEmail) {
       const body = await request.json().catch(() => ({}));
       const parseResult = requestBodySchema.safeParse(body);
-      if (parseResult.success && parseResult.data.email) {
+      if (!parseResult.success) {
+        return zodProblemResponse(parseResult.error, {
+          detail: "A valid email address is required to dispatch verification link.",
+        });
+      }
+      if (parseResult.data.email) {
         targetEmail = parseResult.data.email;
       }
     }
@@ -61,19 +63,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       select: { id: true, email: true, emailVerified: true },
     });
 
-    if (!user) {
-      // Do not leak email existence to prevent user enumeration
+    if (!user || user.emailVerified) {
+      // Do not leak email existence or verification status to prevent user enumeration (Issue 36)
       return successResponse({
         success: true,
         message: "If an account exists with this email, a verification link has been dispatched.",
-      });
-    }
-
-    if (user.emailVerified) {
-      return successResponse({
-        success: true,
-        message: "Email is already verified.",
-        alreadyVerified: true,
       });
     }
 
@@ -81,9 +75,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
     const rateLimit = await checkRateLimit([
       ...(clientIp !== "unknown"
-        ? [{ key: `ratelimit:verify-email:ip:${clientIp}`, max: MAX_REQUESTS_PER_HOUR_IP, windowSeconds: RATE_LIMIT_WINDOW_SECONDS }]
+        ? [{ key: `ratelimit:verify-email:ip:${clientIp}`, max: RATE_LIMITS.MAX_VERIFY_EMAIL_PER_HOUR_IP, windowSeconds: RATE_LIMITS.WINDOW_1_HOUR_SECONDS }]
         : []),
-      { key: `ratelimit:verify-email:${normalizedEmail}`, max: MAX_REQUESTS_PER_HOUR_EMAIL, windowSeconds: RATE_LIMIT_WINDOW_SECONDS },
+      { key: `ratelimit:verify-email:${normalizedEmail}`, max: RATE_LIMITS.MAX_VERIFY_EMAIL_PER_HOUR_EMAIL, windowSeconds: RATE_LIMITS.WINDOW_1_HOUR_SECONDS },
     ]);
 
     if (!rateLimit.allowed) {
@@ -132,7 +126,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     return successResponse({
       success: true,
-      message: "Verification link dispatched",
+      message: "If an account exists with this email, a verification link has been dispatched.",
     });
   } catch (error) {
     console.error("Error dispatching email verification link:", error);

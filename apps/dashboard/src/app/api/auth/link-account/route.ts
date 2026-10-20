@@ -4,7 +4,7 @@ import { prisma } from "@suite/db";
 import { checkRateLimit } from "@suite/redis";
 import { isProduction } from "@/lib/env";
 import { resolvePostLoginRoute } from "@/lib/route-dispatcher";
-import { problemResponse } from "@/lib/problem-response";
+import { problemResponse, zodProblemResponse } from "@/lib/problem-response";
 import {
   linkOAuthAccountWithPassword,
   verifyAccountLinkingTicket,
@@ -17,16 +17,12 @@ import {
   extractEffectivePermissions,
   recordSecurityAuditLog,
 } from "@suite/auth";
-import { AUDIT_EVENT_TYPES } from "@suite/core";
+import { AUDIT_EVENT_TYPES, RATE_LIMITS } from "@suite/core";
 
 const linkAccountSchema = z.object({
   ticket: z.string().min(1, "Account linking ticket is required"),
   password: z.string().min(1, "Password is required"),
 });
-
-const MAX_LINK_ATTEMPTS_PER_WINDOW_TICKET = 5;
-const MAX_LINK_ATTEMPTS_PER_WINDOW_IP = 15;
-const RATE_LIMIT_WINDOW_SECONDS = 900; // 15 minutes
 
 /**
  * Validates and inspects an OAuth linking ticket.
@@ -72,10 +68,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const parseResult = linkAccountSchema.safeParse(body);
 
     if (!parseResult.success) {
-      return problemResponse({
-        status: 400,
-        code: "VALIDATION_FAILED",
-        title: "Bad Request",
+      return zodProblemResponse(parseResult.error, {
         detail: parseResult.error.issues[0]?.message || "Invalid linking parameters",
       });
     }
@@ -86,9 +79,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
     const rateLimit = await checkRateLimit([
       ...(clientIp !== "unknown"
-        ? [{ key: `ratelimit:link-account:ip:${clientIp}`, max: MAX_LINK_ATTEMPTS_PER_WINDOW_IP, windowSeconds: RATE_LIMIT_WINDOW_SECONDS }]
+        ? [{ key: `ratelimit:link-account:ip:${clientIp}`, max: RATE_LIMITS.MAX_LINK_ATTEMPTS_PER_WINDOW_IP, windowSeconds: RATE_LIMITS.WINDOW_15_MIN_SECONDS }]
         : []),
-      { key: `ratelimit:link-account:ticket:${ticket.slice(-32)}`, max: MAX_LINK_ATTEMPTS_PER_WINDOW_TICKET, windowSeconds: RATE_LIMIT_WINDOW_SECONDS },
+      { key: `ratelimit:link-account:ticket:${ticket.slice(-32)}`, max: RATE_LIMITS.MAX_LINK_ATTEMPTS_PER_WINDOW_TICKET, windowSeconds: RATE_LIMITS.WINDOW_15_MIN_SECONDS },
     ]);
 
     if (!rateLimit.allowed) {

@@ -44,7 +44,7 @@ export function DashboardShell({
   const isSidebarCollapsed = isSettingsActive || collapsed;
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-background text-text">
+    <div className="flex h-screen h-dvh w-full overflow-hidden bg-background text-text">
       <SidebarNav
         collapsed={isSidebarCollapsed}
         config={navConfig}
