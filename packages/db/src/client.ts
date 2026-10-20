@@ -35,7 +35,19 @@ export function createTenantPrismaClient(
   baseClient: PrismaClient = prisma,
   context: TenantContext
 ) {
-  return baseClient.$extends(tenantIsolationExtension(context));
+  return baseClient.$extends(tenantIsolationExtension(context, baseClient));
+}
+
+/**
+ * Standard Tenant Database Client Getter.
+ * Resolves or creates a tenant-isolated Prisma Client for the active organization and branch.
+ */
+export function getTenantDb(
+  organizationId: string,
+  branchId?: string | null,
+  baseClient: PrismaClient = prisma
+): TenantPrismaClient {
+  return createTenantPrismaClient(baseClient, { organizationId, branchId });
 }
 
 /**

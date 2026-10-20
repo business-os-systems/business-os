@@ -1,6 +1,7 @@
 export {
   prisma,
   createTenantPrismaClient,
+  getTenantDb,
   withTransaction,
   withTenantTransaction,
   type TenantPrismaClient,
