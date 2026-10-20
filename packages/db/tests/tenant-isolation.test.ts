@@ -325,17 +325,17 @@ describe("Platform Core Database & Multi-Tenant Isolation (@suite/db)", () => {
     // Running seed a second time should succeed with zero errors (all upsert operations)
     await expect(seed()).resolves.not.toThrow();
 
-    const masterOrg = await prisma.organization.findUnique({
-      where: { id: "org_system_master" },
+    // Verify global system master role exists
+    const masterRole = await prisma.role.findFirst({
+      where: { organizationId: null, slug: "tenant-owner" },
+      include: { permissions: { include: { permission: true } } },
     });
-    expect(masterOrg).toBeDefined();
+    expect(masterRole).toBeDefined();
+    expect(masterRole?.isSystem).toBe(true);
+    expect(masterRole?.permissions.length).toBeGreaterThan(0);
 
-    const riverview = await prisma.organization.findUnique({
-      where: { id: "org_riverview_hospitality" },
-      include: { branches: true, installedApps: true },
-    });
-    expect(riverview).toBeDefined();
-    expect(riverview?.branches.length).toBe(3);
-    expect(riverview?.installedApps.length).toBe(4);
+    // Verify platform capability permissions are seeded
+    const permissions = await prisma.permission.findMany();
+    expect(permissions.length).toBeGreaterThanOrEqual(20);
   });
 });
