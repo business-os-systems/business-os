@@ -96,4 +96,73 @@ describe("Session Helper (@suite/dashboard/lib/session-helper)", () => {
       expect(res.session.organizationId).toBe("org_alpha");
     }
   });
+
+  it("returns 401 SESSION_EXPIRED when session token has expired past its temporal boundary", async () => {
+    const expiredPayload: SessionPayload = {
+      ...validPayload,
+      timestamp: Date.now() - 100000,
+      expiresAt: Date.now() - 5000, // Expired 5 seconds ago
+    };
+    const token = await signSessionToken(encodeSessionPayload(expiredPayload));
+    const req = new NextRequest("http://localhost:3001/api/v1/apps/pos/install", {
+      method: "POST",
+      headers: {
+        Cookie: `${SESSION_COOKIE_NAME}=${token}`,
+      },
+    });
+
+    const res = await getAuthenticatedSession(req);
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.response.status).toBe(401);
+      const data = await res.response.json();
+      expect(data.code).toBe("SESSION_EXPIRED");
+    }
+  });
+
+  it("returns 401 SESSION_IDLE_TIMEOUT when session exceeds user-configured idle timeout", async () => {
+    const idlePayload: SessionPayload = {
+      ...validPayload,
+      timestamp: Date.now() - 1800 * 1000, // 30 minutes ago
+      sessionTimeoutSeconds: 900, // 15 minutes timeout
+    };
+    const token = await signSessionToken(encodeSessionPayload(idlePayload));
+    const req = new NextRequest("http://localhost:3001/api/v1/apps/pos/install", {
+      method: "POST",
+      headers: {
+        Cookie: `${SESSION_COOKIE_NAME}=${token}`,
+      },
+    });
+
+    const res = await getAuthenticatedSession(req);
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.response.status).toBe(401);
+      const data = await res.response.json();
+      expect(data.code).toBe("SESSION_IDLE_TIMEOUT");
+    }
+  });
+
+  it("correctly identifies expired ephemeral sessions", async () => {
+    const ephemeralExpiredPayload: SessionPayload = {
+      ...validPayload,
+      isEphemeral: true,
+      timestamp: Date.now() - 86401 * 1000, // 24 hours + 1 second ago
+    };
+    const token = await signSessionToken(encodeSessionPayload(ephemeralExpiredPayload));
+    const req = new NextRequest("http://localhost:3001/api/v1/apps/pos/install", {
+      method: "POST",
+      headers: {
+        Cookie: `${SESSION_COOKIE_NAME}=${token}`,
+      },
+    });
+
+    const res = await getAuthenticatedSession(req);
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.response.status).toBe(401);
+      const data = await res.response.json();
+      expect(data.code).toBe("SESSION_EXPIRED");
+    }
+  });
 });

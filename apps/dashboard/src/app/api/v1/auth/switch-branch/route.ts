@@ -52,7 +52,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     });
     const branchContext = branchResult.data;
 
-    // Mint updated session token with new active branch claims
+    const isEphemeral = payload.isEphemeral ?? false;
+    const remainingSeconds = payload.expiresAt
+      ? Math.max(0, Math.floor((payload.expiresAt - Date.now()) / 1000))
+      : undefined;
+
+    // Mint updated session token with new active branch claims while preserving lifecycle bounds
     const updatedPayload = encodeSessionPayload({
       ...payload,
       organizationId: branchContext.activeOrganizationId,
@@ -61,10 +66,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       permissions: branchContext.permissions,
       role: branchContext.effectiveRoles[0] || payload.role,
       timestamp: Date.now(),
+      expiresAt: payload.expiresAt,
+      isEphemeral,
     });
 
     const tokenJwt = await signSessionToken(updatedPayload);
-    const cookieOptions = createSessionCookieOptions(isProduction, true);
+    const cookieOptions = createSessionCookieOptions(
+      isProduction,
+      !isEphemeral,
+      remainingSeconds
+    );
 
     const response = NextResponse.json({
       success: true,

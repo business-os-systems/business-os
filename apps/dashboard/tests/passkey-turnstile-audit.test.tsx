@@ -50,6 +50,8 @@ vi.mock("@suite/db", () => {
 describe("Turnstile, Passkey & Rolling Session Gates (@suite/dashboard)", () => {
   beforeEach(() => {
     process.env.BETTER_AUTH_SECRET = "suite-test-super-secret-key-32-chars-long!";
+    process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = "test-site-key-cf-123";
+    process.env.TURNSTILE_SECRET_KEY = "test-secret-key-cf-456";
   });
 
   describe("SPEC-02: Cloudflare Turnstile Challenge Widget", () => {

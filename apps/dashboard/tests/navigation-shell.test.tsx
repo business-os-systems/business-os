@@ -1,9 +1,19 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import React from "react";
 import { renderToString } from "react-dom/server";
 import { SidebarNav } from "../src/components/layout/sidebar-nav";
 import { HeaderTopbar } from "../src/components/layout/header-topbar";
 import OverviewPage from "../src/app/(dashboard)/dashboard/page";
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    refresh: vi.fn(),
+  }),
+  usePathname: () => "/dashboard",
+  useSearchParams: () => new URLSearchParams(),
+}));
 
 describe("Tenant Navigation Shell & App Launcher Primitives", () => {
   it("renders dynamic navigation items in SidebarNav", () => {

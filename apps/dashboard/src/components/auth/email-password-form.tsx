@@ -7,7 +7,8 @@ import { Button, Input, Label, Checkbox } from "@suite/ui";
 import { AlertTriangleIcon, EyeIcon, EyeOffIcon } from "@suite/ui/icons";
 import { SSORedirectCard } from "./sso-redirect-card";
 import { Turnstile } from "./turnstile";
-import { isBrowser } from "@/lib/env";
+import { isBrowser, isProduction } from "@/lib/env";
+import { getTurnstileSiteKey } from "@/lib/turnstile";
 
 /**
  * User credentials payload for authentication submission (ISP).
@@ -345,7 +346,11 @@ export function EmailPasswordForm({
             variant="primary"
             fullWidth
             isLoading={isLoading}
-            disabled={isLoading || (mode === "signup" && hasInteractedWithPassword && !complexity.isValid)}
+            disabled={
+              isLoading ||
+              (isProduction && Boolean(getTurnstileSiteKey()) && !turnstileToken) ||
+              (mode === "signup" && hasInteractedWithPassword && !complexity.isValid)
+            }
             className="mt-2 min-h-[44px]"
           >
             {mode === "signup" ? "Create Account" : "Sign In with Password"}

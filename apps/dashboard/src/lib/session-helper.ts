@@ -3,6 +3,8 @@ import {
   SESSION_COOKIE_NAME,
   verifySessionToken,
   decodeSessionPayload,
+  isSessionPayloadExpired,
+  isSessionPayloadIdleTimedOut,
   type SessionPayload,
 } from "@suite/auth";
 
@@ -69,6 +71,40 @@ export async function getAuthenticatedSession(
           code: "INVALID_SESSION_PAYLOAD",
         },
         { status: 400, headers: { "Content-Type": "application/problem+json" } }
+      ),
+    };
+  }
+
+  // Enforce temporal lifespan expiration check (Issue 38)
+  if (isSessionPayloadExpired(session)) {
+    return {
+      ok: false,
+      response: NextResponse.json(
+        {
+          type: "/errors/session-expired",
+          title: "Session Expired",
+          status: 401,
+          detail: "Authentication session has expired. Please sign in again.",
+          code: "SESSION_EXPIRED",
+        },
+        { status: 401, headers: { "Content-Type": "application/problem+json" } }
+      ),
+    };
+  }
+
+  // Enforce session idle timeout if configured in preferences (Issue 47)
+  if (isSessionPayloadIdleTimedOut(session)) {
+    return {
+      ok: false,
+      response: NextResponse.json(
+        {
+          type: "/errors/session-idle-timeout",
+          title: "Session Idle Timeout",
+          status: 401,
+          detail: "Session has timed out due to inactivity.",
+          code: "SESSION_IDLE_TIMEOUT",
+        },
+        { status: 401, headers: { "Content-Type": "application/problem+json" } }
       ),
     };
   }

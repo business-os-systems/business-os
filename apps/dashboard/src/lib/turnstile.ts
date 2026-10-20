@@ -1,27 +1,23 @@
 /**
- * Cloudflare Turnstile Bot Defense & Test Mode Verifier
+ * Cloudflare Turnstile Bot Defense Verifier
  * Complies with SPEC-AUTH-001 Section 5.3 and Architecture Decision ADR-AUTH-006.
+ * Zero hardcoded credentials, test keys, or magic strings (Constitution Principle XII).
  */
 
 import { isProduction } from "./env";
 
-export const TURNSTILE_TEST_SITE_KEY = "1x00000000000000000000AA";
-export const TURNSTILE_TEST_SECRET_KEY = "2x00000000000000000000AB";
-
 const SITEVERIFY_ENDPOINT = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 
 export function getTurnstileSiteKey(): string {
-  if (!isProduction) {
-    return process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || TURNSTILE_TEST_SITE_KEY;
-  }
   return process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "";
 }
 
 export function getTurnstileSecretKey(): string {
-  if (!isProduction) {
-    return process.env.TURNSTILE_SECRET_KEY || TURNSTILE_TEST_SECRET_KEY;
-  }
   return process.env.TURNSTILE_SECRET_KEY || "";
+}
+
+export function isTurnstileConfigured(): boolean {
+  return Boolean(getTurnstileSiteKey() && getTurnstileSecretKey());
 }
 
 export interface TurnstileVerificationResult {
@@ -33,8 +29,8 @@ export interface TurnstileVerificationResult {
 
 /**
  * Validates a Turnstile token against Cloudflare's siteverify endpoint.
- * In non-production environments when Cloudflare's official dummy test keys are configured,
- * verifies through standard test key contracts without external network dependencies.
+ * When unconfigured in local development, safely bypasses external checks.
+ * In production, strictly enforces valid token verification.
  */
 export async function verifyTurnstileToken(
   token?: string | null,
@@ -48,12 +44,16 @@ export async function verifyTurnstileToken(
   }
 
   const secretKey = getTurnstileSecretKey();
-
-  // Deterministic validation when configured with Cloudflare's official test pass key
-  if (secretKey === TURNSTILE_TEST_SECRET_KEY) {
+  if (!secretKey) {
+    if (!isProduction) {
+      return {
+        success: true,
+        challengeTs: new Date().toISOString(),
+      };
+    }
     return {
-      success: true,
-      challengeTs: new Date().toISOString(),
+      success: false,
+      errorCodes: ["missing-turnstile-secret"],
     };
   }
 
