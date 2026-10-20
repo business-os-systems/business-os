@@ -224,3 +224,62 @@ export class InternalServerError extends AppError {
 export function isAppError(error: unknown): error is AppError {
   return error instanceof AppError;
 }
+
+export interface ProblemPayloadInput {
+  status: number;
+  code: string;
+  title: string;
+  detail: string;
+  type?: string;
+  instance?: string;
+  invalidParams?: readonly InvalidParamDetail[];
+  retryAfter?: number;
+  extra?: Record<string, unknown>;
+}
+
+export interface ProblemEnvelope {
+  body: Record<string, unknown>;
+  init: {
+    status: number;
+    headers: Record<string, string>;
+  };
+}
+
+/**
+ * Canonical RFC 7807 problem details payload and headers builder.
+ * Guarantees relative URI format (/errors/<slug>) and application/problem+json Content-Type.
+ */
+export function createProblemEnvelope(input: ProblemPayloadInput): ProblemEnvelope {
+  const type =
+    input.type ??
+    (input.code ? `/errors/${input.code.toLowerCase().replace(/_/g, "-")}` : "/errors/app-error");
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/problem+json",
+  };
+
+  if (input.retryAfter !== undefined) {
+    headers["Retry-After"] = String(input.retryAfter);
+  }
+
+  const body: Record<string, unknown> = {
+    type,
+    title: input.title,
+    status: input.status,
+    detail: input.detail,
+    code: input.code,
+    ...(input.retryAfter !== undefined ? { retryAfter: input.retryAfter } : {}),
+    ...(input.instance ? { instance: input.instance } : {}),
+    ...(input.invalidParams && input.invalidParams.length > 0 ? { invalidParams: input.invalidParams } : {}),
+    ...input.extra,
+  };
+
+  return {
+    body,
+    init: {
+      status: input.status,
+      headers,
+    },
+  };
+}
+

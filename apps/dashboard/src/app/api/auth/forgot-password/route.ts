@@ -1,17 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@suite/db";
-import { redis } from "@suite/redis";
+import { checkRateLimit } from "@suite/redis";
 import { createPasswordResetToken, sendEmail } from "@suite/auth";
 import { isProduction } from "@/lib/env";
 import { verifyTurnstileToken } from "@/lib/turnstile";
+import { problemResponse } from "@/lib/problem-response";
 
 const requestBodySchema = z.object({
   email: z.string().email("Valid email address is required"),
   turnstileToken: z.string().optional().nullable(),
 });
 
-const MAX_REQUESTS_PER_HOUR = 5;
+const MAX_REQUESTS_PER_HOUR_EMAIL = 5;
+const MAX_REQUESTS_PER_HOUR_IP = 20;
 const RATE_LIMIT_WINDOW_SECONDS = 3600; // 1 hour
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -20,16 +22,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const parseResult = requestBodySchema.safeParse(body);
 
     if (!parseResult.success) {
-      return NextResponse.json(
-        {
-          type: "/errors/validation-failed",
-          title: "Bad Request",
-          status: 400,
-          detail: parseResult.error.issues[0]?.message || "Valid email address is required",
-          code: "VALIDATION_FAILED",
-        },
-        { status: 400, headers: { "Content-Type": "application/problem+json" } }
-      );
+      return problemResponse({
+        status: 400,
+        code: "VALIDATION_FAILED",
+        title: "Bad Request",
+        detail: parseResult.error.issues[0]?.message || "Valid email address is required",
+      });
     }
 
     const { email, turnstileToken } = parseResult.data;
@@ -40,77 +38,32 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
       const turnstileResult = await verifyTurnstileToken(turnstileToken, clientIp);
       if (!turnstileResult.success) {
-        return NextResponse.json(
-          {
-            type: "/errors/bot-verification-failed",
-            title: "Forbidden",
-            status: 403,
-            detail: "Security verification failed. Please complete the security check and try again.",
-          },
-          { status: 403, headers: { "Content-Type": "application/problem+json" } }
-        );
+        return problemResponse({
+          status: 403,
+          code: "BOT_VERIFICATION_FAILED",
+          title: "Forbidden",
+          detail: "Security verification failed. Please complete the security check and try again.",
+        });
       }
     }
 
-    // 1. Rate Limiting via Redis (Max 5 requests per hour)
-    const rateLimitKey = `ratelimit:forgot-password:${normalizedEmail}`;
-    try {
-      const currentCount = await redis.incr(rateLimitKey);
-      if (currentCount === 1) {
-        await redis.expire(rateLimitKey, RATE_LIMIT_WINDOW_SECONDS);
-      }
+    // 1. Dual-Tier Rate Limiting via @suite/redis (Tier 1: IP, Tier 2: Email)
+    const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    const rateLimit = await checkRateLimit([
+      ...(clientIp !== "unknown"
+        ? [{ key: `ratelimit:forgot-password:ip:${clientIp}`, max: MAX_REQUESTS_PER_HOUR_IP, windowSeconds: RATE_LIMIT_WINDOW_SECONDS }]
+        : []),
+      { key: `ratelimit:forgot-password:${normalizedEmail}`, max: MAX_REQUESTS_PER_HOUR_EMAIL, windowSeconds: RATE_LIMIT_WINDOW_SECONDS },
+    ]);
 
-      if (currentCount > MAX_REQUESTS_PER_HOUR) {
-        const ttl = await redis.ttl(rateLimitKey);
-        const retryAfter = ttl > 0 ? ttl : RATE_LIMIT_WINDOW_SECONDS;
-
-        return NextResponse.json(
-          {
-            type: "/errors/rate-limit-exceeded",
-            title: "Too Many Requests",
-            status: 429,
-            detail: "Rate limit exceeded. Maximum 5 password reset requests allowed per hour.",
-            code: "RATE_LIMIT_EXCEEDED",
-            retryAfter,
-          },
-          {
-            status: 429,
-            headers: {
-              "Content-Type": "application/problem+json",
-              "Retry-After": String(retryAfter),
-            },
-          }
-        );
-      }
-    } catch {
-      // Degraded fail-safe rate limiting via PostgreSQL (SEC-04)
-      const oneHourAgo = new Date(Date.now() - RATE_LIMIT_WINDOW_SECONDS * 1000);
-      const recentAttempts = await prisma.verification.count({
-        where: {
-          identifier: normalizedEmail,
-          createdAt: { gte: oneHourAgo },
-        },
+    if (!rateLimit.allowed) {
+      return problemResponse({
+        status: 429,
+        code: "RATE_LIMIT_EXCEEDED",
+        title: "Too Many Requests",
+        detail: rateLimit.detail || "Rate limit exceeded. Maximum 5 password reset requests allowed per hour.",
+        retryAfter: rateLimit.retryAfter,
       });
-
-      if (recentAttempts >= MAX_REQUESTS_PER_HOUR) {
-        return NextResponse.json(
-          {
-            type: "/errors/rate-limit-exceeded",
-            title: "Too Many Requests",
-            status: 429,
-            detail: "Rate limit exceeded. Maximum 5 password reset requests allowed per hour.",
-            code: "RATE_LIMIT_EXCEEDED",
-            retryAfter: RATE_LIMIT_WINDOW_SECONDS,
-          },
-          {
-            status: 429,
-            headers: {
-              "Content-Type": "application/problem+json",
-              "Retry-After": String(RATE_LIMIT_WINDOW_SECONDS),
-            },
-          }
-        );
-      }
     }
 
     // 2. Find user in database

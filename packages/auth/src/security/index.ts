@@ -6,6 +6,7 @@ export {
   createPasswordResetToken,
   verifyPasswordResetToken,
   completePasswordReset,
+  hashToken,
   createAccountLinkingTicket,
   verifyAccountLinkingTicket,
   linkOAuthAccountWithPassword,

@@ -164,7 +164,7 @@ function ResetPasswordForm() {
             <div className="grid grid-cols-2 gap-1.5 p-2 rounded-lg bg-surface-subtle border border-border text-[11px]">
               <div className={`flex items-center gap-1.5 ${complexity.hasMinLength ? "text-success font-medium" : "text-text-muted"}`}>
                 <span>{complexity.hasMinLength ? "✓" : "○"}</span>
-                <span>8+ characters</span>
+                <span>12+ characters</span>
               </div>
               <div className={`flex items-center gap-1.5 ${complexity.hasUppercase ? "text-success font-medium" : "text-text-muted"}`}>
                 <span>{complexity.hasUppercase ? "✓" : "○"}</span>

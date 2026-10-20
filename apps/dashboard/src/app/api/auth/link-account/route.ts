@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@suite/db";
+import { checkRateLimit } from "@suite/redis";
 import { isProduction } from "@/lib/env";
 import { resolvePostLoginRoute } from "@/lib/route-dispatcher";
+import { problemResponse } from "@/lib/problem-response";
 import {
   linkOAuthAccountWithPassword,
   verifyAccountLinkingTicket,
@@ -17,11 +19,14 @@ import {
 } from "@suite/auth";
 import { AUDIT_EVENT_TYPES } from "@suite/core";
 
-
 const linkAccountSchema = z.object({
   ticket: z.string().min(1, "Account linking ticket is required"),
   password: z.string().min(1, "Password is required"),
 });
+
+const MAX_LINK_ATTEMPTS_PER_WINDOW_TICKET = 5;
+const MAX_LINK_ATTEMPTS_PER_WINDOW_IP = 15;
+const RATE_LIMIT_WINDOW_SECONDS = 900; // 15 minutes
 
 /**
  * Validates and inspects an OAuth linking ticket.
@@ -31,30 +36,22 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const ticket = searchParams.get("ticket");
 
   if (!ticket) {
-    return NextResponse.json(
-      {
-        type: "/errors/invalid-ticket",
-        title: "Bad Request",
-        status: 400,
-        detail: "Ticket query parameter is required.",
-        code: "INVALID_TICKET",
-      },
-      { status: 400, headers: { "Content-Type": "application/problem+json" } }
-    );
+    return problemResponse({
+      status: 400,
+      code: "INVALID_TICKET",
+      title: "Bad Request",
+      detail: "Ticket query parameter is required.",
+    });
   }
 
   const payload = verifyAccountLinkingTicket(ticket, getBetterAuthSecret());
   if (!payload) {
-    return NextResponse.json(
-      {
-        type: "/errors/invalid-ticket",
-        title: "Invalid or Expired Ticket",
-        status: 400,
-        detail: "The account linking ticket is invalid or has expired.",
-        code: "INVALID_TICKET",
-      },
-      { status: 400, headers: { "Content-Type": "application/problem+json" } }
-    );
+    return problemResponse({
+      status: 400,
+      code: "INVALID_TICKET",
+      title: "Invalid or Expired Ticket",
+      detail: "The account linking ticket is invalid or has expired.",
+    });
   }
 
   return NextResponse.json({
@@ -75,19 +72,35 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const parseResult = linkAccountSchema.safeParse(body);
 
     if (!parseResult.success) {
-      return NextResponse.json(
-        {
-          type: "/errors/validation-failed",
-          title: "Bad Request",
-          status: 400,
-          detail: parseResult.error.issues[0]?.message || "Invalid linking parameters",
-          code: "VALIDATION_FAILED",
-        },
-        { status: 400, headers: { "Content-Type": "application/problem+json" } }
-      );
+      return problemResponse({
+        status: 400,
+        code: "VALIDATION_FAILED",
+        title: "Bad Request",
+        detail: parseResult.error.issues[0]?.message || "Invalid linking parameters",
+      });
     }
 
     const { ticket, password } = parseResult.data;
+
+    // Dual-tier brute-force rate limiting via @suite/redis (Tier 1: IP, Tier 2: Ticket)
+    const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    const rateLimit = await checkRateLimit([
+      ...(clientIp !== "unknown"
+        ? [{ key: `ratelimit:link-account:ip:${clientIp}`, max: MAX_LINK_ATTEMPTS_PER_WINDOW_IP, windowSeconds: RATE_LIMIT_WINDOW_SECONDS }]
+        : []),
+      { key: `ratelimit:link-account:ticket:${ticket.slice(-32)}`, max: MAX_LINK_ATTEMPTS_PER_WINDOW_TICKET, windowSeconds: RATE_LIMIT_WINDOW_SECONDS },
+    ]);
+
+    if (!rateLimit.allowed) {
+      return problemResponse({
+        status: 429,
+        code: "RATE_LIMIT_EXCEEDED",
+        title: "Too Many Requests",
+        detail: rateLimit.detail || "Too many account linking attempts. Please try again later.",
+        retryAfter: rateLimit.retryAfter,
+      });
+    }
+
     const secretKey = getBetterAuthSecret();
 
     // Verify ticket and link account with password
@@ -100,41 +113,29 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     if (!result.success) {
       if (result.reason === "INVALID_TICKET" || result.reason === "EXPIRED_TICKET") {
-        return NextResponse.json(
-          {
-            type: "/errors/invalid-ticket",
-            title: "Invalid or Expired Ticket",
-            status: 400,
-            detail: "The account linking challenge has expired or is invalid. Please sign in again.",
-            code: "INVALID_TICKET",
-          },
-          { status: 400, headers: { "Content-Type": "application/problem+json" } }
-        );
+        return problemResponse({
+          status: 400,
+          code: "INVALID_TICKET",
+          title: "Invalid or Expired Ticket",
+          detail: "The account linking challenge has expired or is invalid. Please sign in again.",
+        });
       }
 
       if (result.reason === "INVALID_PASSWORD") {
-        return NextResponse.json(
-          {
-            type: "/errors/invalid-credentials",
-            title: "Invalid Password",
-            status: 401,
-            detail: "Incorrect password. Please verify your password to link your account.",
-            code: "INVALID_CREDENTIALS",
-          },
-          { status: 401, headers: { "Content-Type": "application/problem+json" } }
-        );
+        return problemResponse({
+          status: 401,
+          code: "INVALID_CREDENTIALS",
+          title: "Invalid Password",
+          detail: "Incorrect password. Please verify your password to link your account.",
+        });
       }
 
-      return NextResponse.json(
-        {
-          type: "/errors/account-not-found",
-          title: "Account Not Found",
-          status: 404,
-          detail: "No matching credential account was found for this user.",
-          code: "ACCOUNT_NOT_FOUND",
-        },
-        { status: 404, headers: { "Content-Type": "application/problem+json" } }
-      );
+      return problemResponse({
+        status: 404,
+        code: "ACCOUNT_NOT_FOUND",
+        title: "Account Not Found",
+        detail: "No matching credential account was found for this user.",
+      });
     }
 
     // Resolve user details, memberships, and roles
@@ -187,7 +188,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Extract permissions
     const userPermissions = extractEffectivePermissions(dbUser.branchRoles);
 
-    const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
     const userAgent = request.headers.get("user-agent");
 
     // Record security audit trail entry (SPEC-04 / OWASP ASVS 4.0.3 Non-Repudiation)
@@ -196,7 +196,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       organizationId: organization?.id,
       userId: dbUser.id,
       action: AUDIT_EVENT_TYPES.AUTH_ACCOUNT_LINKED,
-      ipAddress: clientIp,
+      ipAddress: clientIp !== "unknown" ? clientIp : undefined,
       userAgent,
       details: {
         providerId: result.providerId,

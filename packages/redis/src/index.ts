@@ -27,6 +27,12 @@ export {
   DEFAULT_DLQ_JOB_OPTIONS,
 } from "./queue.js";
 
+export {
+  checkRateLimit,
+  type RateLimitRule,
+  type RateLimitResult,
+} from "./rate-limiter.js";
+
 export { Redis, type RedisOptions } from "ioredis";
 export {
   Queue,

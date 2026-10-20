@@ -67,11 +67,30 @@ vi.mock("@suite/db", () => {
 // Mock @suite/redis
 vi.mock("@suite/redis", () => {
   const mockRedis = {
-    incr: vi.fn(async () => 1),
-    expire: vi.fn(async () => 1),
-    ttl: vi.fn(async () => 3600),
+    incr: vi.fn(async (_key?: string) => 1),
+    expire: vi.fn(async (_key?: string, _sec?: number) => 1),
+    ttl: vi.fn(async (_key?: string) => 3600),
   };
-  return { redis: mockRedis };
+  return {
+    redis: mockRedis,
+    checkRateLimit: vi.fn(async (rules: Array<{ key: string; max: number; windowSeconds: number }>) => {
+      // Evaluate mock Redis calls to preserve unit test assertions on rate limits
+      for (const rule of rules) {
+        if (!rule.key || rule.max <= 0) continue;
+        const currentCount = await mockRedis.incr(rule.key);
+        if (currentCount > rule.max) {
+          const ttl = await mockRedis.ttl(rule.key);
+          return {
+            allowed: false,
+            retryAfter: ttl > 0 ? ttl : rule.windowSeconds,
+            detail: `Rate limit exceeded. Maximum ${rule.max} requests allowed per ${Math.round(rule.windowSeconds / 60)} minutes.`,
+            violatedRuleKey: rule.key,
+          };
+        }
+      }
+      return { allowed: true, retryAfter: 0 };
+    }),
+  };
 });
 
 // Mock email transporter
@@ -289,6 +308,37 @@ describe("Account Security, Password Reset & Collision Defense (@suite/dashboard
                 providerId: "credential",
                 accountId: userEmail,
                 password: "old_hashed_password",
+              },
+            ],
+            organizations: [
+              {
+                userId,
+                organizationId: "org_alpha",
+                status: "ACTIVE",
+                organization: { id: "org_alpha", name: "Alpha Corp", slug: "alpha-corp" },
+              },
+            ],
+            branchRoles: [
+              {
+                userId,
+                organizationId: "org_alpha",
+                roleId: "role_admin",
+                branchId: "branch_main",
+                branch: { id: "branch_main", name: "Main HQ" },
+                role: {
+                  id: "role_admin",
+                  name: "Organization Admin",
+                  slug: "org-admin",
+                  permissions: [
+                    {
+                      permission: {
+                        id: "p1",
+                        code: "org:read",
+                        name: "Read Org",
+                      },
+                    },
+                  ],
+                },
               },
             ],
           });

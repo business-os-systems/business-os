@@ -5,6 +5,7 @@ import {
   signSessionToken,
   createSessionCookieOptions,
   hashPassword,
+  hashToken,
 } from "@suite/auth";
 import { isProduction } from "@/lib/env";
 import { getAuthenticatedSession } from "@/lib/session-helper";
@@ -14,7 +15,7 @@ const acceptInvitationSchema = z.object({
   token: z.string().trim().min(1, "Invitation token is required"),
   password: z
     .string()
-    .min(8, "Password must be at least 8 characters")
+    .min(12, "Password must be at least 12 characters")
     .optional(),
   name: z.string().trim().min(2, "Full name must be at least 2 characters").optional(),
 });
@@ -37,8 +38,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    const invitation = await prisma.organizationInvitation.findUnique({
-      where: { token },
+    const hashedToken = hashToken(token);
+    let invitation = await prisma.organizationInvitation.findUnique({
+      where: { token: hashedToken },
       include: {
         organization: {
           select: { id: true, name: true, slug: true },
@@ -48,6 +50,21 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         },
       },
     });
+
+    // Backward-compatible fallback for legacy unhashed tokens
+    if (!invitation) {
+      invitation = await prisma.organizationInvitation.findUnique({
+        where: { token },
+        include: {
+          organization: {
+            select: { id: true, name: true, slug: true },
+          },
+          role: {
+            select: { id: true, name: true, slug: true },
+          },
+        },
+      });
+    }
 
     if (!invitation) {
       return NextResponse.json(
@@ -191,8 +208,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const { token, password, name } = parseResult.data;
 
-    const invitation = await prisma.organizationInvitation.findUnique({
-      where: { token },
+    const hashedToken = hashToken(token);
+    let invitation = await prisma.organizationInvitation.findUnique({
+      where: { token: hashedToken },
       include: {
         organization: true,
         role: {
@@ -206,6 +224,25 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         },
       },
     });
+
+    // Backward-compatible fallback for legacy unhashed tokens
+    if (!invitation) {
+      invitation = await prisma.organizationInvitation.findUnique({
+        where: { token },
+        include: {
+          organization: true,
+          role: {
+            include: {
+              permissions: {
+                include: {
+                  permission: true,
+                },
+              },
+            },
+          },
+        },
+      });
+    }
 
     if (!invitation) {
       return NextResponse.json(
