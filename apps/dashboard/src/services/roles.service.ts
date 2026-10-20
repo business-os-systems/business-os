@@ -202,10 +202,14 @@ export async function updateOrganizationRole(
     throw new NotFoundError("Role record was not found.");
   }
 
-  if (role.isSystem) {
+  if (role.isSystem || role.organizationId === null) {
     throw new SafeguardViolationError(
-      "Built-in system roles (such as Organization Owner) are protected and cannot be modified."
+      "Built-in system roles and global platform roles are protected and cannot be modified."
     );
+  }
+
+  if (role.organizationId && role.organizationId !== organizationId) {
+    throw new NotFoundError("Role record was not found.");
   }
 
   return await prisma.$transaction(async (tx) => {
@@ -288,10 +292,14 @@ export async function deleteOrganizationRole(
     throw new NotFoundError("Role record was not found.");
   }
 
-  if (role.isSystem) {
+  if (role.isSystem || role.organizationId === null) {
     throw new SafeguardViolationError(
-      "Built-in system roles (such as Organization Owner) are protected and cannot be deleted."
+      "Built-in system roles and global platform roles are protected and cannot be deleted."
     );
+  }
+
+  if (role.organizationId && role.organizationId !== organizationId) {
+    throw new NotFoundError("Role record was not found.");
   }
 
   // Check if role is assigned to any members in this organization

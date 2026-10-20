@@ -35,9 +35,21 @@ describe("Integration: Manager Override PIN & Anti-Theft Mechanics", () => {
     // Hash manager PIN with Argon2id
     const hashedPin = await hashPin(MANAGER_RAW_PIN);
 
-    // Ensure branch-manager system role exists
+    // Ensure override capability permission exists and is assigned to manager role
+    const overridePerm = await prisma.permission.upsert({
+      where: { action: "manager_override:verify" },
+      update: {},
+      create: {
+        appId: "core",
+        action: "manager_override:verify",
+        description: "Manager Override Verification",
+      },
+    });
+
+    // Ensure branch-manager role exists with capability permission
     let managerRole = await prisma.role.findFirst({
       where: { slug: "branch-manager" },
+      include: { permissions: true },
     });
     if (!managerRole) {
       managerRole = await prisma.role.create({
@@ -45,6 +57,19 @@ describe("Integration: Manager Override PIN & Anti-Theft Mechanics", () => {
           slug: "branch-manager",
           name: "Branch Manager",
           isSystem: true,
+          permissions: {
+            create: {
+              permissionId: overridePerm.id,
+            },
+          },
+        },
+        include: { permissions: true },
+      });
+    } else if (managerRole.permissions.length === 0) {
+      await prisma.rolePermission.create({
+        data: {
+          roleId: managerRole.id,
+          permissionId: overridePerm.id,
         },
       });
     }

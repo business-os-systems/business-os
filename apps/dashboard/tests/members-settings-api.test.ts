@@ -161,6 +161,7 @@ describe("Team Members, Invitations & Enterprise Safeguards API (Issue #156)", (
                   description: "Full owner",
                   isSystem: true,
                   organizationId: null,
+                  permissions: [{ permission: { action: "*" } }],
                   createdAt: new Date(),
                   updatedAt: new Date(),
                 },
@@ -549,6 +550,7 @@ describe("Team Members, Invitations & Enterprise Safeguards API (Issue #156)", (
                 id: "role_owner",
                 slug: "tenant-owner",
                 name: "Tenant Owner",
+                permissions: [{ permission: { action: "*" } }],
               },
             },
           ],
@@ -593,6 +595,7 @@ describe("Team Members, Invitations & Enterprise Safeguards API (Issue #156)", (
                 id: "role_owner",
                 slug: "tenant-owner",
                 name: "Tenant Owner",
+                permissions: [{ permission: { action: "*" } }],
               },
             },
           ],
@@ -662,6 +665,7 @@ describe("Team Members, Invitations & Enterprise Safeguards API (Issue #156)", (
                 id: "role_owner",
                 slug: "tenant-owner",
                 name: "Tenant Owner",
+                permissions: [{ permission: { action: "*" } }],
               },
             },
           ],
@@ -844,7 +848,12 @@ describe("Team Members, Invitations & Enterprise Safeguards API (Issue #156)", (
           branchRoles: [
             {
               branchId: null,
-              role: { id: "role_owner", slug: "owner", name: "Owner" },
+              role: {
+                id: "role_owner",
+                slug: "owner",
+                name: "Owner",
+                permissions: [{ permission: { action: "*" } }],
+              },
             },
           ],
         },
@@ -966,7 +975,12 @@ describe("Team Members, Invitations & Enterprise Safeguards API (Issue #156)", (
           branchRoles: [
             {
               branchId: null,
-              role: { id: "role_owner", slug: "owner", name: "Owner" },
+              role: {
+                id: "role_owner",
+                slug: "owner",
+                name: "Owner",
+                permissions: [{ permission: { action: "*" } }],
+              },
             },
           ],
         },

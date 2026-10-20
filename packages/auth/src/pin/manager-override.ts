@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import type { PrismaClient } from "@suite/db";
 import { UnauthorizedError, ValidationError, ForbiddenError } from "@suite/core/errors";
+import { PERMISSIONS, hasPermission } from "@suite/core";
 import { hashPin, verifyPin } from "./pin-engine.js";
 
 export const OVERRIDE_TOKEN_TTL_MS = 60 * 1000; // 60 seconds
@@ -120,18 +121,18 @@ export async function verifyManagerOverridePin(
   for (const member of activeMembersWithPin) {
     const candidateUser = member.user;
     if (candidateUser.managerPinHash && (await verifyPin(managerPin, candidateUser.managerPinHash))) {
-      // PIN matched! Verify manager has override authority
+      // PIN matched! Verify manager has override authority via pure capability checks
       const hasManagerAuthority = candidateUser.branchRoles.some((br) => {
-        if (br.role.isSystem) return true;
-        const roleSlug = br.role.slug.toLowerCase();
-        if (roleSlug.includes("manager") || roleSlug.includes("owner") || roleSlug.includes("admin")) {
-          return true;
-        }
-        return br.role.permissions.some(
-          (p) =>
-            p.permission.action === "*" ||
-            p.permission.action === "manager_override:verify" ||
-            p.permission.action === "manager_override:execute"
+        const actions = br.role.permissions
+          .map((p) => p.permission?.action)
+          .filter((a): a is string => Boolean(a));
+
+        return (
+          hasPermission(actions, PERMISSIONS.WILDCARD) ||
+          hasPermission(actions, PERMISSIONS.CORE.ALL) ||
+          hasPermission(actions, PERMISSIONS.CORE.USERS_MANAGE) ||
+          hasPermission(actions, "manager_override:verify") ||
+          hasPermission(actions, "manager_override:execute")
         );
       });
 
