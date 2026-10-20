@@ -1,9 +1,8 @@
-import { NextResponse } from "next/server";
 import { z } from "zod";
 import { PageService } from "@suite/website-builder/services";
-import { validatePageAst } from "@suite/website-builder";
+import { validatePageAst } from "@suite/website-builder/ast";
 import { resolveTenantContext } from "@/lib/tenant-context";
-import { problemResponse } from "@/lib/problem-response";
+import { problemResponse, successResponse } from "@/lib/api-response";
 
 const PatchContentSchema = z.object({
   expectedRevision: z.number().int().positive(),
@@ -33,18 +32,15 @@ export async function GET(
       });
     }
 
-    return NextResponse.json(
-      {
-        id: page.id,
-        title: page.title,
-        slug: page.slug,
-        revision: page.revision,
-        status: page.status,
-        draftAst: page.draftAst,
-        publishedAst: page.publishedAst,
-      },
-      { status: 200 }
-    );
+    return successResponse({
+      id: page.id,
+      title: page.title,
+      slug: page.slug,
+      revision: page.revision,
+      status: page.status,
+      draftAst: page.draftAst,
+      publishedAst: page.publishedAst,
+    });
   } catch (err: unknown) {
     console.error("Error loading CMS page content:", err);
     return problemResponse({
@@ -122,15 +118,12 @@ export async function PATCH(
       });
     }
 
-    return NextResponse.json(
-      {
-        success: true,
-        pageId: result.pageId,
-        revision: result.revision,
-        draftAst: result.draftAst,
-      },
-      { status: 200 }
-    );
+    return successResponse({
+      success: true,
+      pageId: result.pageId,
+      revision: result.revision,
+      draftAst: result.draftAst,
+    });
   } catch (err: unknown) {
     console.error("Error updating CMS page content:", err);
     return problemResponse({
