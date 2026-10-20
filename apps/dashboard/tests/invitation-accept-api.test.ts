@@ -1,7 +1,11 @@
 import { describe, it, expect, vi, beforeEach, beforeAll } from "vitest";
 import { NextRequest } from "next/server";
 import { GET, POST } from "../src/app/api/v1/auth/invitation/accept/route";
-import { SESSION_COOKIE_NAME } from "@suite/auth";
+import {
+  SESSION_COOKIE_NAME,
+  encodeSessionPayload,
+  signSessionToken,
+} from "@suite/auth";
 import { prisma } from "@suite/db";
 
 // Mock @suite/db prisma client
@@ -335,6 +339,55 @@ describe("Invitation Acceptance & Auto-Login API (Issue #156)", () => {
 
       expect(res.status).toBe(403);
       expect(data.code).toBe("INVITATION_REVOKED");
+    });
+
+    it("returns 403 INVITATION_EMAIL_MISMATCH when authenticated session email differs from invitation email", async () => {
+      vi.mocked(prisma.organizationInvitation.findUnique).mockResolvedValueOnce({
+        id: "inv_1",
+        token: "tok_hijack_attempt",
+        email: "victim@riverview.com",
+        organizationId: "org_riverview",
+        branchId: "branch_main",
+        roleId: "role_staff",
+        status: "PENDING",
+        expiresAt: new Date(Date.now() + 86400000),
+        organization: { id: "org_riverview", name: "River View Homestay", slug: "rv" },
+        role: {
+          id: "role_staff",
+          name: "Staff",
+          slug: "staff",
+          permissions: [],
+        },
+      } as never);
+
+      const attackerSessionToken = await signSessionToken(
+        encodeSessionPayload({
+          userId: "usr_attacker",
+          email: "attacker@malicious.com",
+          userName: "Attacker",
+          organizationId: "org_attacker",
+          role: "owner",
+          permissions: ["*"],
+          timestamp: Date.now(),
+        })
+      );
+
+      const req = new NextRequest("http://localhost:3000/api/v1/auth/invitation/accept", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          cookie: `${SESSION_COOKIE_NAME}=${attackerSessionToken}`,
+        },
+        body: JSON.stringify({
+          token: "tok_hijack_attempt",
+        }),
+      });
+
+      const res = await POST(req);
+      const data = await res.json();
+
+      expect(res.status).toBe(403);
+      expect(data.code).toBe("INVITATION_EMAIL_MISMATCH");
     });
   });
 });

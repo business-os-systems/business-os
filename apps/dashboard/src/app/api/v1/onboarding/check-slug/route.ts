@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@suite/db";
+import { checkRateLimit } from "@suite/redis";
 import { getAuthenticatedSession } from "@/lib/session-helper";
+import { problemResponse } from "@/lib/problem-response";
 import { z } from "zod";
 
 const checkSlugQuerySchema = z.object({
@@ -12,24 +14,45 @@ const checkSlugQuerySchema = z.object({
     .regex(/^[a-z0-9-]+$/, "Slug must contain only lowercase letters, numbers, and hyphens"),
 });
 
+const MAX_SLUG_CHECKS_PER_MINUTE_IP = 60;
+const RATE_LIMIT_WINDOW_SECONDS = 60;
+
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
+    // Issue 44: Rate limit public tenant slug availability seeks
+    const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    if (clientIp !== "unknown") {
+      const rateLimit = await checkRateLimit([
+        {
+          key: `ratelimit:check-slug:ip:${clientIp}`,
+          max: MAX_SLUG_CHECKS_PER_MINUTE_IP,
+          windowSeconds: RATE_LIMIT_WINDOW_SECONDS,
+        },
+      ]);
+
+      if (!rateLimit.allowed) {
+        return problemResponse({
+          status: 429,
+          code: "RATE_LIMIT_EXCEEDED",
+          title: "Too Many Requests",
+          detail: "Too many slug availability requests. Please slow down.",
+          retryAfter: rateLimit.retryAfter,
+        });
+      }
+    }
+
     const { searchParams } = new URL(request.url);
     const parseResult = checkSlugQuerySchema.safeParse({
       slug: searchParams.get("slug") || "",
     });
 
     if (!parseResult.success) {
-      return NextResponse.json(
-        {
-          type: "/errors/validation-error",
-          title: "Bad Request",
-          status: 400,
-          detail: parseResult.error.errors[0]?.message || "Invalid slug format",
-          code: "INVALID_SLUG",
-        },
-        { status: 400, headers: { "Content-Type": "application/problem+json" } }
-      );
+      return problemResponse({
+        status: 400,
+        code: "INVALID_SLUG",
+        title: "Bad Request",
+        detail: parseResult.error.errors[0]?.message || "Invalid slug format",
+      });
     }
 
     const { slug } = parseResult.data;
@@ -72,15 +95,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     });
   } catch (error) {
     console.error("Error checking slug availability:", error);
-    return NextResponse.json(
-      {
-        type: "/errors/internal-error",
-        title: "Internal Server Error",
-        status: 500,
-        detail: "An unexpected error occurred while checking slug availability.",
-        code: "INTERNAL_SERVER_ERROR",
-      },
-      { status: 500, headers: { "Content-Type": "application/problem+json" } }
-    );
+    return problemResponse({
+      status: 500,
+      code: "INTERNAL_SERVER_ERROR",
+      title: "Internal Server Error",
+      detail: "An unexpected error occurred while checking slug availability.",
+    });
   }
 }

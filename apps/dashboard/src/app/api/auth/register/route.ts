@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@suite/db";
 import { hashPassword, validatePasswordComplexity } from "@suite/auth/password";
@@ -10,6 +9,7 @@ import {
 } from "@/lib/auth-constants";
 import { isProduction } from "@/lib/env";
 import { verifyTurnstileToken } from "@/lib/turnstile";
+import { problemResponse, successResponse } from "@/lib/api-response";
 
 export function deriveNameFromEmail(email: string): string {
   const localPart = email.split("@")[0] || "User";
@@ -35,15 +35,12 @@ export async function POST(request: Request) {
     const parseResult = RegisterSchema.safeParse(rawBody);
 
     if (!parseResult.success) {
-      return NextResponse.json(
-        {
-          type: "/errors/validation-failed",
-          title: "Bad Request",
-          status: 400,
-          detail: parseResult.error.issues[0]?.message ?? "Validation failed",
-        },
-        { status: 400, headers: { "Content-Type": "application/problem+json" } }
-      );
+      return problemResponse({
+        status: 400,
+        code: "VALIDATION_FAILED",
+        title: "Bad Request",
+        detail: parseResult.error.issues[0]?.message ?? "Validation failed",
+      });
     }
 
     const { email, password, name, turnstileToken } = parseResult.data;
@@ -52,16 +49,13 @@ export async function POST(request: Request) {
     // Verify Password Complexity per SPEC-AUTH-001 Section 4.1.1
     const complexity = validatePasswordComplexity(password);
     if (!complexity.isValid) {
-      return NextResponse.json(
-        {
-          type: "/errors/weak-password",
-          title: "Bad Request",
-          status: 400,
-          detail:
-            "Password must be at least 12 characters and contain at least 1 uppercase letter, 1 number, and 1 special symbol.",
-        },
-        { status: 400, headers: { "Content-Type": "application/problem+json" } }
-      );
+      return problemResponse({
+        status: 400,
+        code: "WEAK_PASSWORD",
+        title: "Bad Request",
+        detail:
+          "Password must be at least 12 characters and contain at least 1 uppercase letter, 1 number, and 1 special symbol.",
+      });
     }
 
     // Verify Cloudflare Turnstile bot token in production or when token provided
@@ -69,15 +63,12 @@ export async function POST(request: Request) {
       const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
       const turnstileResult = await verifyTurnstileToken(turnstileToken, clientIp);
       if (!turnstileResult.success) {
-        return NextResponse.json(
-          {
-            type: "/errors/bot-verification-failed",
-            title: "Forbidden",
-            status: 403,
-            detail: "Security verification failed. Please complete the security check and try again.",
-          },
-          { status: 403, headers: { "Content-Type": "application/problem+json" } }
-        );
+        return problemResponse({
+          status: 403,
+          code: "BOT_VERIFICATION_FAILED",
+          title: "Forbidden",
+          detail: "Security verification failed. Please complete the security check and try again.",
+        });
       }
     }
 
@@ -87,15 +78,12 @@ export async function POST(request: Request) {
     });
 
     if (existingUser) {
-      return NextResponse.json(
-        {
-          type: "/errors/user-already-exists",
-          title: "Conflict",
-          status: 409,
-          detail: "An account with this email address already exists. Please sign in instead.",
-        },
-        { status: 409, headers: { "Content-Type": "application/problem+json" } }
-      );
+      return problemResponse({
+        status: 409,
+        code: "USER_ALREADY_EXISTS",
+        title: "Conflict",
+        detail: "An account with this email address already exists. Please sign in instead.",
+      });
     }
 
     // Hash password with Argon2id
@@ -141,7 +129,7 @@ export async function POST(request: Request) {
     const token = await signSessionToken(rawPayload);
     const cookieOptions = createSessionCookieOptions(isProduction, false);
 
-    const response = NextResponse.json(
+    const response = successResponse(
       {
         success: true,
         redirectUrl: "/onboarding/step-1",
@@ -170,14 +158,12 @@ export async function POST(request: Request) {
 
     return response;
   } catch (error) {
-    return NextResponse.json(
-      {
-        type: "/errors/internal-error",
-        title: "Internal Server Error",
-        status: 500,
-        detail: error instanceof Error ? error.message : "Failed to register user",
-      },
-      { status: 500, headers: { "Content-Type": "application/problem+json" } }
-    );
+    console.error("Error registering user:", error);
+    return problemResponse({
+      status: 500,
+      code: "INTERNAL_ERROR",
+      title: "Internal Server Error",
+      detail: error instanceof Error ? error.message : "Failed to register user",
+    });
   }
 }

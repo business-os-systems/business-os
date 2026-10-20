@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@suite/db";
 import { PERMISSIONS, hasPermission, getAppManifest, APP_MANIFESTS } from "@suite/core";
-
+import { problemResponse, successResponse } from "@/lib/api-response";
 import { getAuthenticatedSession } from "@/lib/session-helper";
 
 export async function POST(
@@ -24,17 +24,14 @@ export async function POST(
     });
 
     if (!user || !user.emailVerified) {
-      return NextResponse.json(
-        {
-          type: "/errors/email-verification-required",
-          title: "Email Verification Required",
-          status: 403,
-          detail:
-            "You must verify your email address before installing new applications to your workspace.",
-          code: "EMAIL_VERIFICATION_REQUIRED",
-        },
-        { status: 403, headers: { "Content-Type": "application/problem+json" } }
-      );
+      return problemResponse({
+        type: "/errors/email-verification-required",
+        title: "Email Verification Required",
+        status: 403,
+        detail:
+          "You must verify your email address before installing new applications to your workspace.",
+        code: "EMAIL_VERIFICATION_REQUIRED",
+      });
     }
 
     // 2. Enforce Capability-Based RBAC Authorization (Purely Permission-Driven, Zero Static Role Checks)
@@ -67,31 +64,25 @@ export async function POST(
       const hasDynamicDbPermission = hasPermission(dbPermissionActions, requiredPermission);
 
       if (!hasDynamicDbPermission) {
-        return NextResponse.json(
-          {
-            type: "/errors/forbidden",
-            title: "Forbidden",
-            status: 403,
-            detail: "You do not have permission to install applications in this workspace.",
-            code: "INSUFFICIENT_PERMISSIONS",
-          },
-          { status: 403, headers: { "Content-Type": "application/problem+json" } }
-        );
+        return problemResponse({
+          type: "/errors/forbidden",
+          title: "Forbidden",
+          status: 403,
+          detail: "You do not have permission to install applications in this workspace.",
+          code: "INSUFFICIENT_PERMISSIONS",
+        });
       }
     }
 
     const { id: appId } = await params;
     if (!appId) {
-      return NextResponse.json(
-        {
-          type: "/errors/bad-request",
-          title: "Bad Request",
-          status: 400,
-          detail: "App ID is required.",
-          code: "APP_ID_REQUIRED",
-        },
-        { status: 400, headers: { "Content-Type": "application/problem+json" } }
-      );
+      return problemResponse({
+        type: "/errors/bad-request",
+        title: "Bad Request",
+        status: 400,
+        detail: "App ID is required.",
+        code: "APP_ID_REQUIRED",
+      });
     }
 
     // 2. Install or enable application in the organization with full manifest metadata
@@ -126,8 +117,7 @@ export async function POST(
       },
     });
 
-
-    return NextResponse.json({
+    return successResponse({
       success: true,
       message: "Application installed successfully.",
       appId: installed.appId,
@@ -135,15 +125,12 @@ export async function POST(
     });
   } catch (error) {
     console.error("Error installing application:", error);
-    return NextResponse.json(
-      {
-        type: "/errors/internal-error",
-        title: "Internal Server Error",
-        status: 500,
-        detail: "An unexpected error occurred while installing the application.",
-        code: "INTERNAL_SERVER_ERROR",
-      },
-      { status: 500, headers: { "Content-Type": "application/problem+json" } }
-    );
+    return problemResponse({
+      type: "/errors/internal-error",
+      title: "Internal Server Error",
+      status: 500,
+      detail: "An unexpected error occurred while installing the application.",
+      code: "INTERNAL_SERVER_ERROR",
+    });
   }
 }

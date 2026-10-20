@@ -261,20 +261,32 @@ async function createAuthenticatedResponse(
   return response;
 }
 
+function applySecurityHeaders(response: NextResponse): NextResponse {
+  response.headers.set("X-Frame-Options", "DENY");
+  response.headers.set("X-Content-Type-Options", "nosniff");
+  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  response.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
+  response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  return response;
+}
+
 export async function middleware(request: NextRequest): Promise<NextResponse> {
   const { pathname, search } = request.nextUrl;
 
+  let response: NextResponse;
   if (isBypassRoute(pathname)) {
-    return NextResponse.next();
+    response = NextResponse.next();
+  } else {
+    const payload = await resolveSessionPayload(request);
+
+    if (!payload) {
+      response = handleUnauthenticatedGate(request, pathname, search);
+    } else {
+      response = await handleAuthenticatedGate(request, payload, pathname);
+    }
   }
 
-  const payload = await resolveSessionPayload(request);
-
-  if (!payload) {
-    return handleUnauthenticatedGate(request, pathname, search);
-  }
-
-  return await handleAuthenticatedGate(request, payload, pathname);
+  return applySecurityHeaders(response);
 }
 
 export const config = {

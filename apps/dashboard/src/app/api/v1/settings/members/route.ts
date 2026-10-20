@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { PERMISSIONS, hasPermission } from "@suite/core";
 import { getAuthenticatedSession } from "@/lib/session-helper";
+import { problemResponse, successResponse } from "@/lib/api-response";
 import {
   listOrganizationMembers,
   inviteOrganizationMember,
@@ -72,31 +73,25 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const userPermissions = session.permissions ?? [];
 
     if (!hasPermission(userPermissions, PERMISSIONS.CORE.USERS_READ)) {
-      return NextResponse.json(
-        {
-          type: "/errors/forbidden",
-          title: "Access Denied",
-          status: 403,
-          detail: `Required permission '${PERMISSIONS.CORE.USERS_READ}' is missing from user claims.`,
-          code: "FORBIDDEN",
-        },
-        { status: 403, headers: { "Content-Type": "application/problem+json" } }
-      );
+      return problemResponse({
+        type: "/errors/forbidden",
+        title: "Access Denied",
+        status: 403,
+        detail: `Required permission '${PERMISSIONS.CORE.USERS_READ}' is missing from user claims.`,
+        code: "FORBIDDEN",
+      });
     }
 
     const members = await listOrganizationMembers(session.organizationId!);
-    return NextResponse.json({ members }, { status: 200 });
+    return successResponse({ members });
   } catch (error) {
-    return NextResponse.json(
-      {
-        type: "/errors/internal-server-error",
-        title: "Internal Server Error",
-        status: 500,
-        detail: error instanceof Error ? error.message : "Internal server error.",
-        code: "INTERNAL_SERVER_ERROR",
-      },
-      { status: 500, headers: { "Content-Type": "application/problem+json" } }
-    );
+    return problemResponse({
+      type: "/errors/internal-server-error",
+      title: "Internal Server Error",
+      status: 500,
+      detail: error instanceof Error ? error.message : "Internal server error.",
+      code: "INTERNAL_SERVER_ERROR",
+    });
   }
 }
 
@@ -114,16 +109,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const userPermissions = session.permissions ?? [];
 
     if (!hasPermission(userPermissions, PERMISSIONS.CORE.USERS_MANAGE)) {
-      return NextResponse.json(
-        {
-          type: "/errors/forbidden",
-          title: "Access Denied",
-          status: 403,
-          detail: `Required permission '${PERMISSIONS.CORE.USERS_MANAGE}' is missing from user claims.`,
-          code: "FORBIDDEN",
-        },
-        { status: 403, headers: { "Content-Type": "application/problem+json" } }
-      );
+      return problemResponse({
+        type: "/errors/forbidden",
+        title: "Access Denied",
+        status: 403,
+        detail: `Required permission '${PERMISSIONS.CORE.USERS_MANAGE}' is missing from user claims.`,
+        code: "FORBIDDEN",
+      });
     }
 
     const body = await request.json().catch(() => ({}));
@@ -132,20 +124,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (isDirectAdd) {
       const parseResult = directAddMemberSchema.safeParse(body);
       if (!parseResult.success) {
-        return NextResponse.json(
-          {
-            type: "/errors/validation-error",
-            title: "Validation Failed",
-            status: 422,
-            detail: parseResult.error.errors[0]?.message || "Invalid member data.",
+        return problemResponse({
+          type: "/errors/validation-error",
+          title: "Validation Failed",
+          status: 422,
+          detail: parseResult.error.errors[0]?.message || "Invalid member data.",
+          extra: {
             errors: parseResult.error.errors.map((e) => ({
               field: e.path.join("."),
               message: e.message,
             })),
-            code: "VALIDATION_ERROR",
           },
-          { status: 422, headers: { "Content-Type": "application/problem+json" } }
-        );
+          code: "VALIDATION_ERROR",
+        });
       }
 
       const { member, inviteUrl } = await createDirectMember(
@@ -154,26 +145,25 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         session.userId
       );
 
-      return NextResponse.json({ member, inviteUrl }, { status: 201 });
+      return successResponse({ member, inviteUrl }, { status: 201 });
     }
 
     // Default: Invitation creation
     const parseResult = inviteMemberSchema.safeParse(body);
     if (!parseResult.success) {
-      return NextResponse.json(
-        {
-          type: "/errors/validation-error",
-          title: "Validation Failed",
-          status: 422,
-          detail: parseResult.error.errors[0]?.message || "Invalid input payload.",
+      return problemResponse({
+        type: "/errors/validation-error",
+        title: "Validation Failed",
+        status: 422,
+        detail: parseResult.error.errors[0]?.message || "Invalid input payload.",
+        extra: {
           errors: parseResult.error.errors.map((e) => ({
             field: e.path.join("."),
             message: e.message,
           })),
-          code: "VALIDATION_ERROR",
         },
-        { status: 422, headers: { "Content-Type": "application/problem+json" } }
-      );
+        code: "VALIDATION_ERROR",
+      });
     }
 
     const result = await inviteOrganizationMember(
@@ -182,43 +172,34 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       parseResult.data
     );
 
-    return NextResponse.json(result, { status: 201 });
+    return successResponse(result, { status: 201 });
   } catch (error) {
     if (error instanceof ConflictError) {
-      return NextResponse.json(
-        {
-          type: "/errors/conflict",
-          title: "Member Already Exists",
-          status: 409,
-          detail: error.message,
-          code: "MEMBER_CONFLICT",
-        },
-        { status: 409, headers: { "Content-Type": "application/problem+json" } }
-      );
+      return problemResponse({
+        type: "/errors/conflict",
+        title: "Member Already Exists",
+        status: 409,
+        detail: error.message,
+        code: "MEMBER_CONFLICT",
+      });
     }
 
     if (error instanceof NotFoundError) {
-      return NextResponse.json(
-        {
-          type: "/errors/not-found",
-          title: "Resource Not Found",
-          status: 404,
-          detail: error.message,
-          code: "NOT_FOUND",
-        },
-        { status: 404, headers: { "Content-Type": "application/problem+json" } }
-      );
+      return problemResponse({
+        type: "/errors/not-found",
+        title: "Resource Not Found",
+        status: 404,
+        detail: error.message,
+        code: "NOT_FOUND",
+      });
     }
 
-    return NextResponse.json(
-      {
-        type: "/errors/internal-server-error",
-        title: "Internal Server Error",
-        status: 500,
-        detail: error instanceof Error ? error.message : "Internal server error.",
-        code: "INTERNAL_SERVER_ERROR",
-      },
-      { status: 500, headers: { "Content-Type": "application/problem+json" } }
-    );
+    return problemResponse({
+      type: "/errors/internal-server-error",
+      title: "Internal Server Error",
+      status: 500,
+      detail: error instanceof Error ? error.message : "Internal server error.",
+      code: "INTERNAL_SERVER_ERROR",
+    });
   }
 }

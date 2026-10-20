@@ -9,6 +9,7 @@ import {
 } from "@suite/auth";
 import { isProduction } from "@/lib/env";
 import { getAuthenticatedSession } from "@/lib/session-helper";
+import { problemResponse, successResponse } from "@/lib/api-response";
 import { z } from "zod";
 
 const step2Schema = z.object({
@@ -29,16 +30,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const body = await request.json().catch(() => null);
     const parseResult = step2Schema.safeParse(body);
     if (!parseResult.success) {
-      return NextResponse.json(
-        {
-          type: "/errors/validation-error",
-          title: "Bad Request",
-          status: 400,
-          detail: parseResult.error.errors[0]?.message || "Invalid application selection",
-          code: "VALIDATION_ERROR",
-        },
-        { status: 400, headers: { "Content-Type": "application/problem+json" } }
-      );
+      return problemResponse({
+        status: 400,
+        code: "VALIDATION_ERROR",
+        title: "Bad Request",
+        detail: parseResult.error.errors[0]?.message || "Invalid application selection",
+      });
     }
 
     const { selectedApps } = parseResult.data;
@@ -82,7 +79,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const token = await signSessionToken(updatedPayload);
     const cookieOptions = createSessionCookieOptions(isProduction, true);
 
-    const response = NextResponse.json({
+    const response = successResponse({
       success: true,
       nextStep: 3,
       redirectUrl: "/onboarding/step-3",
@@ -101,15 +98,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return response;
   } catch (error) {
     console.error("Error in onboarding step 2:", error);
-    return NextResponse.json(
-      {
-        type: "/errors/internal-error",
-        title: "Internal Server Error",
-        status: 500,
-        detail: "Failed to persist application selection.",
-        code: "INTERNAL_SERVER_ERROR",
-      },
-      { status: 500, headers: { "Content-Type": "application/problem+json" } }
-    );
+    return problemResponse({
+      status: 500,
+      code: "INTERNAL_SERVER_ERROR",
+      title: "Internal Server Error",
+      detail: "Failed to persist application selection.",
+    });
   }
 }

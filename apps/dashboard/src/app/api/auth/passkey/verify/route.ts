@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@suite/db";
 import {
@@ -12,6 +11,7 @@ import { AUDIT_EVENT_TYPES } from "@suite/core";
 import { isProduction } from "@/lib/env";
 import { verifyTurnstileToken } from "@/lib/turnstile";
 import { resolvePostLoginRoute } from "@/lib/route-dispatcher";
+import { problemResponse, successResponse } from "@/lib/api-response";
 
 const PasskeyVerifySchema = z.object({
   id: z.string({ required_error: "Credential ID is required" }).min(1, "Credential ID is required"),
@@ -27,15 +27,12 @@ export async function POST(request: Request) {
     const parseResult = PasskeyVerifySchema.safeParse(rawBody);
 
     if (!parseResult.success) {
-      return NextResponse.json(
-        {
-          type: "/errors/validation-failed",
-          title: "Bad Request",
-          status: 400,
-          detail: parseResult.error.issues[0]?.message ?? "Invalid passkey payload",
-        },
-        { status: 400, headers: { "Content-Type": "application/problem+json" } }
-      );
+      return problemResponse({
+        status: 400,
+        code: "VALIDATION_FAILED",
+        title: "Bad Request",
+        detail: parseResult.error.issues[0]?.message ?? "Invalid passkey payload",
+      });
     }
 
     const { id, turnstileToken } = parseResult.data;
@@ -45,15 +42,12 @@ export async function POST(request: Request) {
       const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
       const turnstileResult = await verifyTurnstileToken(turnstileToken, clientIp);
       if (!turnstileResult.success) {
-        return NextResponse.json(
-          {
-            type: "/errors/bot-verification-failed",
-            title: "Forbidden",
-            status: 403,
-            detail: "Security verification failed. Please complete the security check and try again.",
-          },
-          { status: 403, headers: { "Content-Type": "application/problem+json" } }
-        );
+        return problemResponse({
+          status: 403,
+          code: "BOT_VERIFICATION_FAILED",
+          title: "Forbidden",
+          detail: "Security verification failed. Please complete the security check and try again.",
+        });
       }
     }
 
@@ -91,15 +85,12 @@ export async function POST(request: Request) {
     });
 
     if (!passkey || !passkey.user) {
-      return NextResponse.json(
-        {
-          type: "/errors/invalid-credentials",
-          title: "Unauthorized",
-          status: 401,
-          detail: "Passkey credential not recognized or unregistered.",
-        },
-        { status: 401, headers: { "Content-Type": "application/problem+json" } }
-      );
+      return problemResponse({
+        status: 401,
+        code: "INVALID_CREDENTIALS",
+        title: "Unauthorized",
+        detail: "Passkey credential not recognized or unregistered.",
+      });
     }
 
     // Increment credential use counter
@@ -124,15 +115,12 @@ export async function POST(request: Request) {
 
     // Check workspace membership if onboarding is completed
     if (onboardingStatus !== "IN_PROGRESS" && !organization) {
-      return NextResponse.json(
-        {
-          type: "/errors/workspace-access-denied",
-          title: "Forbidden",
-          status: 403,
-          detail: "Account is not associated with an active enterprise workspace.",
-        },
-        { status: 403, headers: { "Content-Type": "application/problem+json" } }
-      );
+      return problemResponse({
+        status: 403,
+        code: "WORKSPACE_ACCESS_DENIED",
+        title: "Forbidden",
+        detail: "Account is not associated with an active enterprise workspace.",
+      });
     }
 
     const userPermissions = extractEffectivePermissions(dbUser.branchRoles, { branchId });
@@ -185,7 +173,7 @@ export async function POST(request: Request) {
       },
     });
 
-    const response = NextResponse.json({
+    const response = successResponse({
       success: true,
       redirectUrl,
       themePreference,
@@ -215,14 +203,12 @@ export async function POST(request: Request) {
 
     return response;
   } catch (error) {
-    return NextResponse.json(
-      {
-        type: "/errors/internal-error",
-        title: "Internal Server Error",
-        status: 500,
-        detail: error instanceof Error ? error.message : "Failed to verify passkey",
-      },
-      { status: 500, headers: { "Content-Type": "application/problem+json" } }
-    );
+    console.error("Error verifying passkey:", error);
+    return problemResponse({
+      status: 500,
+      code: "INTERNAL_ERROR",
+      title: "Internal Server Error",
+      detail: error instanceof Error ? error.message : "Failed to verify passkey",
+    });
   }
 }

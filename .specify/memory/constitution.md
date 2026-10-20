@@ -140,6 +140,13 @@ Except for freeform visual authoring canvas engines (such as the Website Builder
 10. **Enterprise CORS & Preflight Lockdown Law:** Wildcard `*` origins paired with credentials are strictly prohibited per W3C/WHATWG specifications. All CORS middleware MUST enforce strict whitelist validation against pre-declared `CORS_ALLOWED_ORIGINS`, set `Vary: Origin`, and immediately reject unauthorized `OPTIONS` preflight requests with HTTP 403 and `type: "/errors/cors-origin-denied"` using readable, self-documenting code.
 *Rationale: Config-driven presentation eliminates string duplication, ensures 100% design system token uniformity, enables effortless internationalization (i18n), allows modular apps to dynamically register new settings and views without editing core templates, and centralizes declarative permission gating.*
 
+### XIV. Universal API Response & RFC 7807 Standardization Law
+Constructing ad-hoc, inline raw JSON responses, manual problem details payloads, or ad-hoc response headers across route handlers is **STRICTLY FORBIDDEN**.
+1. **Mandatory Standardized Error Responses:** Every error response across Next.js and Hono route handlers MUST use centralized helpers (`problemResponse()` / `createProblemEnvelope()`). Writing raw `NextResponse.json({ type: "/errors/...", ... })` with manual headers is strictly prohibited.
+2. **Mandatory Standardized Success Responses:** Every successful API response MUST use unified response helpers (`successResponse<T>(data, options)`), guaranteeing uniform envelope schemas and content negotiation headers.
+3. **Deterministic Option A Relative URIs:** All error type URIs MUST be derived dynamically as relative URIs (`/errors/<slug>`) from canonical uppercase error codes. Absolute URLs with hostnames or generic `"about:blank"` strings are strictly banned.
+*Rationale: Centralized response envelopes eliminate repetitive boilerplate, guarantee strict RFC 7807 compliance, prevent header injection or omission bugs, and provide consistent telemetry and client error handling.*
+
 ## Architectural Constraints & Technical Standards
 
 ### 1. Monorepo Orchestration & Workspace Topology

@@ -7,6 +7,7 @@ import {
 } from "@suite/auth/session";
 import { isProduction } from "@/lib/env";
 import { getAuthenticatedSession } from "@/lib/session-helper";
+import { problemResponse, successResponse } from "@/lib/api-response";
 import { z } from "zod";
 
 const step1Schema = z.object({
@@ -75,23 +76,19 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       ? (orgMeta.industries as string[])
       : [];
 
-    return NextResponse.json({
+    return successResponse({
       organizationName: org.name,
       organizationSlug: org.slug,
       industries,
     });
   } catch (error) {
     console.error("Error fetching onboarding step 1 data:", error);
-    return NextResponse.json(
-      {
-        type: "/errors/internal-error",
-        title: "Internal Server Error",
-        status: 500,
-        detail: "Failed to retrieve existing organization data.",
-        code: "INTERNAL_SERVER_ERROR",
-      },
-      { status: 500, headers: { "Content-Type": "application/problem+json" } }
-    );
+    return problemResponse({
+      status: 500,
+      code: "INTERNAL_SERVER_ERROR",
+      title: "Internal Server Error",
+      detail: "Failed to retrieve existing organization data.",
+    });
   }
 }
 
@@ -106,16 +103,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const body = await request.json().catch(() => null);
     const parseResult = step1Schema.safeParse(body);
     if (!parseResult.success) {
-      return NextResponse.json(
-        {
-          type: "/errors/validation-error",
-          title: "Bad Request",
-          status: 400,
-          detail: parseResult.error.errors[0]?.message || "Invalid input data",
-          code: "VALIDATION_ERROR",
-        },
-        { status: 400, headers: { "Content-Type": "application/problem+json" } }
-      );
+      return problemResponse({
+        status: 400,
+        code: "VALIDATION_ERROR",
+        title: "Bad Request",
+        detail: parseResult.error.errors[0]?.message || "Invalid input data",
+      });
     }
 
     const { organizationName, organizationSlug, industries } = parseResult.data;
@@ -137,16 +130,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     });
 
     if (existingOrgWithSlug && !userOrgIds.has(existingOrgWithSlug.id)) {
-      return NextResponse.json(
-        {
-          type: "/errors/domain-taken",
-          title: "Conflict",
-          status: 409,
-          detail: "Workspace domain is already taken. Please choose another domain.",
-          code: "DOMAIN_TAKEN",
-        },
-        { status: 409, headers: { "Content-Type": "application/problem+json" } }
-      );
+      return problemResponse({
+        status: 409,
+        code: "DOMAIN_TAKEN",
+        title: "Conflict",
+        detail: "Workspace domain is already taken. Please choose another domain.",
+      });
     }
 
     // Determine if updating an existing user org or creating fresh
@@ -337,7 +326,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const token = await signSessionToken(updatedPayload);
     const cookieOptions = createSessionCookieOptions(isProduction, true);
 
-    const response = NextResponse.json({
+    const response = successResponse({
       success: true,
       organizationId: result.org.id,
       nextStep: 2,
@@ -359,27 +348,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     console.error("Error in onboarding step 1:", error);
     const err = error as { code?: string; message?: string };
     if (err?.code === "P2002" || err?.message?.includes("Unique constraint failed")) {
-      return NextResponse.json(
-        {
-          type: "/errors/domain-taken",
-          title: "Conflict",
-          status: 409,
-          detail: "This workspace domain was just claimed by another organization. Please choose a different domain.",
-          code: "DOMAIN_TAKEN",
-        },
-        { status: 409, headers: { "Content-Type": "application/problem+json" } }
-      );
+      return problemResponse({
+        status: 409,
+        code: "DOMAIN_TAKEN",
+        title: "Conflict",
+        detail: "This workspace domain was just claimed by another organization. Please choose a different domain.",
+      });
     }
 
-    return NextResponse.json(
-      {
-        type: "/errors/internal-error",
-        title: "Internal Server Error",
-        status: 500,
-        detail: "Failed to create organization and initialize workspace.",
-        code: "INTERNAL_SERVER_ERROR",
-      },
-      { status: 500, headers: { "Content-Type": "application/problem+json" } }
-    );
+    return problemResponse({
+      status: 500,
+      code: "INTERNAL_SERVER_ERROR",
+      title: "Internal Server Error",
+      detail: "Failed to create organization and initialize workspace.",
+    });
   }
 }

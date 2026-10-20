@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { PageService } from "@suite/website-builder/services";
+import { resolveTenantContext } from "@/lib/tenant-context";
+import { problemResponse } from "@/lib/problem-response";
 
 const CreatePageBodySchema = z.object({
   title: z.string().min(1, "Page title is required"),
@@ -15,29 +17,23 @@ export async function GET(
 ) {
   try {
     const { siteId } = await params;
-    const tenantId = request.headers.get("x-tenant-id");
-    if (!tenantId) {
-      return NextResponse.json(
-        {
-          type: "/errors/unauthorized",
-          code: "UNAUTHORIZED",
-          title: "Missing Tenant Context",
-          status: 401,
-          detail: "Organization context header (x-tenant-id) is required to list pages.",
-        },
-        { status: 401 }
-      );
+    const tenantContext = await resolveTenantContext(request);
+    if (!tenantContext.ok) {
+      return tenantContext.response;
     }
 
     const service = new PageService();
-    const pages = await service.listPages(tenantId, siteId);
+    const pages = await service.listPages(tenantContext.organizationId, siteId);
 
     return NextResponse.json({ pages }, { status: 200 });
   } catch (err: unknown) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Failed to fetch pages" },
-      { status: 500 }
-    );
+    console.error("Error fetching CMS pages for site:", err);
+    return problemResponse({
+      status: 500,
+      code: "INTERNAL_ERROR",
+      title: "Internal Server Error",
+      detail: "An unexpected error occurred while fetching pages.",
+    });
   }
 }
 
@@ -47,33 +43,21 @@ export async function POST(
 ) {
   try {
     const { siteId } = await params;
-    const tenantId = request.headers.get("x-tenant-id");
-    if (!tenantId) {
-      return NextResponse.json(
-        {
-          type: "/errors/unauthorized",
-          code: "UNAUTHORIZED",
-          title: "Missing Tenant Context",
-          status: 401,
-          detail: "Organization context header (x-tenant-id) is required to create a page.",
-        },
-        { status: 401 }
-      );
+    const tenantContext = await resolveTenantContext(request);
+    if (!tenantContext.ok) {
+      return tenantContext.response;
     }
+
     const rawBody = await request.json().catch(() => ({}));
 
     const parsed = CreatePageBodySchema.safeParse(rawBody);
     if (!parsed.success) {
-      return NextResponse.json(
-        {
-          type: "/errors/validation-error",
-          code: "VALIDATION_ERROR",
-          title: "Invalid Page Creation Payload",
-          status: 400,
-          detail: parsed.error.issues[0]?.message ?? "Validation failed",
-        },
-        { status: 400 }
-      );
+      return problemResponse({
+        status: 400,
+        code: "VALIDATION_ERROR",
+        title: "Invalid Page Creation Payload",
+        detail: parsed.error.issues[0]?.message ?? "Validation failed",
+      });
     }
 
     const body = parsed.data;
@@ -84,7 +68,7 @@ export async function POST(
 
     const service = new PageService();
     const page = await service.createPage({
-      organizationId: tenantId,
+      organizationId: tenantContext.organizationId,
       siteId,
       title,
       slug,
@@ -94,9 +78,12 @@ export async function POST(
 
     return NextResponse.json({ success: true, page }, { status: 201 });
   } catch (err: unknown) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Failed to create page" },
-      { status: 500 }
-    );
+    console.error("Error creating CMS page for site:", err);
+    return problemResponse({
+      status: 500,
+      code: "INTERNAL_ERROR",
+      title: "Internal Server Error",
+      detail: "An unexpected error occurred while creating page.",
+    });
   }
 }
