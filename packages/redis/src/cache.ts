@@ -6,6 +6,7 @@ export interface CacheManager {
   set(tenantId: string, key: string, value: unknown, ttlSeconds?: number): Promise<void>;
   del(tenantId: string, key: string): Promise<void>;
   invalidatePattern(tenantId: string, pattern: string): Promise<void>;
+  getOrSet<T>(tenantId: string, key: string, fetchFn: () => Promise<T>, ttlSeconds?: number): Promise<T>;
   formatKey(tenantId: string, key: string): string;
 }
 
@@ -60,6 +61,32 @@ export function createCacheManager(client: Redis = defaultRedis): CacheManager {
     async del(tenantId: string, key: string): Promise<void> {
       const fullKey = formatTenantKey(tenantId, key);
       await client.del(fullKey);
+    },
+
+    async getOrSet<T>(
+      tenantId: string,
+      key: string,
+      fetchFn: () => Promise<T>,
+      ttlSeconds?: number
+    ): Promise<T> {
+      try {
+        const cached = await this.get<T>(tenantId, key);
+        if (cached !== null) {
+          return cached;
+        }
+      } catch {
+        // Fall back directly to fetchFn if cache retrieval fails
+      }
+
+      const fresh = await fetchFn();
+      if (fresh !== undefined && fresh !== null) {
+        try {
+          await this.set(tenantId, key, fresh, ttlSeconds);
+        } catch {
+          // Ignore cache write error
+        }
+      }
+      return fresh;
     },
 
     async invalidatePattern(tenantId: string, pattern: string): Promise<void> {

@@ -22,6 +22,7 @@ export function requestIdMiddleware(): MiddlewareHandler {
 
     c.set("requestId", requestId);
     c.header("x-request-id", requestId);
+    c.header("x-correlation-id", requestId);
 
     await next();
   };

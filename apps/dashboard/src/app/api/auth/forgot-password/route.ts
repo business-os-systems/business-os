@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@suite/db";
-import { checkRateLimit } from "@suite/redis";
+import { checkRateLimit, enqueueEmail } from "@suite/redis";
 import { createPasswordResetToken, sendEmail } from "@suite/auth";
 import { isProduction } from "@/lib/env";
 import { verifyTurnstileToken } from "@/lib/turnstile";
-import { problemResponse } from "@/lib/problem-response";
+import { problemResponse, successResponse } from "@/lib/api-response";
 
 const requestBodySchema = z.object({
   email: z.string().email("Valid email address is required"),
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     if (!user) {
       // Security: Do not reveal email existence to prevent user enumeration
-      return NextResponse.json({
+      return successResponse({
         success: true,
         message: "If an account exists with this email, a password reset link has been dispatched.",
       });
@@ -83,11 +83,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // 3. Generate 15-minute single-use reset token
     const { rawToken } = await createPasswordResetToken(normalizedEmail, prisma);
 
-    // 4. Dispatch email via pluggable transporter
-    const origin = request.nextUrl.origin || "http://localhost:3001";
+    // 4. Asynchronously enqueue email dispatch via BullMQ background queue (Issue 54)
+    const origin = request.nextUrl.origin;
     const resetUrl = `${origin}/reset-password?token=${rawToken}`;
-
-    await sendEmail({
+    const emailPayload = {
       to: normalizedEmail,
       subject: "Reset your password - Business OS",
       html: `
@@ -107,23 +106,27 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         </div>
       `,
       text: `Reset your Business OS password by visiting: ${resetUrl}`,
-    });
+    };
 
-    return NextResponse.json({
+    try {
+      await enqueueEmail(emailPayload);
+    } catch {
+      // Graceful fallback to direct dispatch if redis queue is unavailable
+      await sendEmail(emailPayload);
+    }
+
+    return successResponse({
       success: true,
       message: "If an account exists with this email, a password reset link has been dispatched.",
     });
   } catch (error) {
     console.error("Error processing password recovery request:", error);
-    return NextResponse.json(
-      {
-        type: "/errors/internal-error",
-        title: "Internal Server Error",
-        status: 500,
-        detail: "An unexpected error occurred while processing password recovery.",
-        code: "INTERNAL_SERVER_ERROR",
-      },
-      { status: 500, headers: { "Content-Type": "application/problem+json" } }
-    );
+    return problemResponse({
+      type: "/errors/internal-error",
+      title: "Internal Server Error",
+      status: 500,
+      detail: "An unexpected error occurred while processing password recovery.",
+      code: "INTERNAL_SERVER_ERROR",
+    });
   }
 }

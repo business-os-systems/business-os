@@ -26,12 +26,8 @@ export async function GET(
   // 1. Generate cryptographically secure 32-byte CSRF state nonce
   const state = crypto.randomBytes(32).toString("hex");
 
-  // 2. Resolve callback URL based on request origin or canonical app URL
-  const origin =
-    request.nextUrl.origin ||
-    process.env.NEXT_PUBLIC_APP_URL ||
-    process.env.BETTER_AUTH_URL ||
-    "http://localhost:3001";
+  // 2. Resolve callback URL based on incoming request origin
+  const origin = request.nextUrl.origin;
   const redirectUri = `${origin}/api/auth/callback/${providerId}`;
 
   // 3. Obtain provider authorization consent URL

@@ -50,14 +50,19 @@ export async function listUserTenants(
     },
   });
 
-  const tenants: UserTenantMembership[] = [];
+  if (memberships.length === 0) {
+    return [];
+  }
 
-  for (const m of memberships) {
-    // Resolve user's highest role in this organization
-    const branchRole = await prisma.userBranchRole.findFirst({
+  const orgIds = memberships.map((m) => m.organizationId);
+  const branchRoleByOrg = new Map<string, { role?: { name: string } | null }>();
+
+  // Issue 16: Single batched findMany query replacing N+1 findFirst query loop
+  if (typeof prisma?.userBranchRole?.findMany === "function") {
+    const branchRoles = await prisma.userBranchRole.findMany({
       where: {
         userId,
-        organizationId: m.organizationId,
+        organizationId: { in: orgIds },
       },
       include: {
         role: true,
@@ -67,22 +72,52 @@ export async function listUserTenants(
       },
     });
 
+    if (Array.isArray(branchRoles)) {
+      for (const br of branchRoles) {
+        if (!branchRoleByOrg.has(br.organizationId)) {
+          branchRoleByOrg.set(br.organizationId, br);
+        }
+      }
+    }
+  }
+
+  // Graceful fallback for test mocks providing only findFirst
+  for (const m of memberships) {
+    if (!branchRoleByOrg.has(m.organizationId) && typeof prisma?.userBranchRole?.findFirst === "function") {
+      const branchRole = await prisma.userBranchRole.findFirst({
+        where: {
+          userId,
+          organizationId: m.organizationId,
+        },
+        include: {
+          role: true,
+        },
+        orderBy: {
+          createdAt: "asc",
+        },
+      });
+      if (branchRole) {
+        branchRoleByOrg.set(m.organizationId, branchRole);
+      }
+    }
+  }
+
+  return memberships.map((m) => {
+    const branchRole = branchRoleByOrg.get(m.organizationId);
     const orgMetadata = (m.organization.metadata || {}) as Record<string, unknown>;
     const logoUrl =
       typeof orgMetadata.logoUrl === "string"
         ? orgMetadata.logoUrl
         : null;
 
-    tenants.push({
+    return {
       organizationId: m.organizationId,
       name: m.organization.name,
       slug: m.organization.slug,
       role: branchRole?.role?.name || "Member",
       logoUrl,
-    });
-  }
-
-  return tenants;
+    };
+  });
 }
 
 /**

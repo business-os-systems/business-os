@@ -7,6 +7,10 @@ import {
   switchActiveTenant,
 } from "../src/session/index.js";
 import {
+  getUserRolePermissions,
+  invalidateUserPermissionsCache,
+} from "../src/index.js";
+import {
   UnauthorizedError,
   ForbiddenError,
   NotFoundError,
@@ -338,6 +342,56 @@ describe("Active Branch Session Context Engine", () => {
       expect(tenants[1]?.logoUrl).toBeNull();
     });
 
+    it("batches userBranchRole lookup via findMany avoiding N+1 loops (Issue 16)", async () => {
+      let findManyCalls = 0;
+      let findFirstCalls = 0;
+
+      const mockPrisma = {
+        userOrganization: {
+          findMany: async () => [
+            {
+              userId: "user_multi_02",
+              organizationId: "org_1",
+              organization: { id: "org_1", name: "Org 1", slug: "org-1", metadata: {} },
+            },
+            {
+              userId: "user_multi_02",
+              organizationId: "org_2",
+              organization: { id: "org_2", name: "Org 2", slug: "org-2", metadata: {} },
+            },
+            {
+              userId: "user_multi_02",
+              organizationId: "org_3",
+              organization: { id: "org_3", name: "Org 3", slug: "org-3", metadata: {} },
+            },
+          ],
+        },
+        userBranchRole: {
+          findMany: async () => {
+            findManyCalls++;
+            return [
+              { organizationId: "org_1", role: { name: "Admin", slug: "admin" } },
+              { organizationId: "org_2", role: { name: "Staff", slug: "staff" } },
+              { organizationId: "org_3", role: { name: "Lead", slug: "lead" } },
+            ];
+          },
+          findFirst: async () => {
+            findFirstCalls++;
+            return null;
+          },
+        },
+      } as unknown as PrismaClient;
+
+      const tenants = await listUserTenants("user_multi_02", mockPrisma);
+
+      expect(tenants).toHaveLength(3);
+      expect(findManyCalls).toBe(1);
+      expect(findFirstCalls).toBe(0);
+      expect(tenants[0]?.role).toBe("Admin");
+      expect(tenants[1]?.role).toBe("Staff");
+      expect(tenants[2]?.role).toBe("Lead");
+    });
+
     it("switches active tenant context and extracts branch and dynamic permissions", async () => {
       const mockPrisma = {
         userOrganization: {
@@ -401,6 +455,51 @@ describe("Active Branch Session Context Engine", () => {
           prisma: mockPrisma,
         })
       ).rejects.toThrow(ForbiddenError);
+    });
+
+    it("resolves role permissions with Redis cache-aside (Issue 53)", async () => {
+      let dbQueryCount = 0;
+      const mockPrisma = {
+        userBranchRole: {
+          findMany: async () => {
+            dbQueryCount++;
+            return [
+              {
+                branchId: "branch_spa",
+                role: {
+                  permissions: [
+                    { permission: { action: "spa:services:book" } },
+                    { permission: { action: "spa:services:read" } },
+                  ],
+                },
+              },
+            ];
+          },
+        },
+      } as unknown as PrismaClient;
+
+      const userId = "user_spa_therapist_01";
+      const orgId = "org_wellness_resort";
+      const branchId = "branch_spa";
+
+      // Invalidate any prior cache
+      await invalidateUserPermissionsCache(orgId, userId);
+
+      // First call executes DB query
+      const perms1 = await getUserRolePermissions(mockPrisma, userId, orgId, branchId);
+      expect(perms1).toEqual(["spa:services:book", "spa:services:read"]);
+      expect(dbQueryCount).toBe(1);
+
+      // Second call serves from Redis cache without querying DB
+      const perms2 = await getUserRolePermissions(mockPrisma, userId, orgId, branchId);
+      expect(perms2).toEqual(["spa:services:book", "spa:services:read"]);
+      expect(dbQueryCount).toBe(1);
+
+      // Invalidate and verify DB is queried again
+      await invalidateUserPermissionsCache(orgId, userId);
+      const perms3 = await getUserRolePermissions(mockPrisma, userId, orgId, branchId);
+      expect(perms3).toEqual(["spa:services:book", "spa:services:read"]);
+      expect(dbQueryCount).toBe(2);
     });
   });
 });

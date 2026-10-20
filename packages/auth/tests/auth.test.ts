@@ -353,6 +353,47 @@ describe("Platform Core Auth Engine & Better-Auth Integration", () => {
       // Must be 64-character hex string (SHA-256)
       expect(record.recordHash).toMatch(/^[a-f0-9]{64}$/);
     });
+
+    it("chains recordHash cryptographically using prevHash from preceding entry (Issue 22)", async () => {
+      const { recordSecurityAuditLog } = await import("../src/index.js");
+
+      const createdRecords: Array<{ prevHash: string | null; recordHash: string }> = [];
+      let storedRecord: { recordHash: string } | null = null;
+
+      const mockPrisma = {
+        auditLog: {
+          findFirst: async () => storedRecord,
+          create: async ({ data }: { data: { prevHash: string | null; recordHash: string } }) => {
+            storedRecord = { recordHash: data.recordHash };
+            createdRecords.push(data);
+            return { id: `audit_${createdRecords.length}`, ...data };
+          },
+        },
+      } as unknown as PrismaClient;
+
+      // 1. First record (Genesis)
+      await recordSecurityAuditLog({
+        prisma: mockPrisma,
+        organizationId: "org_chain_test",
+        userId: "user_1",
+        action: AUDIT_EVENT_TYPES.AUTH_PASSWORD_RESET,
+      });
+
+      // 2. Second record (Chained to first)
+      await recordSecurityAuditLog({
+        prisma: mockPrisma,
+        organizationId: "org_chain_test",
+        userId: "user_1",
+        action: AUDIT_EVENT_TYPES.AUTH_PASSKEY_VERIFIED,
+      });
+
+      expect(createdRecords).toHaveLength(2);
+      const first = createdRecords[0]!;
+      const second = createdRecords[1]!;
+      expect(first.prevHash).toBeNull();
+      expect(second.prevHash).toBe(first.recordHash);
+      expect(second.recordHash).not.toBe(first.recordHash);
+    });
   });
 });
 

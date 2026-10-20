@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@suite/db";
-import { checkRateLimit } from "@suite/redis";
-import { problemResponse } from "@/lib/problem-response";
+import { checkRateLimit, enqueueEmail } from "@suite/redis";
+import { problemResponse, successResponse } from "@/lib/problem-response";
 import {
   createEmailVerificationToken,
   sendEmail,
@@ -63,14 +63,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     if (!user) {
       // Do not leak email existence to prevent user enumeration
-      return NextResponse.json({
+      return successResponse({
         success: true,
         message: "If an account exists with this email, a verification link has been dispatched.",
       });
     }
 
     if (user.emailVerified) {
-      return NextResponse.json({
+      return successResponse({
         success: true,
         message: "Email is already verified.",
         alreadyVerified: true,
@@ -99,11 +99,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // 5. Generate secure verification token (24-hour expiry)
     const { rawToken } = await createEmailVerificationToken(normalizedEmail, prisma);
 
-    // 6. Dispatch email via pluggable transporter
-    const origin = request.nextUrl.origin || "http://localhost:3001";
+    // 6. Asynchronously dispatch email via BullMQ queue (Issue 54) with fallback
+    const origin = request.nextUrl.origin;
     const verificationUrl = `${origin}/api/auth/verify-email/confirm?token=${rawToken}`;
-
-    await sendEmail({
+    const emailPayload = {
       to: normalizedEmail,
       subject: "Verify your email address - Business OS",
       html: `
@@ -123,23 +122,26 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         </div>
       `,
       text: `Verify your Business OS email address by visiting: ${verificationUrl}`,
-    });
+    };
 
-    return NextResponse.json({
+    try {
+      await enqueueEmail(emailPayload);
+    } catch {
+      await sendEmail(emailPayload);
+    }
+
+    return successResponse({
       success: true,
       message: "Verification link dispatched",
     });
   } catch (error) {
     console.error("Error dispatching email verification link:", error);
-    return NextResponse.json(
-      {
-        type: "/errors/internal-error",
-        title: "Internal Server Error",
-        status: 500,
-        detail: "An unexpected error occurred while dispatching verification email.",
-        code: "INTERNAL_SERVER_ERROR",
-      },
-      { status: 500, headers: { "Content-Type": "application/problem+json" } }
-    );
+    return problemResponse({
+      type: "/errors/internal-error",
+      title: "Internal Server Error",
+      status: 500,
+      detail: "An unexpected error occurred while dispatching verification email.",
+      code: "INTERNAL_SERVER_ERROR",
+    });
   }
 }

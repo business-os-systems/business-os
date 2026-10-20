@@ -58,3 +58,36 @@ export function createWorker<DataType = unknown, ResultType = unknown>(
     ...options,
   });
 }
+
+export const EMAIL_QUEUE_NAME = "email-queue";
+
+export interface EmailJobPayload {
+  to: string;
+  subject: string;
+  html: string;
+  text?: string;
+  from?: string;
+  organizationId?: string;
+}
+
+let emailQueueSingleton: Queue<EmailJobPayload> | null = null;
+
+export function getEmailQueue(connection: Redis = defaultRedis): Queue<EmailJobPayload> {
+  if (!emailQueueSingleton) {
+    emailQueueSingleton = createQueue<EmailJobPayload>(EMAIL_QUEUE_NAME, {}, connection);
+  }
+  return emailQueueSingleton;
+}
+
+/**
+ * Enqueues an email job into the BullMQ background email queue (Issue 54).
+ * Returns the enqueued BullMQ job ID.
+ */
+export async function enqueueEmail(
+  payload: EmailJobPayload,
+  connection: Redis = defaultRedis
+): Promise<string> {
+  const queue = getEmailQueue(connection);
+  const job = await queue.add("send-email", payload);
+  return job.id ?? "";
+}

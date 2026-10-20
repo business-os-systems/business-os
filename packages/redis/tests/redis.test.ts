@@ -156,6 +156,30 @@ describe("Redis & Distributed Mutex Engine (@suite/redis)", () => {
       // Tenant B's room key is untouched!
       expect(await cache.get(tenantB, "rooms:101")).toEqual({ occupied: false });
     });
+
+    it("transparently caches and returns result using getOrSet (Issue 53)", async () => {
+      const tenant = "test_org_cache_aside";
+      const key = "role:permissions:cashier";
+      let computeCount = 0;
+
+      const fetcher = async () => {
+        computeCount++;
+        return ["pos:orders:create", "pos:orders:read"];
+      };
+
+      // First call executes fetcher and populates cache
+      const result1 = await cache.getOrSet(tenant, key, fetcher, 60);
+      expect(result1).toEqual(["pos:orders:create", "pos:orders:read"]);
+      expect(computeCount).toBe(1);
+
+      // Second call returns from cache without executing fetcher
+      const result2 = await cache.getOrSet(tenant, key, fetcher, 60);
+      expect(result2).toEqual(["pos:orders:create", "pos:orders:read"]);
+      expect(computeCount).toBe(1);
+
+      // Cleanup
+      await cache.del(tenant, key);
+    });
   });
 
   describe("4. BullMQ Queue & Worker Instantiation", () => {
@@ -172,6 +196,30 @@ describe("Redis & Distributed Mutex Engine (@suite/redis)", () => {
 
       // Close test queue
       void queue.close();
+    });
+
+    it("enqueues transactional email to email-queue asynchronously (Issue 54)", async () => {
+      const { enqueueEmail, EMAIL_QUEUE_NAME, getEmailQueue } = await import("../src/index.js");
+
+      expect(EMAIL_QUEUE_NAME).toBe("email-queue");
+
+      const jobId = await enqueueEmail({
+        to: "guest@riverview.com",
+        subject: "Reservation Confirmed",
+        html: "<p>Thank you for booking.</p>",
+      });
+
+      expect(jobId).toBeDefined();
+      expect(typeof jobId).toBe("string");
+
+      const queue = getEmailQueue();
+      const job = await queue.getJob(jobId);
+      expect(job).not.toBeNull();
+      expect(job?.data.to).toBe("guest@riverview.com");
+      expect(job?.data.subject).toBe("Reservation Confirmed");
+
+      // Clean up job
+      await job?.remove();
     });
   });
 });
