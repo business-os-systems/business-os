@@ -247,6 +247,16 @@ You are **STRICTLY PROHIBITED** from:
   2. Section headers and group titles MUST NOT be hardcoded string literals in JSX; they must be rendered dynamically from configuration properties (`group.label`).
 - ❌ **Inaccessible Navigation Sizing & Missing Active Highlights (Navigation Usability & Visual Clarity Law):**
   Navigation items in both sub-navigation sidebars and the primary app sidebar MUST provide comfortable, accessible touch targets (`py-2` or `h-9` minimum height) and MUST render a subtle background highlight (`bg-surface-hover` / `bg-surface-subtle`) in active states in addition to the left accent bar indicator.
+- ❌ **Hardcoded Error Domains & Placeholder "about:blank" (RFC 7807/9457 Relative URI Option A Law):**
+  All RFC 7807 problem details error responses emitted across the platform (API routes, error handlers, and middleware) **MUST** use Option A (relative URI: `/errors/<error-slug>`, e.g., `/errors/cors-origin-denied`, `/errors/unauthorized`, `/errors/not-found`, `/errors/rate-limit-exceeded`).
+  1. AI agents and developers are **STRICTLY FORBIDDEN** from hardcoding domain names or hostnames (such as `https://api.business-os.com/errors/...` or `http://localhost:3000/errors/...`) in the `type` field, because the domain is dynamic and depends on the deployment environment (local, staging, production, or customer on-premise clusters).
+  2. Leaving the placeholder `"about:blank"` in runtime API responses when an intention-revealing error code or slug exists is strictly forbidden.
+  3. Schemas validating problem details (`problemDetailsSchema`) MUST validate relative path URIs starting with `/` (e.g. `/errors/...`) as valid RFC 7807 URI references.
+- ❌ **Cryptic CORS & Wildcard Credential Contradictions (Enterprise CORS & Preflight Law):**
+  AI agents and developers are **STRICTLY PROHIBITED** from introducing wildcard `*` origins when credentials (`allowCredentials: true`) are enabled, as this directly violates W3C/WHATWG CORS security specifications and causes browser security blocks.
+  1. All CORS middleware and route handlers MUST enforce strict whitelist validation against pre-declared `CORS_ALLOWED_ORIGINS` and set `Vary: Origin` to prevent multi-tenant CDN cache poisoning.
+  2. Unauthorized preflight `OPTIONS` requests MUST be rejected immediately at the edge with HTTP 403 and an RFC 7807 error payload using `type: "/errors/cors-origin-denied"`.
+  3. The CORS implementation MUST be structured into clean, step-by-step, self-documenting code with intention-revealing naming and explanatory comments so that any developer can easily read, verify, and maintain it.
 
 ---
 

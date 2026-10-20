@@ -6,6 +6,8 @@ import {
   securityHeadersMiddleware,
   corsMiddleware,
   rateLimitMiddleware,
+  requireAuth,
+  requireMetricsAuth,
   globalErrorHandler,
 } from "./middleware/index.js";
 import {
@@ -44,7 +46,7 @@ export function createApp(options: AppOptions = {}) {
 
   // 3. Health & Telemetry Routes
   app.route("/health", healthRouter);
-  app.get("/metrics", async (c) => {
+  app.get("/metrics", requireMetricsAuth(), async (c) => {
     const metrics = await metricsRegistry.metrics();
     c.header("Content-Type", "text/plain; version=0.0.4; charset=utf-8");
     return c.text(metrics);
@@ -52,6 +54,15 @@ export function createApp(options: AppOptions = {}) {
 
   // 4. Mount Core & Module Sub-Routers
   app.route("/api/v1/auth", authRouter);
+
+  // Mount requireAuth across tenant operational routes (defense-in-depth)
+  app.use("/api/v1/organizations/*", requireAuth());
+  app.use("/api/v1/organizations", requireAuth());
+  app.use("/api/v1/branches/*", requireAuth());
+  app.use("/api/v1/branches", requireAuth());
+  app.use("/api/v1/audit-logs/*", requireAuth());
+  app.use("/api/v1/audit-logs", requireAuth());
+
   app.route("/api/v1/organizations", organizationsRouter);
   app.route("/api/v1/branches", branchesRouter);
   app.route("/api/v1/audit-logs", auditLogsRouter);

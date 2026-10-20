@@ -98,7 +98,7 @@ describe("Authoring Studio Management APIs & CAS Concurrency (S1-7)", () => {
       activeRevision: number;
       code?: string;
     };
-    expect(data.type).toBe("about:blank");
+    expect(data.type).toBe("/errors/cms-concurrency-conflict");
     expect(data.code).toBe("CMS_CONCURRENCY_CONFLICT");
     expect(data.status).toBe(409);
     expect(data.activeRevision).toBe(2);

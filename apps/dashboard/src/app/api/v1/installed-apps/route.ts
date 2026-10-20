@@ -27,7 +27,7 @@ export async function GET(request: Request) {
     if (!orgId) {
       return NextResponse.json(
         {
-          type: "about:blank",
+          type: "/errors/unauthorized",
           code: "UNAUTHORIZED",
           title: "Missing Tenant Context",
           status: 401,
@@ -74,7 +74,7 @@ export async function GET(request: Request) {
   } catch (error) {
     return NextResponse.json(
       {
-        type: "about:blank",
+        type: "/errors/internal-server-error",
         title: "Installed Apps Query Failed",
         status: 500,
         code: "INTERNAL_SERVER_ERROR",

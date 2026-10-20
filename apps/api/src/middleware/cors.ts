@@ -1,4 +1,4 @@
-import type { MiddlewareHandler } from "hono";
+import type { MiddlewareHandler, Context } from "hono";
 
 export interface CorsOptions {
   allowedOrigins?: string[];
@@ -6,27 +6,64 @@ export interface CorsOptions {
 }
 
 /**
- * Enterprise CORS middleware with explicit origin allowlist support.
+ * Parses allowed origins from explicit options or the pre-declared environment variable.
+ */
+function resolveAllowedOrigins(optionsOrigins?: string[]): string[] {
+  if (optionsOrigins && optionsOrigins.length > 0) {
+    return optionsOrigins;
+  }
+  const rawEnv = process.env.CORS_ALLOWED_ORIGINS;
+  if (!rawEnv) {
+    return [];
+  }
+  return rawEnv.split(",").map((o) => o.trim()).filter(Boolean);
+}
+
+/**
+ * Enterprise CORS Middleware
+ *
+ * Enforces:
+ * 1. Strict whitelist validation against allowed origins.
+ * 2. W3C/WHATWG compliance: Wildcards (*) are never paired with credentials.
+ * 3. Cache isolation: Sets 'Vary: Origin' to prevent CDN cache poisoning.
+ * 4. Fast preflight rejection: Rejects untrusted OPTIONS requests with 403 and Option A RFC 7807 problem details.
  */
 export function corsMiddleware(options: CorsOptions = {}): MiddlewareHandler {
-  const { allowedOrigins = ["*"], allowCredentials = true } = options;
+  const allowedOrigins = resolveAllowedOrigins(options.allowedOrigins);
+  const allowCredentials = options.allowCredentials ?? true;
 
-  return async (c, next) => {
+  return async (c: Context, next) => {
     const origin = c.req.header("origin");
 
-    let isAllowed = false;
-    if (allowedOrigins.includes("*")) {
-      isAllowed = true;
-      c.header("Access-Control-Allow-Origin", origin ?? "*");
-    } else if (origin && allowedOrigins.includes(origin)) {
-      isAllowed = true;
-      c.header("Access-Control-Allow-Origin", origin);
+    // Phase 1: Cross-origin security verification when Origin header is present
+    if (origin) {
+      const isExplicitlyAllowed = allowedOrigins.includes(origin);
+      const isWildcardAllowed = !allowCredentials && allowedOrigins.includes("*");
+
+      if (isExplicitlyAllowed) {
+        c.header("Access-Control-Allow-Origin", origin);
+        c.header("Vary", "Origin");
+        if (allowCredentials) {
+          c.header("Access-Control-Allow-Credentials", "true");
+        }
+      } else if (isWildcardAllowed) {
+        c.header("Access-Control-Allow-Origin", "*");
+      } else if (c.req.method === "OPTIONS") {
+        // Fast preflight termination for unauthorized origins (RFC 7807 Option A)
+        return c.json(
+          {
+            type: "/errors/cors-origin-denied",
+            title: "Forbidden",
+            status: 403,
+            detail: "CORS origin not allowed",
+            code: "CORS_ORIGIN_DENIED",
+          },
+          403
+        );
+      }
     }
 
-    if (isAllowed && allowCredentials) {
-      c.header("Access-Control-Allow-Credentials", "true");
-    }
-
+    // Phase 2: Set standard preflight headers for permitted methods and custom metadata headers
     c.header(
       "Access-Control-Allow-Methods",
       "GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD"
@@ -37,6 +74,7 @@ export function corsMiddleware(options: CorsOptions = {}): MiddlewareHandler {
     );
     c.header("Access-Control-Max-Age", "86400");
 
+    // Phase 3: Immediate 204 No Content for preflight OPTIONS requests from authorized callers
     if (c.req.method === "OPTIONS") {
       return c.body(null, 204);
     }

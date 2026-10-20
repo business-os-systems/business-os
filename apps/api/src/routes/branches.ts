@@ -1,8 +1,11 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { prisma } from "@suite/db";
 import { NotFoundError, ValidationError } from "@suite/core/errors";
+import { requireAuth } from "../middleware/auth.js";
 
 export const branchesRouter = new OpenAPIHono();
+
+branchesRouter.use("*", requireAuth());
 
 const BranchResponseSchema = z.object({
   id: z.string().openapi({ example: "br_cm123xyz" }),
@@ -42,7 +45,7 @@ const getBranchResponseSchema = z.object({
 });
 
 const problemDetailsResponseSchema = z.object({
-  type: z.string().openapi({ example: "about:blank" }),
+  type: z.string().openapi({ example: "/errors/not-found" }),
   title: z.string().openapi({ example: "Not Found" }),
   status: z.number().openapi({ example: 404 }),
   detail: z.string().openapi({ example: "Branch [br_123] not found" }),

@@ -302,7 +302,7 @@ describe("Automated E2E Integration Suite: Complete Authoring Lifecycle (@suite/
       const mockFetch = vi.fn().mockResolvedValue({
         status: 409,
         json: async () => ({
-          type: "about:blank",
+          type: "/errors/concurrency-conflict",
           code: "CMS_CONCURRENCY_CONFLICT",
           title: "Revision Conflict",
           status: 409,

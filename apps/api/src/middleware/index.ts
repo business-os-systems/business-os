@@ -8,3 +8,8 @@ export {
   type RateLimitOptions,
 } from "./rate-limit.js";
 export { globalErrorHandler } from "./error-handler.js";
+export {
+  requireAuth,
+  requireMetricsAuth,
+  type RequireAuthOptions,
+} from "./auth.js";

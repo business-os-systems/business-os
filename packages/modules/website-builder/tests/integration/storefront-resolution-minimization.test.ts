@@ -183,7 +183,7 @@ describe("Storefront Edge Resolution & Data Minimization Integration Suite (S1-8
       detail: string;
     };
 
-    expect(problem.type).toBe("about:blank");
+    expect(problem.type).toBe("/errors/cms-missing-host");
     expect(problem.status).toBe(400);
     expect(problem.title).toBe("Bad Request");
     expect(problem.detail).toContain("Host request header is required");
@@ -203,7 +203,7 @@ describe("Storefront Edge Resolution & Data Minimization Integration Suite (S1-8
       status: number;
       detail: string;
     };
-    expect(body.type).toBe("about:blank");
+    expect(body.type).toBe("/errors/cms-domain-not-found");
     expect(body.title).toBe("Domain Not Found");
     expect(body.status).toBe(404);
 

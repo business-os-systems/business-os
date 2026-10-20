@@ -39,7 +39,7 @@ describe("@suite/core - Zod Shared Contract Schemas", () => {
   describe("API Envelopes", () => {
     it("validates RFC 7807 problem details schema", () => {
       const validProblem = {
-        type: "about:blank",
+        type: "/errors/not-found",
         title: "Not Found",
         status: 404,
         detail: "The entity was not found",

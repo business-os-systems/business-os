@@ -11,7 +11,7 @@ export async function GET(
     if (!tenantId) {
       return NextResponse.json(
         {
-          type: "about:blank",
+          type: "/errors/unauthorized",
           code: "UNAUTHORIZED",
           title: "Missing Tenant Context",
           status: 401,

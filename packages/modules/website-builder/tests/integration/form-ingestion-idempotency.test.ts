@@ -108,7 +108,7 @@ describe("Public Form Ingestion & Idempotency Suppression Integration Suite (S1-
 
     expect(botRes.status).toBe(400);
     const problem = (await botRes.json()) as { type: string; status: number; code?: string };
-    expect(problem.type).toBe("about:blank");
+    expect(problem.type).toBe("/errors/bot-detected");
     expect(problem.code).toBe("BOT_DETECTED");
     expect(problem.status).toBe(400);
   });
@@ -131,7 +131,7 @@ describe("Public Form Ingestion & Idempotency Suppression Integration Suite (S1-
 
     expect(res.status).toBe(400);
     const problem = (await res.json()) as { type: string; status: number; code?: string };
-    expect(problem.type).toBe("about:blank");
+    expect(problem.type).toBe("/errors/invalid-captcha");
     expect(problem.code).toBe("INVALID_CAPTCHA");
     expect(problem.status).toBe(400);
   });
@@ -156,7 +156,7 @@ describe("Public Form Ingestion & Idempotency Suppression Integration Suite (S1-
 
     expect(res.status).toBe(413);
     const problem = (await res.json()) as { type: string; status: number; code?: string };
-    expect(problem.type).toBe("about:blank");
+    expect(problem.type).toBe("/errors/payload-too-large");
     expect(problem.code).toBe("PAYLOAD_TOO_LARGE");
   });
 

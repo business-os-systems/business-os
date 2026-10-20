@@ -17,7 +17,7 @@ export async function GET(
     if (!tenantId) {
       return NextResponse.json(
         {
-          type: "about:blank",
+          type: "/errors/unauthorized",
           code: "UNAUTHORIZED",
           title: "Missing Tenant Context",
           status: 401,
@@ -33,7 +33,7 @@ export async function GET(
     if (!page) {
       return NextResponse.json(
         {
-          type: "about:blank",
+          type: "/errors/not-found",
           code: "PAGE_NOT_FOUND",
           title: "Page Not Found",
           status: 404,
@@ -73,7 +73,7 @@ export async function PATCH(
     if (!tenantId) {
       return NextResponse.json(
         {
-          type: "about:blank",
+          type: "/errors/unauthorized",
           code: "UNAUTHORIZED",
           title: "Missing Tenant Context",
           status: 401,
@@ -88,7 +88,7 @@ export async function PATCH(
     if (!parsed.success) {
       return NextResponse.json(
         {
-          type: "about:blank",
+          type: "/errors/validation-error",
           code: "VALIDATION_ERROR",
           title: "Invalid Content Mutation Payload",
           status: 400,
@@ -112,7 +112,7 @@ export async function PATCH(
       if (result.errorCode === "CMS_CONCURRENCY_CONFLICT") {
         return NextResponse.json(
           {
-            type: "about:blank",
+            type: "/errors/concurrency-conflict",
             code: "CMS_CONCURRENCY_CONFLICT",
             title: "Concurrency Conflict",
             status: 409,
@@ -125,7 +125,7 @@ export async function PATCH(
 
       return NextResponse.json(
         {
-          type: "about:blank",
+          type: "/errors/not-found",
           code: result.errorCode ?? "CMS_PAGE_NOT_FOUND",
           title: "Page Not Found",
           status: 404,

@@ -1,6 +1,7 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { prisma } from "@suite/db";
 import { NotFoundError, ValidationError } from "@suite/core/errors";
+import { requireAuth } from "../middleware/auth.js";
 
 export const organizationsRouter = new OpenAPIHono({
   defaultHook: (result, _c) => {
@@ -15,6 +16,8 @@ export const organizationsRouter = new OpenAPIHono({
     }
   },
 });
+
+organizationsRouter.use("*", requireAuth());
 
 const createOrgSchema = z.object({
   name: z.string().min(2).max(191),
@@ -65,7 +68,7 @@ const getOrganizationResponseSchema = z.object({
 });
 
 const problemDetailsResponseSchema = z.object({
-  type: z.string().openapi({ example: "about:blank" }),
+  type: z.string().openapi({ example: "/errors/not-found" }),
   title: z.string().openapi({ example: "Not Found" }),
   status: z.number().openapi({ example: 404 }),
   detail: z.string().openapi({ example: "Organization [org_123] not found" }),

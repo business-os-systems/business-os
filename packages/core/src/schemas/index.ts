@@ -42,7 +42,10 @@ export type ApiErrorDetail = z.infer<typeof apiErrorDetailSchema>;
  * RFC 7807 Problem Details response schema.
  */
 export const problemDetailsSchema = z.object({
-  type: z.string().url().or(z.literal("about:blank")),
+  type: z
+    .string()
+    .url()
+    .or(z.string().regex(/^\/[a-zA-Z0-9_\-/]+$/, "Must be a valid relative error URI path")),
   title: z.string(),
   status: z.number().int().min(400).max(599),
   detail: z.string(),

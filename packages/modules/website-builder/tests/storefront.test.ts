@@ -86,7 +86,7 @@ describe("Public Storefront Edge Delivery API (S1-4)", () => {
     expect(res.status).toBe(400);
 
     const data = (await res.json()) as { type: string; status: number };
-    expect(data.type).toBe("about:blank");
+    expect(data.type).toBe("/errors/cms-missing-host");
     expect(data.status).toBe(400);
   });
 

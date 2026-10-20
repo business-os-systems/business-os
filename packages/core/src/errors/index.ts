@@ -46,7 +46,9 @@ export class AppError extends Error {
     this.code = options.code;
     this.title = options.title;
     this.detail = options.detail;
-    this.type = options.type ?? "about:blank";
+    this.type =
+      options.type ??
+      (options.code ? `/errors/${options.code.toLowerCase().replace(/_/g, "-")}` : "/errors/app-error");
     this.instance = options.instance;
     this.invalidParams = options.invalidParams;
 

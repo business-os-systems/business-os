@@ -80,7 +80,7 @@ export function createStorefrontRouter(
     if (!hostHeader) {
       return c.json(
         {
-          type: "about:blank",
+          type: "/errors/cms-missing-host",
           title: "Bad Request",
           status: 400,
           code: "CMS_MISSING_HOST",
@@ -96,7 +96,7 @@ export function createStorefrontRouter(
     if (!resolution.resolved) {
       return c.json(
         {
-          type: "about:blank",
+          type: "/errors/cms-domain-not-found",
           title: "Domain Not Found",
           status: 404,
           code: "CMS_DOMAIN_NOT_FOUND",

@@ -1,7 +1,10 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { prisma } from "@suite/db";
+import { requireAuth } from "../middleware/auth.js";
 
 export const auditLogsRouter = new OpenAPIHono();
+
+auditLogsRouter.use("*", requireAuth());
 
 const AuditLogItemSchema = z.object({
   id: z.string().openapi({ example: "audit_123" }),

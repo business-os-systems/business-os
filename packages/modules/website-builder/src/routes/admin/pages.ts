@@ -2,7 +2,7 @@ import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { PageService } from "../../services/page-service.js";
 
 const ProblemDetailsSchema = z.object({
-  type: z.string().url(),
+  type: z.string().url().or(z.string().regex(/^\/[a-zA-Z0-9_\-/]+$/)),
   title: z.string(),
   status: z.number().int(),
   detail: z.string(),
@@ -397,7 +397,7 @@ export function createAdminPagesRouter(
     } catch (err: unknown) {
       return c.json(
         {
-          type: "about:blank",
+          type: "/errors/cms-page-creation-failed",
           title: "Page Creation Failed",
           status: 400,
           code: "CMS_PAGE_CREATION_FAILED",
@@ -418,7 +418,7 @@ export function createAdminPagesRouter(
     if (!page) {
       return c.json(
         {
-          type: "about:blank",
+          type: "/errors/cms-page-not-found",
           title: "Page Not Found",
           status: 404,
           code: "CMS_PAGE_NOT_FOUND",
@@ -455,7 +455,7 @@ export function createAdminPagesRouter(
       if (result.errorCode === "CMS_CONCURRENCY_CONFLICT") {
         return c.json(
           {
-            type: "about:blank",
+            type: "/errors/cms-concurrency-conflict",
             title: "Concurrency Conflict",
             status: 409,
             code: "CMS_CONCURRENCY_CONFLICT",
@@ -469,7 +469,7 @@ export function createAdminPagesRouter(
 
       return c.json(
         {
-          type: "about:blank",
+          type: "/errors/cms-page-not-found",
           title: "Page Not Found",
           status: 404,
           code: "CMS_PAGE_NOT_FOUND",
@@ -506,7 +506,7 @@ export function createAdminPagesRouter(
     if (!result.success) {
       return c.json(
         {
-          type: "about:blank",
+          type: "/errors/cms-concurrency-conflict",
           title: "Concurrency Conflict on Publish",
           status: 409,
           code: "CMS_CONCURRENCY_CONFLICT",
@@ -555,7 +555,7 @@ export function createAdminPagesRouter(
       if (result.errorCode === "CMS_CONCURRENCY_CONFLICT") {
         return c.json(
           {
-            type: "about:blank",
+            type: "/errors/cms-concurrency-conflict",
             title: "Concurrency Conflict on Rollback",
             status: 409,
             code: "CMS_CONCURRENCY_CONFLICT",
@@ -569,7 +569,7 @@ export function createAdminPagesRouter(
 
       return c.json(
         {
-          type: "about:blank",
+          type: "/errors/cms-not-found",
           title: "Resource Not Found",
           status: 404,
           code: "CMS_NOT_FOUND",

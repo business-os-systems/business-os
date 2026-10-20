@@ -3,6 +3,8 @@ import type { ProblemDetails } from "@suite/core";
 import type { SsoDiscoveryResult } from "@suite/auth";
 import { createApp } from "../src/app.js";
 import { prisma } from "@suite/db";
+import { redis } from "@suite/redis";
+import { createAuthHeaders } from "./helpers/auth.js";
 
 interface OpenApiSpec {
   openapi: string;
@@ -60,7 +62,15 @@ describe("Route Integration Suite", () => {
   });
 
   describe("Organizations Router (/api/v1/organizations)", () => {
-    it("GET /api/v1/organizations lists active organizations", async () => {
+    it("GET /api/v1/organizations rejects unauthenticated request with 401", async () => {
+      const res = await app.request("/api/v1/organizations");
+      expect(res.status).toBe(401);
+
+      const body = (await res.json()) as ProblemDetails;
+      expect(body.code).toBe("AUTH_UNAUTHORIZED");
+    });
+
+    it("GET /api/v1/organizations lists active organizations when authenticated", async () => {
       const mockOrgs: OrgItem[] = [
         {
           id: "org_test_1",
@@ -74,7 +84,10 @@ describe("Route Integration Suite", () => {
       ];
       vi.spyOn(prisma.organization, "findMany").mockResolvedValueOnce(mockOrgs as never);
 
-      const res = await app.request("/api/v1/organizations");
+      const authHeaders = await createAuthHeaders();
+      const res = await app.request("/api/v1/organizations", {
+        headers: authHeaders,
+      });
       expect(res.status).toBe(200);
 
       const body = (await res.json()) as OrgListResponse;
@@ -85,9 +98,13 @@ describe("Route Integration Suite", () => {
     });
 
     it("POST /api/v1/organizations returns 422 validation error when slug is invalid", async () => {
+      const authHeaders = await createAuthHeaders();
       const res = await app.request("/api/v1/organizations", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeaders,
+        },
         body: JSON.stringify({
           name: "Test Org",
           slug: "INVALID SLUG WITH SPACES!",
@@ -104,7 +121,10 @@ describe("Route Integration Suite", () => {
     it("GET /api/v1/organizations/:id returns 404 when organization not found", async () => {
       vi.spyOn(prisma.organization, "findUnique").mockResolvedValueOnce(null);
 
-      const res = await app.request("/api/v1/organizations/org_nonexistent");
+      const authHeaders = await createAuthHeaders();
+      const res = await app.request("/api/v1/organizations/org_nonexistent", {
+        headers: authHeaders,
+      });
       expect(res.status).toBe(404);
 
       const body = (await res.json()) as ProblemDetails;
@@ -206,6 +226,9 @@ describe("Route Integration Suite", () => {
     });
 
     it("POST /api/v1/auth/verify-email/request returns 200 when account exists", async () => {
+      vi.spyOn(redis, "incr").mockResolvedValue(1);
+      vi.spyOn(redis, "expire").mockResolvedValue(1);
+
       vi.spyOn(prisma.user, "findUnique").mockResolvedValueOnce({
         id: "usr_test_1",
         email: "unverified@example.com",
