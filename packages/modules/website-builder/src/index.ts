@@ -8,3 +8,5 @@ export * from "./ast/index.js";
 export * from "./components/blocks/index.js";
 export * from "./render/index.js";
 export * from "./editor/index.js";
+export * from "./manifest.js";
+

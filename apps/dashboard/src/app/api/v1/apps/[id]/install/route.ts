@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@suite/db";
-import { PERMISSIONS, hasPermission } from "@suite/core";
+import { PERMISSIONS, hasPermission, getAppManifest, APP_MANIFESTS } from "@suite/core";
+
 import { getAuthenticatedSession } from "@/lib/session-helper";
 
 export async function POST(
@@ -93,7 +94,19 @@ export async function POST(
       );
     }
 
-    // 2. Install or enable application in the organization
+    // 2. Install or enable application in the organization with full manifest metadata
+    const manifest = getAppManifest(appId) || APP_MANIFESTS["website-builder"];
+    const appSettings = {
+      code: manifest?.code ?? "App 01",
+      name: manifest?.name ?? appId,
+      title: manifest?.title ?? appId,
+      href: manifest?.href ?? `/${appId}`,
+      iconName: manifest?.iconName ?? "sites",
+      description: manifest?.description ?? "Launch and manage application environment.",
+      permission: manifest?.permission ?? `${appId}:read`,
+      installedBy: sessionPayload.userId,
+    };
+
     const installed = await prisma.installedApp.upsert({
       where: {
         organizationId_appId: {
@@ -107,13 +120,12 @@ export async function POST(
       create: {
         organizationId,
         appId,
-        version: "1.0.0",
+        version: manifest?.version ?? "1.0.0",
         isEnabled: true,
-        settings: {
-          installedBy: sessionPayload.userId,
-        },
+        settings: appSettings,
       },
     });
+
 
     return NextResponse.json({
       success: true,

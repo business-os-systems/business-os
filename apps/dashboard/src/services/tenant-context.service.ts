@@ -3,6 +3,9 @@ import { PERMISSIONS } from "@suite/core";
 import { extractEffectivePermissions, type SessionPayload } from "@suite/auth";
 import type { TenantContext } from "@/components/layout/types";
 
+
+
+
 export interface DashboardInstalledAppNav {
   id: string;
   name: string;
@@ -80,9 +83,10 @@ export async function getDashboardTenantContext(
       },
     });
 
-    const dbPermissions = extractEffectivePermissions(dbBranchRoles, {
+    const dbPermissions = extractEffectivePermissions(dbBranchRoles ?? [], {
       branchId: session.activeBranchId,
     });
+
 
     if (dbPermissions.length > 0) {
       userPermissions = dbPermissions;
@@ -90,6 +94,8 @@ export async function getDashboardTenantContext(
   }
 
   const tenant: TenantContext = {
+
+
     organizationId: session.organizationId,
     organizationName: effectiveOrgName,
     userName: session.userName,
@@ -103,17 +109,22 @@ export async function getDashboardTenantContext(
 
   const installedApps: DashboardInstalledAppNav[] = dbRecords.map((record) => {
     const settings = (record.settings as Record<string, unknown>) || {};
+    const title =
+      (settings.title as string) ||
+      (settings.name as string) ||
+      record.appId;
     return {
       id: record.appId,
-      name: (settings.name as string) || (settings.title as string) || record.appId,
+      name: title,
       href: (settings.href as string) || `/${record.appId}`,
       icon: (settings.iconName as string) || record.appId,
       badge: (settings.code as string) || undefined,
       description: (settings.description as string) || "",
-      permission:
-        (settings.permission as string) || PERMISSIONS.CORE.ORGANIZATION_READ,
+      permission: (settings.permission as string) || `${record.appId}:read`,
     };
   });
 
+
   return { tenant, installedApps, isArchived };
 }
+

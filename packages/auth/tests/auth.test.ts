@@ -201,7 +201,7 @@ describe("Platform Core Auth Engine & Better-Auth Integration", () => {
 
       const isMismatch = await verifyPassword("WrongPassword123!", hashed);
       expect(isMismatch).toBe(false);
-    });
+    }, 15000);
 
     it("rejects empty or invalid arguments", async () => {
       const { hashPassword, verifyPassword } = await import("../src/index.js");

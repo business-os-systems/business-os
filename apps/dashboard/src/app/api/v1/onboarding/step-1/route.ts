@@ -226,12 +226,32 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             isSystem: true,
           },
         });
+      }
 
-        if (tx.permission && tx.rolePermission) {
+      if (tx.permission && tx.rolePermission) {
+        // Ensure wildcard (*) permission exists in PostgreSQL
+        let wildcardPerm: { id: string } | null = null;
+        if (typeof tx.permission.findUnique === "function") {
+          wildcardPerm = await tx.permission.findUnique({ where: { action: "*" } });
+        } else if (typeof tx.permission.findFirst === "function") {
+          wildcardPerm = await tx.permission.findFirst({ where: { action: "*" } });
+        }
+
+        if (!wildcardPerm && typeof tx.permission.create === "function") {
+          wildcardPerm = await tx.permission.create({
+            data: {
+              appId: "core",
+              action: "*",
+              description: "Universal platform administrator access across all domains and modular apps",
+            },
+          });
+        }
+
+        if (typeof tx.permission.findMany === "function" && typeof tx.rolePermission.createMany === "function") {
           const allPermissions = await tx.permission.findMany({ select: { id: true } });
           if (allPermissions.length > 0) {
             await tx.rolePermission.createMany({
-              data: allPermissions.map((p) => ({
+              data: allPermissions.map((p: { id: string }) => ({
                 roleId: ownerRole!.id,
                 permissionId: p.id,
               })),
@@ -240,6 +260,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           }
         }
       }
+
+
 
       // 5. Grant organization-wide master owner role (branchId: null)
       const existingBranchRole = await tx.userBranchRole.findFirst({

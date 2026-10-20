@@ -27,8 +27,10 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@prisma/client": "^6.4.1"
+    "@prisma/client": "^6.4.1",
+    "@suite/core": "workspace:*"
   },
+
   "devDependencies": {
     "@suite/eslint-config": "workspace:*",
     "@suite/tsconfig": "workspace:*",

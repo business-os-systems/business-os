@@ -10,6 +10,7 @@ import {
 } from "@/lib/auth-constants";
 import { getUserOnboardingState, extractEffectivePermissions, recordSecurityAuditLog } from "@suite/auth";
 import { AUDIT_EVENT_TYPES } from "@suite/core";
+
 import { isProduction } from "@/lib/env";
 import { verifyTurnstileToken } from "@/lib/turnstile";
 import { resolvePostLoginRoute } from "@/lib/route-dispatcher";
@@ -154,6 +155,8 @@ export async function POST(request: Request) {
 
     // Extract dynamic permissions scoped to the active branch or organization-wide assignments
     const userPermissions = extractEffectivePermissions(dbUser.branchRoles, { branchId });
+
+
 
     const hasMultipleWorkspaces =
       onboardingStatus === "COMPLETED" && dbUser.organizations.length > 1;

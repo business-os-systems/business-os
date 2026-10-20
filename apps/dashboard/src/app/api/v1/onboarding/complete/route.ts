@@ -11,7 +11,9 @@ import {
 } from "@suite/auth";
 import { isProduction } from "@/lib/env";
 import { getAuthenticatedSession } from "@/lib/session-helper";
+import { getAppManifest, APP_MANIFESTS } from "@suite/core";
 import { z } from "zod";
+
 
 const completeSchema = z
   .object({
@@ -94,8 +96,20 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     // Execute atomic license provisioning and status update
     await prisma.$transaction(async (tx) => {
-      // 1. Provision installed apps
+      // 1. Provision installed apps with complete manifest metadata
       for (const appId of appsToInstall) {
+        const manifest = getAppManifest(appId) || APP_MANIFESTS["website-builder"];
+        const appSettings = {
+          code: manifest?.code ?? "App 01",
+          name: manifest?.name ?? appId,
+          title: manifest?.title ?? appId,
+          href: manifest?.href ?? `/${appId}`,
+          iconName: manifest?.iconName ?? "sites",
+          description: manifest?.description ?? "Launch and manage application environment.",
+          permission: manifest?.permission ?? `${appId}:read`,
+          installedBy: session.userId,
+        };
+
         await tx.installedApp.upsert({
           where: {
             organizationId_appId: {
@@ -106,13 +120,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           create: {
             organizationId: orgId,
             appId,
+            version: manifest?.version ?? "1.0.0",
             isEnabled: true,
+            settings: appSettings,
           },
           update: {
             isEnabled: true,
+            settings: appSettings,
           },
         });
       }
+
 
       // 2. Mark onboarding as COMPLETED and clear current step
       const updatedMetadata = mergeUserOnboardingState(dbUser.metadata, {

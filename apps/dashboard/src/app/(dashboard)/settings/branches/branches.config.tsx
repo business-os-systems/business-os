@@ -1,16 +1,7 @@
 import React from "react";
 import { z } from "zod";
-import {
-  Badge,
-  PencilIcon,
-  PowerIcon,
-  TrashIcon,
-} from "@suite/ui";
-import type {
-  FormConfig,
-  FormFieldOption,
-  TableConfig,
-} from "@suite/ui";
+import { Badge, PencilIcon, PowerIcon, TrashIcon } from "@suite/ui";
+import type { FormConfig, FormFieldOption, TableConfig } from "@suite/ui";
 import { PERMISSIONS } from "@suite/core";
 import type { BranchListItemDto } from "@/services/branches.service";
 
@@ -60,9 +51,7 @@ export function generateBranchCodeFromName(name: string): string {
   const trimmed = name.trim();
   if (!trimmed) return "";
 
-  const words = trimmed
-    .split(/[^a-zA-Z0-9]+/)
-    .filter(Boolean);
+  const words = trimmed.split(/[^a-zA-Z0-9]+/).filter(Boolean);
 
   if (words.length === 0) return "";
 
@@ -92,7 +81,7 @@ export const branchValidationSchema = z.object({
     .max(32, "Branch code cannot exceed 32 characters")
     .regex(
       /^[A-Z0-9_-]+$/,
-      "Code must contain only uppercase alphanumeric characters, hyphens, and underscores"
+      "Code must contain only uppercase alphanumeric characters, hyphens, and underscores",
     ),
   type: z.string().trim().min(2, "Please select an operational venue type"),
   parentBranchId: z.string().trim().optional(),
@@ -182,13 +171,15 @@ export const BRANCH_CAPABILITY_OPTIONS = [
 
 export function createBranchFormConfig(
   mode: "create" | "edit" = "create",
-  customTypes: FormFieldOption[] = DEFAULT_BRANCH_TYPES
+  customTypes: FormFieldOption[] = DEFAULT_BRANCH_TYPES,
 ): FormConfig<BranchFormValues> {
   const isEdit = mode === "edit";
 
   return {
     id: `branch-${mode}-form`,
-    title: isEdit ? "Edit Operational Branch" : "Register New Operational Branch",
+    title: isEdit
+      ? "Edit Operational Branch"
+      : "Register New Operational Branch",
     description: isEdit
       ? "Update operational parameters, turnover clock, and tax credentials."
       : "Register an execution site, terminal location, or store outlet.",
@@ -204,7 +195,8 @@ export function createBranchFormConfig(
             label: "Branch Name",
             type: "text",
             placeholder: "e.g. River View Manali Main Lodge",
-            description: "Display name shown across staff terminals and receipts.",
+            description:
+              "Display name shown across staff terminals and receipts.",
             required: true,
             colSpan: 1,
           },
@@ -241,7 +233,8 @@ export function createBranchFormConfig(
             label: "Local Timezone",
             type: "select",
             options: TIMEZONE_OPTIONS,
-            description: "Timezone used for timestamping shifts and folio turnover.",
+            description:
+              "Timezone used for timestamping shifts and folio turnover.",
             required: true,
             colSpan: 1,
           },
@@ -250,7 +243,8 @@ export function createBranchFormConfig(
             label: "Night Audit Rollover Hour",
             type: "select",
             options: NIGHT_AUDIT_OPTIONS,
-            description: "Operational cutoff hour when business day officially flips.",
+            description:
+              "Operational cutoff hour when business day officially flips.",
             required: true,
             colSpan: 1,
           },
@@ -259,7 +253,8 @@ export function createBranchFormConfig(
       {
         id: "branch-localization",
         title: "Localization & State Tax",
-        description: "Currency, date formats, and optional branch-specific tax ID.",
+        description:
+          "Currency, date formats, and optional branch-specific tax ID.",
         fields: [
           {
             name: "currency",
@@ -275,7 +270,8 @@ export function createBranchFormConfig(
             label: "Branch Tax ID (GSTIN / VAT / State TIN)",
             type: "text",
             placeholder: "e.g. 02AAAAA0000A1Z5",
-            description: "State-specific tax registration number for this outlet.",
+            description:
+              "State-specific tax registration number for this outlet.",
             colSpan: 1,
           },
           {
@@ -307,10 +303,11 @@ export interface BranchTableConfigOptions {
   onAddBranch?: () => void;
 }
 
+
 export function createBranchTableConfig(
-  options: BranchTableConfigOptions
+  options: BranchTableConfigOptions,
 ): TableConfig<BranchListItemDto> {
-  const { activeBranchId, onEdit, onToggleStatus, onArchive, onAddBranch } = options;
+  const { onEdit, onToggleStatus, onArchive, onAddBranch } = options;
 
   return {
     id: "branches-directory-table",
@@ -323,11 +320,6 @@ export function createBranchTableConfig(
           <div>
             <div className="font-semibold text-text flex items-center gap-2">
               <span>{row.name}</span>
-              {activeBranchId === row.id && (
-                <Badge variant="success">
-                  Current Scope
-                </Badge>
-              )}
             </div>
             {row.address && (
               <p className="text-[11px] text-text-muted mt-0.5">
@@ -354,7 +346,9 @@ export function createBranchTableConfig(
         render: (value) => {
           const typeStr = String(value || "");
           const match = DEFAULT_BRANCH_TYPES.find((t) => t.value === typeStr);
-          return <span className="capitalize">{match ? match.label : typeStr}</span>;
+          return (
+            <span className="capitalize">{match ? match.label : typeStr}</span>
+          );
         },
       },
       {
@@ -425,7 +419,8 @@ export function createBranchTableConfig(
       },
       {
         id: "toggle-status",
-        label: (branch) => (branch.status === "ACTIVE" ? "Temporarily Close" : "Reopen Branch"),
+        label: (branch) =>
+          branch.status === "ACTIVE" ? "Temporarily Close" : "Reopen Branch",
         tooltip: (branch) =>
           branch.status === "ACTIVE"
             ? "Temporarily Close Branch (Seasonal/Maintenance)"
@@ -455,7 +450,8 @@ export function createBranchTableConfig(
     ],
     emptyState: {
       title: "No Branches Configured",
-      description: "Get started by registering your first physical branch or outlet.",
+      description:
+        "Get started by registering your first physical branch or outlet.",
       actionLabel: "+ Add Branch",
       onAction: onAddBranch,
     },
