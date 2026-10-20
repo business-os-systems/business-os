@@ -14,6 +14,7 @@ import { getNavIcon, getSettingsIcon } from "../src/components/layout/icon-regis
 // Mock next/navigation
 const mockPathname = vi.fn().mockReturnValue("/dashboard");
 const mockReplace = vi.fn();
+const mockRedirect = vi.fn();
 
 vi.mock("next/navigation", () => ({
   usePathname: () => mockPathname(),
@@ -22,6 +23,7 @@ vi.mock("next/navigation", () => ({
     replace: mockReplace,
     back: vi.fn(),
   }),
+  redirect: (url: string) => mockRedirect(url),
 }));
 
 describe("Settings Hub Navigation Shell & Auto-Collapse Primitives (User Story 1)", () => {
@@ -226,14 +228,10 @@ describe("Settings Hub Navigation Shell & Auto-Collapse Primitives (User Story 1
     });
   });
 
-  describe("SettingsRootPage Drill-Down Index", () => {
-    it("renders mobile category drill-down index", () => {
-      mockPathname.mockReturnValue("/settings");
-      const html = renderToString(<SettingsRootPage userPermissions={["*"]} />);
-      expect(html).toContain("General");
-      expect(html).toContain("Branches");
-      expect(html).toContain("Members");
-      expect(html).toContain("Roles &amp; Permissions");
+  describe("SettingsRootPage Server-Side Redirection (Issue 11)", () => {
+    it("redirects immediately to /settings/general on the server without spinner flash", () => {
+      SettingsRootPage();
+      expect(mockRedirect).toHaveBeenCalledWith("/settings/general");
     });
   });
 

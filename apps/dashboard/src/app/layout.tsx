@@ -30,7 +30,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="min-h-screen bg-background text-text antialiased font-sans">
+      <body className="min-h-screen min-h-dvh bg-background text-text antialiased font-sans">
         {children}
       </body>
     </html>

@@ -6,7 +6,7 @@ import {
   isPublicEmailDomain,
 } from "@suite/auth";
 import { z } from "zod";
-import { problemResponse, successResponse } from "@/lib/api-response";
+import { problemResponse, successResponse, zodProblemResponse } from "@/lib/api-response";
 
 const ssoDiscoverSchema = z.object({
   email: z.string().trim().email("Invalid email format"),
@@ -18,12 +18,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const parseResult = ssoDiscoverSchema.safeParse(body);
 
     if (!parseResult.success) {
-      return problemResponse({
-        type: "/errors/validation-error",
-        title: "Bad Request",
-        status: 400,
-        detail: parseResult.error.errors[0]?.message || "Invalid email format for SSO discovery",
+      return zodProblemResponse(parseResult.error, {
         code: "INVALID_EMAIL",
+        detail: parseResult.error.errors[0]?.message || "Invalid email format for SSO discovery",
       });
     }
 

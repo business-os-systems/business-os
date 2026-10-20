@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@suite/db";
 import { checkRateLimit } from "@suite/redis";
+import { RATE_LIMITS } from "@suite/core";
 import { getAuthenticatedSession } from "@/lib/session-helper";
-import { problemResponse } from "@/lib/problem-response";
+import { problemResponse, zodProblemResponse } from "@/lib/problem-response";
 import { z } from "zod";
 
 const checkSlugQuerySchema = z.object({
@@ -14,9 +15,6 @@ const checkSlugQuerySchema = z.object({
     .regex(/^[a-z0-9-]+$/, "Slug must contain only lowercase letters, numbers, and hyphens"),
 });
 
-const MAX_SLUG_CHECKS_PER_MINUTE_IP = 60;
-const RATE_LIMIT_WINDOW_SECONDS = 60;
-
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     // Issue 44: Rate limit public tenant slug availability seeks
@@ -25,8 +23,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       const rateLimit = await checkRateLimit([
         {
           key: `ratelimit:check-slug:ip:${clientIp}`,
-          max: MAX_SLUG_CHECKS_PER_MINUTE_IP,
-          windowSeconds: RATE_LIMIT_WINDOW_SECONDS,
+          max: RATE_LIMITS.MAX_SLUG_CHECKS_PER_MINUTE_IP,
+          windowSeconds: RATE_LIMITS.WINDOW_1_MIN_SECONDS,
         },
       ]);
 
@@ -47,10 +45,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     });
 
     if (!parseResult.success) {
-      return problemResponse({
-        status: 400,
+      return zodProblemResponse(parseResult.error, {
         code: "INVALID_SLUG",
-        title: "Bad Request",
         detail: parseResult.error.errors[0]?.message || "Invalid slug format",
       });
     }

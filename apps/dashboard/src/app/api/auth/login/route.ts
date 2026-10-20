@@ -15,7 +15,7 @@ import { AUDIT_EVENT_TYPES } from "@suite/core";
 import { isProduction } from "@/lib/env";
 import { verifyTurnstileToken, isTurnstileConfigured } from "@/lib/turnstile";
 import { resolvePostLoginRoute } from "@/lib/route-dispatcher";
-import { problemResponse, successResponse } from "@/lib/api-response";
+import { problemResponse, successResponse, zodProblemResponse } from "@/lib/api-response";
 
 const LoginSchema = z.object({
   email: z.string().email("A valid email address is required"),
@@ -30,10 +30,7 @@ export async function POST(request: Request) {
     const parseResult = LoginSchema.safeParse(rawBody);
 
     if (!parseResult.success) {
-      return problemResponse({
-        status: 400,
-        code: "VALIDATION_FAILED",
-        title: "Bad Request",
+      return zodProblemResponse(parseResult.error, {
         detail: parseResult.error.issues[0]?.message ?? "Validation failed",
       });
     }

@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useId, useRef } from "react";
 import Link from "next/link";
 import { validatePasswordComplexity } from "@suite/auth/rules";
+import { TIMEOUTS } from "@suite/core";
 import { Button, Input, Label, Checkbox } from "@suite/ui";
 import { AlertTriangleIcon, EyeIcon, EyeOffIcon } from "@suite/ui/icons";
 import { SSORedirectCard } from "./sso-redirect-card";
@@ -52,6 +53,17 @@ export interface EmailPasswordFormProps
     AuthFormStateProps,
     AuthFormActionProps {}
 
+export interface SsoDiscoveryPayload {
+  domain: string;
+  isEnterprise: boolean;
+  providerType: string | null;
+  organizationName: string | null;
+  ssoLoginUrl: string | null;
+}
+
+// Client-side in-memory domain cache to eliminate keystroke fetch spam (Issue 17 & 25)
+const ssoDomainMemoryCache = new Map<string, SsoDiscoveryPayload | null>();
+
 export function EmailPasswordForm({
   mode,
   onSubmit,
@@ -68,13 +80,7 @@ export function EmailPasswordForm({
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   // Home Realm Discovery (HRD) State
-  const [ssoData, setSsoData] = useState<{
-    domain: string;
-    isEnterprise: boolean;
-    providerType: string | null;
-    organizationName: string | null;
-    ssoLoginUrl: string | null;
-  } | null>(null);
+  const [ssoData, setSsoData] = useState<SsoDiscoveryPayload | null>(null);
   const [preferPassword, setPreferPassword] = useState(false);
   const [isDiscoveringSso, setIsDiscoveringSso] = useState(false);
 
@@ -112,6 +118,18 @@ export function EmailPasswordForm({
       return;
     }
 
+    const domain = parts[1].toLowerCase();
+
+    // Check client-side memory cache first: zero network cost for cached domains
+    if (ssoDomainMemoryCache.has(domain)) {
+      const cached = ssoDomainMemoryCache.get(domain) ?? null;
+      setSsoData(cached);
+      setIsDiscoveringSso(false);
+      return;
+    }
+
+    const abortController = new AbortController();
+
     const timer = setTimeout(async () => {
       setIsDiscoveringSso(true);
       try {
@@ -119,23 +137,32 @@ export function EmailPasswordForm({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email: trimmed }),
+          signal: abortController.signal,
         });
         if (res.ok) {
-          const data = await res.json();
+          const data: SsoDiscoveryPayload = await res.json();
           if (data.isEnterprise && data.ssoLoginUrl) {
+            ssoDomainMemoryCache.set(domain, data);
             setSsoData(data);
           } else {
+            ssoDomainMemoryCache.set(domain, null);
             setSsoData(null);
           }
         }
-      } catch (err) {
+      } catch (err: unknown) {
+        if (err instanceof DOMException && err.name === "AbortError") {
+          return;
+        }
         console.error("SSO discovery error:", err);
       } finally {
         setIsDiscoveringSso(false);
       }
-    }, 300);
+    }, TIMEOUTS.SSO_DISCOVERY_DEBOUNCE_MS);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      abortController.abort();
+    };
   }, [email, mode]);
 
   const handleSubmit = async (e: React.FormEvent) => {

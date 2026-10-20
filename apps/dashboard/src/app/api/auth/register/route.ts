@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { prisma } from "@suite/db";
+import { enqueueEmail } from "@suite/redis";
 import { hashPassword, validatePasswordComplexity } from "@suite/auth/password";
 import {
   SESSION_COOKIE_NAME,
@@ -9,7 +10,7 @@ import {
 } from "@/lib/auth-constants";
 import { isProduction } from "@/lib/env";
 import { verifyTurnstileToken } from "@/lib/turnstile";
-import { problemResponse, successResponse } from "@/lib/api-response";
+import { problemResponse, successResponse, zodProblemResponse } from "@/lib/api-response";
 
 export function deriveNameFromEmail(email: string): string {
   const localPart = email.split("@")[0] || "User";
@@ -35,10 +36,7 @@ export async function POST(request: Request) {
     const parseResult = RegisterSchema.safeParse(rawBody);
 
     if (!parseResult.success) {
-      return problemResponse({
-        status: 400,
-        code: "VALIDATION_FAILED",
-        title: "Bad Request",
+      return zodProblemResponse(parseResult.error, {
         detail: parseResult.error.issues[0]?.message ?? "Validation failed",
       });
     }
@@ -78,12 +76,43 @@ export async function POST(request: Request) {
     });
 
     if (existingUser) {
-      return problemResponse({
-        status: 409,
-        code: "USER_ALREADY_EXISTS",
-        title: "Conflict",
-        detail: "An account with this email address already exists. Please sign in instead.",
-      });
+      // Account enumeration defense: notify existing account holder and return generic registration confirmation
+      const origin = new URL(request.url).origin;
+      const loginUrl = `${origin}/login?email=${encodeURIComponent(normalizedEmail)}`;
+      const resetUrl = `${origin}/forgot-password?email=${encodeURIComponent(normalizedEmail)}`;
+
+      const emailPayload = {
+        to: normalizedEmail,
+        subject: "Security Notification: Registration Attempt - Business OS",
+        html: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px;">
+            <h2 style="color: #1E1B19;">Account Registration Attempt</h2>
+            <p style="color: #5C504B; font-size: 15px; line-height: 1.5;">
+              Someone attempted to register a new Business OS workspace using this email address. Since you already have an active account, you can sign in directly or choose a new password.
+            </p>
+            <div style="margin: 24px 0;">
+              <a href="${loginUrl}" style="background-color: #0F766E; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 600; display: inline-block; margin-right: 12px;">Sign In</a>
+              <a href="${resetUrl}" style="background-color: #F3F4F6; color: #1E1B19; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 600; display: inline-block;">Reset Password</a>
+            </div>
+          </div>
+        `,
+        text: `Someone attempted to register a new account with your email. If this was you, sign in at: ${loginUrl} or reset your password at: ${resetUrl}`,
+      };
+
+      try {
+        await enqueueEmail(emailPayload);
+      } catch {
+        // Safe fallback
+      }
+
+      return successResponse(
+        {
+          success: true,
+          message: "If you do not already have an account, your workspace has been initialized. Please check your email.",
+          redirectUrl: "/login?registered=pending",
+        },
+        { status: 200 }
+      );
     }
 
     // Hash password with Argon2id

@@ -12,6 +12,8 @@ export {
   isAppError,
   createProblemEnvelope,
   createSuccessEnvelope,
+  createZodProblemEnvelope,
+  formatZodInvalidParams,
   type ProblemPayloadInput,
   type ProblemEnvelope,
   type SuccessPayloadInput,
@@ -19,6 +21,8 @@ export {
   type AppErrorOptions,
   type ProblemDetails,
   type InvalidParamDetail,
+  type ZodErrorLike,
+  type ZodProblemOptions,
 } from "./errors/index.js";
 
 // 4:00 AM Operational Clock Engine
@@ -81,6 +85,8 @@ export {
   APP_MANIFESTS,
   getAppManifest,
   type AppManifest,
+  RATE_LIMITS,
+  TIMEOUTS,
 } from "./constants/index.js";
 
 

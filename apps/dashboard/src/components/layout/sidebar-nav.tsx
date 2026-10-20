@@ -73,6 +73,7 @@ export function SidebarNav({
       <Link
         key={item.id}
         href={item.href}
+        prefetch={false}
         className={`group relative flex items-center gap-3 rounded-lg px-3 py-2 text-xs sm:text-[13px] min-h-[38px] transition-colors ${
           isActive
             ? "bg-brand-tint/70 text-brand font-semibold shadow-2xs before:absolute before:left-0 before:top-2 before:bottom-2 before:w-1 before:bg-brand before:rounded-r-sm"
@@ -101,7 +102,7 @@ export function SidebarNav({
 
   return (
     <aside
-      className={`flex flex-col border-r border-border bg-surface transition-all duration-200 h-screen ${
+      className={`flex flex-col border-r border-border bg-surface transition-all duration-200 h-screen h-dvh ${
         collapsed ? "w-16" : "w-52 sm:w-56"
       }`}
     >
