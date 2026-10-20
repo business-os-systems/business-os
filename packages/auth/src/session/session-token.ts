@@ -56,7 +56,11 @@ export interface SessionAuthorizationContext {
  */
 export interface SessionLifecycleContext {
   timestamp: number;
+  issuedAt?: number;
   expiresAt?: number;
+  isEphemeral?: boolean;
+  tokenVersion?: number;
+  sessionTimeoutSeconds?: number;
 }
 
 /**
@@ -197,10 +201,19 @@ export async function signSessionToken(
 
 export function isSessionPayloadExpired(payload: SessionPayload): boolean {
   if (!payload || !payload.timestamp) return true;
-  const maxAgeMs = payload.expiresAt
-    ? payload.expiresAt - payload.timestamp
+  if (payload.expiresAt) {
+    return Date.now() >= payload.expiresAt;
+  }
+  const maxAgeMs = payload.isEphemeral
+    ? SESSION_EPHEMERAL_MAX_AGE_SECONDS * 1000
     : SESSION_PERSISTENT_MAX_AGE_SECONDS * 1000;
   return Date.now() - payload.timestamp > maxAgeMs;
+}
+
+export function isSessionPayloadIdleTimedOut(payload: SessionPayload): boolean {
+  if (!payload || !payload.timestamp) return true;
+  if (!payload.sessionTimeoutSeconds || payload.sessionTimeoutSeconds <= 0) return false;
+  return Date.now() - payload.timestamp > payload.sessionTimeoutSeconds * 1000;
 }
 
 export async function verifySessionToken(token: string): Promise<boolean> {

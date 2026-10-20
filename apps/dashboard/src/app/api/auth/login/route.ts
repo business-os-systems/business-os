@@ -4,6 +4,8 @@ import { prisma } from "@suite/db";
 import { verifyPassword } from "@suite/auth/password";
 import {
   SESSION_COOKIE_NAME,
+  SESSION_EPHEMERAL_MAX_AGE_SECONDS,
+  SESSION_PERSISTENT_MAX_AGE_SECONDS,
   createSessionCookieOptions,
   signSessionToken,
   encodeSessionPayload,
@@ -12,7 +14,7 @@ import { getUserOnboardingState, extractEffectivePermissions, recordSecurityAudi
 import { AUDIT_EVENT_TYPES } from "@suite/core";
 
 import { isProduction } from "@/lib/env";
-import { verifyTurnstileToken } from "@/lib/turnstile";
+import { verifyTurnstileToken, isTurnstileConfigured } from "@/lib/turnstile";
 import { resolvePostLoginRoute } from "@/lib/route-dispatcher";
 
 const LoginSchema = z.object({
@@ -42,8 +44,9 @@ export async function POST(request: Request) {
     const { email, password, keepSignedIn, turnstileToken } = parseResult.data;
     const normalizedEmail = email.toLowerCase().trim();
 
-    // Verify Cloudflare Turnstile bot token in production or when token provided
-    if (isProduction || turnstileToken) {
+    // Verify Cloudflare Turnstile bot token when configured (strictly enforced in production)
+    const isBotDefenseRequired = isProduction && isTurnstileConfigured();
+    if (isBotDefenseRequired || (isTurnstileConfigured() && turnstileToken)) {
       const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
       const turnstileResult = await verifyTurnstileToken(turnstileToken, clientIp);
       if (!turnstileResult.success) {
@@ -171,6 +174,12 @@ export async function POST(request: Request) {
         });
 
     // Generate cryptographically signed session token with verified tenant payload
+    const now = Date.now();
+    const maxAgeSeconds = keepSignedIn
+      ? SESSION_PERSISTENT_MAX_AGE_SECONDS
+      : SESSION_EPHEMERAL_MAX_AGE_SECONDS;
+    const expiresAt = now + maxAgeSeconds * 1000;
+
     const rawPayload = encodeSessionPayload({
       userId: dbUser.id,
       email: dbUser.email,
@@ -182,7 +191,9 @@ export async function POST(request: Request) {
       activeBranchId: branchId,
       activeBranchName: branchName,
       themePreference,
-      timestamp: Date.now(),
+      timestamp: now,
+      expiresAt,
+      isEphemeral: !keepSignedIn,
       onboardingStatus,
       currentOnboardingStep,
     });

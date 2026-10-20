@@ -1,11 +1,11 @@
 "use client";
 
 import React from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@suite/ui";
 import { MenuIcon, BuildingIcon, LogOutIcon } from "@suite/ui/icons";
 import { ThemeToggle } from "./theme-toggle";
 import type { TenantContext } from "./types";
-import { isBrowser } from "@/lib/env";
 
 import { WorkspaceSwitcher } from "./workspace-switcher";
 
@@ -18,15 +18,16 @@ export function HeaderTopbar({
   tenant,
   onToggleSidebar,
 }: HeaderTopbarProps) {
+  const router = useRouter();
+
   const handleSignOut = async () => {
     try {
       await fetch("/api/auth/logout", { method: "POST" });
     } catch (error) {
       console.error("[HeaderTopbar] Logout network error:", error);
     }
-    if (isBrowser) {
-      window.location.assign("/login");
-    }
+    router.push("/login");
+    router.refresh();
   };
 
   const userInitials = tenant?.userInitials ?? (tenant?.userName

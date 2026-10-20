@@ -6,7 +6,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { AuthCard } from "@/components/auth/auth-card";
 import { OAuthProviders } from "@/components/auth/oauth-providers";
 import { EmailPasswordForm } from "@/components/auth/email-password-form";
-import { PasskeyButton, type PasskeyVerificationResult } from "@/components/auth/passkey-button";
 import { resolvePostLoginRoute } from "@/lib/route-dispatcher";
 import { isBrowser } from "@/lib/env";
 
@@ -115,7 +114,15 @@ function LoginFormContent() {
     }
   };
 
-  const handleAuthSuccess = (result: PasskeyVerificationResult) => {
+  const handleAuthSuccess = (result: {
+    themePreference?: string;
+    redirectUrl?: string;
+    user?: {
+      permissions?: string[];
+      onboardingStatus?: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED";
+      currentOnboardingStep?: number | null;
+    };
+  }) => {
     // Synchronize theme preference if returned
     if (result.themePreference && isBrowser) {
       document.documentElement.setAttribute(
@@ -175,14 +182,6 @@ function LoginFormContent() {
         isLoading={isLoading}
         errorMessage={errorMessage}
         onClearError={clearError}
-      />
-
-      {/* FIDO2 / WebAuthn Passkeys */}
-      <PasskeyButton
-        disabled={isLoading}
-        onActionTrigger={clearError}
-        onSuccess={handleAuthSuccess}
-        onError={(err) => setErrorMessage(err.message)}
       />
     </AuthCard>
   );

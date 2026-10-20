@@ -1,23 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@suite/db";
+import { NextResponse } from "next/server";
 import { SESSION_COOKIE_NAME } from "@/lib/auth-constants";
 import { isProduction } from "@/lib/env";
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
-    const sessionToken = request.cookies.get(SESSION_COOKIE_NAME)?.value;
-
-    if (sessionToken) {
-      // Invalidate and delete active server-side session from database
-      await prisma.session
-        .deleteMany({
-          where: { token: sessionToken },
-        })
-        .catch(() => {
-          // Gracefully continue even if session was already deleted or is stateless
-        });
-    }
-
     const response = NextResponse.json({ success: true });
     response.cookies.set({
       name: SESSION_COOKIE_NAME,

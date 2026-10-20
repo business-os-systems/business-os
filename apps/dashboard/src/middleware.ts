@@ -8,6 +8,7 @@ import {
   signSessionToken,
   createSessionCookieOptions,
   isSessionPayloadExpired,
+  isSessionPayloadIdleTimedOut,
   type SessionPayload,
 } from "@/lib/auth-constants";
 import { isProduction } from "@/lib/env";
@@ -50,7 +51,13 @@ async function resolveSessionPayload(request: NextRequest): Promise<SessionPaylo
   if (!isValidSession) return null;
 
   const payload = decodeSessionPayload(sessionToken);
-  if (!payload || isSessionPayloadExpired(payload)) return null;
+  if (
+    !payload ||
+    isSessionPayloadExpired(payload) ||
+    isSessionPayloadIdleTimedOut(payload)
+  ) {
+    return null;
+  }
 
   return payload;
 }
@@ -100,6 +107,11 @@ async function handleAuthenticatedGate(
 
   // Multi-tenancy disambiguation: Allow workspace selection route for authenticated users
   if (pathname.startsWith("/choose-tenant")) {
+    return createAuthenticatedResponse(request, payload);
+  }
+
+  // Allow password reset flow even for authenticated sessions (Task T015)
+  if (pathname.startsWith("/reset-password")) {
     return createAuthenticatedResponse(request, payload);
   }
 
@@ -228,12 +240,13 @@ async function createAuthenticatedResponse(
   const ONE_HOUR_MS = 60 * 60 * 1000;
   const elapsedMs = Date.now() - (payload.timestamp || 0);
   if (elapsedMs > ONE_HOUR_MS) {
+    const isKeepSignedIn = !payload.isEphemeral;
     const refreshedPayload: SessionPayload = {
       ...payload,
       timestamp: Date.now(),
     };
     const refreshedToken = await signSessionToken(encodeSessionPayload(refreshedPayload));
-    const cookieOptions = createSessionCookieOptions(isProduction, true);
+    const cookieOptions = createSessionCookieOptions(isProduction, isKeepSignedIn);
     response.cookies.set({
       name: SESSION_COOKIE_NAME,
       value: refreshedToken,

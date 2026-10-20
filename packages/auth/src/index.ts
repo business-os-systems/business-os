@@ -50,6 +50,7 @@ export {
   signSessionToken,
   verifySessionToken,
   isSessionPayloadExpired,
+  isSessionPayloadIdleTimedOut,
   encodeSessionPayload,
   decodeSessionPayload,
   type SwitchBranchParams,

@@ -55,7 +55,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       onboardingStatus: "COMPLETED",
     });
 
-    // Mint updated session token with new active workspace claims
+    const isEphemeral = payload.isEphemeral ?? false;
+    const remainingSeconds = payload.expiresAt
+      ? Math.max(0, Math.floor((payload.expiresAt - Date.now()) / 1000))
+      : undefined;
+
+    // Mint updated session token with new active workspace claims while preserving lifecycle bounds
     const updatedPayload = encodeSessionPayload({
       userId: payload.userId,
       email: payload.email,
@@ -68,12 +73,20 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       permissions: tenantContext.permissions,
       themePreference: payload.themePreference,
       timestamp: Date.now(),
+      expiresAt: payload.expiresAt,
+      isEphemeral,
+      tokenVersion: payload.tokenVersion,
+      sessionTimeoutSeconds: payload.sessionTimeoutSeconds,
       onboardingStatus: "COMPLETED",
       currentOnboardingStep: null,
     });
 
     const tokenJwt = await signSessionToken(updatedPayload);
-    const cookieOptions = createSessionCookieOptions(isProduction, true);
+    const cookieOptions = createSessionCookieOptions(
+      isProduction,
+      !isEphemeral,
+      remainingSeconds
+    );
 
     const response = NextResponse.json({
       success: true,

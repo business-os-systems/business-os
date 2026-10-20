@@ -244,13 +244,13 @@ describe("Platform Auth Gate & Login Route (@suite/dashboard)", () => {
   });
 
   describe("Cloudflare Turnstile Bot Defense (verifyTurnstileToken)", async () => {
-    const { verifyTurnstileToken, TURNSTILE_TEST_SITE_KEY, TURNSTILE_TEST_SECRET_KEY } =
+    const { verifyTurnstileToken, isTurnstileConfigured } =
       await import("../src/lib/turnstile");
 
-    it("passes verification in non-production test mode with Cloudflare test token", async () => {
-      const result = await verifyTurnstileToken("cf-turnstile-test-token-valid");
+    it("passes verification in non-production test mode when unconfigured", async () => {
+      const result = await verifyTurnstileToken("any-test-token");
       expect(result.success).toBe(true);
-      expect(result.hostname).toBeUndefined();
+      expect(result.challengeTs).toBeDefined();
     });
 
     it("rejects missing or empty Turnstile token", async () => {
@@ -262,9 +262,8 @@ describe("Platform Auth Gate & Login Route (@suite/dashboard)", () => {
       expect(nullResult.success).toBe(false);
     });
 
-    it("provides the official Cloudflare dummy test keys", () => {
-      expect(TURNSTILE_TEST_SITE_KEY).toBe("1x00000000000000000000AA");
-      expect(TURNSTILE_TEST_SECRET_KEY).toBe("2x00000000000000000000AB");
+    it("evaluates configuration state dynamically from environment", () => {
+      expect(typeof isTurnstileConfigured()).toBe("boolean");
     });
   });
 

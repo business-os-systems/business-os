@@ -34,9 +34,10 @@ export interface TurnstileProps {
 }
 
 /**
- * Cloudflare Turnstile Challenge Widget (Option A - Interaction-Only Mode)
+ * Cloudflare Turnstile Challenge Widget (Interaction-Only Mode)
  * Collapses to zero height (0px) for seamless, zero-gap aesthetics.
  * Expands dynamically only if Cloudflare detects suspicious traffic and prompts a human challenge.
+ * Returns null if Turnstile is unconfigured in environment.
  */
 export function Turnstile({
   onVerify,
@@ -50,19 +51,7 @@ export function Turnstile({
   const [isInteractive, setIsInteractive] = useState(false);
 
   useEffect(() => {
-    if (!isBrowser) return;
-
-    // In automated testing environment, issue deterministic test token immediately
-    if (process.env.NODE_ENV === "test") {
-      onVerify("cf-turnstile-test-token-valid");
-      return;
-    }
-
-    if (!siteKey) {
-      // In local dev without keys, issue fallback dummy token
-      onVerify("cf-turnstile-local-dev-bypass");
-      return;
-    }
+    if (!isBrowser || !siteKey) return;
 
     const renderWidget = () => {
       if (!containerRef.current || !window.turnstile) return;
@@ -91,53 +80,40 @@ export function Turnstile({
         });
         widgetIdRef.current = id;
       } catch (err) {
-        console.warn("Turnstile initialization failed:", err);
-        onVerify("cf-turnstile-fallback-token");
-        setIsInteractive(false);
+        console.warn("[Turnstile] Widget rendering failed:", err);
         onError?.();
+        setIsInteractive(false);
       }
     };
 
     if (window.turnstile) {
       renderWidget();
     } else {
-      const scriptId = "cf-turnstile-script";
-      let script = document.getElementById(scriptId) as HTMLScriptElement | null;
-      if (!script) {
-        script = document.createElement("script");
-        script.id = scriptId;
-        script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+      const existingScript = document.querySelector(
+        'script[src^="https://challenges.cloudflare.com/turnstile/v0/api.js"]'
+      );
+
+      if (!existingScript) {
+        const script = document.createElement("script");
+        script.src =
+          "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
         script.async = true;
         script.defer = true;
-        script.onload = () => {
-          renderWidget();
-        };
+        script.onload = () => renderWidget();
         script.onerror = () => {
-          onVerify("cf-turnstile-local-bypass");
-          setIsInteractive(false);
+          console.warn("[Turnstile] Script load error");
+          onError?.();
         };
         document.head.appendChild(script);
+      } else {
+        const interval = setInterval(() => {
+          if (window.turnstile) {
+            clearInterval(interval);
+            renderWidget();
+          }
+        }, 50);
+        return () => clearInterval(interval);
       }
-
-      const checkInterval = setInterval(() => {
-        if (window.turnstile) {
-          clearInterval(checkInterval);
-          renderWidget();
-        }
-      }, 100);
-
-      const timeout = setTimeout(() => {
-        clearInterval(checkInterval);
-        if (!widgetIdRef.current) {
-          onVerify("cf-turnstile-timeout-bypass");
-          setIsInteractive(false);
-        }
-      }, 4000);
-
-      return () => {
-        clearInterval(checkInterval);
-        clearTimeout(timeout);
-      };
     }
 
     return () => {
@@ -145,23 +121,29 @@ export function Turnstile({
         try {
           window.turnstile.remove(widgetIdRef.current);
         } catch {
-          // Ignore cleanup errors
+          // Ignore teardown error
         }
         widgetIdRef.current = null;
       }
     };
   }, [siteKey, onVerify, onError, onExpire]);
 
+  // If Turnstile is unconfigured, render nothing
+  if (!siteKey) {
+    return null;
+  }
+
   return (
     <div
-      data-testid="turnstile-widget"
-      className={`${
-        isInteractive
-          ? "flex items-center justify-center my-2"
-          : "h-0 overflow-hidden opacity-0 pointer-events-none"
+      className={`turnstile-widget relative transition-all duration-300 ease-out ${
+        isInteractive ? "min-h-[65px] opacity-100 my-2" : "h-0 opacity-0 overflow-hidden"
       } ${className}`}
+      aria-hidden={!isInteractive}
     >
-      <div ref={containerRef} id="cf-turnstile-container" />
+      <div
+        ref={containerRef}
+        className="cf-turnstile-container flex justify-center w-full"
+      />
     </div>
   );
 }
