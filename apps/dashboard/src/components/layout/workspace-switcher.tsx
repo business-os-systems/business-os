@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { Badge, Button, Spinner } from "@suite/ui";
+import { Button, Spinner } from "@suite/ui";
 import { ChevronDownIcon, CheckIcon } from "@suite/ui/icons";
 import { isBrowser } from "@/lib/env";
 

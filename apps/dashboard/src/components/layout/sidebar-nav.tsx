@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Badge, type NavigationConfig, type NavItemConfig } from "@suite/ui";
+import type { NavigationConfig, NavItemConfig } from "@suite/ui";
 import { hasPermission } from "@suite/core";
 import { LayersIcon } from "@suite/ui/icons";
 import type { NavigationItem } from "./types";
