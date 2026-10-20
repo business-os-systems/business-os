@@ -24,7 +24,7 @@ export function deriveNameFromEmail(email: string): string {
 
 const RegisterSchema = z.object({
   email: z.string().email("A valid email address is required"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  password: z.string().min(12, "Password must be at least 12 characters"),
   name: z.string().optional().nullable(),
   turnstileToken: z.string().optional().nullable(),
 });
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
           title: "Bad Request",
           status: 400,
           detail:
-            "Password must be at least 8 characters and contain at least 1 uppercase letter, 1 number, and 1 special symbol.",
+            "Password must be at least 12 characters and contain at least 1 uppercase letter, 1 number, and 1 special symbol.",
         },
         { status: 400, headers: { "Content-Type": "application/problem+json" } }
       );

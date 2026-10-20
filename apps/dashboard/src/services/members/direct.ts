@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { prisma } from "@suite/db";
 import { hashPin } from "@suite/auth/pin";
+import { hashToken } from "@suite/auth";
 import type {
   CreateDirectMemberInput,
   CreateDirectMemberResult,
@@ -182,6 +183,7 @@ export async function createDirectMember(
   });
 
   const token = crypto.randomBytes(32).toString("hex");
+  const hashedToken = hashToken(token);
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
   const effectiveInviterId: string =
     (await resolveEffectiveInviterId(organizationId, inviterId, user.id)) ?? user.id;
@@ -191,7 +193,7 @@ export async function createDirectMember(
       organizationId,
       email: normalizedEmail,
       roleId: role.id,
-      token,
+      token: hashedToken,
       status: "PENDING",
       expiresAt,
       inviterId: effectiveInviterId,

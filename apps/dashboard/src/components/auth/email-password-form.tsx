@@ -296,7 +296,7 @@ export function EmailPasswordForm({
                       complexity.hasMinLength ? "text-success" : "text-text-muted"
                     }`}
                   >
-                    {complexity.hasMinLength ? "✓" : "○"} 8+ characters
+                    {complexity.hasMinLength ? "✓" : "○"} 12+ characters
                   </span>
                   <span
                     className={`flex items-center gap-1 ${

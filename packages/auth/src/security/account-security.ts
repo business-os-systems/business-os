@@ -61,7 +61,7 @@ export type LinkOAuthAccountResult =
 /**
  * Computes deterministic SHA-256 hash for reset token storage.
  */
-function hashToken(rawToken: string): string {
+export function hashToken(rawToken: string): string {
   return createHash("sha256").update(rawToken).digest("hex");
 }
 
@@ -143,7 +143,7 @@ export async function completePasswordReset({
   const complexity = validatePasswordComplexity(newPassword);
   if (!complexity.isValid) {
     const errorDetails: string[] = [];
-    if (!complexity.hasMinLength) errorDetails.push("Password must be at least 8 characters long");
+    if (!complexity.hasMinLength) errorDetails.push("Password must be at least 12 characters long");
     if (!complexity.hasUppercase) errorDetails.push("Password must contain at least 1 uppercase letter");
     if (!complexity.hasNumber) errorDetails.push("Password must contain at least 1 number");
     if (!complexity.hasSpecialSymbol) errorDetails.push("Password must contain at least 1 special symbol");

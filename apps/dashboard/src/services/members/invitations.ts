@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { prisma } from "@suite/db";
+import { hashToken } from "@suite/auth";
 import type { InviteMemberInput, MemberListItemDto } from "./types";
 import { ConflictError, NotFoundError } from "./types";
 import { isAdministrativeRole } from "./safeguards";
@@ -180,6 +181,7 @@ export async function inviteOrganizationMember(
     });
 
     const secureToken = crypto.randomBytes(32).toString("hex");
+    const hashedToken = hashToken(secureToken);
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
     const created = await tx.organizationInvitation.create({
@@ -187,7 +189,7 @@ export async function inviteOrganizationMember(
         organizationId,
         email: normalizedEmail,
         roleId: role.id,
-        token: secureToken,
+        token: hashedToken,
         status: "PENDING",
         expiresAt,
         inviterId,

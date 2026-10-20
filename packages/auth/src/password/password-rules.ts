@@ -8,8 +8,8 @@ export interface PasswordComplexityResult {
 }
 
 /**
- * Validates password complexity against SPEC-AUTH-001 Section 4.1.1:
- * - Minimum 8 characters
+ * Validates password complexity against SPEC-AUTH-001 Section 4.1.1 & OWASP ASVS 4.0.3:
+ * - Minimum 12 characters
  * - At least 1 uppercase letter
  * - At least 1 number
  * - At least 1 special symbol
@@ -18,7 +18,7 @@ export interface PasswordComplexityResult {
  */
 export function validatePasswordComplexity(password: string): PasswordComplexityResult {
   const safePwd = typeof password === "string" ? password : "";
-  const hasMinLength = safePwd.length >= 8;
+  const hasMinLength = safePwd.length >= 12;
   const hasUppercase = /[A-Z]/.test(safePwd);
   const hasNumber = /[0-9]/.test(safePwd);
   const hasSpecialSymbol = /[^A-Za-z0-9]/.test(safePwd);

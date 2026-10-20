@@ -59,11 +59,29 @@ vi.mock("@suite/db", () => {
 // Mock @suite/redis
 vi.mock("@suite/redis", () => {
   const mockRedis = {
-    incr: vi.fn(async () => 1),
-    expire: vi.fn(async () => 1),
-    ttl: vi.fn(async () => 3600),
+    incr: vi.fn(async (_key?: string) => 1),
+    expire: vi.fn(async (_key?: string, _sec?: number) => 1),
+    ttl: vi.fn(async (_key?: string) => 3600),
   };
-  return { redis: mockRedis };
+  return {
+    redis: mockRedis,
+    checkRateLimit: vi.fn(async (rules: Array<{ key: string; max: number; windowSeconds: number }>) => {
+      for (const rule of rules) {
+        if (!rule.key || rule.max <= 0) continue;
+        const currentCount = await mockRedis.incr(rule.key);
+        if (currentCount > rule.max) {
+          const ttl = await mockRedis.ttl(rule.key);
+          return {
+            allowed: false,
+            retryAfter: ttl > 0 ? ttl : rule.windowSeconds,
+            detail: `Rate limit exceeded. Maximum ${rule.max} verification emails allowed per hour.`,
+            violatedRuleKey: rule.key,
+          };
+        }
+      }
+      return { allowed: true, retryAfter: 0 };
+    }),
+  };
 });
 
 import { prisma } from "@suite/db";

@@ -257,6 +257,11 @@ You are **STRICTLY PROHIBITED** from:
   1. All CORS middleware and route handlers MUST enforce strict whitelist validation against pre-declared `CORS_ALLOWED_ORIGINS` and set `Vary: Origin` to prevent multi-tenant CDN cache poisoning.
   2. Unauthorized preflight `OPTIONS` requests MUST be rejected immediately at the edge with HTTP 403 and an RFC 7807 error payload using `type: "/errors/cors-origin-denied"`.
   3. The CORS implementation MUST be structured into clean, step-by-step, self-documenting code with intention-revealing naming and explanatory comments so that any developer can easily read, verify, and maintain it.
+- ❌ **Repetitive Domain Logic & Copy-Pasted Handlers (DRY Non-Duplication Law):**
+  If any non-trivial business logic, rate limiting, security verification, or response formatting is repeated in **two or more places**, AI agents and engineers are **STRICTLY FORBIDDEN** from copy-pasting the implementation block.
+  1. Common domain mechanisms (such as multi-tier rate limiting or RFC 7807 problem details generation) MUST be extracted into a centralized, single-responsibility utility or shared package (`@suite/redis`, `@suite/core`, `@suite/auth`).
+  2. Infrastructural capabilities (such as rate limiting) MUST rely on clean abstraction interfaces (`RateLimitRule[]`, `checkRateLimit()`) so they remain reusable across all modular apps (App 01 through App 12) and can seamlessly offload to upstream API Gateways or reverse proxies in the future without modifying application route handlers.
+  3. All API error responses MUST use centralized helpers (`problemResponse()` / `createProblemEnvelope()`) rather than constructing manual RFC 7807 JSON boilerplate in every route.
 
 ---
 

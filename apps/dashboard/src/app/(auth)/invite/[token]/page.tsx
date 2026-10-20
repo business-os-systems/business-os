@@ -95,7 +95,7 @@ export default function AcceptInvitationPage() {
     }
 
     if (password.length < 8) {
-      setErrorMessage("Password must be at least 8 characters long.");
+      setErrorMessage("Password must be at least 12 characters long.");
       return;
     }
 
@@ -294,7 +294,7 @@ export default function AcceptInvitationPage() {
             <Input
               id="invitee-password"
               type={showPassword ? "text" : "password"}
-              placeholder="Min. 8 characters"
+              placeholder="Min. 12 characters"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={isSubmitting}
