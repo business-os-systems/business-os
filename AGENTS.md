@@ -179,8 +179,9 @@ You are **STRICTLY PROHIBITED** from:
   AI agents and developers are **STRICTLY FORBIDDEN** from introducing empty `catch {}` blocks or silently ignoring failures. All exceptions must either be handled cleanly with appropriate recovery/logging or rethrown as typed `AppError` subclasses.
 - ❌ **Un-Scoped Sweeping Refactors (Strict Boy Scout Blast Radius Law):**
   Under the Boy Scout Rule, cleanup (fixing typos, improving variable names, typing fixes) MUST be strictly bounded to files in the active ticket's blast radius. Sweeping refactors across unrelated modules or packages without an explicit ticket are strictly forbidden.
-- ❌ **Undeclared & Phantom Environment Variables (Env-First Pre-Declaration Law):**
+- ❌ **Undeclared & Phantom Environment Variables (Env-First Pre-Declaration & Zero Inline Fallback Law):**
   AI agents and engineers are **STRICTLY FORBIDDEN** from consuming, accessing, or introducing any environment variable (`process.env.*`, `import.meta.env.*`) in runtime code, configuration, scripts, or test utilities without **FIRST** pre-declaring and documenting it in the root and package-level `.env.example` templates and local `.env` files with safe, intention-revealing default or placeholder values. Referencing undeclared, undocumented, or phantom environment variables is strictly prohibited.
+  1. **Zero Inline Fallbacks (`|| "fallback"`):** AI agents and developers are **STRICTLY PROHIBITED** from using inline fallback expressions with hardcoded literals (e.g. `process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"`, `process.env.DASHBOARD_URL || "http://localhost:3001"`) in runtime application code. All environment access must rely strictly on pre-declared, validated configuration values or fail loudly/fail-closed when required variables are absent.
 - ❌ **Hardcoded UI Presentation & Repetitive Markup (Config-Based UI Primacy Law):**
   Except for freeform visual authoring canvas engines (such as the Website Builder Studio Canvas), all user interface presentation throughout Business OS—including navigation sidebars, dashboard layouts, settings tabs, card sections, forms, and data tables—MUST be strictly declarative and driven by strongly-typed configuration schemas (`*.config.ts`).
   1. AI agents and developers are **STRICTLY PROHIBITED** from hardcoding raw UI presentation strings, repetitive JSX input blocks, or static column definitions directly inside component JSX/TSX.
@@ -202,9 +203,14 @@ You are **STRICTLY PROHIBITED** from:
 - ❌ **Scattered Pathname Matching & Fragile Navigation Hub Detection (Declarative Navigation Hub State Law):**
   Sidebar collapsing, sub-navigation rendering, and layout modes **MUST NOT** rely on raw ad-hoc pathname substring matching scattered across components (e.g. `pathname?.startsWith("/settings")`).
   Active hub detection must be centralized in declarative helper functions (e.g. `isSettingsHubRoute(pathname)`) exported from dedicated configuration modules.
-- ❌ **Nested Ternary Operators in Render Logic (Clean Route Matching & Cognitive Clarity Law):**
-  Chaining nested ternary operators (`a ? b : c ? d : e`) in JSX, component bodies, or routing logic is strictly forbidden.
-  Route activation detection and complex status determinations must reside in dedicated, single-responsibility helper functions (`isRouteActive(currentPath, itemHref)`) adhering to SLAP, handling exact matches and sub-routes cleanly without nested ternary chains.
+- ❌ **Universal Ban on Chained Ternary Operators (Cognitive Clarity & Single Level of Abstraction Law):**
+  Chaining nested ternary operators (`a ? b : c ? d : e ? f : g`) anywhere in the codebase—including JSX, component bodies, routing logic, backend services, DTO mappers, and variable assignments—is **STRICTLY FORBIDDEN**.
+  1. Deeply nested conditionals and multi-branch resolutions MUST reside in dedicated, single-responsibility, intention-revealing helper functions (e.g. `resolveMemberRoleIds()`, `resolveTargetBranchIds()`, `isRouteActive()`) with clear early returns.
+  2. Functions must adhere to the Single Level of Abstraction Principle (SLAP) and keep cognitive complexity near zero.
+- ❌ **Repetitive Status/Discriminator Cascades (Declarative Lookup Tables & Object Mapping Law):**
+  AI agents and developers are **STRICTLY FORBIDDEN** from writing repetitive `if-else` or `switch` cascades that map entity statuses, discriminators, or error kinds to messages, labels, or handlers (e.g., `if (status === "ACTIVE") throw ... else if (status === "INVITED") throw ...`).
+  1. All status-to-message, status-to-label, or type-to-handler mappings **MUST** be defined as declarative, strongly-typed dictionary lookup objects (e.g., `const MEMBERSHIP_CONFLICT_MESSAGES: Record<MembershipStatus, string> = { ... }`).
+  2. Message and handler lookups must be performed via simple key indexing (`const message = MEMBERSHIP_CONFLICT_MESSAGES[status]`), ensuring open-closed design, zero repetitive boilerplate, and exhaustive compile-time checking.
 - ❌ **Static Role String Assignment & Autonomous Bypass (Sign-up / Tenant Bootstrap Capability Seeding Law):**
   As soon as a user signs up and provisions an organization, all canonical capability permissions from PostgreSQL must be immediately linked to the tenant's administrative role via database relation (`role_permissions`).
   Routes, session encoders, and middleware must NEVER assign hardcoded role strings (`role: "owner"`) or wildcard capabilities (`permissions: ["*"]`) as static fallbacks. All permissions must be resolved dynamically from PostgreSQL relations via `extractEffectivePermissions`.

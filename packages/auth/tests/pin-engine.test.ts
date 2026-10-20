@@ -268,7 +268,7 @@ describe("High-Security PIN Verification Engine", () => {
                     role: {
                       slug: "general-manager",
                       isSystem: true,
-                      permissions: [],
+                      permissions: [{ permission: { action: "*" } }],
                     },
                   },
                 ],
