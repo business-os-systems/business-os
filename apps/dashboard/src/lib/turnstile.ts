@@ -9,7 +9,8 @@ import { isProduction } from "./env";
 const SITEVERIFY_ENDPOINT = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 
 export function getTurnstileSiteKey(): string {
-  return process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "";
+  const key = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+  return typeof key === "string" ? key.trim() : "";
 }
 
 export function getTurnstileSecretKey(): string {
