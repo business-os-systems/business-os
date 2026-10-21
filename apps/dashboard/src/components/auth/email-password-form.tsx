@@ -9,7 +9,7 @@ import { AlertTriangleIcon, EyeIcon, EyeOffIcon } from "@suite/ui/icons";
 import { SSORedirectCard } from "./sso-redirect-card";
 import { Turnstile } from "./turnstile";
 import { isBrowser, isProduction } from "@/lib/env";
-import { getTurnstileSiteKey } from "@/lib/turnstile";
+import { useTurnstileConfig } from "@/lib/turnstile-client";
 
 /**
  * User credentials payload for authentication submission (ISP).
@@ -78,6 +78,7 @@ export function EmailPasswordForm({
   const [showPassword, setShowPassword] = useState(false);
   const [hasInteractedWithPassword, setHasInteractedWithPassword] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const turnstileConfig = useTurnstileConfig();
 
   // Home Realm Discovery (HRD) State
   const [ssoData, setSsoData] = useState<SsoDiscoveryPayload | null>(null);
@@ -365,7 +366,10 @@ export function EmailPasswordForm({
           )}
 
           {/* Cloudflare Turnstile Bot Defense (SPEC-02) */}
-          <Turnstile onVerify={(token) => setTurnstileToken(token)} />
+          <Turnstile
+            siteKey={turnstileConfig.siteKey}
+            onVerify={(token) => setTurnstileToken(token)}
+          />
 
           {/* Submit Action */}
           <Button
@@ -375,7 +379,7 @@ export function EmailPasswordForm({
             isLoading={isLoading}
             disabled={
               isLoading ||
-              (isProduction && Boolean(getTurnstileSiteKey()) && !turnstileToken) ||
+              (isProduction && turnstileConfig.isConfigured && !turnstileToken) ||
               (mode === "signup" && hasInteractedWithPassword && !complexity.isValid)
             }
             className="mt-2 min-h-[44px]"

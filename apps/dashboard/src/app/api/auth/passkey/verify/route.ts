@@ -9,7 +9,7 @@ import {
 import { getUserOnboardingState, extractEffectivePermissions, recordSecurityAuditLog } from "@suite/auth";
 import { AUDIT_EVENT_TYPES } from "@suite/core";
 import { isProduction } from "@/lib/env";
-import { verifyTurnstileToken } from "@/lib/turnstile";
+import { verifyTurnstileToken, isTurnstileConfigured } from "@/lib/turnstile";
 import { resolvePostLoginRoute } from "@/lib/route-dispatcher";
 import { problemResponse, successResponse, zodProblemResponse } from "@/lib/api-response";
 
@@ -34,8 +34,9 @@ export async function POST(request: Request) {
 
     const { id, turnstileToken } = parseResult.data;
 
-    // Verify Cloudflare Turnstile bot token if provided or in production
-    if (isProduction || turnstileToken) {
+    // Verify Cloudflare Turnstile bot token when configured (strictly enforced in production)
+    const isBotDefenseRequired = isProduction && isTurnstileConfigured();
+    if (isBotDefenseRequired || (isTurnstileConfigured() && turnstileToken)) {
       const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
       const turnstileResult = await verifyTurnstileToken(turnstileToken, clientIp);
       if (!turnstileResult.success) {

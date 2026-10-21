@@ -10,7 +10,7 @@ import {
 } from "@/lib/auth-constants";
 import { isProduction } from "@/lib/env";
 import { resolveRequestOrigin } from "@/lib/origin";
-import { verifyTurnstileToken } from "@/lib/turnstile";
+import { verifyTurnstileToken, isTurnstileConfigured } from "@/lib/turnstile";
 import { problemResponse, successResponse, zodProblemResponse } from "@/lib/api-response";
 
 export function deriveNameFromEmail(email: string): string {
@@ -57,8 +57,9 @@ export async function POST(request: Request) {
       });
     }
 
-    // Verify Cloudflare Turnstile bot token in production or when token provided
-    if (isProduction || turnstileToken) {
+    // Verify Cloudflare Turnstile bot token when configured (strictly enforced in production)
+    const isBotDefenseRequired = isProduction && isTurnstileConfigured();
+    if (isBotDefenseRequired || (isTurnstileConfigured() && turnstileToken)) {
       const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
       const turnstileResult = await verifyTurnstileToken(turnstileToken, clientIp);
       if (!turnstileResult.success) {

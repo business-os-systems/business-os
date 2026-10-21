@@ -6,10 +6,12 @@ import { Button, Input, Label } from "@suite/ui";
 import { CheckIcon, AlertTriangleIcon } from "@suite/ui/icons";
 import { AuthCard } from "@/components/auth/auth-card";
 import { Turnstile } from "@/components/auth/turnstile";
+import { useTurnstileConfig } from "@/lib/turnstile-client";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const turnstileConfig = useTurnstileConfig();
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -136,13 +138,20 @@ export default function ForgotPasswordPage() {
           </div>
 
           {/* Cloudflare Turnstile Bot Defense (SPEC-02) */}
-          <Turnstile onVerify={(token) => setTurnstileToken(token)} />
+          <Turnstile
+            siteKey={turnstileConfig.siteKey}
+            onVerify={(token) => setTurnstileToken(token)}
+          />
 
           <Button
             type="submit"
             variant="primary"
             fullWidth
-            disabled={isLoading || !email.trim()}
+            disabled={
+              isLoading ||
+              !email.trim() ||
+              (turnstileConfig.isConfigured && !turnstileToken)
+            }
             isLoading={isLoading}
             className="mt-1 min-h-[44px]"
           >
