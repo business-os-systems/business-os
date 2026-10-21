@@ -241,7 +241,9 @@ export async function listOrganizationAddresses(
     },
   });
 
-  return rawAddresses.map((addr) => mapToAddressListItemDto(addr, organizationId));
+type RawAddressRecord = Parameters<typeof mapToAddressListItemDto>[0];
+
+  return rawAddresses.map((addr: RawAddressRecord) => mapToAddressListItemDto(addr, organizationId));
 }
 
 /**

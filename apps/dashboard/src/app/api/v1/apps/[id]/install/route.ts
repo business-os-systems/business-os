@@ -57,7 +57,7 @@ export async function POST(
       });
 
       const dbPermissionActions = userBranchRoles.flatMap(
-        (ubr) =>
+        (ubr: { role?: { permissions?: Array<{ permission?: { action: string } | null }> | null } | null }) =>
           ubr.role?.permissions?.map((rp) => rp.permission?.action).filter(Boolean) as string[] ?? []
       );
 

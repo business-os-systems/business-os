@@ -1,4 +1,4 @@
-import { prisma } from "@suite/db";
+import { prisma, type Prisma } from "@suite/db";
 import { hashPin } from "@suite/auth/pin";
 import type {
   MemberListItemDto,
@@ -128,7 +128,7 @@ export async function updateMemberDetails(
   const pinHash = input.managerPin ? await hashPin(input.managerPin) : null;
 
   // Execute updates in transaction
-  await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     // 1. Update user profile details
     const userUpdateData: {
       name?: string;

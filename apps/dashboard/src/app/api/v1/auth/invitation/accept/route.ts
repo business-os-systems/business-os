@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@suite/db";
+import { prisma, type Prisma } from "@suite/db";
 import {
   encodeSessionPayload,
   signSessionToken,
@@ -359,7 +359,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     let assignedBranchId: string | null = null;
 
     // Fast-Track Membership Enrollment in transaction
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // 1. Link UserOrganization
       await tx.userOrganization.upsert({
         where: {
@@ -431,7 +431,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const userPermissions =
       invitation.role?.permissions
-        ?.map((rp) => rp.permission?.action)
+        ?.map((rp: { permission?: { action: string } | null }) => rp.permission?.action)
         .filter(Boolean) as string[] || [];
 
     // Issue updated session token

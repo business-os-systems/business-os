@@ -2,7 +2,7 @@ import React from "react";
 import { prisma } from "@suite/db";
 import { requireAuth } from "@/lib/auth-guard";
 import { listOrganizationBranches } from "@/services/branches.service";
-import { listOrganizationAddresses } from "@/services/addresses.service";
+import { listOrganizationAddresses, type AddressListItemDto } from "@/services/addresses.service";
 import { BranchesClient } from "./branches-client";
 
 export default async function BranchesSettingsPage() {
@@ -20,7 +20,7 @@ export default async function BranchesSettingsPage() {
     listOrganizationAddresses(session.organizationId),
   ]);
 
-  const addressOptions = addresses.map((a) => ({
+  const addressOptions = addresses.map((a: AddressListItemDto) => ({
     label: `${a.formattedAddress} (${a.postalCode})`,
     value: a.id,
   }));

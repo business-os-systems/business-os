@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@suite/db";
+import { prisma, type InstalledApp } from "@suite/db";
 import { resolveTenantContext } from "@/lib/tenant-context";
 import { problemResponse } from "@/lib/problem-response";
 
@@ -22,7 +22,7 @@ export async function GET(request: Request) {
       },
     });
 
-    const apps = dbRecords.map((record) => {
+    const apps = dbRecords.map((record: InstalledApp) => {
       const settings = (record.settings as Record<string, unknown>) || {};
       const title =
         (settings.title as string) ||

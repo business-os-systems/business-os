@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@suite/db";
+import { prisma, type CmsTemplate } from "@suite/db";
 
 export interface TemplateBlueprintMetadata {
   id: string;
@@ -20,7 +20,7 @@ export async function GET() {
       },
     });
 
-    const mapped: TemplateBlueprintMetadata[] = templates.map((tpl) => {
+    const mapped: TemplateBlueprintMetadata[] = templates.map((tpl: CmsTemplate) => {
       const blueprint = (tpl.blueprintJson as Record<string, unknown>) || {};
       return {
         id: (blueprint.id as string) || tpl.id,

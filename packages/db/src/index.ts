@@ -47,4 +47,9 @@ export type {
   InstalledApp,
   AppBranchConfig,
   AuditLog,
+  CmsSite,
+  CmsPage,
+  CmsPageVersion,
+  CmsTemplate,
+  CmsDomain,
 } from "@prisma/client";

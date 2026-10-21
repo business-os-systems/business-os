@@ -48,6 +48,8 @@ ENV NODE_ENV=production
 ENV PORT=3001
 ENV HOSTNAME="0.0.0.0"
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV PRISMA_QUERY_ENGINE_LIBRARY="/tmp/prisma-engines/libquery_engine-debian-openssl-3.0.x.so.node"
+ENV NODE_PATH="/app/node_modules:/app/packages/auth/node_modules:/app/packages/redis/node_modules:/app/packages/db/node_modules"
 
 RUN apt-get update && apt-get install -y --no-install-recommends openssl libc6 ca-certificates && rm -rf /var/lib/apt/lists/*
 RUN groupadd --system --gid 1001 nodejs && useradd --system --uid 1001 nextjs
@@ -57,10 +59,14 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/dashboard/.next/standalone .
 COPY --from=builder --chown=nextjs:nodejs /app/apps/dashboard/.next/static ./apps/dashboard/.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/apps/dashboard/public ./apps/dashboard/public
 
-# Copy Prisma engines to Next.js server directory and /tmp/prisma-engines
-RUN mkdir -p /tmp/prisma-engines && chmod 777 /tmp/prisma-engines
+# Copy pruned production node_modules and workspace packages for native and workspace dependency resolution
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nextjs:nodejs /app/packages ./packages
+
+# Copy Prisma engines to Next.js server directory and /tmp/prisma-engines with secure permissions
+RUN mkdir -p /tmp/prisma-engines && chown -R nextjs:nodejs /tmp/prisma-engines && chmod 755 /tmp/prisma-engines
 COPY --from=builder --chown=nextjs:nodejs /app/prisma-engines/ ./apps/dashboard/.next/server/
-COPY --from=builder /app/prisma-engines/ /tmp/prisma-engines/
+COPY --from=builder --chown=nextjs:nodejs /app/prisma-engines/ /tmp/prisma-engines/
 
 USER nextjs
 
