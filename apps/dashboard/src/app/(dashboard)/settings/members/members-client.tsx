@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast, Card, cn } from "@suite/ui";
 import type { SelectOption } from "@suite/ui";
 import { PERMISSIONS, hasPermission } from "@suite/core";
+import { isBrowser } from "@/lib/env";
 import { ConfigTableRenderer } from "@/components/config-renderers/config-table-renderer";
 import { httpClient } from "@/lib/http-client";
 import type {
@@ -385,7 +386,7 @@ export function MembersClient({
   // Handle Copy Invite Link
   const handleCopyInvite = (member: MemberListItemDto) => {
     if (!member.invitationToken) return;
-    const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
+    const baseUrl = isBrowser ? window.location.origin : "";
     const inviteUrl = `${baseUrl}/invite/${member.invitationToken}`;
 
     if (navigator?.clipboard) {

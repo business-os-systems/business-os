@@ -3,7 +3,7 @@ import { OpenAPIHono } from "@hono/zod-openapi";
 import type { ProblemDetails } from "@suite/core";
 import { requestIdMiddleware } from "../src/middleware/request-id.js";
 import { securityHeadersMiddleware } from "../src/middleware/security-headers.js";
-import { corsMiddleware } from "../src/middleware/cors.js";
+import { corsMiddleware, isOriginPermitted } from "../src/middleware/cors.js";
 import {
   rateLimitMiddleware,
   clearMemoryRateLimitStore,
@@ -123,6 +123,56 @@ describe("Middleware Suite", () => {
       expect(res.status).toBe(200);
       expect(res.headers.get("Access-Control-Allow-Origin")).toBeNull();
       expect(res.headers.get("Access-Control-Allow-Credentials")).toBeNull();
+    });
+
+    it("evaluates regex-anchored wildcard patterns in isOriginPermitted correctly", () => {
+      const patterns = [
+        "https://app.rohitbahuguna.online",
+        "https://*.rohitbahuguna.online",
+        "http://localhost:3001",
+      ];
+
+      // Exact matches
+      expect(isOriginPermitted("https://app.rohitbahuguna.online", patterns)).toBe(true);
+      expect(isOriginPermitted("http://localhost:3001", patterns)).toBe(true);
+
+      // Single-level wildcard subdomains
+      expect(isOriginPermitted("https://hotel.rohitbahuguna.online", patterns)).toBe(true);
+      expect(isOriginPermitted("https://abc.rohitbahuguna.online", patterns)).toBe(true);
+      expect(isOriginPermitted("https://sub-tenant-12.rohitbahuguna.online", patterns)).toBe(true);
+
+      // Multi-level subdomains should be rejected (single-level DNS label only)
+      expect(isOriginPermitted("https://sub.hotel.rohitbahuguna.online", patterns)).toBe(false);
+
+      // Domain affix / bypass attacks
+      expect(isOriginPermitted("https://evilrohitbahuguna.online", patterns)).toBe(false);
+      expect(isOriginPermitted("https://hotel.rohitbahuguna.online.attacker.com", patterns)).toBe(false);
+      expect(isOriginPermitted("http://hotel.rohitbahuguna.online", patterns)).toBe(false); // wrong protocol
+      expect(isOriginPermitted("", patterns)).toBe(false);
+    });
+
+    it("permits wildcard tenant subdomains with credentials in corsMiddleware", async () => {
+      const app = new OpenAPIHono();
+      app.use(
+        "*",
+        corsMiddleware({
+          allowedOrigins: ["https://*.rohitbahuguna.online", "https://app.rohitbahuguna.online"],
+        }),
+      );
+      app.get("/test", (c) => c.text("ok"));
+
+      const res = await app.request("/test", {
+        method: "OPTIONS",
+        headers: {
+          Origin: "https://hotel.rohitbahuguna.online",
+          "Access-Control-Request-Method": "GET",
+        },
+      });
+
+      expect(res.status).toBe(204);
+      expect(res.headers.get("Access-Control-Allow-Origin")).toBe("https://hotel.rohitbahuguna.online");
+      expect(res.headers.get("Access-Control-Allow-Credentials")).toBe("true");
+      expect(res.headers.get("Vary")).toBe("Origin");
     });
   });
 

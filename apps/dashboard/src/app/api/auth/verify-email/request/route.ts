@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@suite/db";
 import { checkRateLimit, enqueueEmail } from "@suite/redis";
 import { problemResponse, successResponse, zodProblemResponse } from "@/lib/problem-response";
+import { resolveRequestOrigin } from "@/lib/origin";
 import {
   createEmailVerificationToken,
   sendEmail,
@@ -94,7 +95,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const { rawToken } = await createEmailVerificationToken(normalizedEmail, prisma);
 
     // 6. Asynchronously dispatch email via BullMQ queue (Issue 54) with fallback
-    const origin = request.nextUrl.origin;
+    const origin = resolveRequestOrigin(request);
     const verificationUrl = `${origin}/api/auth/verify-email/confirm?token=${rawToken}`;
     const emailPayload = {
       to: normalizedEmail,

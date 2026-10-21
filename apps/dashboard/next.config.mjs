@@ -12,6 +12,36 @@ const nextConfig = {
   ],
   experimental: {
     optimizePackageImports: ["lucide-react", "@suite/ui"],
+    serverActions: {
+      allowedOrigins: [
+        "localhost:3001",
+        "app.rohitbahuguna.online",
+        "*.rohitbahuguna.online",
+        ...(process.env.DOMAIN_ROOT
+          ? [`app.${process.env.DOMAIN_ROOT}`, `*.${process.env.DOMAIN_ROOT}`]
+          : []),
+      ],
+    },
+  },
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "**.r2.cloudflarestorage.com",
+      },
+      {
+        protocol: "https",
+        hostname: "avatars.githubusercontent.com",
+      },
+      {
+        protocol: "https",
+        hostname: "lh3.googleusercontent.com",
+      },
+      {
+        protocol: "https",
+        hostname: "*.rohitbahuguna.online",
+      },
+    ],
   },
   typescript: {
     ignoreBuildErrors: false,

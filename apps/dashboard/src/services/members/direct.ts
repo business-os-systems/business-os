@@ -54,7 +54,8 @@ async function resolveEffectiveInviterId(
 export async function createDirectMember(
   organizationId: string,
   input: CreateDirectMemberInput,
-  inviterId?: string
+  inviterId?: string,
+  baseUrl?: string
 ): Promise<CreateDirectMemberResult> {
   const normalizedEmail = input.email.trim().toLowerCase();
   const targetRoleIds = resolveTargetRoleIds(input);
@@ -201,8 +202,8 @@ export async function createDirectMember(
     include: { role: true },
   });
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
-  const inviteUrl = `${baseUrl}/invite/${token}`;
+  const effectiveBaseUrl = (baseUrl ?? process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/$/, "");
+  const inviteUrl = `${effectiveBaseUrl}/invite/${token}`;
 
   const latestMembers = await listOrganizationMembers(organizationId);
   const createdDto = latestMembers.find((m) => m.id === userOrg.id);

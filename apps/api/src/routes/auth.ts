@@ -1,5 +1,6 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { type Context } from "hono";
+import { InternalServerError } from "@suite/core";
 import { prisma } from "@suite/db";
 import { redis } from "@suite/redis";
 import {
@@ -513,6 +514,14 @@ authRouter.openapi(ssoDiscoverRoute, async (c) => {
   );
 });
 
+function getDashboardUrl(): string {
+  const dashboardUrl = process.env.DASHBOARD_URL;
+  if (!dashboardUrl) {
+    throw new InternalServerError("DASHBOARD_URL environment variable is required.");
+  }
+  return dashboardUrl.replace(/\/$/, "");
+}
+
 authRouter.openapi(ssoLoginRoute, async (c) => {
   const { id } = c.req.valid("param");
   const { email } = c.req.valid("query");
@@ -524,7 +533,7 @@ authRouter.openapi(ssoLoginRoute, async (c) => {
 
   const acceptHeader = c.req.header("accept") || "";
   const isBrowser = acceptHeader.includes("text/html");
-  const dashboardUrl = process.env.DASHBOARD_URL || new URL(c.req.url).origin;
+  const dashboardUrl = getDashboardUrl();
 
   if (!ssoRecord) {
     if (isBrowser) {
@@ -700,7 +709,7 @@ authRouter.openapi(requestVerifyEmailRoute, async (c) => {
 
   const { rawToken } = await createEmailVerificationToken(normalizedEmail, prisma);
 
-  const dashboardUrl = process.env.DASHBOARD_URL || new URL(c.req.url).origin;
+  const dashboardUrl = getDashboardUrl();
   const verificationUrl = `${dashboardUrl}/api/auth/verify-email/confirm?token=${rawToken}`;
 
   await sendEmail({
