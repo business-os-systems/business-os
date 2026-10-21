@@ -52,4 +52,4 @@ USER apisvc
 
 EXPOSE 3000
 
-CMD ["node", "apps/api/dist/src/server.js"]
+CMD ["/app/apps/api/node_modules/.bin/tsx", "apps/api/src/server.ts"]

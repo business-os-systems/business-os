@@ -36,6 +36,10 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 RUN pnpm turbo run build --filter=@suite/dashboard...
 
+# Extract Prisma native query engines for standalone runner
+RUN mkdir -p /app/prisma-engines && \
+    find /app/node_modules -name "libquery_engine*.so.node" -exec cp {} /app/prisma-engines/ \;
+
 # 4. Minimal Production Runner
 FROM node:22-slim AS runner
 WORKDIR /app
@@ -52,6 +56,11 @@ RUN groupadd --system --gid 1001 nodejs && useradd --system --uid 1001 nextjs
 COPY --from=builder --chown=nextjs:nodejs /app/apps/dashboard/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/dashboard/.next/static ./apps/dashboard/.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/apps/dashboard/public ./apps/dashboard/public
+
+# Copy Prisma engines to Next.js server directory and /tmp/prisma-engines
+RUN mkdir -p /tmp/prisma-engines && chmod 777 /tmp/prisma-engines
+COPY --from=builder --chown=nextjs:nodejs /app/prisma-engines/ ./apps/dashboard/.next/server/
+COPY --from=builder /app/prisma-engines/ /tmp/prisma-engines/
 
 USER nextjs
 
