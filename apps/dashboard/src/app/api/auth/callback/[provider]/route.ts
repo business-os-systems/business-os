@@ -169,7 +169,7 @@ export async function GET(
       }
 
       // Auto-provision brand new user & account in transaction
-      dbUser = await prisma.$transaction(async (tx) => {
+      dbUser = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         const user = await tx.user.create({
           data: {
             email: normalizedEmail,

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@suite/db";
+import { prisma, type InstalledApp } from "@suite/db";
 import { z } from "zod";
 
 const ParamsSchema = z.object({
@@ -40,7 +40,7 @@ export async function GET(
       },
     });
 
-    const installed = dbRecords.map((record) => {
+    const installed = dbRecords.map((record: InstalledApp) => {
       const settings = (record.settings as Record<string, unknown>) || {};
       return {
         id: record.id,

@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { prisma } from "@suite/db";
+import { prisma, type Prisma } from "@suite/db";
 import { hashToken, invalidateUserPermissionsCache } from "@suite/auth";
 import { redis } from "@suite/redis";
 import type { InviteMemberInput, MemberListItemDto } from "./types";
@@ -108,7 +108,7 @@ export async function inviteOrganizationMember(
   const targetBranchIds = resolveTargetBranchIds(input);
 
   // Execute all mutations atomically inside a transaction (Issue 08)
-  const { createdInvitation, token } = await prisma.$transaction(async (tx) => {
+  const { createdInvitation, token } = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     // If user already exists in org, update their branch role to the invited roles & branches
     if (existingUser) {
       await tx.userBranchRole.deleteMany({

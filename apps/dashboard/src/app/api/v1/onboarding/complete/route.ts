@@ -88,7 +88,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         : onboardingState.selectedApps;
 
     // Execute atomic license provisioning and status update
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // 1. Provision installed apps with complete manifest metadata
       for (const appId of appsToInstall) {
         const manifest = getAppManifest(appId) || APP_MANIFESTS["website-builder"];
@@ -140,8 +140,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       });
     });
 
-    const activeOrg = dbUser.organizations.find((o) => o.organizationId === orgId)?.organization;
-    const activeBranchRole = dbUser.branchRoles.find((b) => b.organizationId === orgId);
+    const activeOrg = dbUser.organizations.find(
+      (o: { organizationId: string; organization?: { id: string; name: string } }) => o.organizationId === orgId
+    )?.organization;
+    const activeBranchRole = dbUser.branchRoles.find(
+      (b: { organizationId: string }) => b.organizationId === orgId
+    );
     const activeBranch = activeBranchRole?.branch;
     const activeRole = activeBranchRole?.role;
 

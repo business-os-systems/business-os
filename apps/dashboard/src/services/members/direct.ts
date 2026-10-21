@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { prisma } from "@suite/db";
+import { prisma, type Prisma } from "@suite/db";
 import { hashPin } from "@suite/auth/pin";
 import { hashToken } from "@suite/auth";
 import type {
@@ -139,7 +139,7 @@ export async function createDirectMember(
   const targetBranchIds = resolveTargetBranchIds(input);
 
   // 4. Upsert UserOrganization & UserBranchRole in transaction
-  const userOrg = await prisma.$transaction(async (tx) => {
+  const userOrg = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const uo = await tx.userOrganization.upsert({
       where: {
         userId_organizationId: { userId: user.id, organizationId },

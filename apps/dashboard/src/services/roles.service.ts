@@ -1,4 +1,4 @@
-import { prisma } from "@suite/db";
+import { prisma, type Prisma } from "@suite/db";
 import {
   NotFoundError,
   ConflictError,
@@ -142,7 +142,7 @@ export async function createOrganizationRole(
     },
   });
 
-  return await prisma.$transaction(async (tx) => {
+  return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const role = await tx.role.create({
       data: {
         organizationId,
@@ -212,7 +212,7 @@ export async function updateOrganizationRole(
     throw new NotFoundError("Role record was not found.");
   }
 
-  return await prisma.$transaction(async (tx) => {
+  return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const updateData: { name?: string; description?: string | null } = {};
     if (input.name && input.name.trim().length > 0) {
       updateData.name = input.name.trim();

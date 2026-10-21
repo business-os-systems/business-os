@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@suite/db";
+import { prisma, type Prisma } from "@suite/db";
 import {
   encodeSessionPayload,
   signSessionToken,
@@ -118,7 +118,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       where: { userId: session.userId },
       select: { organizationId: true },
     });
-    const userOrgIds = new Set(userOrgs.map((uo) => uo.organizationId));
+    const userOrgIds = new Set(userOrgs.map((uo: { organizationId: string }) => uo.organizationId));
     if (session.organizationId) {
       userOrgIds.add(session.organizationId);
     }
@@ -147,7 +147,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         : null;
 
     // Atomic tenant bootstrapping transaction
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // 1. Create or Update Organization
       let org;
       if (targetExistingOrgId) {

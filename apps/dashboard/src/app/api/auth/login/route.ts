@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { prisma } from "@suite/db";
+import { prisma, type Account } from "@suite/db";
 import { verifyPassword } from "@suite/auth/password";
 import {
   SESSION_COOKIE_NAME,
@@ -92,7 +92,7 @@ export async function POST(request: Request) {
     }
 
     // Verify credential account and password exist
-    const credentialAccount = dbUser.accounts.find((a) => a.providerId === "credential");
+    const credentialAccount = dbUser.accounts.find((a: Account) => a.providerId === "credential");
     if (!credentialAccount || !credentialAccount.password) {
       return problemResponse({
         status: 401,

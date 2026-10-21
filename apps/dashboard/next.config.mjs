@@ -1,9 +1,37 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
+  outputFileTracingRoot: path.join(__dirname, "../../"),
   reactStrictMode: true,
-  transpilePackages: ["@suite/website-builder", "@suite/ui", "@suite/auth"],
-  serverExternalPackages: ["@node-rs/argon2", "@node-rs/argon2-linux-x64-gnu"],
+  transpilePackages: [
+    "@suite/website-builder",
+    "@suite/ui",
+    "@suite/auth",
+    "@suite/core",
+    "@suite/db",
+    "@suite/logger",
+    "@suite/redis",
+  ],
+  serverExternalPackages: [
+    "@node-rs/argon2",
+    "@node-rs/argon2-linux-x64-gnu",
+    "@prisma/client",
+    "ioredis",
+    "bullmq",
+  ],
+  outputFileTracingIncludes: {
+    "/api/**/*": [
+      "../../node_modules/.pnpm/@node-rs+argon2*/**/*",
+      "../../node_modules/.pnpm/@prisma+client*/**/*",
+      "../../node_modules/.pnpm/ioredis*/**/*",
+      "../../node_modules/.pnpm/bullmq*/**/*",
+    ],
+  },
   experimental: {
     optimizePackageImports: ["lucide-react", "@suite/ui"],
   },
@@ -46,7 +74,13 @@ const nextConfig = {
     };
     if (isServer) {
       config.externals = config.externals || [];
-      config.externals.push("@node-rs/argon2", "@node-rs/argon2-linux-x64-gnu");
+      config.externals.push(
+        "@node-rs/argon2",
+        "@node-rs/argon2-linux-x64-gnu",
+        "@prisma/client",
+        "ioredis",
+        "bullmq",
+      );
     }
     return config;
   },

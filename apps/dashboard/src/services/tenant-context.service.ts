@@ -1,4 +1,4 @@
-import { prisma } from "@suite/db";
+import { prisma, type InstalledApp } from "@suite/db";
 import { PERMISSIONS } from "@suite/core";
 import {
   getUserRolePermissions,
@@ -94,7 +94,7 @@ export async function getDashboardTenantContext(
     activeBranchName: session.activeBranchName,
   };
 
-  const installedApps: DashboardInstalledAppNav[] = dbRecords.map((record) => {
+  const installedApps: DashboardInstalledAppNav[] = dbRecords.map((record: InstalledApp) => {
     const settings = (record.settings as Record<string, unknown>) || {};
     const title =
       (settings.title as string) ||
