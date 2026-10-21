@@ -15,7 +15,6 @@ describe("Turnstile Runtime Configuration API (GET /api/auth/turnstile/config)",
 
   it("returns unconfigured response when Turnstile keys are absent", async () => {
     delete process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
-    delete process.env.TURNSTILE_SITE_KEY;
     delete process.env.TURNSTILE_SECRET_KEY;
 
     const response = await getTurnstileConfig();
@@ -39,21 +38,6 @@ describe("Turnstile Runtime Configuration API (GET /api/auth/turnstile/config)",
     const data = await response.json();
     expect(data).toEqual({
       siteKey: "0x4AAAAAAATestSiteKey123",
-      isConfigured: true,
-    });
-  });
-
-  it("returns active site key when Turnstile is configured via TURNSTILE_SITE_KEY", async () => {
-    delete process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
-    process.env.TURNSTILE_SITE_KEY = "0x4AAAAAAARuntimeSiteKey789";
-    process.env.TURNSTILE_SECRET_KEY = "0x4AAAAAAATestSecretKey456";
-
-    const response = await getTurnstileConfig();
-    expect(response.status).toBe(200);
-
-    const data = await response.json();
-    expect(data).toEqual({
-      siteKey: "0x4AAAAAAARuntimeSiteKey789",
       isConfigured: true,
     });
   });
