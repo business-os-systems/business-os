@@ -31,10 +31,10 @@ COPY --from=pruner /app/out/full/ .
 # Generate Prisma Client with container binary targets
 RUN pnpm --filter @suite/db prisma:generate
 
-# Build Next.js in standalone mode
+# Build dependencies and Next.js in standalone mode
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
-RUN pnpm --filter @suite/dashboard build
+RUN pnpm turbo run build --filter=@suite/dashboard...
 
 # 4. Minimal Production Runner
 FROM node:22-slim AS runner
