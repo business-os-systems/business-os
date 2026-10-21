@@ -6,7 +6,7 @@ import { createPasswordResetToken, sendEmail } from "@suite/auth";
 import { RATE_LIMITS } from "@suite/core";
 import { isProduction } from "@/lib/env";
 import { resolveRequestOrigin } from "@/lib/origin";
-import { verifyTurnstileToken } from "@/lib/turnstile";
+import { verifyTurnstileToken, isTurnstileConfigured } from "@/lib/turnstile";
 import { problemResponse, successResponse, zodProblemResponse } from "@/lib/api-response";
 
 const requestBodySchema = z.object({
@@ -28,8 +28,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const { email, turnstileToken } = parseResult.data;
     const normalizedEmail = email.toLowerCase().trim();
 
-    // Verify Cloudflare Turnstile bot token in production or when token provided
-    if (isProduction || turnstileToken) {
+    // Verify Cloudflare Turnstile bot token when configured (strictly enforced in production)
+    const isBotDefenseRequired = isProduction && isTurnstileConfigured();
+    if (isBotDefenseRequired || (isTurnstileConfigured() && turnstileToken)) {
       const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
       const turnstileResult = await verifyTurnstileToken(turnstileToken, clientIp);
       if (!turnstileResult.success) {

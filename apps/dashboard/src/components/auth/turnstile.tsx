@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { isBrowser } from "@/lib/env";
 import { getTurnstileSiteKey } from "@/lib/turnstile";
+import { useTurnstileConfig } from "@/lib/turnstile-client";
 
 declare global {
   interface Window {
@@ -27,6 +28,7 @@ declare global {
 }
 
 export interface TurnstileProps {
+  siteKey?: string;
   onVerify: (token: string) => void;
   onError?: () => void;
   onExpire?: () => void;
@@ -40,6 +42,7 @@ export interface TurnstileProps {
  * Returns null if Turnstile is unconfigured in environment.
  */
 export function Turnstile({
+  siteKey: propSiteKey,
   onVerify,
   onError,
   onExpire,
@@ -47,11 +50,12 @@ export function Turnstile({
 }: TurnstileProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | null>(null);
-  const siteKey = getTurnstileSiteKey();
+  const runtimeConfig = useTurnstileConfig();
+  const effectiveSiteKey = propSiteKey || runtimeConfig.siteKey || getTurnstileSiteKey();
   const [isInteractive, setIsInteractive] = useState(false);
 
   useEffect(() => {
-    if (!isBrowser || !siteKey) return;
+    if (!isBrowser || !effectiveSiteKey) return;
 
     const renderWidget = () => {
       if (!containerRef.current || !window.turnstile) return;
@@ -59,7 +63,7 @@ export function Turnstile({
 
       try {
         const id = window.turnstile.render(containerRef.current, {
-          sitekey: siteKey,
+          sitekey: effectiveSiteKey,
           theme: "auto",
           size: "normal",
           appearance: "interaction-only",
@@ -126,10 +130,10 @@ export function Turnstile({
         widgetIdRef.current = null;
       }
     };
-  }, [siteKey, onVerify, onError, onExpire]);
+  }, [effectiveSiteKey, onVerify, onError, onExpire]);
 
   // If Turnstile is unconfigured, render nothing
-  if (!siteKey) {
+  if (!effectiveSiteKey) {
     return null;
   }
 
