@@ -16,12 +16,19 @@ yarn-error.log*
 
 # Monorepo and tool caches
 .turbo
+**/.turbo
 .next
+**/.next
 dist
+**/dist
 build
+**/build
 out
+**/out
 coverage
+**/coverage
 .cache
+**/.cache
 .specify
 
 # Documentation & specifications

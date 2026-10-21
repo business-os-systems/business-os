@@ -14,7 +14,7 @@ RUN npm install -g turbo@^2.4.2
 COPY . .
 RUN turbo prune @suite/dashboard --docker
 
-# 3. Build & compile standalone Next.js bundle
+# 3. Build & compile Next.js bundle
 FROM base AS builder
 WORKDIR /app
 
@@ -31,12 +31,12 @@ COPY --from=pruner /app/out/full/ .
 # Generate Prisma Client with container binary targets
 RUN pnpm --filter @suite/db prisma:generate
 
-# Build dependencies and Next.js in standalone mode
+# Build dependencies and Next.js
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 RUN pnpm turbo run build --filter=@suite/dashboard...
 
-# Extract Prisma native query engines for standalone runner
+# Extract Prisma native query engines
 RUN mkdir -p /app/prisma-engines && \
     find /app/node_modules -name "libquery_engine*.so.node" -exec cp {} /app/prisma-engines/ \;
 
@@ -49,27 +49,20 @@ ENV PORT=3001
 ENV HOSTNAME="0.0.0.0"
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PRISMA_QUERY_ENGINE_LIBRARY="/tmp/prisma-engines/libquery_engine-debian-openssl-3.0.x.so.node"
-ENV NODE_PATH="/app/node_modules:/app/packages/auth/node_modules:/app/packages/redis/node_modules:/app/packages/db/node_modules"
+ENV NODE_PATH="/app/packages/db/node_modules:/app/packages/auth/node_modules:/app/packages/redis/node_modules:/app/node_modules"
 
 RUN apt-get update && apt-get install -y --no-install-recommends openssl libc6 ca-certificates && rm -rf /var/lib/apt/lists/*
 RUN groupadd --system --gid 1001 nodejs && useradd --system --uid 1001 nextjs
 
-# Copy standalone build artifacts
-COPY --from=builder --chown=nextjs:nodejs /app/apps/dashboard/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/apps/dashboard/.next/static ./apps/dashboard/.next/static
-COPY --from=builder --chown=nextjs:nodejs /app/apps/dashboard/public ./apps/dashboard/public
+# Copy monorepo with production dependencies and compiled Next.js bundle
+COPY --from=builder --chown=nextjs:nodejs /app ./
 
-# Copy pruned production node_modules and workspace packages for native and workspace dependency resolution
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
-COPY --from=builder --chown=nextjs:nodejs /app/packages ./packages
-
-# Copy Prisma engines to Next.js server directory and /tmp/prisma-engines with secure permissions
+# Setup Prisma engines in /tmp/prisma-engines with secure permissions
 RUN mkdir -p /tmp/prisma-engines && chown -R nextjs:nodejs /tmp/prisma-engines && chmod 755 /tmp/prisma-engines
-COPY --from=builder --chown=nextjs:nodejs /app/prisma-engines/ ./apps/dashboard/.next/server/
 COPY --from=builder --chown=nextjs:nodejs /app/prisma-engines/ /tmp/prisma-engines/
 
 USER nextjs
 
 EXPOSE 3001
 
-CMD ["node", "apps/dashboard/server.js"]
+CMD ["node", "apps/dashboard/node_modules/next/dist/bin/next", "start", "apps/dashboard", "-p", "3001"]
