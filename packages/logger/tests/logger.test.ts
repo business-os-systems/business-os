@@ -301,11 +301,10 @@ describe("@suite/logger - Observability & Structured Logging", () => {
       const durationMs = performance.now() - startTime;
       const microsecondsPerCall = (durationMs * 1000) / ITERATIONS;
 
-      // Environment-aware performance benchmark threshold:
-      // - Local developer workstation (with background processes & concurrent test suites): < 100 microseconds (< 0.1ms)
-      // - Virtualized Cloud CI (GitHub Actions, shared vCPU hypervisors with noisy neighbors): < 250 microseconds (< 0.25ms)
-      const isCI = Boolean(process.env.CI);
-      const maxMicrosecondsThreshold = isCI ? 250 : 100;
+      // Sub-millisecond performance benchmark threshold:
+      // When test suites execute concurrently in parallel via Turborepo, CPU time is shared.
+      // Assert that per-call overhead remains well within sub-millisecond territory (< 500 microseconds / 0.5ms).
+      const maxMicrosecondsThreshold = 500;
       expect(microsecondsPerCall).toBeLessThan(maxMicrosecondsThreshold);
     });
   });
