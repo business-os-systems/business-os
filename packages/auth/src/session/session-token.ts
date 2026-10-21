@@ -17,6 +17,7 @@ export interface SessionCookieOptions {
   secure: boolean;
   sameSite: "lax" | "strict" | "none";
   path: string;
+  domain?: string;
   maxAge: number; // in seconds
 }
 
@@ -98,7 +99,8 @@ export function createSessionCookieOptions(
   isProduction = defaultIsProduction,
   keepSignedIn = false,
   customMaxAgeSeconds?: number,
-  cookieName = DEFAULT_SESSION_COOKIE_NAME
+  cookieName = DEFAULT_SESSION_COOKIE_NAME,
+  domainOverride?: string
 ): SessionCookieOptions {
   let maxAge = keepSignedIn
     ? SESSION_PERSISTENT_MAX_AGE_SECONDS
@@ -108,12 +110,19 @@ export function createSessionCookieOptions(
     maxAge = customMaxAgeSeconds;
   }
 
+  const rawDomain = domainOverride || process.env.SESSION_COOKIE_DOMAIN;
+  const domain =
+    rawDomain && !rawDomain.includes("localhost") && !rawDomain.includes("127.0.0.1")
+      ? rawDomain.trim()
+      : undefined;
+
   return {
     name: cookieName,
     httpOnly: true,
     secure: isProduction,
     sameSite: "lax",
     path: "/",
+    ...(domain ? { domain } : {}),
     maxAge,
   };
 }

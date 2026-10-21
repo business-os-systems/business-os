@@ -61,6 +61,9 @@ COPY --from=builder --chown=nextjs:nodejs /app ./
 RUN mkdir -p /tmp/prisma-engines && chown -R nextjs:nodejs /tmp/prisma-engines && chmod 755 /tmp/prisma-engines
 COPY --from=builder --chown=nextjs:nodejs /app/prisma-engines/ /tmp/prisma-engines/
 
+# Pre-create Next.js cache directory to prevent EACCES when volume mounted by Docker
+RUN mkdir -p /app/apps/dashboard/.next/cache && chown -R nextjs:nodejs /app/apps/dashboard/.next/cache && chmod 775 /app/apps/dashboard/.next/cache
+
 USER nextjs
 
 EXPOSE 3001

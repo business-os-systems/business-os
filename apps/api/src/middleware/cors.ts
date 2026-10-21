@@ -20,10 +20,34 @@ function resolveAllowedOrigins(optionsOrigins?: string[]): string[] {
 }
 
 /**
+ * Checks whether an incoming Origin header matches the configured CORS policy,
+ * supporting exact domain matches and regex-anchored single-level wildcard subdomains.
+ *
+ * @param origin Incoming Origin header value from HTTP request
+ * @param allowedOrigins Whitelist patterns (supports exact domains and single-level wildcards)
+ * @returns True if origin is permitted; false otherwise
+ */
+export function isOriginPermitted(origin: string, allowedOrigins: string[]): boolean {
+  if (!origin || !allowedOrigins || allowedOrigins.length === 0) return false;
+
+  return allowedOrigins.some((pattern) => {
+    if (pattern === origin) return true;
+    if (pattern.includes("*")) {
+      const escaped = pattern
+        .replace(/[.+?^${}()|[\]\\]/g, "\\$&")
+        .replace(/\*/g, "[a-zA-Z0-9-]+");
+      const regex = new RegExp(`^${escaped}$`);
+      return regex.test(origin);
+    }
+    return false;
+  });
+}
+
+/**
  * Enterprise CORS Middleware
  *
  * Enforces:
- * 1. Strict whitelist validation against allowed origins.
+ * 1. Strict whitelist validation against allowed origins (including multi-tenant wildcards).
  * 2. W3C/WHATWG compliance: Wildcards (*) are never paired with credentials.
  * 3. Cache isolation: Sets 'Vary: Origin' to prevent CDN cache poisoning.
  * 4. Fast preflight rejection: Rejects untrusted OPTIONS requests with 403 and Option A RFC 7807 problem details.
@@ -37,10 +61,10 @@ export function corsMiddleware(options: CorsOptions = {}): MiddlewareHandler {
 
     // Phase 1: Cross-origin security verification when Origin header is present
     if (origin) {
-      const isExplicitlyAllowed = allowedOrigins.includes(origin);
+      const isPermitted = isOriginPermitted(origin, allowedOrigins);
       const isWildcardAllowed = !allowCredentials && allowedOrigins.includes("*");
 
-      if (isExplicitlyAllowed) {
+      if (isPermitted) {
         c.header("Access-Control-Allow-Origin", origin);
         c.header("Vary", "Origin");
         if (allowCredentials) {

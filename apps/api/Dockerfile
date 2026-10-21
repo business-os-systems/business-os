@@ -34,15 +34,14 @@ RUN pnpm --filter @suite/db prisma:generate
 # Build dependencies and Core API
 RUN pnpm turbo run build --filter=@suite/api...
 
-# 4. Minimal Production Runner
-FROM node:22-slim AS runner
+# 4. Production Runner with pnpm for release migrations
+FROM base AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-RUN apt-get update && apt-get install -y --no-install-recommends openssl libc6 ca-certificates && rm -rf /var/lib/apt/lists/*
 RUN groupadd --system --gid 1001 nodejs && useradd --system --uid 1001 apisvc
 
 # Copy monorepo with production dependencies and compiled artifacts

@@ -5,6 +5,7 @@ import { checkRateLimit, enqueueEmail } from "@suite/redis";
 import { createPasswordResetToken, sendEmail } from "@suite/auth";
 import { RATE_LIMITS } from "@suite/core";
 import { isProduction } from "@/lib/env";
+import { resolveRequestOrigin } from "@/lib/origin";
 import { verifyTurnstileToken } from "@/lib/turnstile";
 import { problemResponse, successResponse, zodProblemResponse } from "@/lib/api-response";
 
@@ -78,7 +79,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const { rawToken } = await createPasswordResetToken(normalizedEmail, prisma);
 
     // 4. Asynchronously enqueue email dispatch via BullMQ background queue (Issue 54)
-    const origin = request.nextUrl.origin;
+    const origin = resolveRequestOrigin(request);
     const resetUrl = `${origin}/reset-password?token=${rawToken}`;
     const emailPayload = {
       to: normalizedEmail,

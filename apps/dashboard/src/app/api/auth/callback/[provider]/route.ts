@@ -15,6 +15,7 @@ import {
 import { AUDIT_EVENT_TYPES } from "@suite/core";
 import { isProduction } from "@/lib/env";
 import { resolvePostLoginRoute } from "@/lib/route-dispatcher";
+import { resolveRequestOrigin } from "@/lib/origin";
 
 type OAuthResolvedUser = Prisma.UserGetPayload<{
   include: {
@@ -46,7 +47,7 @@ export async function GET(
 ): Promise<NextResponse> {
   const resolvedParams = await context.params;
   const provider = resolvedParams.provider?.toLowerCase().trim();
-  const origin = request.nextUrl.origin;
+  const origin = resolveRequestOrigin(request);
 
   const { searchParams } = new URL(request.url);
   const error = searchParams.get("error");

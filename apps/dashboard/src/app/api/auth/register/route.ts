@@ -9,6 +9,7 @@ import {
   encodeSessionPayload,
 } from "@/lib/auth-constants";
 import { isProduction } from "@/lib/env";
+import { resolveRequestOrigin } from "@/lib/origin";
 import { verifyTurnstileToken } from "@/lib/turnstile";
 import { problemResponse, successResponse, zodProblemResponse } from "@/lib/api-response";
 
@@ -77,7 +78,7 @@ export async function POST(request: Request) {
 
     if (existingUser) {
       // Account enumeration defense: notify existing account holder and return generic registration confirmation
-      const origin = new URL(request.url).origin;
+      const origin = resolveRequestOrigin(request);
       const loginUrl = `${origin}/login?email=${encodeURIComponent(normalizedEmail)}`;
       const resetUrl = `${origin}/forgot-password?email=${encodeURIComponent(normalizedEmail)}`;
 

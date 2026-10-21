@@ -14,6 +14,10 @@ if (!process.env.METRICS_AUTH_TOKEN) {
   process.env.METRICS_AUTH_TOKEN = "metrics-secure-telemetry-token-dev";
 }
 
+if (!process.env.DASHBOARD_URL) {
+  process.env.DASHBOARD_URL = "http://localhost:3001";
+}
+
 export async function createTestSessionToken(
   overrides: Partial<SessionPayload> = {}
 ): Promise<string> {
