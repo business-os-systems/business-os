@@ -43,7 +43,8 @@ function resolveMemberName(userName?: string | null, email?: string): string {
 export async function inviteOrganizationMember(
   organizationId: string,
   inviterId: string,
-  input: InviteMemberInput
+  input: InviteMemberInput,
+  baseUrl?: string
 ): Promise<{ invitation: MemberListItemDto; inviteUrl: string }> {
   const normalizedEmail = input.email.trim().toLowerCase();
 
@@ -227,8 +228,8 @@ export async function inviteOrganizationMember(
     return { createdInvitation: created, token: secureToken };
   });
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
-  const inviteUrl = `${baseUrl}/invite/${token}`;
+  const effectiveBaseUrl = (baseUrl ?? process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/$/, "");
+  const inviteUrl = `${effectiveBaseUrl}/invite/${token}`;
 
   let branchName = "All Branches";
   if (input.branchId) {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@suite/db";
 import { problemResponse } from "@/lib/api-response";
+import { resolveRequestOrigin } from "@/lib/origin";
 
 export async function GET(
   request: NextRequest,
@@ -8,6 +9,7 @@ export async function GET(
 ): Promise<NextResponse> {
   try {
     const { id } = await params;
+    const origin = resolveRequestOrigin(request);
 
     const ssoRecord = await prisma.ssoConnection.findUnique({
       where: { id },
@@ -17,7 +19,7 @@ export async function GET(
     if (!ssoRecord) {
       const acceptHeader = request.headers.get("accept") || "";
       if (acceptHeader.includes("text/html")) {
-        const loginUrl = new URL("/login", request.url);
+        const loginUrl = new URL("/login", origin);
         loginUrl.searchParams.set("error", "sso_not_found");
         return NextResponse.redirect(loginUrl);
       }
@@ -48,7 +50,7 @@ export async function GET(
     // Browser navigation fallback: redirect back to /login with friendly error message
     const acceptHeader = request.headers.get("accept") || "";
     if (acceptHeader.includes("text/html")) {
-      const loginUrl = new URL("/login", request.url);
+      const loginUrl = new URL("/login", origin);
       loginUrl.searchParams.set("error", "sso_unconfigured");
       loginUrl.searchParams.set("domain", ssoRecord.domain);
       loginUrl.searchParams.set("org", ssoRecord.organization.name);

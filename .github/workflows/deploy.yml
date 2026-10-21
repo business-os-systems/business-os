@@ -67,6 +67,6 @@ jobs:
             cd /home/developer/app
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
             docker compose pull api dashboard
+            docker compose run --rm api pnpm --filter @suite/db prisma migrate deploy
             docker compose up -d --remove-orphans
-            docker compose exec -T api pnpm --filter @suite/db prisma migrate deploy
             docker image prune -f

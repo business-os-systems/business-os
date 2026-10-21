@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "node:crypto";
 import { oauthRegistry } from "@/lib/oauth-registry";
 import { isProduction } from "@/lib/env";
+import { resolveRequestOrigin } from "@/lib/origin";
 
 export async function GET(
   request: NextRequest,
@@ -26,8 +27,8 @@ export async function GET(
   // 1. Generate cryptographically secure 32-byte CSRF state nonce
   const state = crypto.randomBytes(32).toString("hex");
 
-  // 2. Resolve callback URL based on incoming request origin
-  const origin = request.nextUrl.origin;
+  // 2. Resolve canonical callback URL based on incoming request network origin
+  const origin = resolveRequestOrigin(request);
   const redirectUri = `${origin}/api/auth/callback/${providerId}`;
 
   // 3. Obtain provider authorization consent URL
@@ -35,8 +36,8 @@ export async function GET(
   try {
     authUrl = providerDescriptor.getAuthUrl(redirectUri, state);
   } catch {
-    // If provider credentials are unconfigured in environment, redirect cleanly
-    return NextResponse.redirect(new URL("/login?error=sso_unconfigured", request.url), 302);
+    // If provider credentials are unconfigured in environment, redirect cleanly to canonical origin
+    return NextResponse.redirect(new URL("/login?error=sso_unconfigured", origin), 302);
   }
 
   // 4. Return redirect with ephemeral 10-minute HTTP-only CSRF cookie

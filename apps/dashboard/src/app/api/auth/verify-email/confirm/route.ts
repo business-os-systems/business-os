@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@suite/db";
 import { verifyEmailToken } from "@suite/auth";
+import { resolveRequestOrigin } from "@/lib/origin";
 
 const confirmBodySchema = z.object({
   token: z.string().min(1, "Verification token is required"),
@@ -9,7 +10,7 @@ const confirmBodySchema = z.object({
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const token = request.nextUrl.searchParams.get("token");
-  const origin = request.nextUrl.origin;
+  const origin = resolveRequestOrigin(request);
 
   if (!token) {
     return NextResponse.redirect(new URL("/verify-expired?error=missing_token", origin));

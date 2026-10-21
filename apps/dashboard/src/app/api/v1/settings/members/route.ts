@@ -3,6 +3,7 @@ import { z } from "zod";
 import { PERMISSIONS, hasPermission } from "@suite/core";
 import { getAuthenticatedSession } from "@/lib/session-helper";
 import { problemResponse, successResponse } from "@/lib/api-response";
+import { resolveRequestOrigin } from "@/lib/origin";
 import {
   listOrganizationMembers,
   inviteOrganizationMember,
@@ -139,10 +140,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         });
       }
 
+      const origin = resolveRequestOrigin(request);
       const { member, inviteUrl } = await createDirectMember(
         session.organizationId!,
         parseResult.data,
-        session.userId
+        session.userId,
+        origin
       );
 
       return successResponse({ member, inviteUrl }, { status: 201 });
@@ -166,10 +169,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       });
     }
 
+    const origin = resolveRequestOrigin(request);
     const result = await inviteOrganizationMember(
       session.organizationId!,
       session.userId,
-      parseResult.data
+      parseResult.data,
+      origin
     );
 
     return successResponse(result, { status: 201 });

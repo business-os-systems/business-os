@@ -94,6 +94,24 @@ describe("Federated OAuth Flow (@suite/dashboard)", () => {
       expect(stateCookie?.httpOnly).toBe(true);
     });
 
+    it("uses dynamic public origin from X-Forwarded headers for provider redirect_uri", async () => {
+      const request = new NextRequest("http://localhost:3001/api/auth/oauth/google", {
+        headers: {
+          "x-forwarded-host": "app.rohitbahuguna.online",
+          "x-forwarded-proto": "https",
+        },
+      });
+      const response = await handleOAuthInitiate(request, {
+        params: Promise.resolve({ provider: "google" }),
+      });
+
+      expect(response.status).toBe(302);
+      const location = response.headers.get("location");
+      expect(location).toContain(
+        "redirect_uri=https%3A%2F%2Fapp.rohitbahuguna.online%2Fapi%2Fauth%2Fcallback%2Fgoogle",
+      );
+    });
+
     it("redirects to /login?error=sso_unconfigured when client ID is missing", async () => {
       delete process.env.GOOGLE_CLIENT_ID;
       const request = new NextRequest("http://localhost:3001/api/auth/oauth/google");
@@ -272,6 +290,65 @@ describe("Federated OAuth Flow (@suite/dashboard)", () => {
 
       const sessionCookie = response.cookies.get(suiteAuth.SESSION_COOKIE_NAME);
       expect(sessionCookie).toBeDefined();
+    });
+
+    it("resolves dynamic origin from X-Forwarded headers during callback and code exchange", async () => {
+      const validNonce = "nonce_proxied_user";
+      const request = new NextRequest(
+        `http://localhost:3001/api/auth/callback/google?code=auth_code_ok&state=${validNonce}`,
+        {
+          headers: {
+            "x-forwarded-host": "app.rohitbahuguna.online",
+            "x-forwarded-proto": "https",
+          },
+        },
+      );
+      request.cookies.set("oauth_state", validNonce);
+
+      const exchangeSpy = vi.spyOn(suiteAuth, "exchangeOAuthCode").mockResolvedValue({
+        provider: "google",
+        tokens: {
+          accessToken: "fresh_access_token",
+          refreshToken: "fresh_refresh_token",
+          expiresIn: 3600,
+        },
+        profile: {
+          id: "google_existing_123",
+          email: "existing.oauth@company.com",
+          name: "Existing User",
+          emailVerified: true,
+        },
+      });
+
+      const { prisma } = await import("@suite/db");
+      vi.mocked(prisma.account.findUnique).mockResolvedValue({
+        id: "acc_existing_123",
+        userId: "usr_existing_123",
+        providerId: "google",
+        accountId: "google_existing_123",
+        user: {
+          id: "usr_existing_123",
+          email: "existing.oauth@company.com",
+          name: "Existing User",
+          metadata: { onboarding_status: "COMPLETED" },
+          organizations: [{ organizationId: "org_1", organization: { name: "Org 1" } }],
+          branchRoles: [{ role: { name: "Admin" }, branch: { name: "Main" } }],
+        },
+      } as never);
+
+      const response = await handleOAuthCallback(request, {
+        params: Promise.resolve({ provider: "google" }),
+      });
+
+      expect(response.status).toBe(302);
+      expect(response.headers.get("location")).toBe("https://app.rohitbahuguna.online/dashboard");
+
+      // Verify exchange was invoked with public callback URL
+      expect(exchangeSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          redirectUri: "https://app.rohitbahuguna.online/api/auth/callback/google",
+        }),
+      );
     });
   });
 });
