@@ -15,6 +15,11 @@
       "types": "./src/correlation.ts",
       "import": "./src/correlation.ts",
       "default": "./src/correlation.ts"
+    },
+    "./sanitize": {
+      "types": "./src/sanitize.ts",
+      "import": "./src/sanitize.ts",
+      "default": "./src/sanitize.ts"
     }
   },
   "scripts": {

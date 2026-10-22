@@ -1,5 +1,5 @@
 import * as Sentry from "@sentry/nextjs";
-import { sanitizePii } from "@suite/logger";
+import { sanitizePii } from "@suite/logger/sanitize";
 
 const SENTRY_DSN = process.env.SENTRY_DSN;
 
