@@ -17,6 +17,7 @@ import {
   branchesRouter,
   auditLogsRouter,
 } from "./routes/index.js";
+import { isProduction } from "./lib/env.js";
 import { createWebsiteBuilderRoutes } from "@suite/website-builder/routes";
 import { metricsRegistry } from "./telemetry.js";
 
@@ -70,8 +71,6 @@ export function createApp(options: AppOptions = {}) {
 
   // 5. Environment Guarded OpenAPI 3.1 Documentation & Interactive Scalar UI
   // In production, internal documentation is locked or restricted to authorized internal access.
-  const isProduction = process.env.NODE_ENV === "production";
-
   if (isProduction && !process.env.ENABLE_INTERNAL_DOCS) {
     app.get("/doc", (c) => {
       return c.text("Forbidden: API documentation is disabled in production.", 403);

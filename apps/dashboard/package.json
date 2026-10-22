@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@sentry/nextjs": "^11.8.0",
     "@suite/auth": "workspace:*",
     "@suite/core": "workspace:*",
     "@suite/db": "workspace:*",

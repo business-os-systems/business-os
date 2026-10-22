@@ -24,4 +24,22 @@ export {
   REDACT_CENSOR,
 } from "./redact.js";
 
+export {
+  type ErrorReportingContext,
+  type IErrorReporter,
+} from "./error-reporter.js";
+
+export {
+  sanitizePii,
+  isSensitiveKey,
+  scrubStringValues,
+  REDACTED_MARKER,
+} from "./sanitize.js";
+
+export {
+  isProduction,
+  isDevelopment,
+  isTest,
+} from "./env.js";
+
 export type { Logger } from "pino";
