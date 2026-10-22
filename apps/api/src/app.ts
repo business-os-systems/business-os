@@ -12,6 +12,7 @@ import {
 } from "./middleware/index.js";
 import {
   healthRouter,
+  systemRouter,
   authRouter,
   organizationsRouter,
   branchesRouter,
@@ -54,6 +55,7 @@ export function createApp(options: AppOptions = {}) {
   });
 
   // 4. Mount Core & Module Sub-Routers
+  app.route("/api/v1/system", systemRouter);
   app.route("/api/v1/auth", authRouter);
 
   // Mount requireAuth across tenant operational routes (defense-in-depth)
