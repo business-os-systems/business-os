@@ -1,5 +1,6 @@
 import type { ErrorHandler } from "hono";
 import { HTTPException } from "hono/http-exception";
+import * as Sentry from "@sentry/node";
 import { AppError, InternalServerError } from "@suite/core/errors";
 import { logger } from "@suite/logger";
 
@@ -22,6 +23,7 @@ export const globalErrorHandler: ErrorHandler = (err, c) => {
         { err, problem, requestId, path: instance },
         `Application error [${err.code}]: ${err.message}`
       );
+      Sentry.captureException(err, { extra: { requestId, path: instance, code: err.code } });
     } else {
       logger.warn(
         { problem, requestId, path: instance },
@@ -61,6 +63,7 @@ export const globalErrorHandler: ErrorHandler = (err, c) => {
     { err, stack: err.stack, requestId, path: instance },
     `Unhandled exception: ${err.message}`
   );
+  Sentry.captureException(err, { extra: { requestId, path: instance } });
 
   const internalError = new InternalServerError(
     "An unexpected internal server error occurred. Please contact support with the requestId."
