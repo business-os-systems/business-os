@@ -6,6 +6,7 @@ import {
   InternalServerError,
   NotFoundError,
   RateLimitError,
+  ServiceUnavailableError,
   TenantMismatchError,
   UnauthorizedError,
   ValidationError,
@@ -108,6 +109,19 @@ describe("@suite/core - RFC 7807 Problem Details Error Hierarchy", () => {
     expect(internal.status).toBe(500);
     expect(internal.code).toBe("INTERNAL_SERVER_ERROR");
     expect(internal.cause).toBeDefined();
+  });
+
+  it("handles ServiceUnavailableError for dependency outages", () => {
+    const unavailable = new ServiceUnavailableError("Critical database pool unreachable", {
+      code: "SERVICE_UNAVAILABLE",
+      instance: "/health/ready",
+    });
+    expect(unavailable.status).toBe(503);
+    expect(unavailable.code).toBe("SERVICE_UNAVAILABLE");
+    expect(unavailable.title).toBe("Service Unavailable");
+    expect(unavailable.detail).toBe("Critical database pool unreachable");
+    expect(unavailable.instance).toBe("/health/ready");
+    expect(unavailable.type).toBe("/errors/service-unavailable");
   });
 
   it("creates compliant RFC 7807 problem envelope with Option A relative URI", () => {
