@@ -12,6 +12,7 @@
       "@suite/redis",
       "@suite/ui",
       "@suite/website-builder",
+      "@suite/flags",
       "@suite/api",
       "@suite/dashboard"
     ]

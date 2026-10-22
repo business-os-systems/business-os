@@ -296,6 +296,46 @@ importers:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@20.19.43)(jsdom@30.1.2(@noble/hashes@2.4.0))(supports-color@8.1.1)
 
+  packages/flags:
+    dependencies:
+      '@suite/db':
+        specifier: workspace:*
+        version: link:../db
+      '@suite/logger':
+        specifier: workspace:*
+        version: link:../logger
+      '@suite/redis':
+        specifier: workspace:*
+        version: link:../redis
+      ioredis:
+        specifier: ^5.4.2
+        version: 5.11.1(supports-color@8.1.1)
+    devDependencies:
+      '@suite/eslint-config':
+        specifier: workspace:*
+        version: link:../../tooling/eslint-config
+      '@suite/tsconfig':
+        specifier: workspace:*
+        version: link:../../tooling/tsconfig
+      '@types/node':
+        specifier: ^20.17.19
+        version: 20.19.43
+      '@typescript-eslint/eslint-plugin':
+        specifier: ^8.26.0
+        version: 8.71.1(@typescript-eslint/parser@8.71.1(eslint@8.57.1(supports-color@8.1.1))(supports-color@8.1.1)(typescript@5.9.3))(eslint@8.57.1(supports-color@8.1.1))(supports-color@8.1.1)(typescript@5.9.3)
+      '@typescript-eslint/parser':
+        specifier: ^8.26.0
+        version: 8.71.1(eslint@8.57.1(supports-color@8.1.1))(supports-color@8.1.1)(typescript@5.9.3)
+      eslint:
+        specifier: ^8.57.1
+        version: 8.57.1(supports-color@8.1.1)
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@20.19.43)(jsdom@30.1.2(@noble/hashes@2.4.0))(supports-color@8.1.1)
+
   packages/logger:
     dependencies:
       pino:

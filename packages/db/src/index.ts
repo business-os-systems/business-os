@@ -52,4 +52,7 @@ export type {
   CmsPageVersion,
   CmsTemplate,
   CmsDomain,
+  FeatureFlag,
+  FeatureFlagRule,
+  FeatureFlagAuditLog,
 } from "@prisma/client";

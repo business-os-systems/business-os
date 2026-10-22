@@ -1,0 +1,78 @@
+// ==========================================
+// SYSTEM FEATURE FLAGS & DYNAMIC ROLLOUT ENGINE
+// ==========================================
+
+model FeatureFlag {
+  id          String  @id @default(cuid())
+  key         String  @db.VarChar(64)
+  name        String  @db.VarChar(128)
+  description String? @db.VarChar(255)
+  environment String  @default("development") @db.VarChar(32) // "development" | "staging" | "production"
+
+  // Evaluation States
+  isEnabled      Boolean @default(true) // Global Master Switch
+  defaultEnabled Boolean @default(false) // Fallback when no targeting rule matches
+
+  // Optimistic Concurrency Control
+  version Int @default(1)
+
+  // Optional Configuration Payload (JSON)
+  metadata Json? @default("{}")
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  // Child Relations
+  rules     FeatureFlagRule[]
+  auditLogs FeatureFlagAuditLog[]
+
+  @@unique([environment, key])
+  @@index([environment])
+  @@index([key])
+  @@map("system_feature_flags")
+}
+
+model FeatureFlagRule {
+  id     String      @id @default(cuid())
+  flagId String      @map("flag_id")
+  flag   FeatureFlag @relation(fields: [flagId], references: [id], onDelete: Cascade)
+
+  // Targeting Scope
+  ruleType String @map("rule_type") @db.VarChar(32) // "ORGANIZATION" | "ENVIRONMENT"
+  targetId String @map("target_id") @db.VarChar(128) // organizationId or environment name
+
+  // Value
+  enabled  Boolean @default(true)
+  priority Int     @default(0) // Higher priority evaluated first
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  @@index([flagId])
+  @@index([ruleType, targetId])
+  @@map("system_feature_flag_rules")
+}
+
+model FeatureFlagAuditLog {
+  id     String      @id @default(cuid())
+  flagId String      @map("flag_id")
+  flag   FeatureFlag @relation(fields: [flagId], references: [id], onDelete: Cascade)
+
+  flagKey     String  @map("flag_key") @db.VarChar(64)
+  environment String  @db.VarChar(32)
+  actorUserId String? @map("actor_user_id") @db.VarChar(64) // NULL for SYSTEM_DIRECT
+  actorEmail  String? @map("actor_email") @db.VarChar(255)
+  source      String  @default("API") @db.VarChar(32) // "API" | "SYSTEM_DIRECT"
+
+  // Audit Snapshots
+  previousState Json    @map("previous_state")
+  newState      Json    @map("new_state")
+  reason        String? @db.VarChar(255)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([flagId])
+  @@index([flagKey, environment])
+  @@index([createdAt])
+  @@map("system_feature_flag_audit_logs")
+}
