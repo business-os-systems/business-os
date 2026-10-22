@@ -9,6 +9,7 @@ export {
   TenantMismatchError,
   RateLimitError,
   InternalServerError,
+  ServiceUnavailableError,
   isAppError,
   createProblemEnvelope,
   createSuccessEnvelope,
