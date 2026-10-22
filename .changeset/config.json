@@ -1,0 +1,23 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@3.0.3/schema.json",
+  "changelog": "@changesets/cli/changelog",
+  "commit": false,
+  "fixed": [],
+  "linked": [
+    [
+      "@suite/core",
+      "@suite/auth",
+      "@suite/db",
+      "@suite/logger",
+      "@suite/redis",
+      "@suite/ui",
+      "@suite/website-builder",
+      "@suite/api",
+      "@suite/dashboard"
+    ]
+  ],
+  "access": "public",
+  "baseBranch": "dev",
+  "updateInternalDependencies": "patch",
+  "ignore": []
+}
