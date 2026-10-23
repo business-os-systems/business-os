@@ -17,6 +17,7 @@ import {
   organizationsRouter,
   branchesRouter,
   auditLogsRouter,
+  adminFlagsRouter,
 } from "./routes/index.js";
 import { isProduction } from "./lib/env.js";
 import { createWebsiteBuilderRoutes } from "@suite/website-builder/routes";
@@ -70,6 +71,9 @@ export function createApp(options: AppOptions = {}) {
   app.route("/api/v1/branches", branchesRouter);
   app.route("/api/v1/audit-logs", auditLogsRouter);
   app.route("/api/v1/cms", createWebsiteBuilderRoutes());
+
+  // Admin flag management routes — auth + super-admin guard is applied inside adminFlagsRouter
+  app.route("/api/v1/admin", adminFlagsRouter);
 
   // 5. Environment Guarded OpenAPI 3.1 Documentation & Interactive Scalar UI
   // In production, internal documentation is locked or restricted to authorized internal access.

@@ -29,6 +29,7 @@
     "@suite/core": "workspace:*",
     "@suite/db": "workspace:*",
     "@suite/logger": "workspace:*",
+    "@suite/flags": "workspace:*",
     "@suite/redis": "workspace:*",
     "@suite/website-builder": "workspace:*",
     "hono": "^4.7.0",
