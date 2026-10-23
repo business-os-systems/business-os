@@ -44,6 +44,9 @@ importers:
       '@suite/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@suite/flags':
+        specifier: workspace:*
+        version: link:../../packages/flags
       '@suite/logger':
         specifier: workspace:*
         version: link:../../packages/logger
