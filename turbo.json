@@ -14,7 +14,11 @@
     "IMPERSONATION_MAX_MINUTES",
     "QUOTA_CACHE_TTL_SECONDS",
     "CATALOG_CACHE_TTL_SECONDS",
-    "PLATFORM_BOOTSTRAP_OPERATOR_EMAIL"
+    "PLATFORM_BOOTSTRAP_OPERATOR_EMAIL",
+    "API_URL",
+    "DOMAIN_ROOT",
+    "NEXT_PUBLIC_APP_URL",
+    "NEXT_PUBLIC_TURNSTILE_SITE_KEY"
   ],
   "tasks": {
     "build": {
@@ -27,7 +31,7 @@
       "persistent": true
     },
     "lint": {
-      "dependsOn": ["^build"]
+      "dependsOn": []
     },
     "typecheck": {
       "dependsOn": ["^build"]
