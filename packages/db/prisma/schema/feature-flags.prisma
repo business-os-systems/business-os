@@ -30,6 +30,8 @@ model FeatureFlag {
   @@index([environment])
   @@index([key])
   @@map("system_feature_flags")
+
+  @@schema("public")
 }
 
 model FeatureFlagRule {
@@ -51,6 +53,8 @@ model FeatureFlagRule {
   @@index([flagId])
   @@index([ruleType, targetId])
   @@map("system_feature_flag_rules")
+
+  @@schema("public")
 }
 
 model FeatureFlagAuditLog {
@@ -75,4 +79,6 @@ model FeatureFlagAuditLog {
   @@index([flagKey, environment])
   @@index([createdAt])
   @@map("system_feature_flag_audit_logs")
+
+  @@schema("public")
 }

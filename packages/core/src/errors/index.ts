@@ -382,3 +382,13 @@ export function createZodProblemEnvelope(
 }
 
 
+
+// Platform error-code registry and RFC 7807 type mapping
+export {
+  PLATFORM_ERROR_CODES,
+  isPlatformErrorCode,
+  getPlatformErrorDefinition,
+  problemTypeForErrorCode,
+  type PlatformErrorCode,
+  type PlatformErrorDefinition,
+} from "./codes.js";

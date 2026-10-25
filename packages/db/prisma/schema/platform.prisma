@@ -1,0 +1,254 @@
+// ==============================================================================
+// PLATFORM — OPERATOR CONTROL PLANE
+// Owns the platform schema. Tenant references are scalar ids with no relation
+// and no reverse field on any core model.
+// ==============================================================================
+
+enum PlatformOperatorStatus {
+  INVITED
+  ACTIVE
+  SUSPENDED
+  REVOKED
+
+  @@schema("platform")
+}
+
+enum PlatformAppAvailability {
+  HIDDEN
+  PREVIEW
+  AVAILABLE
+  RETIRED
+
+  @@schema("platform")
+}
+
+enum PlatformOutboxStatus {
+  PENDING
+  PROCESSING
+  DONE
+  DEAD
+
+  @@schema("platform")
+}
+
+model PlatformOperator {
+  id          String                 @id @default(cuid())
+  // Stored as citext by the foundation migration; Prisma has no citext scalar.
+  email       String                 @unique @db.VarChar(191)
+  displayName String                 @db.VarChar(100)
+  status      PlatformOperatorStatus @default(INVITED)
+  mfaEnrolled Boolean                @default(false)
+  invitedBy   String?
+  lastSeenAt  DateTime?              @db.Timestamptz(6)
+  createdAt   DateTime               @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime               @updatedAt @db.Timestamptz(6)
+
+  invitedByOperator     PlatformOperator?        @relation("OperatorInvites", fields: [invitedBy], references: [id], onDelete: SetNull)
+  invitedOperators      PlatformOperator[]       @relation("OperatorInvites")
+  passkeys              OperatorPasskey[]        @relation("OperatorPasskeys")
+  sessions              OperatorSession[]        @relation("OperatorSessions")
+  capabilities          OperatorCapability[]     @relation("OperatorCapabilities")
+  grantedCapabilities   OperatorCapability[]     @relation("CapabilityGrants")
+  invitations           OperatorInvitation[]     @relation("OperatorInvitations")
+  lifecycleEvents       LifecycleEvent[]         @relation("LifecycleEvents")
+  quotaUpdates          Quota[]                  @relation("QuotaUpdates")
+  appOverrideUpdates    AppOverride[]            @relation("AppOverrideUpdates")
+  impersonationSessions ImpersonationSession[]   @relation("ImpersonationSessions")
+  auditEvents           AuditEvent[]             @relation("AuditEvents")
+
+  @@index([status])
+  @@map("operators")
+  @@schema("platform")
+}
+
+model OperatorPasskey {
+  id           String    @id @default(cuid())
+  operatorId   String
+  credentialId String    @unique @db.Text
+  publicKey    String    @db.Text
+  counter      Int       @default(0)
+  deviceType   String?   @db.VarChar(32)
+  backedUp     Boolean   @default(false)
+  transports   String?   @db.VarChar(255)
+  name         String?   @db.VarChar(100)
+  createdAt    DateTime  @default(now()) @db.Timestamptz(6)
+  lastUsedAt   DateTime? @db.Timestamptz(6)
+
+  operator PlatformOperator @relation("OperatorPasskeys", fields: [operatorId], references: [id], onDelete: Cascade)
+
+  @@index([operatorId])
+  @@map("operator_passkeys")
+  @@schema("platform")
+}
+
+model OperatorSession {
+  id            String    @id @default(cuid())
+  operatorId    String
+  tokenHash     String    @unique @db.Text
+  issuedAt      DateTime  @db.Timestamptz(6)
+  expiresAt     DateTime  @db.Timestamptz(6)
+  idleExpiresAt DateTime  @db.Timestamptz(6)
+  revokedAt     DateTime? @db.Timestamptz(6)
+  ip            String?   @db.Inet
+  userAgent     String?   @db.Text
+  createdAt     DateTime  @default(now()) @db.Timestamptz(6)
+
+  operator PlatformOperator @relation("OperatorSessions", fields: [operatorId], references: [id], onDelete: Cascade)
+
+  @@index([operatorId, revokedAt])
+  @@index([expiresAt])
+  @@map("operator_sessions")
+  @@schema("platform")
+}
+
+model OperatorCapability {
+  id         String    @id @default(cuid())
+  operatorId String
+  capability String    @db.VarChar(64)
+  grantedBy  String?
+  grantedAt  DateTime  @default(now()) @db.Timestamptz(6)
+  revokedAt  DateTime? @db.Timestamptz(6)
+
+  operator          PlatformOperator  @relation("OperatorCapabilities", fields: [operatorId], references: [id], onDelete: Cascade)
+  grantedByOperator PlatformOperator? @relation("CapabilityGrants", fields: [grantedBy], references: [id], onDelete: SetNull)
+
+  // A partial unique index on (operatorId, capability) WHERE revokedAt IS NULL
+  // is created by the foundation migration; Prisma cannot express partial indexes.
+  @@index([operatorId, revokedAt])
+  @@map("operator_capabilities")
+  @@schema("platform")
+}
+
+model OperatorInvitation {
+  id         String    @id @default(cuid())
+  email      String    @db.VarChar(191)
+  tokenHash  String    @unique @db.Text
+  invitedBy  String
+  expiresAt  DateTime  @db.Timestamptz(6)
+  acceptedAt DateTime? @db.Timestamptz(6)
+  revokedAt  DateTime? @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @db.Timestamptz(6)
+
+  invitedByOperator PlatformOperator @relation("OperatorInvitations", fields: [invitedBy], references: [id], onDelete: Restrict)
+
+  @@index([email, expiresAt])
+  @@map("operator_invitations")
+  @@schema("platform")
+}
+
+model LifecycleEvent {
+  id              String   @id @default(cuid())
+  organizationId  String   @db.VarChar(191)
+  fromStatus      String   @db.VarChar(16)
+  toStatus        String   @db.VarChar(16)
+  reason          String   @db.VarChar(255)
+  actorOperatorId String
+  requestId       String   @db.VarChar(64)
+  occurredAt      DateTime @default(now()) @db.Timestamptz(6)
+
+  actor PlatformOperator @relation("LifecycleEvents", fields: [actorOperatorId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId, occurredAt(sort: Desc)])
+  @@index([occurredAt])
+  @@map("lifecycle_events")
+  @@schema("platform")
+}
+
+model Quota {
+  id             String   @id @default(cuid())
+  organizationId String   @db.VarChar(191)
+  resourceKey    String   @db.VarChar(64)
+  limitValue     BigInt
+  isEnforced     Boolean  @default(true)
+  updatedBy      String
+  createdAt      DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @db.Timestamptz(6)
+
+  updatedByOperator PlatformOperator @relation("QuotaUpdates", fields: [updatedBy], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, resourceKey])
+  @@map("quotas")
+  @@schema("platform")
+}
+
+model AppOverride {
+  id           String                  @id @default(cuid())
+  appId        String                  @unique @db.VarChar(64)
+  availability PlatformAppAvailability
+  sortOrder    Int                     @default(0)
+  category     String?                 @db.VarChar(64)
+  updatedBy    String
+  updatedAt    DateTime                @updatedAt @db.Timestamptz(6)
+
+  updatedByOperator PlatformOperator @relation("AppOverrideUpdates", fields: [updatedBy], references: [id], onDelete: Restrict)
+
+  @@map("app_overrides")
+  @@schema("platform")
+}
+
+model ImpersonationSession {
+  id             String    @id @default(cuid())
+  ticketId       String    @unique @db.Uuid
+  operatorId     String
+  organizationId String    @db.VarChar(191)
+  targetUserId   String?   @db.VarChar(191)
+  reason         String    @db.VarChar(255)
+  ticketRef      String    @db.VarChar(100)
+  startedAt      DateTime  @default(now()) @db.Timestamptz(6)
+  expiresAt      DateTime  @db.Timestamptz(6)
+  endedAt        DateTime? @db.Timestamptz(6)
+  endedBy        String?   @db.VarChar(191)
+  ip             String?   @db.Inet
+  userAgent      String?   @db.Text
+
+  operator PlatformOperator @relation("ImpersonationSessions", fields: [operatorId], references: [id], onDelete: Restrict)
+
+  // The partial index on expiresAt WHERE endedAt IS NULL is added by migration.
+  @@index([organizationId, startedAt(sort: Desc)])
+  @@index([operatorId, startedAt(sort: Desc)])
+  @@index([expiresAt])
+  @@map("impersonation_sessions")
+  @@schema("platform")
+}
+
+model AuditEvent {
+  id              String    @id @default(cuid())
+  actorOperatorId String?
+  action          String    @db.VarChar(64)
+  entityType      String    @db.VarChar(64)
+  entityId        String    @db.VarChar(128)
+  organizationId  String?   @db.VarChar(191)
+  before          Json?
+  after           Json?
+  reason          String?   @db.VarChar(255)
+  requestId       String    @db.VarChar(64)
+  prevHash        String?   @db.VarChar(64)
+  recordHash      String    @db.VarChar(64)
+  occurredAt      DateTime  @default(now()) @db.Timestamptz(6)
+
+  actor PlatformOperator? @relation("AuditEvents", fields: [actorOperatorId], references: [id], onDelete: SetNull)
+
+  @@index([occurredAt(sort: Desc)])
+  @@index([organizationId, occurredAt(sort: Desc)])
+  @@index([actorOperatorId, occurredAt(sort: Desc)])
+  @@index([action, occurredAt(sort: Desc)])
+  @@map("audit_events")
+  @@schema("platform")
+}
+
+model OutboxEvent {
+  id          String               @id @default(cuid())
+  eventType   String               @db.VarChar(64)
+  payload     Json
+  status      PlatformOutboxStatus @default(PENDING)
+  attempts    Int                  @default(0)
+  availableAt DateTime             @default(now()) @db.Timestamptz(6)
+  createdAt   DateTime             @default(now()) @db.Timestamptz(6)
+  processedAt DateTime?            @db.Timestamptz(6)
+  lastError   String?              @db.Text
+
+  @@index([status, availableAt])
+  @@index([createdAt])
+  @@map("outbox_events")
+  @@schema("platform")
+}

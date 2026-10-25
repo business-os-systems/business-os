@@ -10,6 +10,8 @@ enum CmsSiteStatus {
   MAINTENANCE
   SUSPENDED
   ARCHIVED
+
+  @@schema("public")
 }
 
 enum CmsDomainStatus {
@@ -17,6 +19,8 @@ enum CmsDomainStatus {
   ACTIVE
   ERROR
   DELETED
+
+  @@schema("public")
 }
 
 enum CmsPageStatus {
@@ -24,11 +28,15 @@ enum CmsPageStatus {
   PUBLISHED
   SCHEDULED
   ARCHIVED
+
+  @@schema("public")
 }
 
 enum CmsLocaleStatus {
   ACTIVE
   INACTIVE
+
+  @@schema("public")
 }
 
 enum CmsFormSubmissionStatus {
@@ -36,11 +44,15 @@ enum CmsFormSubmissionStatus {
   PROCESSED
   SPAM
   ARCHIVED
+
+  @@schema("public")
 }
 
 enum CmsRedirectType {
   PERMANENT // 301
   TEMPORARY // 302
+
+  @@schema("public")
 }
 
 model CmsSite {
@@ -80,6 +92,8 @@ model CmsSite {
   @@index([organizationId, status])
   @@index([branchId])
   @@map("cms_sites")
+
+  @@schema("public")
 }
 
 model CmsSiteSettings {
@@ -102,6 +116,8 @@ model CmsSiteSettings {
   @@unique([siteId, organizationId])
   @@index([organizationId, siteId])
   @@map("cms_site_settings")
+
+  @@schema("public")
 }
 
 model CmsDomain {
@@ -124,6 +140,8 @@ model CmsDomain {
   @@index([organizationId, siteId])
   @@index([hostname, status])
   @@map("cms_domains")
+
+  @@schema("public")
 }
 
 model CmsPage {
@@ -159,6 +177,8 @@ model CmsPage {
   @@index([siteId, status])
   @@index([parentId])
   @@map("cms_pages")
+
+  @@schema("public")
 }
 
 model CmsPageContent {
@@ -178,6 +198,8 @@ model CmsPageContent {
   @@unique([pageId, organizationId])
   @@index([organizationId, pageId])
   @@map("cms_page_contents")
+
+  @@schema("public")
 }
 
 model CmsPageVersion {
@@ -196,6 +218,8 @@ model CmsPageVersion {
   @@unique([pageId, versionNumber])
   @@index([organizationId, pageId])
   @@map("cms_page_versions")
+
+  @@schema("public")
 }
 
 model CmsPageComment {
@@ -221,6 +245,8 @@ model CmsPageComment {
   @@index([organizationId, pageId])
   @@index([parentId])
   @@map("cms_page_comments")
+
+  @@schema("public")
 }
 
 model CmsCollection {
@@ -242,6 +268,8 @@ model CmsCollection {
   @@unique([id, organizationId])
   @@index([organizationId, siteId])
   @@map("cms_collections")
+
+  @@schema("public")
 }
 
 model CmsCollectionItem {
@@ -261,6 +289,8 @@ model CmsCollectionItem {
   @@unique([collectionId, slug])
   @@index([organizationId, collectionId])
   @@map("cms_collection_items")
+
+  @@schema("public")
 }
 
 model CmsTheme {
@@ -277,6 +307,8 @@ model CmsTheme {
 
   @@index([organizationId])
   @@map("cms_themes")
+
+  @@schema("public")
 }
 
 model CmsTemplate {
@@ -292,6 +324,8 @@ model CmsTemplate {
 
   @@index([organizationId, category])
   @@map("cms_templates")
+
+  @@schema("public")
 }
 
 model CmsSectionTemplate {
@@ -306,6 +340,8 @@ model CmsSectionTemplate {
 
   @@index([organizationId, category])
   @@map("cms_section_templates")
+
+  @@schema("public")
 }
 
 model CmsSiteSeoSettings {
@@ -327,6 +363,8 @@ model CmsSiteSeoSettings {
   @@unique([siteId, organizationId])
   @@index([organizationId, siteId])
   @@map("cms_site_seo_settings")
+
+  @@schema("public")
 }
 
 model CmsSiteLocale {
@@ -345,6 +383,8 @@ model CmsSiteLocale {
   @@unique([siteId, locale])
   @@index([organizationId, siteId])
   @@map("cms_site_locales")
+
+  @@schema("public")
 }
 
 model CmsPageTranslation {
@@ -363,6 +403,8 @@ model CmsPageTranslation {
   @@unique([pageId, locale])
   @@index([organizationId, pageId])
   @@map("cms_page_translations")
+
+  @@schema("public")
 }
 
 model CmsUrlRedirect {
@@ -381,6 +423,8 @@ model CmsUrlRedirect {
   @@unique([siteId, sourcePath])
   @@index([organizationId, siteId])
   @@map("cms_url_redirects")
+
+  @@schema("public")
 }
 
 model CmsFormSubmission {
@@ -404,6 +448,8 @@ model CmsFormSubmission {
   @@index([organizationId, siteId, status])
   @@index([submitterEmailHash])
   @@map("cms_form_submissions")
+
+  @@schema("public")
 }
 
 model CmsSiteAnalyticsDaily {
@@ -424,6 +470,8 @@ model CmsSiteAnalyticsDaily {
   @@unique([siteId, date])
   @@index([organizationId, siteId, date])
   @@map("cms_site_analytics_daily")
+
+  @@schema("public")
 }
 
 model CmsPluginInstallation {
@@ -444,6 +492,8 @@ model CmsPluginInstallation {
   @@unique([siteId, pluginId])
   @@index([organizationId, siteId])
   @@map("cms_plugin_installations")
+
+  @@schema("public")
 }
 
 model CmsNavigationMenu {
@@ -462,6 +512,8 @@ model CmsNavigationMenu {
   @@unique([siteId, handle])
   @@index([organizationId, siteId])
   @@map("cms_navigation_menus")
+
+  @@schema("public")
 }
 
 model CmsAuditTrail {
@@ -480,4 +532,6 @@ model CmsAuditTrail {
 
   @@index([organizationId, siteId, createdAt])
   @@map("cms_audit_trails")
+
+  @@schema("public")
 }
