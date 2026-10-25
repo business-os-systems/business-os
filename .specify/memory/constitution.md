@@ -1,11 +1,15 @@
 <!--
 SYNC IMPACT REPORT
-- Version change: 1.9.0 -> 1.10.0 (Codification of Dynamic Attribute Defaults, Transparent RFC 7807 Error Presentation, Sub-Component Segregation, and Declarative Navigation Grouping Laws)
+- Version change: 1.10.0 -> 1.11.0 (Platform naming, database plane isolation, contract and data governance, and operational definition of done)
 - List of modified principles:
-  - Principle VIII: Added Dynamic Attribute & Zero Static Defaults Law (banning hardcoded fallback domain defaults in forms and API fallbacks; requiring dynamic derivation from organization profile) and Transparent RFC 7807 Error Presentation Law (banning generic catch-all toast messages).
-  - Principle XIII: Codified Declarative Modal & Form Schema Primacy Law, Sub-Component Segregation Law, and Declarative Navigation Grouping Law.
+  - Principle IX: Added the governance-change gate.
+  - Principle X: Renamed to "Platform Operator Control Plane Law"; apps/super-dashboard becomes apps/platform; the operator domain is configuration; /api/v1/super-dashboard/* becomes /api/v1/admin/*; PLATFORM_SUPER_ADMIN becomes capability-based platform:* authorization; billing is deferred to its own specification.
+  - Added Principle XV: Database Plane Isolation, Runtime Identity & Schema Governance.
+  - Added Principle XVI: Contracts, Concurrency, Idempotency & Reference Data.
+  - Added Principle XVII: Operational Governance & Definition of Done.
+- Adoption issue: #208.
 - Follow-up TODOs:
-  - Enforce schema-driven modal forms and sub-component segregation across all settings verticals.
+  - Remove residual super-dashboard references from historical documents on their next touch.
 -->
 
 # Business OS Constitution
@@ -45,15 +49,15 @@ Runtime production code is STRICTLY FORBIDDEN from introducing static mock data,
 *Rationale: Mock data and hardcoded defaults mask architectural defects and compromise data integrity. Transparent RFC 7807 error presentation enables instant debugging and operator trust. Adhering to unified design tokens ensures pristine, consistent aesthetics while preventing bundle contamination and RSC runtime failures.*
 
 ### IX. Strict Issue-First SDLC & Mandatory Human Gates
-You MUST NOT write code, edit files, create branches, or commit without an active, numbered GitHub Issue (`#X`) approved under an active milestone (NO TICKET = NO CODE). AI agents are STRICTLY FORBIDDEN from autonomously creating GitHub issues, milestones, committing code, pushing branches, creating Pull Requests, or executing Pull Request merges without explicit written human approval. Every issue MUST be proposed to the user in a structured tabular format and await explicit written approval before provisioning. All feature branches (`feat/#X-slug`) MUST branch from and target `dev` through the 3-tier promotion pipeline (`dev` $\rightarrow$ `staging` $\rightarrow$ `main`). When coding is complete, the agent MUST run local verification gates (`lint`, `typecheck`, `test`), present a pre-commit report, and WAIT for explicit written approval before committing or raising a PR. Once raised, every PR MUST pass CI and WAIT for explicit human written approval before merging via squash-and-merge. Immediately upon PR merge into `dev`, the originating GitHub Issue MUST be explicitly closed (`gh issue close <issue-num> -c "Resolved and closed by PR #<pr-num>."`) to prevent orphan open issues from lingering in the backlog. Autonomous database seeding (`prisma db seed`) or destructive schema resets (`migrate reset`) are strictly forbidden. The live homestay reference repository (`river-view-homstay-lite`) is strictly read-only and must never be altered.
+You MUST NOT write code, edit files, create branches, or commit without an active, numbered GitHub Issue (`#X`) approved under an active milestone (NO TICKET = NO CODE). AI agents are STRICTLY FORBIDDEN from autonomously creating GitHub issues, milestones, committing code, pushing branches, creating Pull Requests, or executing Pull Request merges without explicit written human approval. Every issue MUST be proposed to the user in a structured tabular format and await explicit written approval before provisioning. All feature branches (`feat/#X-slug`) MUST branch from and target `dev` through the 3-tier promotion pipeline (`dev` $\rightarrow$ `staging` $\rightarrow$ `main`). When coding is complete, the agent MUST run local verification gates (`lint`, `typecheck`, `test`), present a pre-commit report, and WAIT for explicit written approval before committing or raising a PR. Once raised, every PR MUST pass CI and WAIT for explicit human written approval before merging via squash-and-merge. Immediately upon PR merge into `dev`, the originating GitHub Issue MUST be explicitly closed (`gh issue close <issue-num> -c "Resolved and closed by PR #<pr-num>."`) to prevent orphan open issues from lingering in the backlog. Autonomous database seeding (`prisma db seed`) or destructive schema resets (`migrate reset`) are strictly forbidden. The live homestay reference repository (`river-view-homstay-lite`) is strictly read-only and must never be altered. Amending this constitution, `AGENTS.md`, or `CONTRIBUTING.md` is itself a governed change: it requires its own numbered issue and explicit human approval, and MUST be applied only after that approval.
 *Rationale: Enterprise software demands disciplined governance, transparent traceability, and human-in-the-loop oversight to protect production environments from rogue or unverified mutations.*
 
-### X. Dual-Plane Separation & Operator Control Plane (The Super Dashboard Law)
-The system MUST maintain strict physical, network, and architectural separation between the **Tenant Management Plane** (`apps/dashboard`) and the **Platform Operator Control Plane** (`apps/super-dashboard`):
-1. **Tenant Management Plane (`apps/dashboard` on `app.business-os.com`):** The client-facing workspace where tenant business owners, managers, and staff administer their own business operations. Every database query, state store, and UI component within this plane is strictly quarantined within that tenant's organization and branch boundaries.
-2. **Platform Operator Control Plane (`apps/super-dashboard` on `control.business-os.com`):** The internal mission-control application reserved strictly for platform operators, founders, and SREs. It provides cross-tenant fleet governance, tenant impersonation with mandatory step-up audit logging, infrastructure monitoring, billing subscription management, and master catalog curation.
-3. **Master Catalog & Template Governance:** Global turnkey templates (e.g. Website Builder site starter templates `cms_templates` with `organizationId = null`), system themes (`cms_themes`), and new component section blocks are authored, curated, and published exclusively from `apps/super-dashboard`. Tenants instantiate and customize copies of these templates, but the master catalog is governed exclusively by platform operators.
-4. **Zero Bundle & Network Leakage:** Super-dashboard routes, API endpoints, administrative forms, and platform operator credentials MUST NEVER be included in `apps/dashboard` or client-facing bundles. The Super Dashboard MUST be deployed under isolated Zero-Trust access with hardware MFA (WebAuthn/FIDO2).
+### X. Dual-Plane Separation & Operator Control Plane (The Platform Law)
+The system MUST maintain strict physical, network, and architectural separation between the **Tenant Management Plane** (`apps/dashboard`) and the **Platform Operator Control Plane** (`apps/platform`):
+1. **Tenant Management Plane (`apps/dashboard` on the product domain):** The client-facing workspace where tenant business owners, managers, and staff administer their own business operations. Every database query, state store, and UI component within this plane is strictly quarantined within that tenant's organization and branch boundaries.
+2. **Platform Operator Control Plane (`apps/platform` on a configurable operator domain):** The internal mission-control application reserved strictly for platform operators, founders, and SREs, protected by capability-based `platform:*` authorization. It provides cross-tenant fleet governance, read-only tenant impersonation with mandatory step-up audit logging, infrastructure monitoring, reference catalog curation, and master template curation. Billing and subscription management are deferred to their own specification.
+3. **Master Catalog & Template Governance:** Global turnkey templates (e.g. Website Builder site starter templates `cms_templates` with `organizationId = null`), system themes (`cms_themes`), and new component section blocks are authored, curated, and published exclusively from `apps/platform`. Tenants instantiate and customize copies of these templates, but the master catalog is governed exclusively by platform operators.
+4. **Zero Bundle & Network Leakage:** Platform routes, API endpoints, administrative forms, and platform operator credentials MUST NEVER be included in `apps/dashboard` or client-facing bundles. Platform MUST be deployed under isolated Zero-Trust access with hardware MFA (WebAuthn/FIDO2).
 *Rationale: Exposing internal operational tools or master catalog controls to tenant workspaces creates critical privilege escalation vulnerabilities and bloats client bundles. Strict dual-plane separation ensures total operational control without compromising tenant isolation.*
 
 ### XI. Lean Interface Segregation, Dynamic Derivation & Complete Card Encapsulation
@@ -147,6 +151,47 @@ Constructing ad-hoc, inline raw JSON responses, manual problem details payloads,
 3. **Deterministic Option A Relative URIs:** All error type URIs MUST be derived dynamically as relative URIs (`/errors/<slug>`) from canonical uppercase error codes. Absolute URLs with hostnames or generic `"about:blank"` strings are strictly banned.
 *Rationale: Centralized response envelopes eliminate repetitive boilerplate, guarantee strict RFC 7807 compliance, prevent header injection or omission bugs, and provide consistent telemetry and client error handling.*
 
+### XV. Database Plane Isolation, Runtime Identity & Schema Governance
+Every schema MUST be reachable only through its own dedicated runtime identity, and every migration MUST leave that boundary provable.
+1. **One schema per application.** Every application owns a PostgreSQL schema named after its slug (`platform`, `cms`, `pos`, `pms`, `reference`) and retains its table prefix. Tables MUST NOT be created in another application's schema.
+2. **Dedicated runtime identities.** Migrations run as an owner identity; applications run as scoped identities (`app_platform`, `app_tenant`). The owner identity MUST NEVER be used by a running application.
+3. **Explicit grants with PUBLIC revoked.** Every schema migration ships its grants and a test proving the tenant identity cannot read control-plane tables.
+4. **Shared reference area exception.** Reference catalogs live outside the platform schema in a read-only shared area, readable by every application identity and writable only by the platform identity.
+5. **No cross-schema foreign keys.** References across schemas or into core are scalar identifiers validated by the application.
+6. **Schema change checklist.** A schema change MUST include, in one ticket: schema file, schema tag, table prefix, registry entry, forward-only migration, grants, and documentation.
+7. **Safe migrations.** DDL and data backfill are separate steps; migrations set a lock timeout; indexes on large tables are built concurrently; destructive changes follow expand-and-contract.
+*Rationale: A schema boundary that is not backed by a distinct runtime identity is a naming convention, not a security control. Explicit grants and a denial test turn isolation into something the build can prove.*
+
+### XVI. Contracts, Concurrency, Idempotency & Reference Data
+1. **Capability four-part rule.** A capability MUST have a registry entry, an enforcement point, a denial test and documentation. No capability may exist without all four.
+2. **Denial test per route.** Every HTTP route MUST have an automated denial test; a route without one fails the build.
+3. **Versioned aggregates.** Mutable aggregates exposed through an API carry a version; writes submit the expected version and stale writes fail with HTTP 409.
+4. **Idempotency.** Destructive or replayable mutations MUST accept an idempotency key with a 24-hour replay window.
+5. **Pagination.** List endpoints MUST be cursor-paginated with a hard limit cap and a stable sort key.
+6. **Error-code registry.** Error codes live in one typed registry and map deterministically to `/errors/<slug>`; literals at call sites are forbidden.
+7. **Reference data.** Catalogs are database-owned, codes normalized and unique per category, values retired and never deleted, option lists never hardcoded in any application, and changes propagate within sixty seconds.
+8. **Time.** Store UTC timestamps with time zone; render in the branch time zone through `Intl`; server local time is forbidden.
+9. **Money.** Use integer minor units or decimal arithmetic; floating point is forbidden; currency always comes from the catalog.
+10. **Identifiers.** Use cuid2 or ULID; sequential identifiers in URLs are forbidden; slugs are lower-case and normalized.
+11. **Caching.** Every cache declares key shape, TTL and invalidation trigger; a cache without an invalidation path is forbidden.
+*Rationale: Most production incidents in multi-tenant systems trace to a missing contract, a lost update, a replayed request or a stale cache. Codifying these prevents each team from rediscovering them.*
+
+### XVII. Operational Governance & Definition of Done
+1. **Definition of Done.** The pull request template MUST require: requirement ids, denial test, audit assertion, documentation, rollback note, observability, accessibility and terminology review.
+2. **Reversibility.** Risky changes are flag-gated or backward compatible, with a written rollback plan.
+3. **Performance budgets.** Every user-facing surface has an enforced latency budget in CI.
+4. **Accessibility gate.** Automated accessibility checks plus a keyboard path test are required for each new screen.
+5. **Service levels.** Every user-facing surface declares an SLO and an error budget; alerts link to the runbook.
+6. **Retention.** Data retention is declared per table; indefinite storage of personal data is forbidden.
+7. **Dependency governance.** Each new package is justified, licence-checked and counted against a bundle budget; existing packages are preferred.
+8. **Flag lifecycle.** Every feature flag has an owner, creation date, expiry, default-off state and a removal ticket.
+9. **Threat model.** Every new trust boundary gets a threat-model entry before the first route is written.
+10. **Terminology.** A canonical terminology registry defines approved terms and banned synonyms, and review checks them.
+11. **Logging contract.** Logs carry required fields, levels and a correlation id, with a test proving no personal data or secrets appear.
+12. **Test data.** Tests use factories and deterministic seeds; real personal data is forbidden.
+13. **Governance changes.** Amending this constitution, `AGENTS.md` or `CONTRIBUTING.md` requires its own numbered issue and explicit human approval.
+*Rationale: Clean, maintainable enterprise code is a property of the delivery system, not of individual pull requests. Definition of done, budgets, gates and lifecycle rules keep quality from depending on who reviewed the change.*
+
 ## Architectural Constraints & Technical Standards
 
 ### 1. Monorepo Orchestration & Workspace Topology
@@ -156,15 +201,15 @@ Constructing ad-hoc, inline raw JSON responses, manual problem details payloads,
 
 ### 2. Master Deployable Applications Topology
 The web and runtime tier of Business OS comprises four specialized applications:
-1. **`apps/api` (Platform API Gateway):** Hono v4 on Node.js 22 LTS with `@hono/zod-openapi` contracts, serving tenant REST and RPC endpoints as well as internal `/api/v1/super-dashboard/*` operator control routes protected by `PLATFORM_SUPER_ADMIN` RBAC policies.
+1. **`apps/api` (Platform API Gateway):** Hono v4 on Node.js 22 LTS with `@hono/zod-openapi` contracts, serving tenant REST and RPC endpoints as well as internal `/api/v1/admin/*` operator control routes protected by capability-based `platform:*` authorization.
 2. **`apps/dashboard` (Tenant Workspace & Client App Launcher):** Next.js 16 App Router on `app.business-os.com`, serving the authenticated client workspace, dynamic app launcher, and embedded module studios (e.g. Website Builder Canvas Studio).
 3. **`apps/web` (Public Storefront & Dynamic Delivery Engine):** Next.js 16 on `business-os.com`, `*.business-os.site`, and custom domains. Employs Edge Middleware for sub-5ms tenant hostname routing and dynamically renders published Abstract Syntax Trees (AST) with sub-50ms TTFB.
-4. **`apps/super-dashboard` (Platform Operator Control Plane):** Next.js 16 App Router on `control.business-os.com`, isolated behind Cloudflare Zero-Trust and WebAuthn step-up authentication. Provides tenant fleet management, cross-tenant impersonation, global domain/SSL registry, and turnkey template curation.
+4. **`apps/platform` (Platform Operator Control Plane):** Next.js on a configurable operator domain, isolated behind an identity-aware gate and WebAuthn step-up authentication. Provides tenant fleet management, read-only cross-tenant support sessions, reference catalog curation, and turnkey template curation.
 
-### 3. Modular Super-Dashboard Contract (`IAppSuperDashboardModule`)
-Any modular application in `packages/modules/*` that requires operator oversight MUST export an `IAppSuperDashboardModule` contract:
+### 3. Modular Platform Contract (`IAppPlatformModule`)
+Any modular application in `packages/modules/*` that requires operator oversight MUST export an `IAppPlatformModule` contract:
 - Exposes administrative navigation nodes (e.g. "Global Templates", "Fleet Sites", "Domain Registry").
-- Provides dedicated operator API sub-routers mounted under `/api/v1/super-dashboard/<module-slug>/*`.
+- Provides dedicated operator API sub-routers mounted under `/api/v1/admin/<app-slug>/*`.
 - Guarantees that global entities (`organizationId = null`) can only be modified by authenticated operators through this contract.
 
 ### 4. Official UI Terminology Standard
