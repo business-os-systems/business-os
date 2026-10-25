@@ -35,6 +35,16 @@
       "types": "./src/constants/index.ts",
       "import": "./src/constants/index.ts",
       "default": "./src/constants/index.ts"
+    },
+    "./catalog": {
+      "types": "./src/catalog/index.ts",
+      "import": "./src/catalog/index.ts",
+      "default": "./src/catalog/index.ts"
+    },
+    "./time": {
+      "types": "./src/time/index.ts",
+      "import": "./src/time/index.ts",
+      "default": "./src/time/index.ts"
     }
   },
   "scripts": {

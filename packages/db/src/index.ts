@@ -13,6 +13,12 @@ export {
   type TenantContext,
 } from "./extension.js";
 
+export {
+  createPlatformPrismaClient,
+  disconnectPlatformPrismaClient,
+  type PlatformPrismaClientOptions,
+} from "./platform-client.js";
+
 export { seed } from "./seed.js";
 export { backfillAppMetadata } from "./backfill-app-metadata.js";
 
@@ -23,6 +29,9 @@ export {
   OrgStatus,
   UserOrgStatus,
   InvitationStatus,
+  PlatformOperatorStatus,
+  PlatformAppAvailability,
+  PlatformOutboxStatus,
 } from "@prisma/client";
 
 export type {
@@ -55,4 +64,17 @@ export type {
   FeatureFlag,
   FeatureFlagRule,
   FeatureFlagAuditLog,
+  PlatformOperator,
+  OperatorPasskey,
+  OperatorSession,
+  OperatorCapability,
+  OperatorInvitation,
+  LifecycleEvent,
+  Quota,
+  AppOverride,
+  ImpersonationSession,
+  AuditEvent,
+  OutboxEvent,
+  Catalog,
+  CatalogValue,
 } from "@prisma/client";

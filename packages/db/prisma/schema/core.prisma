@@ -9,6 +9,8 @@ enum OrgStatus {
   PAST_DUE
   SUSPENDED
   ARCHIVED
+
+  @@schema("public")
 }
 
 model Organization {
@@ -50,6 +52,8 @@ model Organization {
 
   @@index([status])
   @@map("organizations")
+
+  @@schema("public")
 }
 
 // ==========================================
@@ -91,6 +95,8 @@ model Address {
   @@index([city, state, country])
   @@index([district, state, country])
   @@map("addresses")
+
+  @@schema("public")
 }
 
 model Branch {
@@ -142,6 +148,8 @@ model Branch {
   @@index([parentBranchId])
   @@index([addressId])
   @@map("branches")
+
+  @@schema("public")
 }
 
 // ==========================================
@@ -182,6 +190,8 @@ model Media {
   @@index([organizationId, appId])
   @@index([organizationId, isPrivate])
   @@map("media")
+
+  @@schema("public")
 }
 
 // ==========================================
@@ -207,6 +217,8 @@ model OrganizationTaxProfile {
   updatedAt           DateTime     @updatedAt @db.Timestamptz(6)
 
   @@map("organization_tax_profiles")
+
+  @@schema("public")
 }
 
 // ==========================================
@@ -233,6 +245,8 @@ model Role {
   @@unique([organizationId, slug])
   @@index([organizationId])
   @@map("roles")
+
+  @@schema("public")
 }
 
 model Permission {
@@ -245,6 +259,8 @@ model Permission {
 
   @@index([appId])
   @@map("permissions")
+
+  @@schema("public")
 }
 
 model RolePermission {
@@ -256,6 +272,8 @@ model RolePermission {
 
   @@id([roleId, permissionId])
   @@map("role_permissions")
+
+  @@schema("public")
 }
 
 model User {
@@ -284,6 +302,8 @@ model User {
   invitationsSent OrganizationInvitation[] @relation("Inviter")
 
   @@map("users")
+
+  @@schema("public")
 }
 
 model Account {
@@ -308,6 +328,8 @@ model Account {
   @@unique([providerId, accountId])
   @@index([userId])
   @@map("accounts")
+
+  @@schema("public")
 }
 
 model Session {
@@ -330,6 +352,8 @@ model Session {
   @@index([userId])
   @@index([token])
   @@map("sessions")
+
+  @@schema("public")
 }
 
 model Verification {
@@ -344,6 +368,8 @@ model Verification {
   @@unique([identifier, value])
   @@index([identifier])
   @@map("verifications")
+
+  @@schema("public")
 }
 
 model Passkey {
@@ -363,6 +389,8 @@ model Passkey {
 
   @@index([userId])
   @@map("passkeys")
+
+  @@schema("public")
 }
 
 enum UserOrgStatus {
@@ -370,6 +398,8 @@ enum UserOrgStatus {
   INVITED
   SUSPENDED
   REVOKED
+
+  @@schema("public")
 }
 
 // ==========================================
@@ -394,6 +424,8 @@ model UserOrganization {
   @@unique([userId, organizationId])
   @@index([organizationId, status])
   @@map("user_organizations")
+
+  @@schema("public")
 }
 
 // ==========================================
@@ -418,6 +450,8 @@ model UserBranchRole {
   @@index([userId, organizationId])
   @@index([branchId])
   @@map("user_branch_roles")
+
+  @@schema("public")
 }
 
 enum InvitationStatus {
@@ -426,6 +460,8 @@ enum InvitationStatus {
   REJECTED
   EXPIRED
   CANCELED
+
+  @@schema("public")
 }
 
 model OrganizationInvitation {
@@ -450,6 +486,8 @@ model OrganizationInvitation {
   @@index([organizationId, email])
   @@index([token])
   @@map("organization_invitations")
+
+  @@schema("public")
 }
 
 model ApiKey {
@@ -473,6 +511,8 @@ model ApiKey {
   @@index([organizationId])
   @@index([keyHash])
   @@map("api_keys")
+
+  @@schema("public")
 }
 
 // ==========================================
@@ -504,6 +544,8 @@ model SsoConnection {
   @@index([domain])
   @@index([organizationId])
   @@map("sso_connections")
+
+  @@schema("public")
 }
 
 // ==========================================
@@ -528,6 +570,8 @@ model InstalledApp {
   @@unique([organizationId, appId])
   @@index([organizationId, isEnabled])
   @@map("installed_apps")
+
+  @@schema("public")
 }
 
 model AppBranchConfig {
@@ -547,6 +591,8 @@ model AppBranchConfig {
   @@unique([branchId, appId])
   @@index([organizationId, appId])
   @@map("app_branch_configs")
+
+  @@schema("public")
 }
 
 // ==========================================
@@ -583,4 +629,6 @@ model AuditLog {
   @@index([organizationId, appId, action])
   @@index([entityType, entityId])
   @@map("audit_logs")
+
+  @@schema("public")
 }

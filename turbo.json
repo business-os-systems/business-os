@@ -1,7 +1,21 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "ui": "tui",
-  "globalEnv": ["DATABASE_URL", "REDIS_URL", "NODE_ENV"],
+  "globalEnv": [
+    "DATABASE_URL",
+    "REDIS_URL",
+    "NODE_ENV",
+    "CONTROL_PLANE_ORIGIN",
+    "CONTROL_WEBAUTHN_RP_ID",
+    "CONTROL_SESSION_SECRET",
+    "PLATFORM_DATABASE_URL",
+    "EDGE_TEAM_DOMAIN",
+    "EDGE_AUDIENCE",
+    "IMPERSONATION_MAX_MINUTES",
+    "QUOTA_CACHE_TTL_SECONDS",
+    "CATALOG_CACHE_TTL_SECONDS",
+    "PLATFORM_BOOTSTRAP_OPERATOR_EMAIL"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
