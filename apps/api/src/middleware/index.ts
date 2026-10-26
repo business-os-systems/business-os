@@ -13,3 +13,12 @@ export {
   requireMetricsAuth,
   type RequireAuthOptions,
 } from "./auth.js";
+export {
+  createEdgeAdmissionMiddleware,
+  EDGE_ADMISSION_HEADER,
+  type EdgeAdmissionOptions,
+} from "./edge-admission.js";
+export {
+  createPlatformCapabilityGuard,
+  type PlatformCapabilityGuardOptions,
+} from "./platform-capability.js";
