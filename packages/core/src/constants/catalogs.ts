@@ -76,7 +76,7 @@ export const CATALOG_DEFINITIONS = {
   time_format: {
     key: "time_format",
     label: "Time formats",
-    description: "Supported time presentation formats.",
+    description: "12-hour or 24-hour clock preference.",
     format: "time_format",
     isSystem: true,
   },
