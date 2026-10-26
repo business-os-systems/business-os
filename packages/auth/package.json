@@ -26,6 +26,11 @@
       "import": "./src/session/index.ts",
       "default": "./src/session/index.ts"
     },
+    "./platform": {
+      "types": "./src/platform/index.ts",
+      "import": "./src/platform/index.ts",
+      "default": "./src/platform/index.ts"
+    },
     "./rules": {
       "types": "./src/password/password-rules.ts",
       "import": "./src/password/password-rules.ts",

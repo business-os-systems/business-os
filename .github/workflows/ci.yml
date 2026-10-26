@@ -74,6 +74,11 @@ jobs:
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
 
+      # The Prisma client lives in node_modules, not in the Turbo cache.
+      # Generate it before any build so a cache hit cannot skip it.
+      - name: Generate Prisma Client
+        run: pnpm --filter @suite/db run prisma:generate
+
       - name: Turborepo Build
         run: pnpm turbo run build
 

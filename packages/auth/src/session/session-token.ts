@@ -1,4 +1,10 @@
 import { isProduction as defaultIsProduction, getBetterAuthSecret } from "../env.js";
+import {
+  computeHmacSha256,
+  constantTimeEqual,
+  decodeBase64UrlText,
+  encodeBase64UrlText,
+} from "../crypto/hmac.js";
 
 export const DEFAULT_SESSION_COOKIE_NAME = "suite_session";
 export const SESSION_COOKIE_NAME = DEFAULT_SESSION_COOKIE_NAME;
@@ -127,49 +133,8 @@ export function createSessionCookieOptions(
   };
 }
 
-function bufferToBase64Url(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
-  let binary = "";
-  for (let i = 0; i < bytes.byteLength; i++) {
-    const byte = bytes[i] ?? 0;
-    binary += String.fromCharCode(byte);
-  }
-  return btoa(binary)
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
-}
-
-async function computeHmacSha256(payload: string, secret: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const keyData = encoder.encode(secret);
-  const cryptoKey = await crypto.subtle.importKey(
-    "raw",
-    keyData,
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"]
-  );
-  const signature = await crypto.subtle.sign(
-    "HMAC",
-    cryptoKey,
-    encoder.encode(payload)
-  );
-  return bufferToBase64Url(signature);
-}
-
 export function encodeSessionPayload(payload: SessionPayload): string {
-  const json = JSON.stringify(payload);
-  const bytes = new TextEncoder().encode(json);
-  let binary = "";
-  for (let i = 0; i < bytes.byteLength; i++) {
-    const b = bytes[i] ?? 0;
-    binary += String.fromCharCode(b);
-  }
-  return btoa(binary)
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
+  return encodeBase64UrlText(JSON.stringify(payload));
 }
 
 export const DEFAULT_KEY_VERSION = "v1";
@@ -180,17 +145,9 @@ export function decodeSessionPayload(token: string): SessionPayload | null {
   if (parts.length !== 2 && parts.length !== 3) return null;
   const rawPayload = parts.length === 3 ? parts[1] : parts[0];
   if (!rawPayload) return null;
+  const json = decodeBase64UrlText(rawPayload);
+  if (json === null) return null;
   try {
-    let base64 = rawPayload.replace(/-/g, "+").replace(/_/g, "/");
-    while (base64.length % 4 !== 0) {
-      base64 += "=";
-    }
-    const binary = atob(base64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-      bytes[i] = binary.charCodeAt(i);
-    }
-    const json = new TextDecoder().decode(bytes);
     return JSON.parse(json) as SessionPayload;
   } catch {
     return null;
@@ -236,14 +193,7 @@ export async function verifySessionToken(token: string): Promise<boolean> {
   try {
     const secret = getBetterAuthSecret();
     const expectedSig = await computeHmacSha256(target, secret);
-
-    // Constant-time comparison
-    if (sig.length !== expectedSig.length) return false;
-    let mismatch = 0;
-    for (let i = 0; i < sig.length; i++) {
-      mismatch |= sig.charCodeAt(i) ^ expectedSig.charCodeAt(i);
-    }
-    return mismatch === 0;
+    return constantTimeEqual(sig, expectedSig);
   } catch {
     return false;
   }
