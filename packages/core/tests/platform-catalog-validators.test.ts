@@ -40,12 +40,19 @@ describe("@suite/core - reference catalog validation", () => {
     expect(validateCatalogCode("timezone", "Mars/Olympus").valid).toBe(false);
   });
 
-  it("accepts structurally valid date and time formats", () => {
+  it("accepts structurally valid date formats and the hour-cycle time formats", () => {
     expect(validateCatalogCode("date_format", "YYYY-MM-DD").valid).toBe(true);
     expect(validateCatalogCode("date_format", "DD/MM/YYYY").valid).toBe(true);
     expect(validateCatalogCode("date_format", "YYYY-DD").valid).toBe(false);
-    expect(validateCatalogCode("time_format", "HH:mm").valid).toBe(true);
-    expect(validateCatalogCode("time_format", "hh:mm A").valid).toBe(true);
+    expect(validateCatalogCode("time_format", "12h")).toEqual({
+      valid: true,
+      normalized: "12h",
+    });
+    expect(validateCatalogCode("time_format", "24H")).toEqual({
+      valid: true,
+      normalized: "24h",
+    });
+    expect(validateCatalogCode("time_format", "HH:mm").valid).toBe(false);
     expect(validateCatalogCode("time_format", "25:00").valid).toBe(false);
   });
 

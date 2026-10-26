@@ -38,3 +38,10 @@ Closes #<!-- Specify issue number, e.g. Closes #10 -->
 - [ ] **Accessibility:** automated check and a keyboard path test pass for each new screen.
 - [ ] **Terminology:** approved terms only; banned synonyms removed.
 - [ ] **Rules named:** the rules applied are listed in the PR description.
+
+## Wiring & Risk-to-Task Gate
+
+- [ ] Every new runtime module has a non-test caller in this PR, or a linked deferred task id and target slice.
+- [ ] Every new security module has a route-level denial or integration test, not only a unit test.
+- [ ] Every residual risk is written as a task or issue id with a blocking flag; a risk without a task blocks merge.
+- [ ] Library-only changes state that explicitly and name the consuming slice.

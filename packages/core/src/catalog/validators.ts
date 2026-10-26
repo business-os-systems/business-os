@@ -17,8 +17,7 @@ const SLUG_PATTERN = /^[a-z0-9_]{2,64}$/;
 const DATE_FORMAT_PATTERN =
   /^(?:YYYY|YY|MMMM|MMM|MM|M|DD|D)(?:[-/. ](?:YYYY|YY|MMMM|MMM|MM|M|DD|D)){1,2}$/i;
 const DATE_TOKEN_PATTERN = /YYYY|YY|MMMM|MMM|MM|M|DD|D/gi;
-const TIME_FORMAT_PATTERN =
-  /^(?:(?:HH|H):mm(?::ss)?|(?:hh|h):mm(?::ss)? [Aa])$/i;
+const TIME_FORMAT_PATTERN = /^(?:12h|24h)$/i;
 
 function valid(normalized: string): CatalogValidationResult {
   return { valid: true, normalized };
@@ -138,7 +137,7 @@ export function validateCatalogCode(
     case "time_format":
       return TIME_FORMAT_PATTERN.test(normalized)
         ? valid(normalized)
-        : invalid("Time formats must be HH:mm, HH:mm:ss, hh:mm A or hh:mm:ss A.");
+        : invalid("Time formats must be 12h or 24h.");
     case "slug":
       return SLUG_PATTERN.test(normalized)
         ? valid(normalized)
