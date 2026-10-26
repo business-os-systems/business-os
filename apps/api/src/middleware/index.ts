@@ -22,3 +22,7 @@ export {
   createPlatformCapabilityGuard,
   type PlatformCapabilityGuardOptions,
 } from "./platform-capability.js";
+export {
+  createIdempotencyMiddleware,
+  type IdempotencyMiddlewareOptions,
+} from "./idempotency.js";

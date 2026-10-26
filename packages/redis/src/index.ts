@@ -47,3 +47,26 @@ export {
   type Processor,
   type JobsOptions,
 } from "bullmq";
+export {
+  PLATFORM_OUTBOX_MAX_ATTEMPTS,
+  PLATFORM_OUTBOX_POLL_INTERVAL_MS,
+  PLATFORM_OUTBOX_LEASE_SECONDS,
+  platformOutboxBackoffMs,
+  createPlatformOutboxDispatcher,
+  type PlatformOutboxEvent,
+  type PlatformOutboxStore,
+  type PlatformOutboxHandler,
+  type PlatformOutboxHandlers,
+  type PlatformOutboxDispatcher,
+  type CreatePlatformOutboxDispatcherOptions,
+} from "./platform-outbox.js";
+export {
+  IDEMPOTENCY_TTL_SECONDS,
+  IDEMPOTENCY_PENDING_TTL_SECONDS,
+  IDEMPOTENCY_KEY_PREFIX,
+  IDEMPOTENCY_HEADER,
+  createIdempotencyStore,
+  type IdempotentResponse,
+  type IdempotencyReservation,
+  type IdempotencyStore,
+} from "./idempotency.js";
