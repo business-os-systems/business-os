@@ -9,8 +9,10 @@
     "dev": "turbo run dev",
     "dev:dashboard": "pnpm --filter @suite/dashboard dev",
     "dev:api": "pnpm --filter @suite/api dev",
+    "dev:platform": "pnpm --filter @suite/platform dev",
     "build:dashboard": "pnpm --filter @suite/dashboard build",
     "build:api": "pnpm --filter @suite/api build",
+    "build:platform": "pnpm --filter @suite/platform build",
     "test:dashboard": "pnpm --filter @suite/dashboard test",
     "test:website-builder": "pnpm --filter @suite/website-builder test",
     "test:api": "pnpm --filter @suite/api test",
@@ -20,10 +22,14 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "turbo run build && changeset publish",
     "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
     "clean": "turbo run clean && rm -rf node_modules"
   },
   "devDependencies": {
+    "@changesets/cli": "^3.0.3",
     "prettier": "^3.4.2",
     "turbo": "^2.4.2",
     "typescript": "^5.7.3"

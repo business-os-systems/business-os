@@ -62,8 +62,22 @@ jobs:
           node-version: 22
           cache: "pnpm"
 
+      # Restored before the first turbo invocation so every task can hit.
+      - name: Restore Turborepo Cache
+        uses: actions/cache@v4
+        with:
+          path: .turbo/cache
+          key: turbo-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            turbo-${{ runner.os }}-
+
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
+
+      # The Prisma client lives in node_modules, not in the Turbo cache.
+      # Generate it before any build so a cache hit cannot skip it.
+      - name: Generate Prisma Client
+        run: pnpm --filter @suite/db run prisma:generate
 
       - name: Turborepo Build
         run: pnpm turbo run build
@@ -71,11 +85,9 @@ jobs:
       - name: Apply Database Migrations
         run: pnpm --filter @suite/db run db:migrate:deploy
 
-      - name: Turborepo Lint
-        run: pnpm turbo run lint
+      - name: Turborepo Lint, Typecheck & Test
+        run: pnpm turbo run lint typecheck test
 
-      - name: Turborepo Typecheck
-        run: pnpm turbo run typecheck
-
-      - name: Turborepo Test
-        run: pnpm turbo run test
+      - name: Report Turborepo Cache Size
+        if: always()
+        run: du -sh .turbo/cache || true

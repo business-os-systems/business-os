@@ -200,6 +200,10 @@ All three checks must pass with zero errors.
 - Forward-only, timestamped SQL migrations applied via `prisma migrate deploy`.
 - Running `prisma db push` on production or staging databases is strictly forbidden.
 - All seed scripts must be idempotent (`upsert`), ensuring repeat runs never fail or corrupt state.
+- DDL and data backfill MUST be separate migrations; a schema change never depends on a backfill completing in the same transaction.
+- Migrations MUST set a `lock_timeout` and MUST create indexes on large tables concurrently.
+- Every schema migration MUST ship its runtime role grants, revoke `PUBLIC`, and include a test proving the tenant identity cannot read control-plane tables.
+- A schema change is one unit: schema file, schema tag, table prefix, registry entry, migration, grants and documentation.
 
 ### Rule 10: Architectural Decision Records (ADRs)
 - Non-obvious architectural choices, library selections, or trade-offs must be documented as an ADR in `docs/adr/000X-title.md` covering: Context, Decision, Alternatives Considered, and Consequences.
@@ -240,6 +244,38 @@ You are **STRICTLY PROHIBITED** from:
 
 ---
 
+## 8.1 Rule 13: Definition of Done (Constitution XVII)
+
+Every pull request MUST satisfy, and tick in the template:
+
+1. **Requirement traceability:** the issue and PR name the requirement ids or rule ids implemented.
+2. **Denial path:** authorization denial is tested, not only the success path.
+3. **Audit:** every mutation asserts its audit record.
+4. **Data standards:** time, money, identifiers, caching and reference data follow Constitution XVI where touched.
+5. **Documentation:** the relevant document in `05-modular-apps/<app>/` is updated in the same change.
+6. **Reversibility:** a rollback note, or the flag that gates the change.
+7. **Observability:** new dependencies appear in health checks; new routes emit structured logs and metrics.
+8. **Accessibility:** new screens pass the automated check and a keyboard path test.
+9. **Terminology:** approved terms only; banned synonyms removed.
+10. **Rules named:** the PR lists the rules applied, so review does not rely on memory.
+
+A PR missing any item is not ready for review.
+
+## 8.2 Rule 14: Data and Contract Standards (Constitution XVI)
+
+- **Capabilities:** registry entry, enforcement point, denial test and documentation must exist together.
+- **Versioning:** mutable aggregates carry a version; clients send the expected version; conflicts return 409.
+- **Idempotency:** destructive or replayable mutations accept an idempotency key with a 24-hour replay window.
+- **Pagination:** cursor-based, capped limit, stable sort key.
+- **Error codes:** one typed registry, deterministic `/errors/<slug>` mapping, no literals at call sites.
+- **Reference data:** database-owned catalogs, normalized and unique codes, retire rather than delete, no hardcoded option lists, propagation within 60 seconds.
+- **Time:** UTC storage, branch-timezone rendering through `Intl`.
+- **Money:** integer minor units or decimal, never floating point.
+- **Identifiers:** cuid2 or ULID; no sequential ids in URLs.
+- **Caching:** explicit key, TTL and invalidation trigger.
+
+---
+
 ## 9. Versioning, Changesets & Feature Flags
 
 ### Semantic Versioning (SemVer) & Changesets:
@@ -252,6 +288,9 @@ You are **STRICTLY PROHIBITED** from:
 - Deploying code does not mean releasing it. New features are wrapped in feature flags.
 - Evaluated in Redis in `< 0.2ms` with zero database overhead.
 - Supports progressive rollout (Canary $\rightarrow$ 25% $\rightarrow$ 100%) and instant 1ms kill-switches.
+- Every flag MUST declare an owner, creation date, expiry date, default-off state and a removal ticket. A flag without an expiry is a defect.
+- Flag key naming follows `<domain>.<feature>.<variant>`; evaluation is deterministic and fails closed.
+- Removing a flag is part of the release that makes it permanent; leaving dead flags is prohibited.
 
 ---
 

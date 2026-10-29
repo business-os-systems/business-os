@@ -1,8 +1,28 @@
 import { serve } from "@hono/node-server";
-import { logger } from "@suite/logger";
+import * as Sentry from "@sentry/node";
+import { logger, sanitizePii } from "@suite/logger";
 import { createApp } from "./app.js";
 
-const port = Number(process.env.PORT) || 4000;
+const sentryDsn = process.env.SENTRY_DSN;
+if (sentryDsn) {
+  Sentry.init({
+    dsn: sentryDsn,
+    environment: process.env.NODE_ENV,
+    beforeSend(event) {
+      if (event.request) {
+        event.request.cookies = undefined;
+        event.request.headers = undefined;
+      }
+      return sanitizePii(event);
+    },
+  });
+}
+
+const rawPort = process.env.PORT;
+if (!rawPort) {
+  throw new Error("PORT environment variable must be pre-declared in .env");
+}
+const port = Number(rawPort);
 const app = createApp();
 
 logger.info({ port }, `Starting Platform Core API server on port ${port}...`);

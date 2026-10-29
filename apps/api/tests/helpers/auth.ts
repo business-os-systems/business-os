@@ -18,6 +18,18 @@ if (!process.env.DASHBOARD_URL) {
   process.env.DASHBOARD_URL = "http://localhost:3001";
 }
 
+if (!process.env.APP_VERSION) {
+  process.env.APP_VERSION = "0.0.1";
+}
+
+if (!process.env.GIT_COMMIT_SHA) {
+  process.env.GIT_COMMIT_SHA = "dev";
+}
+
+if (!process.env.BUILD_TIMESTAMP) {
+  process.env.BUILD_TIMESTAMP = "2026-10-22T00:00:00Z";
+}
+
 export async function createTestSessionToken(
   overrides: Partial<SessionPayload> = {}
 ): Promise<string> {

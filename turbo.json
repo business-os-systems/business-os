@@ -1,19 +1,40 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "ui": "tui",
-  "globalEnv": ["DATABASE_URL", "REDIS_URL", "NODE_ENV"],
+  "globalEnv": [
+    "DATABASE_URL",
+    "REDIS_URL",
+    "NODE_ENV",
+    "CONTROL_PLANE_ORIGIN",
+    "CONTROL_WEBAUTHN_RP_ID",
+    "CONTROL_SESSION_SECRET",
+    "PLATFORM_DATABASE_URL",
+    "EDGE_TEAM_DOMAIN",
+    "EDGE_AUDIENCE",
+    "IMPERSONATION_MAX_MINUTES",
+    "QUOTA_CACHE_TTL_SECONDS",
+    "CATALOG_CACHE_TTL_SECONDS",
+    "PLATFORM_BOOTSTRAP_OPERATOR_EMAIL",
+    "API_URL",
+    "DOMAIN_ROOT",
+    "NEXT_PUBLIC_APP_URL",
+    "NEXT_PUBLIC_TURNSTILE_SITE_KEY"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
     },
+    "@suite/db#build": {
+      "cache": false
+    },
     "dev": {
       "cache": false,
       "persistent": true
     },
     "lint": {
-      "dependsOn": ["^build"]
+      "dependsOn": []
     },
     "typecheck": {
       "dependsOn": ["^build"]

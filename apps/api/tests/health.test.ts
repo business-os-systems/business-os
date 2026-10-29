@@ -6,13 +6,40 @@ import * as redisModule from "@suite/redis";
 interface HealthLiveResponse {
   status: string;
   uptime: number;
+  eventLoopLagMs: number;
   timestamp: string;
 }
 
-interface HealthReadyResponse {
+interface DependencyProbeInfo {
+  status: "connected" | "disconnected";
+  latencyMs: number;
+  error?: string;
+}
+
+interface HealthReadySuccessResponse {
   status: string;
   database: string;
   redis: string;
+  dependencies: {
+    database: DependencyProbeInfo;
+    redis: DependencyProbeInfo;
+  };
+  timestamp: string;
+}
+
+interface HealthReadyProblemResponse {
+  type: string;
+  title: string;
+  status: number;
+  detail: string;
+  code: string;
+  instance: string;
+  database: string;
+  redis: string;
+  dependencies: {
+    database: DependencyProbeInfo;
+    redis: DependencyProbeInfo;
+  };
   timestamp: string;
 }
 
@@ -24,13 +51,16 @@ describe("Health & Telemetry Routes", () => {
   });
 
   describe("GET /health/live", () => {
-    it("returns 200 OK with shallow liveness uptime data", async () => {
+    it("returns 200 OK with process uptime and event loop lag measurement", async () => {
       const res = await app.request("/health/live");
       expect(res.status).toBe(200);
 
       const body = (await res.json()) as HealthLiveResponse;
       expect(body.status).toBe("ok");
       expect(typeof body.uptime).toBe("number");
+      expect(body.uptime).toBeGreaterThan(0);
+      expect(typeof body.eventLoopLagMs).toBe("number");
+      expect(body.eventLoopLagMs).toBeGreaterThanOrEqual(0);
       expect(typeof body.timestamp).toBe("string");
     });
   });
@@ -46,13 +76,17 @@ describe("Health & Telemetry Routes", () => {
       const res = await app.request("/health/ready");
       expect(res.status).toBe(200);
 
-      const body = (await res.json()) as HealthReadyResponse;
+      const body = (await res.json()) as HealthReadySuccessResponse;
       expect(body.status).toBe("ready");
       expect(body.database).toBe("connected");
       expect(body.redis).toBe("connected");
+      expect(body.dependencies.database.status).toBe("connected");
+      expect(typeof body.dependencies.database.latencyMs).toBe("number");
+      expect(body.dependencies.redis.status).toBe("connected");
+      expect(typeof body.dependencies.redis.latencyMs).toBe("number");
     });
 
-    it("returns 503 Service Unavailable when PostgreSQL fails", async () => {
+    it("returns 503 RFC 7807 Problem Details when PostgreSQL database fails", async () => {
       vi.spyOn(prisma, "$queryRaw").mockRejectedValueOnce(new Error("DB Connection Refused"));
       vi.spyOn(redisModule, "redisHealthCheck").mockResolvedValueOnce({
         status: "healthy",
@@ -61,14 +95,20 @@ describe("Health & Telemetry Routes", () => {
 
       const res = await app.request("/health/ready");
       expect(res.status).toBe(503);
+      expect(res.headers.get("content-type")).toContain("application/problem+json");
 
-      const body = (await res.json()) as HealthReadyResponse;
-      expect(body.status).toBe("unhealthy");
+      const body = (await res.json()) as HealthReadyProblemResponse;
+      expect(body.type).toBe("/errors/service-unavailable");
+      expect(body.title).toBe("Service Unavailable");
+      expect(body.status).toBe(503);
+      expect(body.code).toBe("SERVICE_UNAVAILABLE");
+      expect(body.instance).toBe("/health/ready");
       expect(body.database).toBe("disconnected");
       expect(body.redis).toBe("connected");
+      expect(body.dependencies.database.error).toContain("DB Connection Refused");
     });
 
-    it("returns 503 Service Unavailable when Redis is unhealthy", async () => {
+    it("returns 503 RFC 7807 Problem Details when Redis is unhealthy", async () => {
       vi.spyOn(prisma, "$queryRaw").mockResolvedValueOnce([{ 1: 1 }]);
       vi.spyOn(redisModule, "redisHealthCheck").mockResolvedValueOnce({
         status: "unhealthy",
@@ -78,11 +118,32 @@ describe("Health & Telemetry Routes", () => {
 
       const res = await app.request("/health/ready");
       expect(res.status).toBe(503);
+      expect(res.headers.get("content-type")).toContain("application/problem+json");
 
-      const body = (await res.json()) as HealthReadyResponse;
-      expect(body.status).toBe("unhealthy");
+      const body = (await res.json()) as HealthReadyProblemResponse;
+      expect(body.type).toBe("/errors/service-unavailable");
+      expect(body.title).toBe("Service Unavailable");
+      expect(body.status).toBe(503);
+      expect(body.code).toBe("SERVICE_UNAVAILABLE");
       expect(body.database).toBe("connected");
       expect(body.redis).toBe("disconnected");
+      expect(body.dependencies.redis.error).toContain("ECONNREFUSED");
+    });
+
+    it("ignores optional third-party service failures (e.g. Sentry) and succeeds when core dependencies pass", async () => {
+      vi.spyOn(prisma, "$queryRaw").mockResolvedValueOnce([{ 1: 1 }]);
+      vi.spyOn(redisModule, "redisHealthCheck").mockResolvedValueOnce({
+        status: "healthy",
+        latencyMs: 0.8,
+      });
+
+      const res = await app.request("/health/ready");
+      expect(res.status).toBe(200);
+
+      const body = (await res.json()) as HealthReadySuccessResponse;
+      expect(body.status).toBe("ready");
+      expect(body.database).toBe("connected");
+      expect(body.redis).toBe("connected");
     });
   });
 

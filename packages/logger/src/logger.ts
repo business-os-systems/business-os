@@ -1,6 +1,7 @@
 import pino, { type DestinationStream, type Logger, type LoggerOptions as PinoLoggerOptions } from "pino";
 import { getTraceContext } from "./correlation.js";
 import { DEFAULT_REDACT_PATHS, REDACT_CENSOR } from "./redact.js";
+import { isProduction, isDevelopment, isTest } from "./env.js";
 
 export interface RequestLogContext {
   traceId: string;
@@ -24,10 +25,7 @@ export interface CreateLoggerOptions {
  * ISO timestamps, sensitive data redaction, and environment-aware formatting.
  */
 export function createLogger(options: CreateLoggerOptions = {}): Logger {
-  const env = process.env.NODE_ENV ?? "development";
-  const isProduction = env === "production" || env === "staging";
-  const isDevelopment = env === "development";
-  const isTest = env === "test" || Boolean(process.env.VITEST);
+  const env = process.env.NODE_ENV;
 
   // By default, enable pretty formatting only in development if not in test and not explicitly disabled
   const shouldPrettyPrint = options.pretty ?? (isDevelopment && !isTest);

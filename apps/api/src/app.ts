@@ -12,11 +12,14 @@ import {
 } from "./middleware/index.js";
 import {
   healthRouter,
+  systemRouter,
   authRouter,
   organizationsRouter,
   branchesRouter,
   auditLogsRouter,
+  adminRouter,
 } from "./routes/index.js";
+import { isProduction } from "./lib/env.js";
 import { createWebsiteBuilderRoutes } from "@suite/website-builder/routes";
 import { metricsRegistry } from "./telemetry.js";
 
@@ -53,6 +56,7 @@ export function createApp(options: AppOptions = {}) {
   });
 
   // 4. Mount Core & Module Sub-Routers
+  app.route("/api/v1/system", systemRouter);
   app.route("/api/v1/auth", authRouter);
 
   // Mount requireAuth across tenant operational routes (defense-in-depth)
@@ -68,10 +72,11 @@ export function createApp(options: AppOptions = {}) {
   app.route("/api/v1/audit-logs", auditLogsRouter);
   app.route("/api/v1/cms", createWebsiteBuilderRoutes());
 
+  // Admin API — auth and rate limiting are applied inside the router.
+  app.route("/api/v1/admin", adminRouter);
+
   // 5. Environment Guarded OpenAPI 3.1 Documentation & Interactive Scalar UI
   // In production, internal documentation is locked or restricted to authorized internal access.
-  const isProduction = process.env.NODE_ENV === "production";
-
   if (isProduction && !process.env.ENABLE_INTERNAL_DOCS) {
     app.get("/doc", (c) => {
       return c.text("Forbidden: API documentation is disabled in production.", 403);

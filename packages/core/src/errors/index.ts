@@ -219,6 +219,24 @@ export class InternalServerError extends AppError {
 }
 
 /**
+ * 503 Service Unavailable Error
+ */
+export class ServiceUnavailableError extends AppError {
+  constructor(
+    detail = "Service is temporarily unavailable due to dependency failure",
+    options?: Partial<AppErrorOptions>
+  ) {
+    super({
+      status: 503,
+      code: options?.code ?? "SERVICE_UNAVAILABLE",
+      title: options?.title ?? "Service Unavailable",
+      detail,
+      ...options,
+    });
+  }
+}
+
+/**
  * Type guard for AppError
  */
 export function isAppError(error: unknown): error is AppError {
@@ -364,3 +382,13 @@ export function createZodProblemEnvelope(
 }
 
 
+
+// Platform error-code registry and RFC 7807 type mapping
+export {
+  PLATFORM_ERROR_CODES,
+  isPlatformErrorCode,
+  getPlatformErrorDefinition,
+  problemTypeForErrorCode,
+  type PlatformErrorCode,
+  type PlatformErrorDefinition,
+} from "./codes.js";

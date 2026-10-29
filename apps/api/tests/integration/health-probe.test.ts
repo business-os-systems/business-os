@@ -3,16 +3,37 @@ import { createApp } from "../../src/app.js";
 import { prisma } from "@suite/db";
 import * as redisModule from "@suite/redis";
 
-interface HealthReadyBody {
+interface HealthReadySuccessBody {
   status: string;
   database: string;
   redis: string;
+  dependencies: {
+    database: { status: string; latencyMs: number };
+    redis: { status: string; latencyMs: number };
+  };
+  timestamp: string;
+}
+
+interface HealthReadyProblemBody {
+  type: string;
+  title: string;
+  status: number;
+  detail: string;
+  code: string;
+  instance: string;
+  database: string;
+  redis: string;
+  dependencies: {
+    database: { status: string; latencyMs: number; error?: string };
+    redis: { status: string; latencyMs: number; error?: string };
+  };
   timestamp: string;
 }
 
 interface HealthLiveBody {
   status: string;
   uptime: number;
+  eventLoopLagMs: number;
   timestamp: string;
 }
 
@@ -31,36 +52,49 @@ describe("Integration: Health & Readiness Probes Under Failure Modes", () => {
       const body = (await res.json()) as HealthLiveBody;
       expect(body.status).toBe("ok");
       expect(body.uptime).toBeGreaterThan(0);
+      expect(typeof body.eventLoopLagMs).toBe("number");
       expect(new Date(body.timestamp).getTime()).not.toBeNaN();
     });
   });
 
   describe("Deep Readiness Probe (/health/ready)", () => {
     it("returns 200 OK when both PostgreSQL and Redis are responsive", async () => {
+      vi.spyOn(prisma, "$queryRaw").mockResolvedValueOnce([{ 1: 1 }]);
+      vi.spyOn(redisModule, "redisHealthCheck").mockResolvedValueOnce({
+        status: "healthy",
+        latencyMs: 1.2,
+      });
+
       const res = await app.request("/health/ready");
       expect(res.status).toBe(200);
 
-      const body = (await res.json()) as HealthReadyBody;
+      const body = (await res.json()) as HealthReadySuccessBody;
       expect(body.status).toBe("ready");
       expect(body.database).toBe("connected");
       expect(body.redis).toBe("connected");
     });
 
-    it("returns 503 Service Unavailable when PostgreSQL database query times out or fails", async () => {
+    it("returns 503 RFC 7807 Problem Details when PostgreSQL database query times out or fails", async () => {
       vi.spyOn(prisma, "$queryRaw").mockRejectedValueOnce(
         new Error("Connection terminated unexpectedly by peer")
       );
 
       const res = await app.request("/health/ready");
       expect(res.status).toBe(503);
+      expect(res.headers.get("content-type")).toContain("application/problem+json");
 
-      const body = (await res.json()) as HealthReadyBody;
-      expect(body.status).toBe("unhealthy");
+      const body = (await res.json()) as HealthReadyProblemBody;
+      expect(body.type).toBe("/errors/service-unavailable");
+      expect(body.title).toBe("Service Unavailable");
+      expect(body.status).toBe(503);
+      expect(body.code).toBe("SERVICE_UNAVAILABLE");
+      expect(body.instance).toBe("/health/ready");
       expect(body.database).toBe("disconnected");
       expect(body.redis).toBe("connected");
+      expect(body.dependencies.database.error).toContain("Connection terminated unexpectedly");
     });
 
-    it("returns 503 Service Unavailable when Redis cluster fails health check", async () => {
+    it("returns 503 RFC 7807 Problem Details when Redis cluster fails health check", async () => {
       vi.spyOn(prisma, "$queryRaw").mockResolvedValueOnce([{ 1: 1 }]);
       vi.spyOn(redisModule, "redisHealthCheck").mockResolvedValueOnce({
         status: "unhealthy",
@@ -70,14 +104,20 @@ describe("Integration: Health & Readiness Probes Under Failure Modes", () => {
 
       const res = await app.request("/health/ready");
       expect(res.status).toBe(503);
+      expect(res.headers.get("content-type")).toContain("application/problem+json");
 
-      const body = (await res.json()) as HealthReadyBody;
-      expect(body.status).toBe("unhealthy");
+      const body = (await res.json()) as HealthReadyProblemBody;
+      expect(body.type).toBe("/errors/service-unavailable");
+      expect(body.title).toBe("Service Unavailable");
+      expect(body.status).toBe(503);
+      expect(body.code).toBe("SERVICE_UNAVAILABLE");
+      expect(body.instance).toBe("/health/ready");
       expect(body.database).toBe("connected");
       expect(body.redis).toBe("disconnected");
+      expect(body.dependencies.redis.error).toContain("CLUSTERDOWN The cluster is down");
     });
 
-    it("returns 503 Service Unavailable when both PostgreSQL and Redis fail simultaneously", async () => {
+    it("returns 503 RFC 7807 Problem Details when both PostgreSQL and Redis fail simultaneously", async () => {
       vi.spyOn(prisma, "$queryRaw").mockRejectedValueOnce(new Error("DB Down"));
       vi.spyOn(redisModule, "redisHealthCheck").mockResolvedValueOnce({
         status: "unhealthy",
@@ -87,9 +127,14 @@ describe("Integration: Health & Readiness Probes Under Failure Modes", () => {
 
       const res = await app.request("/health/ready");
       expect(res.status).toBe(503);
+      expect(res.headers.get("content-type")).toContain("application/problem+json");
 
-      const body = (await res.json()) as HealthReadyBody;
-      expect(body.status).toBe("unhealthy");
+      const body = (await res.json()) as HealthReadyProblemBody;
+      expect(body.type).toBe("/errors/service-unavailable");
+      expect(body.title).toBe("Service Unavailable");
+      expect(body.status).toBe(503);
+      expect(body.code).toBe("SERVICE_UNAVAILABLE");
+      expect(body.instance).toBe("/health/ready");
       expect(body.database).toBe("disconnected");
       expect(body.redis).toBe("disconnected");
     });

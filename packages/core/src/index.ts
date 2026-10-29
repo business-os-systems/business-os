@@ -9,6 +9,7 @@ export {
   TenantMismatchError,
   RateLimitError,
   InternalServerError,
+  ServiceUnavailableError,
   isAppError,
   createProblemEnvelope,
   createSuccessEnvelope,
@@ -87,6 +88,52 @@ export {
   type AppManifest,
   RATE_LIMITS,
   TIMEOUTS,
+  PLATFORM_CAPABILITIES,
+  PLATFORM_CAPABILITY_CODES,
+  PLATFORM_CAPABILITY_GROUPS,
+  isPlatformCapability,
+  getPlatformCapability,
+  type PlatformCapability,
+  type PlatformCapabilityDefinition,
+  type PlatformCapabilityGroup,
+  type PlatformCapabilityKey,
+  CATALOG_KEYS,
+  CATALOG_DEFINITIONS,
+  isCatalogKey,
+  getCatalogDefinition,
+  type CatalogKey,
+  type CatalogCodeFormat,
+  type CatalogDefinition,
 } from "./constants/index.js";
+
+// Platform error-code registry
+export {
+  PLATFORM_ERROR_CODES,
+  isPlatformErrorCode,
+  getPlatformErrorDefinition,
+  problemTypeForErrorCode,
+  type PlatformErrorCode,
+  type PlatformErrorDefinition,
+} from "./errors/index.js";
+
+// Reference catalog validation
+export {
+  normalizeCatalogCode,
+  validateCatalogCode,
+  type CatalogValidationResult,
+} from "./catalog/index.js";
+
+// UTC storage and branch-timezone rendering
+export {
+  formatUtcTimestamp,
+  parseUtcTimestamp,
+  toUtcInstant,
+  isValidIanaTimeZone,
+  formatBranchDateTime,
+  formatBranchDate,
+  formatBranchTime,
+  formatBranchDateTimeWithZone,
+  type BranchTimeContext,
+} from "./time/index.js";
 
 

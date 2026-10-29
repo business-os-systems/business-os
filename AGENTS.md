@@ -12,6 +12,9 @@
 - **Before making ANY code, design, configuration, or architectural change, AI agents MUST explicitly review, verify, and apply ALL operational directives, architectural rules, and Clean Code standards FIRST.**
 - AI agents are **STRICTLY PROHIBITED** from taking shortcuts, introducing temporary workarounds, using mock/static data fallbacks, or writing code before validating all repository rules.
 - Every turn begins with a rule compliance check: If an action would violate ANY directive in this document or Constitution Principle XII (e.g., issue-first policy, zero static data, DESIGN.md primacy, clean code discipline, branch hierarchy, human issue approval gate, human commit & PR approval gate, human merge approval gate, core immutability, env-first pre-declaration), the agent **MUST NOT** proceed with the violation.
+- **This gate applies to every task, regardless of size** — a one-line fix, a migration, a document edit, or a full feature slice.
+- **Mandatory pre-change checklist (Constitution XV–XVII).** Before any change, answer all six: (1) which schema and runtime identity does this touch, and is the boundary test updated? (2) which capability, denial test and audit record does this add or change? (3) which contract, version and idempotency behaviour changes? (4) does it touch reference data, time, money or identifiers? (5) which documentation, rollback note, observability signal and accessibility check accompany it? (6) does it amend governance files, and if so, is there an approved issue? If any answer is "unknown", stop and resolve it before writing anything.
+- **Rule index:** the complete engineering rule set for the Platform work — and the pattern every future app must follow — is `05-modular-apps/platform/ENGINEERING_RULES.md`. Rules adopted into this file or the constitution become binding for all applications; a rule in Part 2 is a proposal, not a mandate.
 
 ---
 
@@ -276,6 +279,60 @@ Before asking human approval to start ANY issue, the agent MUST explicitly state
 1. *Will this issue touch or modify any shared core package (`@suite/core`, `@suite/auth`, or `schema/core.prisma`)?* (Must be NO for modular app tickets).
 2. *Does this issue introduce any reverse dependency from Core to Module?* (Must be NO).
 3. *What exact new files will be created and which existing files will be touched?*
+4. *Which schema, runtime database identity and grant does this issue add or change, and which test proves the boundary?*
+5. *Which capability, denial test and audit record does this issue add or change?*
+6. *Which contract, version, idempotency and reference-data rules apply to this issue?*
+
+---
+
+## 5.2 Mandatory Engineering Standards (Constitution XV–XVII)
+
+These rules apply to every task, in every application, without exception for size. The authoritative text is in `.specify/memory/constitution.md` principles XV, XVI and XVII; this section is the operational index.
+
+**Database plane isolation (XV)**
+
+| Rule | Requirement |
+|---|---|
+| DB-1 | Every schema has a dedicated runtime identity; migrations run as the owner and never as the app |
+| DB-2 | Grants are explicit, PUBLIC is revoked, and a test proves the tenant identity cannot read control-plane tables |
+| DB-3 | One schema per application, table prefix retained, no cross-schema foreign keys |
+| DB-4 | Schema changes ship as one unit: schema file, schema tag, prefix, registry, migration, grants, docs |
+| DB-5 | DDL and backfill are separate; lock timeout set; concurrent indexes on large tables; expand-and-contract |
+
+**Contracts and data (XVI)**
+
+| Rule | Requirement |
+|---|---|
+| CT-1 | Capability four-part rule: registry entry, enforcement point, denial test, documentation |
+| CT-2 | Every route has a denial test in CI |
+| CT-3 | Mutable aggregates are versioned; stale writes return 409 |
+| CT-4 | Destructive or replayable mutations accept an idempotency key with a 24-hour window |
+| CT-5 | Lists are cursor-paginated with a hard cap and a stable sort |
+| CT-6 | Error codes live in one typed registry and map to `/errors/<slug>` |
+| CT-7 | Reference data is database-owned, normalized, unique, retired never deleted, never hardcoded in apps, propagated within 60 seconds |
+| CT-8 | UTC storage, branch-timezone rendering via `Intl`, no server local time |
+| CT-9 | Money uses integer minor units or decimal, never floating point; currency from the catalog |
+| CT-10 | cuid2 or ULID identifiers, never sequential ids in URLs |
+| CT-11 | Every cache declares key, TTL and invalidation trigger |
+
+**Delivery governance (XVII)**
+
+| Rule | Requirement |
+|---|---|
+| OP-1 | Definition of Done is enforced by the pull request template |
+| OP-2 | Risky changes are flag-gated or backward compatible with a rollback plan |
+| OP-3 | Performance budgets are enforced in CI |
+| OP-4 | Accessibility checks (axe plus keyboard path) are required per screen |
+| OP-5 | Every user-facing surface declares an SLO and error budget |
+| OP-6 | Retention is declared per table; no indefinite personal data |
+| OP-7 | New dependencies are justified, licence-checked and counted against a bundle budget |
+| OP-8 | Every feature flag has an owner, expiry and removal ticket |
+| OP-9 | Every new trust boundary gets a threat-model entry before the first route |
+| OP-10 | The terminology registry is checked in review |
+| OP-11 | Logging has a contract and a test proving no personal data or secrets |
+| OP-12 | Test data uses factories and deterministic seeds; no real personal data |
+
+**Applying the standards in a ticket**: answer the Rule 0 checklist, name the rules the ticket implements in its description, and add the matching tests. A ticket that cannot name its rules is under-specified.
 
 ---
 

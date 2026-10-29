@@ -1,0 +1,40 @@
+// ==============================================================================
+// REFERENCE — SHARED VOCABULARIES
+// Readable by every application role; only the Platform identity may write.
+// ==============================================================================
+
+model Catalog {
+  key         String   @id @db.VarChar(64)
+  label       String   @db.VarChar(100)
+  description String?  @db.Text
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(6)
+
+  values CatalogValue[]
+
+  @@map("catalogs")
+  @@schema("reference")
+}
+
+model CatalogValue {
+  id         String   @id @default(cuid())
+  catalogKey String   @db.VarChar(64)
+  code       String   @db.VarChar(64)
+  label      String   @db.VarChar(191)
+  sortOrder  Int      @default(0)
+  isActive   Boolean  @default(true)
+  metadata   Json     @default("{}")
+  version    Int      @default(1)
+  createdBy  String?  @db.VarChar(191)
+  updatedBy  String?  @db.VarChar(191)
+  createdAt  DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @db.Timestamptz(6)
+
+  catalog Catalog @relation(fields: [catalogKey], references: [key], onDelete: Restrict)
+
+  @@unique([catalogKey, code])
+  @@index([catalogKey, isActive, sortOrder])
+  @@map("catalog_values")
+  @@schema("reference")
+}
