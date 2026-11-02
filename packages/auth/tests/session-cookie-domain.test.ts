@@ -17,7 +17,7 @@ describe("Session Cookie Domain Scoping (createSessionCookieOptions)", () => {
     const options = createSessionCookieOptions(false);
     expect(options.domain).toBeUndefined();
     expect(options.httpOnly).toBe(true);
-    expect(options.sameSite).toBe("lax");
+    expect(options.sameSite).toBe("strict");
   });
 
   it("applies SESSION_COOKIE_DOMAIN when configured for parent domain", () => {

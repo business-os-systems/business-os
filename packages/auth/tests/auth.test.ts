@@ -44,14 +44,14 @@ describe("Platform Core Auth Engine & Better-Auth Integration", () => {
       expect(devCookies.name).toBe(DEFAULT_SESSION_COOKIE_NAME);
       expect(devCookies.httpOnly).toBe(true);
       expect(devCookies.secure).toBe(false);
-      expect(devCookies.sameSite).toBe("lax");
+      expect(devCookies.sameSite).toBe("strict");
       expect(devCookies.path).toBe("/");
       expect(devCookies.maxAge).toBe(SESSION_EPHEMERAL_MAX_AGE_SECONDS);
 
       const prodCookies = createSessionCookieOptions(true);
       expect(prodCookies.httpOnly).toBe(true);
       expect(prodCookies.secure).toBe(true);
-      expect(prodCookies.sameSite).toBe("lax");
+      expect(prodCookies.sameSite).toBe("strict");
     });
 
     it("respects ephemeral (24h) vs persistent (30d) vs custom expiration timeouts", () => {
