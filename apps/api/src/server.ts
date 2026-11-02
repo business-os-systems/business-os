@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { serve } from "@hono/node-server";
 import * as Sentry from "@sentry/node";
 import { logger, sanitizePii } from "@suite/logger";

@@ -1,11 +1,13 @@
 import type { MiddlewareHandler, Context } from "hono";
-import { RateLimitError } from "@suite/core/errors";
+import { RateLimitError, ServiceUnavailableError } from "@suite/core/errors";
 import { redis } from "@suite/redis";
+import { getConnInfo } from "@hono/node-server/conninfo";
 
 export interface RateLimitOptions {
   limit?: number; // Maximum requests allowed within window
   windowSeconds?: number; // Time window in seconds
   keyPrefix?: string;
+  failureMode?: "open" | "closed";
 }
 
 export async function clearRateLimitStore(keyPrefix = "test:rl"): Promise<void> {
@@ -32,20 +34,41 @@ local ttl = redis.call('TTL', KEYS[1])
 return {current, ttl}
 `;
 
-function resolveClientIp(c: Context): string {
-  const cfConnectingIp = c.req.header("cf-connecting-ip");
-  if (cfConnectingIp) return cfConnectingIp.trim();
+function socketAddress(c: Context): string | undefined {
+  try {
+    return getConnInfo(c).remote.address;
+  } catch {
+    return undefined;
+  }
+}
 
-  const forwardedFor = c.req.header("x-forwarded-for");
-  if (forwardedFor) {
-    const firstIp = forwardedFor.split(",")[0]?.trim();
-    if (firstIp) return firstIp;
+function resolveClientIp(c: Context): string {
+  const socketIp = socketAddress(c);
+  const trustedProxies = new Set(
+    (process.env.TRUSTED_PROXY_IPS ?? "")
+      .split(",")
+      .map((ip) => ip.trim())
+      .filter(Boolean)
+  );
+  const trustForwardedHeaders =
+    process.env.NODE_ENV === "test" ||
+    (socketIp !== undefined && trustedProxies.has(socketIp));
+
+  if (trustForwardedHeaders) {
+    const cfConnectingIp = c.req.header("cf-connecting-ip");
+    if (cfConnectingIp) return cfConnectingIp.trim();
+
+    const forwardedFor = c.req.header("x-forwarded-for");
+    if (forwardedFor) {
+      const firstIp = forwardedFor.split(",")[0]?.trim();
+      if (firstIp) return firstIp;
+    }
+
+    const realIp = c.req.header("x-real-ip");
+    if (realIp) return realIp.trim();
   }
 
-  const realIp = c.req.header("x-real-ip");
-  if (realIp) return realIp.trim();
-
-  return "127.0.0.1";
+  return socketIp ?? "127.0.0.1";
 }
 
 async function executeAtomicRateLimit(
@@ -91,7 +114,12 @@ async function executeAtomicRateLimit(
  * Uses atomic Redis Lua scripting to guarantee atomic increment and key expiration.
  */
 export function rateLimitMiddleware(options: RateLimitOptions = {}): MiddlewareHandler {
-  const { limit = 60, windowSeconds = 60, keyPrefix = "rl:global" } = options;
+  const {
+    limit = 60,
+    windowSeconds = 60,
+    keyPrefix = "rl:global",
+    failureMode = "open",
+  } = options;
 
   return async (c, next) => {
     const path = c.req.path;
@@ -111,10 +139,16 @@ export function rateLimitMiddleware(options: RateLimitOptions = {}): MiddlewareH
       resetSeconds = rateLimitResult.resetSeconds;
     } catch (error) {
       console.warn(
-        `[RateLimit] Redis unavailable, bypassing rate limiting without in-memory state: ${
+        `[RateLimit] Redis unavailable: ${
           error instanceof Error ? error.message : String(error)
         }`
       );
+      if (failureMode === "closed") {
+        throw new ServiceUnavailableError(
+          "Rate limiting is temporarily unavailable.",
+          { code: "RATE_LIMIT_UNAVAILABLE" }
+        );
+      }
       return next();
     }
 

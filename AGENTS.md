@@ -109,7 +109,7 @@ You are **STRICTLY PROHIBITED** from:
 - ❌ **Hardcoded Styles & Off-Spec Design (DESIGN.md Primacy Law):**
   `DESIGN.md` (`/home/rohit-bahuguna/RB/Composable_Business_Operating_System/DESIGN.md`) is the **SINGLE SOURCE OF TRUTH** for all visual design, tokens, typography, layout, radii, motion, and theming.
   1. You are **STRICTLY FORBIDDEN** from hardcoding color names or arbitrary hex values (e.g. `text-slate-900`, `bg-indigo-600`, `border-blue-500`, `#ffffff`) in UI components or pages. Always reference semantic design tokens (`text-text`, `text-secondary`, `bg-surface`, `bg-action`, `border-border`, etc.).
-  2. All global design tokens MUST live in `apps/dashboard/src/app/globals.css` (`:root`) and be mapped in `packages/ui/tailwind.preset.cjs`.
+  2. All global design tokens MUST live in `packages/ui/src/styles/design-system.css` (`:root`) and be mapped in `packages/ui/tailwind.preset.cjs`.
   3. Dark mode MUST strictly implement `colors-dark` from `DESIGN.md` §9.
   4. Per-app customizations MUST live exclusively in single-file app-scoped overrides (`[data-app="<app-name>"]`).
 - ❌ **Static Mock Data & In-Memory Fallback Stores (Zero Static Data Law):**
@@ -333,6 +333,22 @@ These rules apply to every task, in every application, without exception for siz
 | OP-12 | Test data uses factories and deterministic seeds; no real personal data |
 
 **Applying the standards in a ticket**: answer the Rule 0 checklist, name the rules the ticket implements in its description, and add the matching tests. A ticket that cannot name its rules is under-specified.
+
+### 5.3 Platform Control Plane Invariants (Binding)
+
+These invariants are mandatory for every operator/auth/platform-shell change and must be tested in the same PR:
+
+1. **Fail-closed navigation.** Every Platform destination must resolve to a registered capability. Unknown/unconfigured paths must be denied, never rendered ungated. Capability strings must come from `PLATFORM_CAPABILITIES`.
+2. **Every admin route is rate-limited.** `/me` and `/logout` need a session limiter; WebAuthn options/verify need a stricter limiter. Do not rely on the global tenant limiter.
+3. **One live bootstrap link per operator.** Reissuing a link must revoke the previous token (`platform:bootstrap:operator:<id>` pointer + token delete). A token is single-use and single-operator.
+4. **Audit is part of the mutation.** The audit row must be written in the same Prisma transaction as the mutation it records. Session issuance and `SIGNED_IN` share one transaction; passkey updates and their audit do too.
+5. **Audit fails closed.** The `recordHash` check constraint rejects `PENDING`; a missing trigger must fail the insert, never store a placeholder hash. Migration DDL sets `lock_timeout`.
+6. **Typed boundaries.** Success envelopes and session/operator payloads use one shared Zod contract and registry. No `as T` on network responses and no raw `AUTH_*`/`CORS_*` error codes.
+7. **CORS covers errors.** Origin/credential headers are attached to 4xx/5xx responses, not only successful responses.
+8. **One design-token source.** Tokens live in `packages/ui/src/styles/design-system.css`; both apps import it. The audit scans both apps for local `--bos-`, raw colours, tenant shell imports and the shared Tailwind preset.
+9. **No UI-app database access.** UI packages must not import `@suite/db` or `@suite/redis` at runtime; bootstrap/offline tooling belongs in a tooling package or devDependency.
+10. **Tests are part of acceptance.** Every new route needs a denial test, every audit action needs an assertion, and every capability gate needs a direct-access test.
+11. **Passkey policy is explicit.** Synced passkeys are accepted only while the documented security-risk acceptance is current; adding device-bound enforcement requires the second-passkey/recovery flow first.
 
 ---
 

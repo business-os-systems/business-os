@@ -2,9 +2,8 @@
 
 import React from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@suite/ui";
+import { Button, ThemeToggle } from "@suite/ui";
 import { MenuIcon, BuildingIcon, LogOutIcon } from "@suite/ui/icons";
-import { ThemeToggle } from "./theme-toggle";
 import type { TenantContext } from "./types";
 
 import { WorkspaceSwitcher } from "./workspace-switcher";

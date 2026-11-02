@@ -3,7 +3,6 @@ export * from "./sidebar-nav";
 export * from "./settings-nav";
 export * from "./header-topbar";
 export * from "./dashboard-shell";
-export * from "./theme-toggle";
 export * from "./offline-view";
 export * from "./navigation.config";
 export * from "./settings.config";

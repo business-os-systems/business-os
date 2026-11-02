@@ -8,6 +8,12 @@ export function securityHeadersMiddleware(): MiddlewareHandler {
   return async (c, next) => {
     await next();
 
+    if (c.req.path.startsWith("/api/v1/admin")) {
+      c.header("Cache-Control", "no-store, no-cache, must-revalidate, private");
+      c.header("Pragma", "no-cache");
+      c.header("Expires", "0");
+    }
+
     c.header("X-Content-Type-Options", "nosniff");
     c.header("X-Frame-Options", "DENY");
     c.header("X-XSS-Protection", "0");

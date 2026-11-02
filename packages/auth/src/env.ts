@@ -20,3 +20,20 @@ export function getBetterAuthSecret(): string {
   }
   return secret;
 }
+
+
+export type SessionCookieSameSite = "strict" | "lax" | "none";
+
+/**
+ * Shared SameSite policy for authentication cookies across every app.
+ * Defaults to strict; set SESSION_COOKIE_SAME_SITE=none only for a
+ * genuinely cross-site control-plane deployment over HTTPS.
+ */
+export function getSessionCookieSameSite(): SessionCookieSameSite {
+  const raw = process.env.SESSION_COOKIE_SAME_SITE?.trim().toLowerCase();
+  if (raw === undefined || raw === "") return "strict";
+  if (raw === "strict" || raw === "lax" || raw === "none") return raw;
+  throw new Error(
+    "SESSION_COOKIE_SAME_SITE must be one of: strict, lax, none"
+  );
+}

@@ -9,9 +9,9 @@
 | Commit | `4cf5db4` |
 | Result | success |
 | Run time | 2026-10-21 |
-| Platform migrations added | `20261025161000_platform_foundation`, `20261025172000_platform_views` (2026-10-25) |
+| Platform migrations added | `20261025161000_platform_foundation`, `20261025172000_platform_views` (2026-10-25); `20261029150000_audit_append_trigger` (2026-10-29) |
 
-The last deploy workflow run predates both Platform migrations. No later `deploy-dev` run exists, so the deployed dev database has not been verified as migrated. This is a recorded negative result, not proof that a manual migration was never applied.
+The last deploy workflow run predates the Platform migrations. No later `deploy-dev` run exists, so the deployed dev database has not been verified as migrated. This is a recorded negative result, not proof that a manual migration was never applied.
 
 ## Required action
 

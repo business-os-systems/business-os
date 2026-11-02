@@ -1,4 +1,8 @@
-import { isProduction as defaultIsProduction, getBetterAuthSecret } from "../env.js";
+import {
+  isProduction as defaultIsProduction,
+  getBetterAuthSecret,
+  getSessionCookieSameSite,
+} from "../env.js";
 import {
   computeHmacSha256,
   constantTimeEqual,
@@ -122,11 +126,18 @@ export function createSessionCookieOptions(
       ? rawDomain.trim()
       : undefined;
 
+  const sameSite = getSessionCookieSameSite();
+  if (sameSite === "none" && !isProduction) {
+    throw new Error(
+      "SESSION_COOKIE_SAME_SITE=none requires a production HTTPS deployment"
+    );
+  }
+
   return {
     name: cookieName,
     httpOnly: true,
-    secure: isProduction,
-    sameSite: "lax",
+    secure: isProduction || sameSite === "none",
+    sameSite,
     path: "/",
     ...(domain ? { domain } : {}),
     maxAge,

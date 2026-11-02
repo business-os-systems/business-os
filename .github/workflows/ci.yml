@@ -42,6 +42,11 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://businessos_admin:businessos_password@localhost:5432/business_os_dev
+      PLATFORM_DATABASE_URL: postgresql://app_platform:platform_test_password@localhost:5432/business_os_dev
+      TENANT_DATABASE_URL: postgresql://app_tenant:tenant_test_password@localhost:5432/business_os_dev
+      CONTROL_SESSION_SECRET: platform-ci-session-secret-32-characters
+      CONTROL_PLANE_ORIGIN: http://localhost:3002
+      CONTROL_WEBAUTHN_RP_ID: localhost
       REDIS_URL: redis://localhost:6379
 
     steps:
@@ -84,6 +89,14 @@ jobs:
 
       - name: Apply Database Migrations
         run: pnpm --filter @suite/db run db:migrate:deploy
+
+      - name: Provision Platform Runtime Role
+        run: |
+          printf "ALTER ROLE app_platform WITH LOGIN PASSWORD 'platform_test_password';" | pnpm --filter @suite/db exec prisma db execute --url "$DATABASE_URL" --stdin
+
+      - name: Provision Tenant Runtime Role
+        run: |
+          printf "ALTER ROLE app_tenant WITH LOGIN PASSWORD 'tenant_test_password';" | pnpm --filter @suite/db exec prisma db execute --url "$DATABASE_URL" --stdin
 
       - name: Turborepo Lint, Typecheck & Test
         run: pnpm turbo run lint typecheck test

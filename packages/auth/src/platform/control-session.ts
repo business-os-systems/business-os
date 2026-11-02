@@ -1,6 +1,10 @@
 import { z } from "zod";
 import type { PrismaClient } from "@suite/db";
 import { sha256Hex } from "../crypto/hmac.js";
+import {
+  getSessionCookieSameSite,
+  type SessionCookieSameSite,
+} from "../env.js";
 import { signPlatformToken, verifyPlatformToken } from "./token.js";
 
 export const CONTROL_SESSION_COOKIE_NAME = "__Host-bos_ops";
@@ -26,7 +30,7 @@ export interface ControlSessionCookieOptions {
   readonly name: string;
   readonly httpOnly: true;
   readonly secure: true;
-  readonly sameSite: "strict";
+  readonly sameSite: SessionCookieSameSite;
   readonly path: "/";
   readonly maxAge: number;
 }
@@ -52,7 +56,7 @@ export type ControlSessionVerification =
   | { readonly valid: false; readonly reason: ControlSessionFailureReason };
 
 export interface IssueControlSessionInput {
-  readonly prisma: PrismaClient;
+  readonly prisma: Pick<PrismaClient, "operatorSession">;
   readonly secret: string;
   readonly operatorId: string;
   readonly ip?: string | null;
@@ -92,7 +96,7 @@ export function createControlSessionCookieOptions(): ControlSessionCookieOptions
     name: CONTROL_SESSION_COOKIE_NAME,
     httpOnly: true,
     secure: true,
-    sameSite: "strict",
+    sameSite: getSessionCookieSameSite(),
     path: "/",
     maxAge: CONTROL_SESSION_ABSOLUTE_SECONDS,
   };
