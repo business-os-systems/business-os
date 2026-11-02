@@ -2,7 +2,13 @@ import type { ErrorHandler } from "hono";
 import { HTTPException } from "hono/http-exception";
 import * as Sentry from "@sentry/node";
 import { AppError, InternalServerError } from "@suite/core/errors";
-import { logger } from "@suite/logger";
+import { logger, scrubStringValues } from "@suite/logger";
+import {
+  buildCorsResponseHeaders,
+  resolvePlatformCorsOrigins,
+  CORS_ALLOWED_ORIGINS_CONTEXT_KEY,
+  CORS_ALLOW_CREDENTIALS_CONTEXT_KEY,
+} from "./cors.js";
 
 /**
  * Global RFC 7807 Problem Details Error Handler for Hono API.
@@ -12,6 +18,16 @@ export const globalErrorHandler: ErrorHandler = (err, c) => {
   const requestId = c.get("requestId");
   const instance = c.req.path;
   const timestamp = new Date().toISOString();
+  const allowedOrigins =
+    (c.get(CORS_ALLOWED_ORIGINS_CONTEXT_KEY) as string[] | undefined) ??
+    resolvePlatformCorsOrigins();
+  const allowCredentials =
+    (c.get(CORS_ALLOW_CREDENTIALS_CONTEXT_KEY) as boolean | undefined) ?? true;
+  const corsHeaders = buildCorsResponseHeaders(
+    c.req.header("origin"),
+    allowedOrigins,
+    allowCredentials
+  );
 
   // 1. Domain AppError hierarchy (@suite/core)
   if (err instanceof AppError) {
@@ -19,11 +35,31 @@ export const globalErrorHandler: ErrorHandler = (err, c) => {
 
     // If client error (4xx), log at warn level; if server error (5xx), log at error level
     if (err.status >= 500) {
+      const safeMessage = scrubStringValues(err.message);
       logger.error(
-        { err, problem, requestId, path: instance },
-        `Application error [${err.code}]: ${err.message}`
+        {
+          error: {
+            name: err.name,
+            message: safeMessage,
+            stack: err.stack ? scrubStringValues(err.stack) : undefined,
+          },
+          problem: {
+            ...problem,
+            detail: scrubStringValues(problem.detail),
+          },
+          requestId,
+          path: instance,
+        },
+        `Application error [${err.code}]: ${safeMessage}`
       );
-      Sentry.captureException(err, { extra: { requestId, path: instance, code: err.code } });
+      Sentry.captureException(new Error(safeMessage), {
+        extra: {
+          requestId,
+          path: instance,
+          code: err.code,
+          stack: err.stack ? scrubStringValues(err.stack) : undefined,
+        },
+      });
     } else {
       logger.warn(
         { problem, requestId, path: instance },
@@ -33,7 +69,10 @@ export const globalErrorHandler: ErrorHandler = (err, c) => {
 
     return new Response(JSON.stringify(problem), {
       status: err.status,
-      headers: { "Content-Type": "application/problem+json; charset=utf-8" },
+      headers: {
+        "Content-Type": "application/problem+json; charset=utf-8",
+        ...corsHeaders,
+      },
     });
   }
 
@@ -51,19 +90,45 @@ export const globalErrorHandler: ErrorHandler = (err, c) => {
       timestamp,
     };
 
-    logger.warn({ err, problem, requestId }, `HTTP exception: ${err.message}`);
+    const safeMessage = scrubStringValues(err.message);
+    logger.warn(
+      {
+        error: {
+          name: err.name,
+          message: safeMessage,
+          stack: err.stack ? scrubStringValues(err.stack) : undefined,
+        },
+        problem: {
+          ...problem,
+          detail: scrubStringValues(problem.detail),
+        },
+        requestId,
+      },
+      `HTTP exception: ${safeMessage}`
+    );
     return new Response(JSON.stringify(problem), {
       status,
-      headers: { "Content-Type": "application/problem+json; charset=utf-8" },
+      headers: {
+        "Content-Type": "application/problem+json; charset=utf-8",
+        ...corsHeaders,
+      },
     });
   }
 
   // 3. Unhandled runtime exceptions (Zero internal stack trace leakage)
+  const safeMessage = scrubStringValues(err.message);
+  const safeStack = err.stack ? scrubStringValues(err.stack) : undefined;
   logger.error(
-    { err, stack: err.stack, requestId, path: instance },
-    `Unhandled exception: ${err.message}`
+    {
+      error: { name: err.name, message: safeMessage, stack: safeStack },
+      requestId,
+      path: instance,
+    },
+    `Unhandled exception: ${safeMessage}`
   );
-  Sentry.captureException(err, { extra: { requestId, path: instance } });
+  Sentry.captureException(new Error(safeMessage), {
+    extra: { requestId, path: instance, stack: safeStack },
+  });
 
   const internalError = new InternalServerError(
     "An unexpected internal server error occurred. Please contact support with the requestId."
@@ -72,6 +137,9 @@ export const globalErrorHandler: ErrorHandler = (err, c) => {
 
   return new Response(JSON.stringify(safeProblem), {
     status: 500,
-    headers: { "Content-Type": "application/problem+json; charset=utf-8" },
+    headers: {
+      "Content-Type": "application/problem+json; charset=utf-8",
+      ...corsHeaders,
+    },
   });
 };

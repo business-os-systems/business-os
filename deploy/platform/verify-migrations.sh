@@ -16,7 +16,10 @@ BEGIN
   SELECT string_agg(expected.name, ', ') INTO missing
   FROM (VALUES
     ('20261025161000_platform_foundation'),
-    ('20261025172000_platform_views')
+    ('20261025172000_platform_views'),
+    ('20261029150000_audit_append_trigger'),
+    ('20261029160000_audit_pending_check'),
+    ('20261029170000_audit_search_path')
   ) AS expected(name)
   WHERE NOT EXISTS (
     SELECT 1
@@ -35,6 +38,17 @@ BEGIN
   IF NOT has_table_privilege('app_platform', 'platform.operators', 'SELECT') THEN
     RAISE EXCEPTION 'Platform grant missing: app_platform cannot read platform.operators';
   END IF;
+  IF has_table_privilege('app_platform', 'platform.audit_events', 'UPDATE') THEN
+    RAISE EXCEPTION 'Audit boundary failed: app_platform can update platform.audit_events';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_trigger
+    WHERE tgname = 'platform_audit_append'
+      AND tgrelid = 'platform.audit_events'::regclass
+  ) THEN
+    RAISE EXCEPTION 'Audit trigger platform_audit_append is missing';
+  END IF;
 END
 $$;
 
@@ -42,9 +56,30 @@ SELECT migration_name, finished_at
 FROM _prisma_migrations
 WHERE migration_name IN (
   '20261025161000_platform_foundation',
-  '20261025172000_platform_views'
+  '20261025172000_platform_views',
+  '20261029150000_audit_append_trigger',
+  '20261029160000_audit_pending_check',
+  '20261029170000_audit_search_path'
 )
 ORDER BY started_at;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'audit_events_record_hash_not_pending'
+  ) THEN
+    RAISE EXCEPTION 'Audit recordHash PENDING check is missing';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_proc
+    WHERE proname = 'fn_audit_append'
+      AND 'search_path=pg_catalog, platform' = ANY(proconfig)
+  ) THEN
+    RAISE EXCEPTION 'Audit trigger fn_audit_append search_path is unsafe';
+  END IF;
+END $$;
 SQL
 
 echo "Platform migrations and app_platform grants are verified."

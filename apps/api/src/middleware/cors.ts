@@ -1,14 +1,18 @@
 import type { MiddlewareHandler, Context } from "hono";
+import { AUTH_ERROR_CODES } from "@suite/auth";
 
 export interface CorsOptions {
   allowedOrigins?: string[];
   allowCredentials?: boolean;
 }
 
+export const CORS_ALLOWED_ORIGINS_CONTEXT_KEY = "corsAllowedOrigins";
+export const CORS_ALLOW_CREDENTIALS_CONTEXT_KEY = "corsAllowCredentials";
+
 /**
  * Parses allowed origins from explicit options or the pre-declared environment variable.
  */
-function resolveAllowedOrigins(optionsOrigins?: string[]): string[] {
+export function resolveAllowedOrigins(optionsOrigins?: string[]): string[] {
   if (optionsOrigins && optionsOrigins.length > 0) {
     return optionsOrigins;
   }
@@ -17,6 +21,14 @@ function resolveAllowedOrigins(optionsOrigins?: string[]): string[] {
     return [];
   }
   return rawEnv.split(",").map((o) => o.trim()).filter(Boolean);
+}
+
+export function resolvePlatformCorsOrigins(
+  optionsOrigins?: string[]
+): string[] {
+  const origins = resolveAllowedOrigins(optionsOrigins);
+  const platformOrigin = process.env.CONTROL_PLANE_ORIGIN?.trim();
+  return platformOrigin ? [...new Set([...origins, platformOrigin])] : origins;
 }
 
 /**
@@ -44,6 +56,35 @@ export function isOriginPermitted(origin: string, allowedOrigins: string[]): boo
 }
 
 /**
+ * Builds the response headers needed to make an error response readable across
+ * origins. Hono's error handler builds a fresh Response, so the headers set by
+ * the CORS middleware would otherwise be lost and the browser would surface a
+ * generic "Failed to fetch" instead of the RFC 7807 problem details.
+ */
+export function buildCorsResponseHeaders(
+  origin: string | undefined,
+  allowedOrigins: string[],
+  allowCredentials: boolean
+): Record<string, string> {
+  if (!origin) {
+    return {};
+  }
+  const headers: Record<string, string> = { Vary: "Origin" };
+  if (!allowCredentials && allowedOrigins.includes("*")) {
+    headers["Access-Control-Allow-Origin"] = "*";
+    return headers;
+  }
+  if (!isOriginPermitted(origin, allowedOrigins)) {
+    return headers;
+  }
+  headers["Access-Control-Allow-Origin"] = origin;
+  if (allowCredentials) {
+    headers["Access-Control-Allow-Credentials"] = "true";
+  }
+  return headers;
+}
+
+/**
  * Enterprise CORS Middleware
  *
  * Enforces:
@@ -58,6 +99,8 @@ export function corsMiddleware(options: CorsOptions = {}): MiddlewareHandler {
 
   return async (c: Context, next) => {
     const origin = c.req.header("origin");
+    c.set(CORS_ALLOWED_ORIGINS_CONTEXT_KEY, allowedOrigins);
+    c.set(CORS_ALLOW_CREDENTIALS_CONTEXT_KEY, allowCredentials);
 
     // Phase 1: Cross-origin security verification when Origin header is present
     if (origin) {
@@ -80,7 +123,7 @@ export function corsMiddleware(options: CorsOptions = {}): MiddlewareHandler {
             title: "Forbidden",
             status: 403,
             detail: "CORS origin not allowed",
-            code: "CORS_ORIGIN_DENIED",
+            code: AUTH_ERROR_CODES.CORS_ORIGIN_DENIED,
           },
           403
         );

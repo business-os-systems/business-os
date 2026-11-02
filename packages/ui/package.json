@@ -15,7 +15,8 @@
       "types": "./dist/icons/index.d.ts",
       "import": "./dist/icons/index.js",
       "default": "./dist/icons/index.js"
-    }
+    },
+    "./styles.css": "./src/styles/design-system.css"
   },
   "scripts": {
     "build": "tsc",

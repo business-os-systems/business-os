@@ -17,3 +17,4 @@ export * from "./tokens.js";
 export * from "./icons/index.js";
 export * from "./types/ui-schema.js";
 export * from "./env.js";
+export * from "./components/theme-toggle.js";

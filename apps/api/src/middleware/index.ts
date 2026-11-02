@@ -1,7 +1,11 @@
 export { requestIdMiddleware } from "./request-id.js";
 export { accessLoggerMiddleware } from "./access-logger.js";
 export { securityHeadersMiddleware } from "./security-headers.js";
-export { corsMiddleware, type CorsOptions } from "./cors.js";
+export {
+  corsMiddleware,
+  resolvePlatformCorsOrigins,
+  type CorsOptions,
+} from "./cors.js";
 export {
   rateLimitMiddleware,
   clearMemoryRateLimitStore,

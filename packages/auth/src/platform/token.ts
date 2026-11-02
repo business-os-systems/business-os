@@ -4,6 +4,7 @@ import {
   decodeBase64UrlText,
   encodeBase64UrlText,
 } from "../crypto/hmac.js";
+import { InternalServerError } from "@suite/core/errors";
 
 /**
  * Signs a Platform token. The two-part payload.signature format is shared with
@@ -14,7 +15,7 @@ export async function signPlatformToken(
   secret: string
 ): Promise<string> {
   if (secret.trim() === "") {
-    throw new Error("A Platform signing secret is required");
+    throw new InternalServerError("A Platform signing secret is required");
   }
   const encoded = encodeBase64UrlText(JSON.stringify(payload));
   const signature = await computeHmacSha256(encoded, secret);

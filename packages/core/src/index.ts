@@ -72,6 +72,10 @@ export {
   type ManagerOverrideRequest,
 } from "./schemas/index.js";
 
+export * from "./schemas/platform-auth.js";
+
+export * from "./http/response.js";
+
 // Canonical Domain & Permission Constants
 export {
   PERMISSIONS,

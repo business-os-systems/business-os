@@ -22,6 +22,9 @@ export type PlatformEnvKey =
   (typeof PLATFORM_ENV_KEYS)[keyof typeof PLATFORM_ENV_KEYS];
 
 const MINIMUM_SECRET_LENGTH = 32;
+const KNOWN_INSECURE_CONTROL_SECRETS = new Set([
+  "platform-control-session-signing-secret-32ch-min",
+]);
 const MAXIMUM_TTL_SECONDS = 3600;
 const MAXIMUM_IMPERSONATION_MINUTES = 1440;
 
@@ -61,6 +64,9 @@ function readHttpUrl(key: PlatformEnvKey): string {
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
     throw new Error(`${key} must use http or https, received "${parsed.protocol}"`);
   }
+  if (process.env.NODE_ENV === "production" && parsed.protocol !== "https:") {
+    throw new Error(`${key} must use https in production`);
+  }
   return parsed.origin;
 }
 
@@ -93,6 +99,14 @@ export function getControlSessionSecret(): string {
   if (secret.length < MINIMUM_SECRET_LENGTH) {
     throw new Error(
       `${PLATFORM_ENV_KEYS.CONTROL_SESSION_SECRET} must be at least ${MINIMUM_SECRET_LENGTH} characters`
+    );
+  }
+  if (
+    process.env.NODE_ENV === "production" &&
+    KNOWN_INSECURE_CONTROL_SECRETS.has(secret)
+  ) {
+    throw new Error(
+      `${PLATFORM_ENV_KEYS.CONTROL_SESSION_SECRET} must not use the shipped example value`
     );
   }
   return secret;

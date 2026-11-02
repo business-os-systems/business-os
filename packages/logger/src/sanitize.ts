@@ -26,6 +26,10 @@ const SENSITIVE_KEY_PATTERNS = [
 
 const EMAIL_REGEX = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
 const PHONE_REGEX = /(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/g;
+const CONNECTION_CREDENTIALS_REGEX =
+  /(postgres(?:ql)?:\/\/[^:\s/@]+:)([^@\s]+)(@)/gi;
+const SECRET_ASSIGNMENT_REGEX =
+  /((?:password|passwd|secret|token|api[_-]?key)\s*[=:]\s*)([^\s,;]+)/gi;
 
 /**
  * Checks if an object property key is classified as sensitive.
@@ -40,6 +44,11 @@ export function isSensitiveKey(key: string): boolean {
 export function scrubStringValues(val: string): string {
   let cleaned = val.replace(EMAIL_REGEX, "[EMAIL_REDACTED]");
   cleaned = cleaned.replace(PHONE_REGEX, "[PHONE_REDACTED]");
+  cleaned = cleaned.replace(
+    CONNECTION_CREDENTIALS_REGEX,
+    "$1[REDACTED]$3"
+  );
+  cleaned = cleaned.replace(SECRET_ASSIGNMENT_REGEX, "$1[REDACTED]");
   return cleaned;
 }
 

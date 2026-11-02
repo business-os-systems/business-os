@@ -53,3 +53,5 @@ specs/
 !.specify/memory/constitution.md
 .agents
 skills-lock.json
+# One-time Platform bootstrap link (contains a secret)
+.platform-bootstrap-link

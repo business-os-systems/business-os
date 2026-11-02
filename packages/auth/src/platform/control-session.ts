@@ -52,7 +52,7 @@ export type ControlSessionVerification =
   | { readonly valid: false; readonly reason: ControlSessionFailureReason };
 
 export interface IssueControlSessionInput {
-  readonly prisma: PrismaClient;
+  readonly prisma: Pick<PrismaClient, "operatorSession">;
   readonly secret: string;
   readonly operatorId: string;
   readonly ip?: string | null;

@@ -5,6 +5,7 @@ import {
   accessLoggerMiddleware,
   securityHeadersMiddleware,
   corsMiddleware,
+  resolvePlatformCorsOrigins,
   rateLimitMiddleware,
   requireAuth,
   requireMetricsAuth,
@@ -18,6 +19,7 @@ import {
   branchesRouter,
   auditLogsRouter,
   adminRouter,
+  platformAuthRouter,
 } from "./routes/index.js";
 import { isProduction } from "./lib/env.js";
 import { createWebsiteBuilderRoutes } from "@suite/website-builder/routes";
@@ -38,7 +40,9 @@ export function createApp(options: AppOptions = {}) {
   app.use("*", requestIdMiddleware());
   app.use("*", accessLoggerMiddleware());
   app.use("*", securityHeadersMiddleware());
-  app.use("*", corsMiddleware({ allowedOrigins: options.corsOrigins }));
+  const corsOrigins =
+    options.corsOrigins ?? resolvePlatformCorsOrigins();
+  app.use("*", corsMiddleware({ allowedOrigins: corsOrigins }));
 
   if (options.enableRateLimiting !== false) {
     app.use("*", rateLimitMiddleware());
@@ -71,6 +75,9 @@ export function createApp(options: AppOptions = {}) {
   app.route("/api/v1/branches", branchesRouter);
   app.route("/api/v1/audit-logs", auditLogsRouter);
   app.route("/api/v1/cms", createWebsiteBuilderRoutes());
+
+  // Platform operator auth is public/session-based, not tenant-auth.
+  app.route("/api/v1/admin/auth", platformAuthRouter);
 
   // Admin API — auth and rate limiting are applied inside the router.
   app.route("/api/v1/admin", adminRouter);
