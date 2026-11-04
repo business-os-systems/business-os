@@ -3,7 +3,6 @@ import type { Context } from "hono";
 import {
   createSuccessResponseBody,
   PLATFORM_CAPABILITIES,
-  problemDetailsSchema,
   RATE_LIMITS,
 } from "@suite/core";
 import { OrgStatus } from "@suite/db";
@@ -14,6 +13,7 @@ import { getControlSessionSecret } from "../../lib/platform-env.js";
 import { getPlatformPrismaClient } from "../../lib/platform-db.js";
 import { listTenants } from "../../services/admin/tenant.service.js";
 import { getTenantRecord } from "../../services/admin/tenant-record.service.js";
+import { envelope, errorResponses } from "./openapi-shared.js";
 
 const PLATFORM_TENANTS_READ = PLATFORM_CAPABILITIES.TENANTS_READ.code;
 
@@ -79,33 +79,6 @@ const tenantRecordSchema = z.object({
     })
   ),
 });
-
-const envelope = <T extends z.ZodTypeAny>(data: T) =>
-  z.object({
-    success: z.literal(true),
-    data,
-    requestId: z.string(),
-    timestamp: z.string(),
-  });
-
-const errorResponses = {
-  401: {
-    description: "Authentication required",
-    content: { "application/problem+json": { schema: problemDetailsSchema } },
-  },
-  403: {
-    description: "Capability denied",
-    content: { "application/problem+json": { schema: problemDetailsSchema } },
-  },
-  404: {
-    description: "Tenant not found",
-    content: { "application/problem+json": { schema: problemDetailsSchema } },
-  },
-  422: {
-    description: "Invalid request",
-    content: { "application/problem+json": { schema: problemDetailsSchema } },
-  },
-};
 
 const listQuerySchema = z.object({
   q: z.string().trim().min(1).max(100).optional(),
