@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@suite/ui";
 
 export default function PlatformOverviewPage() {
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
+    <div className="max-w-4xl space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Platform overview</h1>
         <p className="mt-1 text-sm text-text-secondary">
