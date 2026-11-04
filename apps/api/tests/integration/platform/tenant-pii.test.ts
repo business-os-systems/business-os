@@ -1,6 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { PrismaClient } from "@suite/db";
-import { PLATFORM_CAPABILITIES, PLATFORM_ERROR_CODE } from "@suite/core";
+import {
+  PII_REASON_HEADER,
+  PLATFORM_CAPABILITIES,
+  PLATFORM_ERROR_CODE,
+} from "@suite/core";
 import {
   CONTROL_SESSION_COOKIE_NAME,
   issueControlSession,
@@ -95,7 +99,7 @@ describe.skipIf(!enabled)("Platform tenant PII route", () => {
         method: "GET",
         headers: {
           Cookie: `${CONTROL_SESSION_COOKIE_NAME}=${token}`,
-          ...(reason === undefined ? {} : { "X-PII-Reason": reason }),
+          ...(reason === undefined ? {} : { [PII_REASON_HEADER]: reason }),
         },
       }),
     );

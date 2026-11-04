@@ -118,6 +118,8 @@ export {
   type QuotaKey,
   type QuotaUnit,
   type QuotaResourceDefinition,
+  PII_REASON_HEADER,
+  FORM_IDEMPOTENCY_HEADER,
 } from "./constants/index.js";
 
 // Platform error-code registry

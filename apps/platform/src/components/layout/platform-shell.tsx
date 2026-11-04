@@ -57,8 +57,9 @@ export function PlatformShell({ children }: { children: ReactNode }) {
   const navigation = visibleNavigation(session.capabilities);
   const allowed = canAccessPath(session.capabilities, pathnameValue);
 
+  // The shell owns the viewport so the document cannot scroll; only <main> does.
   return (
-    <div className="flex h-screen h-dvh w-full overflow-hidden bg-background text-text">
+    <div className="fixed inset-0 flex h-dvh w-full overflow-hidden bg-background text-text">
       <aside className="flex w-52 flex-col border-r border-border bg-surface sm:w-56">
         <div className="flex h-12 flex-shrink-0 items-center gap-2.5 border-b border-border bg-surface px-3.5">
           <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md bg-brand-tint text-brand shadow-2xs">

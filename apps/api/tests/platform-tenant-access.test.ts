@@ -12,22 +12,22 @@ loadPlatformTestEnv();
 interface Fakes {
   readonly prisma: PrismaClient;
   readonly redis: Redis;
-  readonly findOrganization: ReturnType<typeof vi.fn>;
+  readonly queryRaw: ReturnType<typeof vi.fn>;
   readonly cacheGet: ReturnType<typeof vi.fn>;
   readonly cacheSet: ReturnType<typeof vi.fn>;
 }
 
 function createFakes(): Fakes {
-  const findOrganization = vi.fn();
+  const queryRaw = vi.fn();
   const cacheGet = vi.fn();
   const cacheSet = vi.fn();
 
   return {
-    findOrganization,
+    queryRaw,
     cacheGet,
     cacheSet,
     prisma: {
-      organization: { findUnique: findOrganization },
+      $queryRaw: queryRaw,
     } as unknown as PrismaClient,
     redis: {
       get: cacheGet,
@@ -70,13 +70,13 @@ describe("Tenant access guard", () => {
 
     expect(response.status).toBe(200);
     expect(await response.text()).toBe("ok");
-    expect(fakes.findOrganization).not.toHaveBeenCalled();
+    expect(fakes.queryRaw).not.toHaveBeenCalled();
   });
 
   it("caches a status read for sixty seconds", async () => {
     const fakes = createFakes();
     fakes.cacheGet.mockResolvedValue(null);
-    fakes.findOrganization.mockResolvedValue({ status: "ACTIVE" });
+    fakes.queryRaw.mockResolvedValue([{ status: "ACTIVE" }]);
 
     const response = await buildApp("org_cache", fakes).request("/data");
 
@@ -116,7 +116,7 @@ describe("Tenant access guard", () => {
   it("refuses a workspace that no longer exists", async () => {
     const fakes = createFakes();
     fakes.cacheGet.mockResolvedValue(null);
-    fakes.findOrganization.mockResolvedValue(null);
+    fakes.queryRaw.mockResolvedValue([]);
 
     const response = await buildApp("org_missing", fakes).request("/data");
 
@@ -128,18 +128,18 @@ describe("Tenant access guard", () => {
   it("never trusts a cache value that is not a canonical status", async () => {
     const fakes = createFakes();
     fakes.cacheGet.mockResolvedValue("DELETED");
-    fakes.findOrganization.mockResolvedValue({ status: "ACTIVE" });
+    fakes.queryRaw.mockResolvedValue([{ status: "ACTIVE" }]);
 
     const response = await buildApp("org_corrupt_cache", fakes).request("/data");
 
     expect(response.status).toBe(200);
-    expect(fakes.findOrganization).toHaveBeenCalled();
+    expect(fakes.queryRaw).toHaveBeenCalled();
   });
 
   it("denies a workspace whose stored status is not canonical", async () => {
     const fakes = createFakes();
     fakes.cacheGet.mockResolvedValue(null);
-    fakes.findOrganization.mockResolvedValue({ status: "DELETED" });
+    fakes.queryRaw.mockResolvedValue([{ status: "DELETED" }]);
 
     const response = await buildApp("org_bad_status", fakes).request("/data");
 
@@ -151,7 +151,7 @@ describe("Tenant access guard", () => {
   it("still enforces the database status when the cache is unavailable", async () => {
     const fakes = createFakes();
     fakes.cacheGet.mockRejectedValue(new Error("redis down"));
-    fakes.findOrganization.mockResolvedValue({ status: "SUSPENDED" });
+    fakes.queryRaw.mockResolvedValue([{ status: "SUSPENDED" }]);
 
     const response = await buildApp("org_no_cache", fakes).request("/data");
 

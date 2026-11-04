@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  ConflictError,
   ForbiddenError,
   InternalServerError,
   NotFoundError,
@@ -7,8 +8,17 @@ import {
   UnauthorizedError,
   ValidationError,
 } from "@suite/core/errors";
-import { PLATFORM_CAPABILITIES } from "@suite/core";
-import { platformFetch, readProblem, readSuccessData } from "./api";
+import {
+  PII_REASON_HEADER,
+  PLATFORM_CAPABILITIES,
+  TENANT_LIFECYCLE_ACTION,
+  type TenantLifecycleAction,
+} from "@suite/core";
+import { platformFetch, readProblemDetails, readSuccessData } from "./api";
+import { hasPlatformCapability } from "./capability";
+
+/** Mirrors @suite/redis IDEMPOTENCY_HEADER; Platform UI must not import redis. */
+export const IDEMPOTENCY_HEADER = "Idempotency-Key";
 
 export const TENANT_API_PATHS = {
   list: "/api/v1/admin/tenants",
@@ -43,10 +53,7 @@ export function isTenantStatus(value: string): value is TenantStatus {
 export function canReadPersonalData(
   capabilities: readonly string[] | undefined | null,
 ): boolean {
-  if (capabilities === undefined || capabilities === null) {
-    return false;
-  }
-  return capabilities.includes(PLATFORM_CAPABILITIES.PII_READ.code);
+  return hasPlatformCapability(capabilities, PLATFORM_CAPABILITIES.PII_READ.code);
 }
 
 const timestampSchema = z.string().datetime();
@@ -130,6 +137,16 @@ export const tenantPiiSchema = z.object({
   checkedAt: timestampSchema,
 });
 
+export const tenantLifecycleResultSchema = z.object({ lifecycleEventId: identifierSchema, fromStatus: tenantStatusSchema, toStatus: tenantStatusSchema, occurredAt: timestampSchema });
+
+export type TenantLifecycleBody =
+  | { readonly reason: string; readonly expectedStatus: TenantStatus }
+  | {
+      readonly reason: string;
+      readonly expectedStatus: TenantStatus;
+      readonly confirmSlug: string;
+    };
+
 export type TenantSummary = z.infer<typeof tenantSummarySchema>;
 export type TenantPage = z.infer<typeof tenantPageSchema>;
 export type TenantRecord = z.infer<typeof tenantRecordSchema>;
@@ -138,6 +155,9 @@ export type TenantLifecycleEntry = z.infer<typeof tenantLifecycleSchema>;
 export type TenantAuditEntry = z.infer<typeof tenantAuditSchema>;
 export type TenantPii = z.infer<typeof tenantPiiSchema>;
 export type TenantPiiMember = z.infer<typeof tenantPiiMemberSchema>;
+export type TenantLifecycleResult = z.infer<
+  typeof tenantLifecycleResultSchema
+>;
 
 export interface TenantListQuery {
   readonly q?: string;
@@ -158,6 +178,12 @@ export function tenantPiiPath(orgId: string): string {
   return `${tenantRecordPath(orgId)}/pii`;
 }
 
+const TENANT_LIFECYCLE_PATH_SEGMENT: Record<TenantLifecycleAction, string> = {
+  [TENANT_LIFECYCLE_ACTION.SUSPEND]: "suspend",
+  [TENANT_LIFECYCLE_ACTION.RESTORE]: "restore",
+  [TENANT_LIFECYCLE_ACTION.ARCHIVE]: "archive",
+};
+
 /**
  * Maps the response status onto a typed error that keeps the RFC 7807 detail,
  * so the screen shows the real reason instead of a generic failure message.
@@ -165,7 +191,9 @@ export function tenantPiiPath(orgId: string): string {
  * text, so it is replaced by a message that carries the correlation id only.
  */
 async function toProblemError(response: Response): Promise<Error> {
-  const detail = await readProblem(response);
+  const problem = await readProblemDetails(response);
+  const detail =
+    (problem.detail ?? problem.title ?? response.statusText) || "Request failed";
 
   if (response.status === 401) {
     return new UnauthorizedError(detail);
@@ -175,6 +203,9 @@ async function toProblemError(response: Response): Promise<Error> {
   }
   if (response.status === 404) {
     return new NotFoundError(detail);
+  }
+  if (response.status === 409) {
+    return new ConflictError(detail, { code: problem.code ?? "CONFLICT" });
   }
   if (response.status === 422) {
     return new ValidationError(detail);
@@ -242,11 +273,29 @@ export async function fetchTenantPii(
   signal?: AbortSignal,
 ): Promise<TenantPii> {
   const response = await platformFetch(tenantPiiPath(orgId), {
-    headers: { "X-PII-Reason": reason },
+    headers: { [PII_REASON_HEADER]: reason },
     ...(signal === undefined ? {} : { signal }),
   });
   if (!response.ok) {
     throw await toProblemError(response);
   }
   return readSuccessData(response, tenantPiiSchema);
+}
+
+export async function requestTenantLifecycle(input: {
+  readonly orgId: string; readonly action: TenantLifecycleAction;
+  readonly body: TenantLifecycleBody; readonly idempotencyKey: string;
+}): Promise<TenantLifecycleResult> {
+  const response = await platformFetch(
+    `${tenantRecordPath(input.orgId)}/${TENANT_LIFECYCLE_PATH_SEGMENT[input.action]}`,
+    {
+      method: "POST",
+      headers: { [IDEMPOTENCY_HEADER]: input.idempotencyKey },
+      body: JSON.stringify(input.body),
+    },
+  );
+  if (!response.ok) {
+    throw await toProblemError(response);
+  }
+  return readSuccessData(response, tenantLifecycleResultSchema);
 }

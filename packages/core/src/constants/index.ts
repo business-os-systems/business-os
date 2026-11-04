@@ -16,6 +16,7 @@ export {
   type AppManifest,
 } from "./app-manifests.js";
 export { RATE_LIMITS, TIMEOUTS } from "./timeouts.js";
+export { PII_REASON_HEADER, FORM_IDEMPOTENCY_HEADER } from "./http-headers.js";
 export {
   PLATFORM_CAPABILITIES,
   PLATFORM_CAPABILITY_CODES,

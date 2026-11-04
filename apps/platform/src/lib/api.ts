@@ -66,18 +66,26 @@ export async function platformFetch(
   return response;
 }
 
-export async function readProblem(response: Response): Promise<string> {
+export async function readProblemDetails(response: Response): Promise<ProblemDetails> {
   const raw = await response.text();
-  if (raw.trim() !== "") {
-    try {
-      const problem = JSON.parse(raw) as ProblemDetails;
-      if (problem.detail) return problem.detail;
-      if (problem.title) return problem.title;
-    } catch {
-      return raw.trim();
+  if (raw.trim() === "") return {};
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (parsed !== null && typeof parsed === "object") {
+      return parsed as ProblemDetails;
     }
+    return { detail: raw.trim() };
+  } catch {
+    return { detail: raw.trim() };
   }
-  return response.statusText || `Request failed with status ${response.status}`;
+}
+
+export async function readProblem(response: Response): Promise<string> {
+  const problem = await readProblemDetails(response);
+  return (
+    (problem.detail ?? problem.title ?? response.statusText) ||
+    `Request failed with status ${response.status}`
+  );
 }
 
 interface DataSchema<T> {

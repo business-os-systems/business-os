@@ -6,8 +6,10 @@ import type { TenantAuditEntry, TenantLifecycleEntry } from "@/lib/tenant-api";
 
 function LifecycleList({
   entries,
+  canReadReason,
 }: {
   readonly entries: readonly TenantLifecycleEntry[];
+  readonly canReadReason: boolean;
 }) {
   if (entries.length === 0) {
     return (
@@ -27,7 +29,8 @@ function LifecycleList({
             {entry.fromStatus} to {entry.toStatus}
           </p>
           <p className="text-xs text-text-muted">
-            {formatDateTime(entry.occurredAt)} - {entry.reason}
+            {formatDateTime(entry.occurredAt)} -{" "}
+            {canReadReason ? entry.reason : "Reason withheld"}
           </p>
         </li>
       ))}
@@ -68,10 +71,12 @@ export function TenantAuditPanel({
   lifecycle,
   audit,
   lifecycleHasMore,
+  canReadReason,
 }: {
   readonly lifecycle: readonly TenantLifecycleEntry[];
   readonly audit: readonly TenantAuditEntry[];
   readonly lifecycleHasMore: boolean;
+  readonly canReadReason: boolean;
 }) {
   return (
     <div className="space-y-4">
@@ -80,7 +85,7 @@ export function TenantAuditPanel({
           <CardTitle className="text-base">Lifecycle</CardTitle>
         </CardHeader>
         <CardContent>
-          <LifecycleList entries={lifecycle} />
+          <LifecycleList entries={lifecycle} canReadReason={canReadReason} />
           {lifecycleHasMore ? (
             <p className="mt-2 text-xs text-text-muted">
               Showing the most recent 20 events.

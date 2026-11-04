@@ -36,6 +36,7 @@ export function nextTabId(
 interface TabPanel {
   readonly record: TenantRecord;
   readonly personalDataSlot: ReactNode;
+  readonly canReadReason: boolean;
 }
 
 const TAB_COMPONENTS: Record<TenantTabId, ComponentType<TabPanel>> = {
@@ -44,11 +45,12 @@ const TAB_COMPONENTS: Record<TenantTabId, ComponentType<TabPanel>> = {
   ),
   entitlements: ({ record }) => <TenantEntitlementsPanel apps={record.apps} />,
   quotas: ({ record }) => <TenantQuotasPanel quotas={record.quotas} />,
-  audit: ({ record }) => (
+  audit: ({ record, canReadReason }) => (
     <TenantAuditPanel
       lifecycle={record.lifecycle}
       audit={record.recentAudit}
       lifecycleHasMore={record.lifecycleHasMore}
+      canReadReason={canReadReason}
     />
   ),
 };
@@ -57,11 +59,19 @@ export function TenantTabPanel({
   tab,
   record,
   personalDataSlot,
+  canReadReason,
 }: {
   readonly tab: TenantTabId;
   readonly record: TenantRecord;
   readonly personalDataSlot: ReactNode;
+  readonly canReadReason: boolean;
 }) {
   const Panel = TAB_COMPONENTS[tab];
-  return <Panel record={record} personalDataSlot={personalDataSlot} />;
+  return (
+    <Panel
+      record={record}
+      personalDataSlot={personalDataSlot}
+      canReadReason={canReadReason}
+    />
+  );
 }
