@@ -31,7 +31,17 @@ set +a
 ./deploy/platform/verify-migrations.sh
 ```
 
-It fails if the foundation or view migration is missing, or if `app_platform` cannot reach the Platform schema.
+It fails if a Platform migration is missing, if `app_platform` cannot reach the Platform schema, or if the audit actor FK is not `ON DELETE RESTRICT` (D-027).
+
+## Re-seal the audit chain (break-glass)
+
+`reseal-audit-chain.sql` is the one-time repair for a chain damaged before `20261104130000_audit_chain_integrity`. It is owner-only, skips a healthy chain, refuses a second run, detects both hash and link breaks, recomputes `prevHash`/`recordHash` in place, records the database `session_user`, and appends an `AUDIT_CHAIN_RESEALED` audit row.
+
+```bash
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f deploy/platform/reseal-audit-chain.sql
+```
+
+Run it only with written approval and a backup; the full procedure is in the Platform runbook, section 5.1.
 
 The deploy workflow runs `prisma migrate deploy`, `prisma migrate status`, and a real `PLATFORM_DATABASE_URL` connection check. Provision the roles before the first deploy and rotate by rerunning the script.
 

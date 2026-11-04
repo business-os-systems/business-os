@@ -19,7 +19,9 @@ BEGIN
     ('20261025172000_platform_views'),
     ('20261029150000_audit_append_trigger'),
     ('20261029160000_audit_pending_check'),
-    ('20261029170000_audit_search_path')
+    ('20261029170000_audit_search_path'),
+    ('20261104120000_platform_audited_functions'),
+    ('20261104130000_audit_chain_integrity')
   ) AS expected(name)
   WHERE NOT EXISTS (
     SELECT 1
@@ -49,6 +51,14 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'Audit trigger platform_audit_append is missing';
   END IF;
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'audit_events_actorOperatorId_fkey'
+      AND confdeltype = 'r'
+  ) THEN
+    RAISE EXCEPTION 'Audit chain integrity: actor FK is not ON DELETE RESTRICT (D-027)';
+  END IF;
 END
 $$;
 
@@ -59,7 +69,9 @@ WHERE migration_name IN (
   '20261025172000_platform_views',
   '20261029150000_audit_append_trigger',
   '20261029160000_audit_pending_check',
-  '20261029170000_audit_search_path'
+  '20261029170000_audit_search_path',
+  '20261104120000_platform_audited_functions',
+  '20261104130000_audit_chain_integrity'
 )
 ORDER BY started_at;
 

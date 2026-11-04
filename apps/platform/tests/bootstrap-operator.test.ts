@@ -160,7 +160,7 @@ describe("Platform bootstrap operator", () => {
     expect(prisma.platformOperator.findMany).not.toHaveBeenCalled();
   });
 
-  it("removes the new operator when the one-time token cannot be stored", async () => {
+  it("keeps operator zero and its audit row when the one-time token cannot be stored", async () => {
     const { prisma, deleteOperator } = createPrisma();
     const { deps, storeToken } = createDependencies(prisma);
     storeToken.mockRejectedValueOnce(new Error("redis unavailable"));
@@ -171,6 +171,6 @@ describe("Platform bootstrap operator", () => {
         displayName: "Ops",
       })
     ).rejects.toThrow(/redis unavailable/);
-    expect(deleteOperator).toHaveBeenCalledWith({ where: { id: "op_new" } });
+    expect(deleteOperator).not.toHaveBeenCalled();
   });
 });

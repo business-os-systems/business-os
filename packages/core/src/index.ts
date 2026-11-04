@@ -111,6 +111,13 @@ export {
   type CatalogKey,
   type CatalogCodeFormat,
   type CatalogDefinition,
+  QUOTA_KEYS,
+  QUOTA_RESOURCE_DEFINITIONS,
+  QUOTA_KEY_CODES,
+  isQuotaKey,
+  type QuotaKey,
+  type QuotaUnit,
+  type QuotaResourceDefinition,
 } from "./constants/index.js";
 
 // Platform error-code registry
@@ -143,5 +150,3 @@ export {
   formatBranchDateTimeWithZone,
   type BranchTimeContext,
 } from "./time/index.js";
-
-
