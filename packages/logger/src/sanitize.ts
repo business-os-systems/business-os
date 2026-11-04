@@ -25,7 +25,9 @@ const SENSITIVE_KEY_PATTERNS = [
 ];
 
 const EMAIL_REGEX = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
-const PHONE_REGEX = /(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/g;
+// Matches NANP (3-3-4) as well as Indian 10-digit numbers, grouped 5-5 or unbroken.
+const PHONE_REGEX =
+  /(?:\+?\d{1,3}[-.\s]?)?(?:\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}|\d{5}[-.\s]?\d{5}|\d{10})/g;
 const CONNECTION_CREDENTIALS_REGEX =
   /(postgres(?:ql)?:\/\/[^:\s/@]+:)([^@\s]+)(@)/gi;
 const SECRET_ASSIGNMENT_REGEX =
@@ -44,10 +46,7 @@ export function isSensitiveKey(key: string): boolean {
 export function scrubStringValues(val: string): string {
   let cleaned = val.replace(EMAIL_REGEX, "[EMAIL_REDACTED]");
   cleaned = cleaned.replace(PHONE_REGEX, "[PHONE_REDACTED]");
-  cleaned = cleaned.replace(
-    CONNECTION_CREDENTIALS_REGEX,
-    "$1[REDACTED]$3"
-  );
+  cleaned = cleaned.replace(CONNECTION_CREDENTIALS_REGEX, "$1[REDACTED]$3");
   cleaned = cleaned.replace(SECRET_ASSIGNMENT_REGEX, "$1[REDACTED]");
   return cleaned;
 }
@@ -65,7 +64,11 @@ export function sanitizePii<T>(target: T, seen = new WeakSet<object>()): T {
     return scrubStringValues(target) as unknown as T;
   }
 
-  if (typeof target === "number" || typeof target === "boolean" || typeof target === "bigint") {
+  if (
+    typeof target === "number" ||
+    typeof target === "boolean" ||
+    typeof target === "bigint"
+  ) {
     return target;
   }
 
