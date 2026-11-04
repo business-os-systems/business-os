@@ -2,6 +2,7 @@ import type { PrismaClient } from "@suite/db";
 import type { Redis } from "@suite/redis";
 import { normalizeTenantStatus, type TenantStatus } from "@suite/core";
 import { logger } from "@suite/logger";
+import { readTenantOverview } from "./tenant-view.service.js";
 
 /** A change must reach every tenant request within sixty seconds (FR-017, R15). */
 export const TENANT_ACCESS_CACHE_TTL_SECONDS = 60;
@@ -48,11 +49,10 @@ export async function readTenantAccessStatus(
     );
   }
 
-  const organization = await deps.prisma.organization.findUnique({
-    where: { id: organizationId },
-    select: { status: true },
-  });
-  const status = organization === null ? null : normalizeTenantStatus(organization.status);
+  // app_platform has no SELECT on public.organizations. Read the curated
+  // overview view, which is granted and exposes status without tenant PII.
+  const overview = await readTenantOverview(deps.prisma, organizationId);
+  const status = overview === null ? null : normalizeTenantStatus(overview.status);
 
   if (status !== null) {
     try {

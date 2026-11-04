@@ -10,6 +10,7 @@ import {
   TENANT_FILTERED_EMPTY_STATE,
   TENANT_TABLE_CONFIG,
 } from "../src/components/tables/tenant-table.config";
+import { TenantAuditPanel } from "../src/app/(platform)/tenants/[orgId]/tenant-audit-panel";
 import { TenantPiiPanel } from "../src/app/(platform)/tenants/[orgId]/tenant-pii-panel";
 import {
   TENANT_TABS,
@@ -161,6 +162,23 @@ describe("Tenant personal-data gate", () => {
     );
     expect(html).toContain("Show personal data");
     expect(html).toContain("recorded reason");
+  });
+
+  it("withholds the lifecycle reason without the personal-data capability", () => {
+    const lifecycle = [{
+      id: "evt_1", fromStatus: "ACTIVE", toStatus: "SUSPENDED",
+      reason: "Member email a@b.com", actorOperatorId: "op_1",
+      occurredAt: "2026-11-04T00:00:00.000Z",
+    }];
+    const restricted = renderToString(
+      <TenantAuditPanel lifecycle={lifecycle} audit={[]} lifecycleHasMore={false} canReadReason={false} />,
+    );
+    expect(restricted).toContain("Reason withheld");
+    expect(restricted).not.toContain("Member email");
+    const allowed = renderToString(
+      <TenantAuditPanel lifecycle={lifecycle} audit={[]} lifecycleHasMore={false} canReadReason />,
+    );
+    expect(allowed).toContain("Member email");
   });
 });
 

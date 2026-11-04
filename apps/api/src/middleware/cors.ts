@@ -1,5 +1,7 @@
 import type { MiddlewareHandler, Context } from "hono";
 import { AUTH_ERROR_CODES } from "@suite/auth";
+import { FORM_IDEMPOTENCY_HEADER, PII_REASON_HEADER } from "@suite/core";
+import { IDEMPOTENCY_HEADER } from "@suite/redis";
 
 export interface CorsOptions {
   allowedOrigins?: string[];
@@ -8,6 +10,12 @@ export interface CorsOptions {
 
 export const CORS_ALLOWED_ORIGINS_CONTEXT_KEY = "corsAllowedOrigins";
 export const CORS_ALLOW_CREDENTIALS_CONTEXT_KEY = "corsAllowCredentials";
+
+/**
+ * Website Builder form ingestion sends FORM_IDEMPOTENCY_HEADER; the control
+ * plane sends IDEMPOTENCY_HEADER. They are different contracts, not aliases.
+ */
+export const CORS_ALLOWED_HEADERS = `Content-Type, Authorization, x-request-id, x-trace-id, x-correlation-id, x-organization-id, x-branch-id, ${FORM_IDEMPOTENCY_HEADER}, ${IDEMPOTENCY_HEADER}, ${PII_REASON_HEADER}, x-api-key`;
 
 /**
  * Parses allowed origins from explicit options or the pre-declared environment variable.
@@ -135,10 +143,7 @@ export function corsMiddleware(options: CorsOptions = {}): MiddlewareHandler {
       "Access-Control-Allow-Methods",
       "GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD"
     );
-    c.header(
-      "Access-Control-Allow-Headers",
-      "Content-Type, Authorization, x-request-id, x-trace-id, x-correlation-id, x-organization-id, x-branch-id, x-idempotency-key, x-api-key"
-    );
+    c.header("Access-Control-Allow-Headers", CORS_ALLOWED_HEADERS);
     c.header("Access-Control-Max-Age", "86400");
 
     // Phase 3: Immediate 204 No Content for preflight OPTIONS requests from authorized callers

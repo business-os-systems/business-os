@@ -1,5 +1,7 @@
+import { Hono } from "hono";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { PrismaClient } from "@suite/db";
+import type { Redis } from "@suite/redis";
 import { PLATFORM_CAPABILITIES, PLATFORM_ERROR_CODE } from "@suite/core";
 import {
   CONTROL_SESSION_COOKIE_NAME,
@@ -9,6 +11,8 @@ import {
 import { tenantLifecycleRouter } from "../../../src/routes/admin/lifecycle.js";
 import { globalErrorHandler } from "../../../src/middleware/error-handler.js";
 import { clearRateLimitStore } from "../../../src/middleware/rate-limit.js";
+import { createTenantAccessGuard } from "../../../src/middleware/tenant-access.js";
+import { TENANT_ACCESS_CACHE_TTL_SECONDS } from "../../../src/services/admin/tenant-access.service.js";
 import { loadPlatformTestEnv } from "../../helpers/platform-env.js";
 import {
   createPlatformOwnerTestClient,
@@ -84,6 +88,24 @@ describe.skipIf(!enabled)("Platform tenant lifecycle routes", () => {
     return { id: organization.id, slug };
   }
 
+  function createGuardedApp(organizationId: string) {
+    const store = new Map<string, string>();
+    const ttlSeconds: number[] = [];
+    const redis = {
+      get: async (key: string) => store.get(key) ?? null,
+      set: async (key: string, value: string, _mode: string, ttl: number) => {
+        store.set(key, value); ttlSeconds.push(ttl); return "OK";
+      },
+      del: async (key: string) => (store.delete(key) ? 1 : 0),
+    } as unknown as Redis;
+    const app = new Hono<{ Variables: { organizationId: string } }>();
+    app.use("*", async (c, next) => { c.set("organizationId", organizationId); await next(); });
+    app.use("*", createTenantAccessGuard({ prisma: platformPrisma, redis }));
+    app.get("/data", (c) => c.text("ok"));
+    app.onError(globalErrorHandler);
+    return { app, ttlSeconds, clear: () => store.clear() };
+  }
+
   function post(
     path: string,
     token: string,
@@ -97,6 +119,7 @@ describe.skipIf(!enabled)("Platform tenant lifecycle routes", () => {
           "Content-Type": "application/json",
           Cookie: `${CONTROL_SESSION_COOKIE_NAME}=${token}`,
           "Idempotency-Key": idempotencyKey,
+          "X-Forwarded-For": "198.51.100.11",
         },
         body: JSON.stringify(body),
       })
@@ -197,7 +220,10 @@ describe.skipIf(!enabled)("Platform tenant lifecycle routes", () => {
     expect(audit?.after).toMatchObject({ status: "SUSPENDED" });
 
     const outbox = await ownerPrisma.outboxEvent.findFirst({
-      where: { eventType: "platform.tenant.suspended" },
+      where: {
+        eventType: "platform.tenant.suspended",
+        payload: { path: ["organizationId"], equals: tenant.id },
+      },
       orderBy: { createdAt: "desc" },
     });
     expect(outbox).not.toBeNull();
@@ -312,7 +338,10 @@ describe.skipIf(!enabled)("Platform tenant lifecycle routes", () => {
     expect(body.data.toStatus).toBe("TRIAL");
 
     const outbox = await ownerPrisma.outboxEvent.findFirst({
-      where: { eventType: "platform.tenant.restored" },
+      where: {
+        eventType: "platform.tenant.restored",
+        payload: { path: ["organizationId"], equals: tenant.id },
+      },
       orderBy: { createdAt: "desc" },
     });
     expect(outbox?.payload).toMatchObject({
@@ -367,7 +396,10 @@ describe.skipIf(!enabled)("Platform tenant lifecycle routes", () => {
     expect(audit?.after).toMatchObject({ status: "ARCHIVED" });
 
     const outbox = await ownerPrisma.outboxEvent.findFirst({
-      where: { eventType: "platform.tenant.archived" },
+      where: {
+        eventType: "platform.tenant.archived",
+        payload: { path: ["organizationId"], equals: tenant.id },
+      },
       orderBy: { createdAt: "desc" },
     });
     expect(outbox?.payload).toMatchObject({
@@ -397,6 +429,35 @@ describe.skipIf(!enabled)("Platform tenant lifecycle routes", () => {
     expect(((await archive.json()) as ProblemBody).code).toBe(
       PLATFORM_ERROR_CODE.CAPABILITY_DENIED
     );
+  });
+
+  it("serves an active tenant and caches the status for sixty seconds", async () => {
+    const tenant = await createTenant("ACTIVE");
+    const guarded = createGuardedApp(tenant.id);
+
+    expect((await guarded.app.request("/data")).status).toBe(200);
+    expect(guarded.ttlSeconds).toEqual([TENANT_ACCESS_CACHE_TTL_SECONDS]);
+  });
+
+  it("blocks tenant requests after a suspension and allows them after a restore", async () => {
+    const tenant = await createTenant("ACTIVE");
+    const guarded = createGuardedApp(tenant.id);
+
+    const suspended = await post(`/tenants/${tenant.id}/suspend`, operatorToken, { reason: "Abuse report under review", expectedStatus: "ACTIVE" });
+    expect(suspended.status).toBe(200);
+
+    // Production drops this key from the outbox handler; clearing it here
+    // simulates the cache miss that the sixty-second expiry is allowed to cause.
+    guarded.clear();
+    const blocked = await guarded.app.request("/data");
+    expect(blocked.status).toBe(403);
+    expect(((await blocked.json()) as ProblemBody).code).toBe(PLATFORM_ERROR_CODE.TENANT_SUSPENDED);
+
+    const restored = await post(`/tenants/${tenant.id}/restore`, operatorToken, { reason: "Review cleared the account", expectedStatus: "SUSPENDED" });
+    expect(restored.status).toBe(200);
+
+    guarded.clear();
+    expect((await guarded.app.request("/data")).status).toBe(200);
   });
 
   it("returns TENANT_NOT_FOUND for an unknown tenant", async () => {

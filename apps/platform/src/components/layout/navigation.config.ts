@@ -1,4 +1,5 @@
 import { PLATFORM_CAPABILITIES, type PlatformCapability } from "@suite/core";
+import { hasPlatformCapability } from "@/lib/capability";
 
 export type PlatformNavIconKey =
   | "home"
@@ -100,7 +101,7 @@ export function canAccessPath(
   pathname: string
 ): boolean {
   const required = requiredCapabilityForPath(pathname);
-  return required !== null && capabilities.includes(required);
+  return required !== null && hasPlatformCapability(capabilities, required);
 }
 
 export function visibleNavigation(

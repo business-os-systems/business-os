@@ -6,6 +6,8 @@ import { Alert, Button, Spinner } from "@suite/ui";
 import { ArrowLeftIcon } from "@suite/ui/icons";
 import { NotFoundError } from "@suite/core/errors";
 import { usePlatformAuth } from "@/components/auth/auth-provider";
+import { TenantLifecycleActions } from "@/components/forms/tenant-lifecycle-actions";
+import { canManageLifecycle } from "@/components/forms/lifecycle-form.config";
 import { toMessage } from "@/lib/error-message";
 import {
   canReadPersonalData,
@@ -26,10 +28,12 @@ export default function TenantRecordPage() {
   const router = useRouter();
   const orgId = params.orgId;
   const { session } = usePlatformAuth();
+  const canReadPii = canReadPersonalData(session?.capabilities);
   const [record, setRecord] = useState<TenantRecord | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isMissing, setIsMissing] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const [tab, setTab] = useState<TenantTabId>("overview");
   const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
@@ -50,6 +54,7 @@ export default function TenantRecordPage() {
   }, []);
 
   useEffect(() => {
+    setNotice(null);
     void load(orgId);
   }, [orgId, load]);
 
@@ -93,6 +98,18 @@ export default function TenantRecordPage() {
         record={record}
         onBack={() => router.push("/tenants")}
       />
+      {notice !== null ? (
+        <Alert variant="success" message={notice} dismissible onDismiss={() => setNotice(null)} />
+      ) : null}
+      <TenantLifecycleActions
+        tenant={record.profile}
+        canManage={canManageLifecycle(session?.capabilities)}
+        onApplied={(message) => {
+          setNotice(message);
+          void load(orgId);
+        }}
+        onReload={() => void load(orgId)}
+      />
       <TenantRecordTabList tab={tab} onSelect={setTab} tabRefs={tabRefs} />
 
       {TENANT_TABS.map((entry) => (
@@ -108,11 +125,12 @@ export default function TenantRecordPage() {
             <TenantTabPanel
               tab={entry.id}
               record={record}
+              canReadReason={canReadPii}
               personalDataSlot={
                 <TenantPiiPanel
                   key={record.profile.id}
                   orgId={record.profile.id}
-                  canRead={canReadPersonalData(session?.capabilities)}
+                  canRead={canReadPii}
                 />
               }
             />
