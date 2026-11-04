@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeAll } from "vitest";
 import { Hono } from "hono";
+import { PLATFORM_ERROR_CODE } from "@suite/core";
 import { UnauthorizedError } from "@suite/core/errors";
 import { platformAuthRouter } from "../src/routes/admin/auth.js";
 import { corsMiddleware } from "../src/middleware/cors.js";
@@ -18,7 +19,7 @@ describe("Platform auth route guards", () => {
     });
     expect(response.status).toBe(401);
     const body = (await response.json()) as { code: string };
-    expect(body.code).toBe("AUTH_UNAUTHORIZED");
+    expect(body.code).toBe(PLATFORM_ERROR_CODE.AUTH_REQUIRED);
   });
 
   it("rejects /me from a tenant origin", async () => {

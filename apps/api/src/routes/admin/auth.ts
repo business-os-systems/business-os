@@ -368,7 +368,7 @@ platformAuthRouter.openapi(meRoute, async (c) => {
   const token = getCookie(c, CONTROL_SESSION_COOKIE_NAME);
   if (!token) {
     throw new UnauthorizedError("Authentication required.", {
-      code: AUTH_ERROR_CODES.AUTH_UNAUTHORIZED,
+      code: AUTH_ERROR_CODES.AUTH_REQUIRED,
     });
   }
   const session = await getSession(dependencies(), token);

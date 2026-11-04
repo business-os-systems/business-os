@@ -1,5 +1,3 @@
-import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   createPlatformPrismaClient,
@@ -13,33 +11,9 @@ import {
 } from "@suite/auth/platform";
 import { platformAuthRouter } from "../../src/routes/admin/auth.js";
 import { globalErrorHandler } from "../../src/middleware/error-handler.js";
+import { loadPlatformTestEnv } from "../helpers/platform-env.js";
 
-function loadLocalPlatformEnv(): void {
-  const envPath = resolve(process.cwd(), ".env");
-  if (!existsSync(envPath)) return;
-  const keys = new Set([
-    "DATABASE_URL",
-    "PLATFORM_DATABASE_URL",
-    "CONTROL_SESSION_SECRET",
-    "CONTROL_PLANE_ORIGIN",
-    "CONTROL_WEBAUTHN_RP_ID",
-  ]);
-  for (const line of readFileSync(envPath, "utf8").split("\n")) {
-    const trimmed = line.trim();
-    if (trimmed === "" || trimmed.startsWith("#") || !trimmed.includes("=")) {
-      continue;
-    }
-    const separator = trimmed.indexOf("=");
-    const key = trimmed.slice(0, separator).trim();
-    if (!keys.has(key) || process.env[key] !== undefined) continue;
-    process.env[key] = trimmed
-      .slice(separator + 1)
-      .trim()
-      .replace(/^["']|["']$/g, "");
-  }
-}
-
-loadLocalPlatformEnv();
+loadPlatformTestEnv();
 
 const databaseUrl = process.env.PLATFORM_DATABASE_URL;
 const secret = process.env.CONTROL_SESSION_SECRET;

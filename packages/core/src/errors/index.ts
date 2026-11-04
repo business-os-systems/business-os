@@ -386,6 +386,7 @@ export function createZodProblemEnvelope(
 // Platform error-code registry and RFC 7807 type mapping
 export {
   PLATFORM_ERROR_CODES,
+  PLATFORM_ERROR_CODE,
   isPlatformErrorCode,
   getPlatformErrorDefinition,
   problemTypeForErrorCode,

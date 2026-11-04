@@ -170,7 +170,8 @@ All three checks must pass with zero errors.
 ## 6. Pull Request Lifecycle & The Human Approval Gate
 
 ### Rule 7: Pull Request Size Discipline (The Small PR Rule)
-- Pull requests must be small, atomic, and focused (**< 400 lines of code changed**, excluding auto-generated lockfiles or database migrations).
+- Pull requests must stay focused. The soft ceiling is **700 changed lines** (insertions + deletions, excluding auto-generated lockfiles and database migrations). The median merged PR in this repository is 706 lines, so this is the size reviewers actually handle.
+- **1,000 changed lines is the hard ceiling.** A PR above 700 explains why in its description; above 1,000 it is split, unless a maintainer records an exception in the PR.
 - Large epics must be split into logical sub-tickets to ensure rigorous, fast code review.
 
 ### Rule 8: Mandatory CI Gates & THE HUMAN MERGE APPROVAL GATE
