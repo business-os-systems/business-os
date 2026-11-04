@@ -221,6 +221,9 @@ importers:
       '@suite/eslint-config':
         specifier: workspace:*
         version: link:../../tooling/eslint-config
+      '@suite/logger':
+        specifier: workspace:*
+        version: link:../../packages/logger
       '@suite/redis':
         specifier: workspace:*
         version: link:../../packages/redis

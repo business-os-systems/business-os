@@ -11,6 +11,8 @@ describe("Public Form Ingestion & Idempotency Suppression Integration Suite (S1-
   const router = createFormRouter(service);
 
   beforeAll(async () => {
+    // SCR-109: the GDPR salt is deployment configuration, never a literal.
+    process.env.GDPR_HMAC_SALT_KEY = "integration-test-gdpr-salt";
     await prisma.organization.upsert({
       where: { id: "org_resort" },
       update: {},

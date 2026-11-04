@@ -2,6 +2,7 @@ import type { MiddlewareHandler, Context } from "hono";
 import { RateLimitError, ServiceUnavailableError } from "@suite/core/errors";
 import { redis } from "@suite/redis";
 import { getConnInfo } from "@hono/node-server/conninfo";
+import { getTrustedProxyIps } from "../lib/env.js";
 
 export interface RateLimitOptions {
   limit?: number; // Maximum requests allowed within window
@@ -44,12 +45,7 @@ function socketAddress(c: Context): string | undefined {
 
 function resolveClientIp(c: Context): string {
   const socketIp = socketAddress(c);
-  const trustedProxies = new Set(
-    (process.env.TRUSTED_PROXY_IPS ?? "")
-      .split(",")
-      .map((ip) => ip.trim())
-      .filter(Boolean)
-  );
+  const trustedProxies = new Set(getTrustedProxyIps());
   const trustForwardedHeaders =
     process.env.NODE_ENV === "test" ||
     (socketIp !== undefined && trustedProxies.has(socketIp));

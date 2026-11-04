@@ -37,6 +37,7 @@
     "vitest": "^2.1.9",
     "@suite/auth": "workspace:*",
     "@suite/db": "workspace:*",
+    "@suite/logger": "workspace:*",
     "@suite/redis": "workspace:*"
   }
 }

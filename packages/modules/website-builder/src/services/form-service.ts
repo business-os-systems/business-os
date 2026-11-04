@@ -33,6 +33,20 @@ export interface IFormService {
   computeEmailHash(email: string, salt: string): string;
 }
 
+/**
+ * The salt is deployment configuration. Falling back to a published constant
+ * would make stored email hashes reversible with a dictionary (SCR-109).
+ */
+function readGdprSalt(): string {
+  const salt = process.env.GDPR_HMAC_SALT_KEY?.trim();
+  if (salt === undefined || salt.length === 0) {
+    throw new Error(
+      "GDPR_HMAC_SALT_KEY must be configured before hashing form submission emails"
+    );
+  }
+  return salt;
+}
+
 export class FormService implements IFormService {
   constructor(private readonly db = prisma) {}
 
@@ -85,8 +99,7 @@ export class FormService implements IFormService {
     let emailHash: string | null = null;
     const rawEmail = input.payload["email"];
     if (typeof rawEmail === "string" && z.string().email().safeParse(rawEmail).success) {
-      const gdprSalt = process.env.GDPR_HMAC_SALT_KEY ?? "business_os_gdpr_salt";
-      emailHash = this.computeEmailHash(rawEmail, gdprSalt);
+      emailHash = this.computeEmailHash(rawEmail, readGdprSalt());
     }
 
     // 6. Execute atomic PostgreSQL ingestion function

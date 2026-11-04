@@ -15,7 +15,8 @@ import {
 import { PLATFORM_NAV_ICONS } from "./icon-registry";
 
 export function PlatformShell({ children }: { children: ReactNode }) {
-  const { session, loading, error, refresh, signOut } = usePlatformAuth();
+  const { session, loading, error, signOutFailed, refresh, signOut, forceSignOut } =
+    usePlatformAuth();
   const pathname = usePathname();
 
   if (loading) {
@@ -30,7 +31,16 @@ export function PlatformShell({ children }: { children: ReactNode }) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-background p-6">
         <div className="w-full max-w-md space-y-4">
-          <Alert variant="error" title="Unable to load Platform" message={error} />
+          <Alert
+            variant="error"
+            title={signOutFailed ? "Sign out failed" : "Unable to load Platform"}
+            message={error}
+          />
+          {signOutFailed ? (
+            <Button fullWidth variant="secondary" onClick={forceSignOut}>
+              Sign out on this device
+            </Button>
+          ) : null}
           <Button fullWidth onClick={() => void refresh()}>
             Retry
           </Button>

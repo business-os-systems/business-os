@@ -12,6 +12,8 @@ describe("Public Form Ingestion Engine & Turnstile Defense (S1-5)", () => {
   const rootRouter = createWebsiteBuilderRoutes(undefined, undefined, service);
 
   beforeAll(async () => {
+    // SCR-109: hashing now requires configured deployment salt, never a literal.
+    process.env.GDPR_HMAC_SALT_KEY = "forms-test-gdpr-salt-deterministic";
     await prisma.organization.upsert({
       where: { id: "org_forms" },
       update: {},

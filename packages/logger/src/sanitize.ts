@@ -30,8 +30,9 @@ const PHONE_REGEX =
   /(?:\+?\d{1,3}[-.\s]?)?(?:\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}|\d{5}[-.\s]?\d{5}|\d{10})/g;
 const CONNECTION_CREDENTIALS_REGEX =
   /(postgres(?:ql)?:\/\/[^:\s/@]+:)([^@\s]+)(@)/gi;
+// `bootstrap` carries the single-use operator link token as `#bootstrap=...`.
 const SECRET_ASSIGNMENT_REGEX =
-  /((?:password|passwd|secret|token|api[_-]?key)\s*[=:]\s*)([^\s,;]+)/gi;
+  /((?:password|passwd|secret|token|api[_-]?key|bootstrap)\s*[=:]\s*)([^\s,;]+)/gi;
 
 /**
  * Checks if an object property key is classified as sensitive.

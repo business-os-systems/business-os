@@ -28,6 +28,11 @@ export {
   type PlatformCapabilityKey,
 } from "./platform-capabilities.js";
 export {
+  TEMPLATE_SECRET_FINGERPRINTS,
+  TEMPLATE_SECRET_PREFIX,
+  isTemplateSecret,
+} from "./template-secrets.js";
+export {
   CATALOG_KEYS,
   CATALOG_DEFINITIONS,
   isCatalogKey,

@@ -182,6 +182,26 @@ describe("Platform denial matrix", () => {
     });
   }
 
+  it("accepts a same-origin GET that omits the Origin header", async () => {
+    const response = await platformAuthRouter.request("/me", {
+      method: "GET",
+      headers: { "Sec-Fetch-Site": "same-origin" },
+    });
+
+    expect(response.status).toBe(401);
+    expect(response.headers.get("content-type")).toContain(
+      "application/problem+json"
+    );
+  });
+
+  it("rejects a GET that presents neither Origin nor Sec-Fetch-Site", async () => {
+    const response = await platformAuthRouter.request("/me", { method: "GET" });
+
+    expect(response.status).toBe(403);
+    const body = (await response.json()) as { code: string };
+    expect(body.code).toBe("CORS_ORIGIN_DENIED");
+  });
+
   for (const route of guardedRoutes()) {
     it(`rejects a foreign origin on ${route.id}`, async () => {
       const response = await requestRoute(route, { Origin: FOREIGN_ORIGIN });
