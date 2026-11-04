@@ -10,6 +10,7 @@ import { CONTROL_SESSION_COOKIE_NAME } from "@suite/auth/platform";
 import { platformAuthRouter } from "../../../src/routes/admin/auth.js";
 import { adminFlagsRouter } from "../../../src/routes/admin-flags.js";
 import { tenantAdminRouter } from "../../../src/routes/admin/tenants.js";
+import { tenantPiiRouter } from "../../../src/routes/admin/tenant-pii.js";
 import { globalErrorHandler } from "../../../src/middleware/error-handler.js";
 import { loadPlatformTestEnv } from "../../helpers/platform-env.js";
 
@@ -19,7 +20,7 @@ function requireControlPlaneOrigin(): string {
   const value = process.env.CONTROL_PLANE_ORIGIN;
   if (value === undefined) {
     throw new Error(
-      "CONTROL_PLANE_ORIGIN must be declared before running the denial matrix"
+      "CONTROL_PLANE_ORIGIN must be declared before running the denial matrix",
     );
   }
   return value;
@@ -32,13 +33,16 @@ process.env.CONTROL_PLANE_ORIGIN = CONTROL_PLANE_ORIGIN;
 platformAuthRouter.onError(globalErrorHandler);
 adminFlagsRouter.onError(globalErrorHandler);
 tenantAdminRouter.onError(globalErrorHandler);
+tenantPiiRouter.onError(globalErrorHandler);
 
-type RouterKey = "platform-auth" | "admin-flags" | "admin-tenants";
+type RouterKey =
+  "platform-auth" | "admin-flags" | "admin-tenants" | "admin-tenant-pii";
 
 const ROUTERS = {
   "platform-auth": platformAuthRouter,
   "admin-flags": adminFlagsRouter,
   "admin-tenants": tenantAdminRouter,
+  "admin-tenant-pii": tenantPiiRouter,
 } as const;
 
 /**
@@ -92,6 +96,14 @@ const PROTECTED_ROUTES: readonly ProtectedRoute[] = [
     method: "GET",
     path: "/tenants/tenant_denial_probe",
     router: "admin-tenants",
+    anonymous: { status: 401, code: PLATFORM_ERROR_CODE.AUTH_REQUIRED },
+    originGuarded: false,
+  },
+  {
+    id: "admin-tenants/pii",
+    method: "GET",
+    path: "/tenants/tenant_denial_probe/pii?reason=denial+probe",
+    router: "admin-tenant-pii",
     anonymous: { status: 401, code: PLATFORM_ERROR_CODE.AUTH_REQUIRED },
     originGuarded: false,
   },
@@ -194,7 +206,7 @@ describe("Platform denial matrix", () => {
 
     expect(response.status).toBe(401);
     expect(response.headers.get("content-type")).toContain(
-      "application/problem+json"
+      "application/problem+json",
     );
   });
 
