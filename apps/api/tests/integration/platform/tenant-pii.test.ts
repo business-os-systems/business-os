@@ -85,11 +85,18 @@ describe.skipIf(!enabled)("Platform tenant PII route", () => {
     });
   }
 
-  function authedGet(path: string, token: string): Promise<Response> {
+  function authedGet(
+    path: string,
+    token: string,
+    reason?: string,
+  ): Promise<Response> {
     return Promise.resolve(
       tenantPiiRouter.request(path, {
         method: "GET",
-        headers: { Cookie: `${CONTROL_SESSION_COOKIE_NAME}=${token}` },
+        headers: {
+          Cookie: `${CONTROL_SESSION_COOKIE_NAME}=${token}`,
+          ...(reason === undefined ? {} : { "X-PII-Reason": reason }),
+        },
       }),
     );
   }
@@ -158,8 +165,9 @@ describe.skipIf(!enabled)("Platform tenant PII route", () => {
   it("returns active member contact data and audits the read", async () => {
     const reason = "support case 42";
     const response = await authedGet(
-      `/tenants/${orgId}/pii?reason=${encodeURIComponent(reason)}`,
+      `/tenants/${orgId}/pii`,
       readerToken,
+      reason,
     );
 
     expect(response.status).toBe(200);
@@ -187,8 +195,9 @@ describe.skipIf(!enabled)("Platform tenant PII route", () => {
 
   it("denies an operator without the personal-data capability", async () => {
     const response = await authedGet(
-      `/tenants/${orgId}/pii?reason=${encodeURIComponent("snooping")}`,
+      `/tenants/${orgId}/pii`,
       limitedToken,
+      "snooping",
     );
 
     expect(response.status).toBe(403);
@@ -206,8 +215,9 @@ describe.skipIf(!enabled)("Platform tenant PII route", () => {
 
   it("rejects a blank reason", async () => {
     const response = await authedGet(
-      `/tenants/${orgId}/pii?reason=%20%20`,
+      `/tenants/${orgId}/pii`,
       readerToken,
+      "   ",
     );
 
     expect(response.status).toBe(422);
@@ -217,8 +227,9 @@ describe.skipIf(!enabled)("Platform tenant PII route", () => {
 
   it("returns TENANT_NOT_FOUND for an unknown tenant", async () => {
     const response = await authedGet(
-      `/tenants/tenant_missing_probe/pii?reason=${encodeURIComponent("support")}`,
+      "/tenants/tenant_missing_probe/pii",
       readerToken,
+      "support",
     );
 
     expect(response.status).toBe(404);
