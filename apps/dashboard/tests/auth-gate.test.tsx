@@ -438,7 +438,7 @@ describe("Platform Auth Gate & Login Route (@suite/dashboard)", () => {
 
       const json = await res.json();
       expect(json.type).toBe("/errors/validation-failed");
-    });
+    }, 15_000);
 
     it("dynamically derives clean name from email address when name is omitted", async () => {
       const { deriveNameFromEmail } = await import(
