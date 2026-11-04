@@ -1,5 +1,10 @@
 import { prisma, type InstalledApp } from "@suite/db";
-import { PERMISSIONS } from "@suite/core";
+import {
+  PERMISSIONS,
+  TENANT_STATUS,
+  isBlockingTenantStatus,
+  type BlockingTenantStatus,
+} from "@suite/core";
 import {
   getUserRolePermissions,
   type SessionPayload,
@@ -22,7 +27,16 @@ export interface DashboardInstalledAppNav {
 export interface DashboardLayoutData {
   tenant: TenantContext;
   installedApps: DashboardInstalledAppNav[];
-  isArchived: boolean;
+  /** The workspace state that must deny access, if any. */
+  blockedStatus: BlockingTenantStatus | null;
+}
+
+/** A missing organisation row is treated as archived: the workspace is gone. */
+function resolveBlockedStatus(
+  status: string | undefined
+): BlockingTenantStatus | null {
+  const effective = status ?? TENANT_STATUS.ARCHIVED;
+  return isBlockingTenantStatus(effective) ? effective : null;
 }
 
 /**
@@ -59,7 +73,7 @@ export async function getDashboardTenantContext(
 
   const userEmailVerified = dbUser ? dbUser.emailVerified : true;
   const effectiveOrgName = dbOrg?.name ?? session.organizationName;
-  const isArchived = !dbOrg || dbOrg.status === "ARCHIVED";
+  const blockedStatus = resolveBlockedStatus(dbOrg?.status);
 
   let userPermissions: readonly string[] = session.permissions ?? [];
 
@@ -112,6 +126,6 @@ export async function getDashboardTenantContext(
   });
 
 
-  return { tenant, installedApps, isArchived };
+  return { tenant, installedApps, blockedStatus };
 }
 

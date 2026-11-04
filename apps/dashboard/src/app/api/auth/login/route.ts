@@ -10,7 +10,12 @@ import {
   encodeSessionPayload,
 } from "@/lib/auth-constants";
 import { getUserOnboardingState, extractEffectivePermissions, recordSecurityAuditLog } from "@suite/auth";
-import { AUDIT_EVENT_TYPES } from "@suite/core";
+import {
+  AUDIT_EVENT_TYPES,
+  PLATFORM_ERROR_CODE,
+  TENANT_STATUS,
+  isBlockingTenantStatus,
+} from "@suite/core";
 
 import { isProduction } from "@/lib/env";
 import { verifyTurnstileToken, isTurnstileConfigured } from "@/lib/turnstile";
@@ -117,8 +122,19 @@ export async function POST(request: Request) {
     const currentOnboardingStep = onboardingState.currentOnboardingStep ?? undefined;
     const themePreference = onboardingState.themePreference;
 
-    const membership = dbUser.organizations[0];
+    // Choose a workspace the platform has not blocked. Falling back to the
+    // oldest membership keeps the existing session shape, and the refusal
+    // below then rejects the sign-in because no usable workspace exists.
+    const usableMembership = dbUser.organizations.find(
+      (candidate) => !isBlockingTenantStatus(candidate.organization.status)
+    );
+    const membership = usableMembership ?? dbUser.organizations[0];
     const organization = membership?.organization;
+    const userAgent = request.headers.get("user-agent");
+    const clientIp = request.headers
+      .get("x-forwarded-for")
+      ?.split(",")[0]
+      ?.trim();
     const branchRole = dbUser.branchRoles[0];
     const roleName = branchRole?.role?.name;
     const roleSlug = branchRole?.role?.slug;
@@ -132,6 +148,44 @@ export async function POST(request: Request) {
         code: "WORKSPACE_ACCESS_DENIED",
         title: "Forbidden",
         detail: "Account is not associated with an active enterprise workspace.",
+      });
+    }
+
+    // A platform lifecycle decision outranks the password: suspension blocks
+    // new sign-ins, and an archived workspace never issues a session (FR-017).
+    if (organization?.status === TENANT_STATUS.SUSPENDED) {
+      await recordSecurityAuditLog({
+        prisma,
+        organizationId: organization.id,
+        userId: dbUser.id,
+        action: AUDIT_EVENT_TYPES.AUTH_LOGIN_REJECTED,
+        ipAddress: clientIp,
+        userAgent,
+        metadata: { method: "password", reason: "WORKSPACE_SUSPENDED" },
+      });
+      return problemResponse({
+        status: 403,
+        code: PLATFORM_ERROR_CODE.TENANT_SUSPENDED,
+        title: "Workspace Suspended",
+        detail:
+          "This workspace is suspended. Contact your platform administrator.",
+      });
+    }
+    if (organization?.status === TENANT_STATUS.ARCHIVED) {
+      await recordSecurityAuditLog({
+        prisma,
+        organizationId: organization.id,
+        userId: dbUser.id,
+        action: AUDIT_EVENT_TYPES.AUTH_LOGIN_REJECTED,
+        ipAddress: clientIp,
+        userAgent,
+        metadata: { method: "password", reason: "WORKSPACE_ARCHIVED" },
+      });
+      return problemResponse({
+        status: 403,
+        code: PLATFORM_ERROR_CODE.TENANT_ARCHIVED,
+        title: "Workspace Archived",
+        detail: "This workspace has been archived and can no longer be accessed.",
       });
     }
 
@@ -207,9 +261,6 @@ export async function POST(request: Request) {
       path: cookieOptions.path,
       maxAge: cookieOptions.maxAge,
     });
-
-    const userAgent = request.headers.get("user-agent");
-    const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
 
     await recordSecurityAuditLog({
       prisma,

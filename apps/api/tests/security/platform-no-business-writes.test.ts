@@ -36,6 +36,11 @@ const PERMITTED_WRITES: readonly PermittedWrite[] = [
   { method: "POST", path: "/sign-in/verify", reason: "operator sign-in" },
   { method: "POST", path: "/logout", reason: "operator sign-out" },
   { method: "POST", path: "/flags", reason: "platform configuration" },
+  // Tenant lifecycle changes the platform-owned Organisation status; it writes
+  // no tenant business record (FR-019, contracts/admin-api.md).
+  { method: "POST", path: "/tenants/:orgId/suspend", reason: "tenant lifecycle" },
+  { method: "POST", path: "/tenants/:orgId/restore", reason: "tenant lifecycle" },
+  { method: "POST", path: "/tenants/:orgId/archive", reason: "tenant lifecycle" },
   // zod-openapi registers Hono's ":key" form, not the documented "{key}".
   { method: "PATCH", path: "/flags/:key", reason: "platform configuration" },
 ];

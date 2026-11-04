@@ -14,6 +14,8 @@ import { prisma } from "@suite/db";
 // Mock @suite/db prisma client
 vi.mock("@suite/db", () => {
   const mockPrisma = {
+    // The session guard reads the workspace state on every authenticated request.
+    organization: { findUnique: vi.fn().mockResolvedValue({ status: "ACTIVE" }) },
     role: {
       findMany: vi.fn(),
       findFirst: vi.fn(),

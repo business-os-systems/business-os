@@ -395,10 +395,12 @@ describe("Platform Onboarding Pipeline & Tenant Bootstrapping (@suite/dashboard)
         organizations: [{ organizationId: "org-existing-1" }],
       });
 
-      (prisma.organization.findUnique as unknown as Mock).mockResolvedValueOnce({
+      // Persistent, not once: the session gate and the route both read the org.
+      (prisma.organization.findUnique as unknown as Mock).mockResolvedValue({
         id: "org-existing-1",
         name: "Existing Org",
         slug: "existing-org",
+        status: "ACTIVE",
         metadata: { industries: ["Healthcare & Medical", "Hospitality & Lodging"] },
       });
 

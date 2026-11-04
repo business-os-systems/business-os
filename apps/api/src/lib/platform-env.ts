@@ -116,6 +116,16 @@ export function getPlatformDatabaseUrl(): string {
   return readPostgresUrl(PLATFORM_ENV_KEYS.PLATFORM_DATABASE_URL);
 }
 
+/**
+ * The tenant API must keep serving when the platform plane is not configured
+ * (SC-011), so the outbox worker asks before it connects rather than failing
+ * the boot. A configured-but-invalid URL still fails loudly in the getter.
+ */
+export function isPlatformPlaneConfigured(): boolean {
+  const value = process.env[PLATFORM_ENV_KEYS.PLATFORM_DATABASE_URL];
+  return value !== undefined && value.trim() !== "";
+}
+
 export function getEdgeTeamDomain(): string {
   return readRequired(PLATFORM_ENV_KEYS.EDGE_TEAM_DOMAIN);
 }

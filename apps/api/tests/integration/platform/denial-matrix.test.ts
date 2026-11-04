@@ -11,6 +11,7 @@ import { platformAuthRouter } from "../../../src/routes/admin/auth.js";
 import { adminFlagsRouter } from "../../../src/routes/admin-flags.js";
 import { tenantAdminRouter } from "../../../src/routes/admin/tenants.js";
 import { tenantPiiRouter } from "../../../src/routes/admin/tenant-pii.js";
+import { tenantLifecycleRouter } from "../../../src/routes/admin/lifecycle.js";
 import { globalErrorHandler } from "../../../src/middleware/error-handler.js";
 import { loadPlatformTestEnv } from "../../helpers/platform-env.js";
 
@@ -34,15 +35,21 @@ platformAuthRouter.onError(globalErrorHandler);
 adminFlagsRouter.onError(globalErrorHandler);
 tenantAdminRouter.onError(globalErrorHandler);
 tenantPiiRouter.onError(globalErrorHandler);
+tenantLifecycleRouter.onError(globalErrorHandler);
 
 type RouterKey =
-  "platform-auth" | "admin-flags" | "admin-tenants" | "admin-tenant-pii";
+  | "platform-auth"
+  | "admin-flags"
+  | "admin-tenants"
+  | "admin-tenant-pii"
+  | "admin-tenant-lifecycle";
 
 const ROUTERS = {
   "platform-auth": platformAuthRouter,
   "admin-flags": adminFlagsRouter,
   "admin-tenants": tenantAdminRouter,
   "admin-tenant-pii": tenantPiiRouter,
+  "admin-tenant-lifecycle": tenantLifecycleRouter,
 } as const;
 
 /**
@@ -108,6 +115,30 @@ const PROTECTED_ROUTES: readonly ProtectedRoute[] = [
     originGuarded: false,
   },
   {
+    id: "admin-tenants/suspend",
+    method: "POST",
+    path: "/tenants/tenant_denial_probe/suspend",
+    router: "admin-tenant-lifecycle",
+    anonymous: { status: 401, code: PLATFORM_ERROR_CODE.AUTH_REQUIRED },
+    originGuarded: false,
+  },
+  {
+    id: "admin-tenants/restore",
+    method: "POST",
+    path: "/tenants/tenant_denial_probe/restore",
+    router: "admin-tenant-lifecycle",
+    anonymous: { status: 401, code: PLATFORM_ERROR_CODE.AUTH_REQUIRED },
+    originGuarded: false,
+  },
+  {
+    id: "admin-tenants/archive",
+    method: "POST",
+    path: "/tenants/tenant_denial_probe/archive",
+    router: "admin-tenant-lifecycle",
+    anonymous: { status: 401, code: PLATFORM_ERROR_CODE.AUTH_REQUIRED },
+    originGuarded: false,
+  },
+  {
     id: "admin-flags/list",
     method: "GET",
     path: "/flags",
@@ -140,7 +171,7 @@ const PROTECTED_ROUTES: readonly ProtectedRoute[] = [
  */
 const CAPABILITY_ENFORCEMENT = {
   "platform:tenants:read": "P-11 (#220)",
-  "platform:tenants:lifecycle": "P-13 (#222)",
+  "platform:tenants:lifecycle": "P-13 (#222), enforced by the lifecycle routes",
   "platform:quotas:manage": "P-21 (#230)",
   "platform:entitlements:manage": "P-20 (#229)",
   "platform:operators:manage": "P-17 (#226)",

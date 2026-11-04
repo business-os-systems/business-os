@@ -6,6 +6,18 @@ import { prisma } from "@suite/db";
 import { redis } from "@suite/redis";
 import { createAuthHeaders } from "./helpers/auth.js";
 
+/**
+ * This suite proves routing, not suspension. The tenant access guard owns its
+ * own suite (tests/platform-tenant-access.test.ts), so it is stubbed here to
+ * keep every fixture's organisation state out of the assertions.
+ */
+vi.mock("../src/services/admin/tenant-access.service.js", () => ({
+  readTenantAccessStatus: vi.fn(async () => "ACTIVE"),
+  invalidateTenantAccessStatus: vi.fn(async () => undefined),
+  TENANT_ACCESS_CACHE_PREFIX: "platform:tenant:access",
+  TENANT_ACCESS_CACHE_TTL_SECONDS: 60,
+}));
+
 interface OpenApiSpec {
   openapi: string;
   info: {

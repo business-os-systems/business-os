@@ -7,9 +7,28 @@ import {
   isSessionPayloadIdleTimedOut,
   type SessionPayload,
 } from "@suite/auth";
+import { TENANT_STATUS } from "@suite/core";
+import { readDashboardTenantStatus } from "./tenant-access";
 
 export interface SessionVerificationOptions {
   requireOrganization?: boolean;
+}
+
+function blockedWorkspaceResponse(
+  status: number,
+  code: string,
+  detail: string
+): NextResponse {
+  return NextResponse.json(
+    {
+      type: `/errors/${code.toLowerCase().replace(/_/g, "-")}`,
+      title: "Forbidden",
+      status,
+      detail,
+      code,
+    },
+    { status, headers: { "Content-Type": "application/problem+json" } }
+  );
 }
 
 export type AuthenticatedSessionResult =
@@ -107,6 +126,38 @@ export async function getAuthenticatedSession(
         { status: 401, headers: { "Content-Type": "application/problem+json" } }
       ),
     };
+  }
+
+  // A platform suspension or archive blocks every tenant-plane request, not
+  // only page renders (FR-017, FR-019).
+  if (session.organizationId) {
+    const status = await readDashboardTenantStatus(session.organizationId);
+    if (status === TENANT_STATUS.SUSPENDED) {
+      return {
+        ok: false,
+        response: blockedWorkspaceResponse(
+          403,
+          "TENANT_SUSPENDED",
+          "This workspace is suspended. Contact your platform administrator."
+        ),
+      };
+    }
+    if (status === TENANT_STATUS.ARCHIVED) {
+      return {
+        ok: false,
+        response: blockedWorkspaceResponse(
+          403,
+          "TENANT_ARCHIVED",
+          "This workspace is archived and its data is no longer accessible."
+        ),
+      };
+    }
+    // An unknown organisation row is not a lifecycle state: the tenant data
+    // path (apps/api) denies it with 404, and the page fails on its own. This
+    // guard refuses only a workspace the platform has actually blocked.
+    if (status === null) {
+      return { ok: true, session };
+    }
   }
 
   if (options.requireOrganization && !session.organizationId) {

@@ -131,6 +131,36 @@ export {
   type PlatformErrorDefinition,
 } from "./errors/index.js";
 
+// Tenant lifecycle vocabulary and transition matrix
+export {
+  TENANT_STATUSES,
+  TENANT_STATUS,
+  TENANT_LIFECYCLE_ACTIONS,
+  TENANT_LIFECYCLE_ACTION,
+  TENANT_LIFECYCLE_EVENT_TYPES,
+  TENANT_LIFECYCLE_REASON_CODES,
+  TENANT_LIFECYCLE_TRANSITIONS,
+  TENANT_LIFECYCLE_REASON_MIN_LENGTH,
+  TENANT_LIFECYCLE_REASON_MAX_LENGTH,
+  BLOCKING_TENANT_STATUSES,
+  isTenantStatus,
+  normalizeTenantStatus,
+  getTenantLifecycleTransition,
+  canApplyLifecycleAction,
+  resolveRestoreTarget,
+  isBlockingTenantStatus,
+  type TenantStatus,
+  type TenantLifecycleAction,
+  type TenantLifecycleTransition,
+  type BlockingTenantStatus,
+} from "./lifecycle/transitions.js";
+
+export {
+  tenantLifecycleEventSchema,
+  tenantLifecycleEventDataSchema,
+  type TenantLifecycleEvent,
+} from "./lifecycle/event-schema.js";
+
 // Reference catalog validation
 export {
   normalizeCatalogCode,
