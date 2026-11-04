@@ -23,11 +23,28 @@ export function platformApiUrl(path: string): string {
   return `${baseUrl.replace(/\/$/, "")}${path}`;
 }
 
+const AUTH_PATH_PREFIX = "/api/v1/admin/auth";
+
+export type UnauthorizedHandler = () => void;
+
+let unauthorizedHandler: UnauthorizedHandler | null = null;
+
+/**
+ * The shell registers one handler, so a screen that loses its control session
+ * sends the operator back to sign-in instead of painting an error banner over
+ * a session the server already rejected.
+ */
+export function setUnauthorizedHandler(
+  handler: UnauthorizedHandler | null,
+): void {
+  unauthorizedHandler = handler;
+}
+
 export async function platformFetch(
   path: string,
-  init: RequestInit = {}
+  init: RequestInit = {},
 ): Promise<Response> {
-  return fetch(platformApiUrl(path), {
+  const response = await fetch(platformApiUrl(path), {
     ...init,
     credentials: "include",
     headers: {
@@ -35,6 +52,18 @@ export async function platformFetch(
       ...(init.headers ?? {}),
     },
   });
+
+  // The auth endpoints answer 401 as part of their normal flow. The provider
+  // handles those itself, so they must not trigger the global redirect.
+  if (
+    response.status === 401 &&
+    !path.startsWith(AUTH_PATH_PREFIX) &&
+    unauthorizedHandler !== null
+  ) {
+    unauthorizedHandler();
+  }
+
+  return response;
 }
 
 export async function readProblem(response: Response): Promise<string> {
@@ -51,18 +80,19 @@ export async function readProblem(response: Response): Promise<string> {
   return response.statusText || `Request failed with status ${response.status}`;
 }
 
-
 interface DataSchema<T> {
   parse(data: unknown): T;
 }
 
 export async function readSuccessData<T>(
   response: Response,
-  schema: DataSchema<T>
+  schema: DataSchema<T>,
 ): Promise<T> {
   const body = (await response.json()) as { data?: unknown };
   if (body === null || typeof body !== "object" || !("data" in body)) {
-    throw new InternalServerError("The API returned an invalid success envelope");
+    throw new InternalServerError(
+      "The API returned an invalid success envelope",
+    );
   }
   return schema.parse(body.data);
 }

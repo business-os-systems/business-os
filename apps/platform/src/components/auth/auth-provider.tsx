@@ -17,6 +17,7 @@ import {
   platformFetch,
   readProblem,
   readSuccessData,
+  setUnauthorizedHandler,
 } from "@/lib/api";
 import { requestPlatformSignOut } from "@/lib/logout";
 import type { PlatformSession } from "@/lib/auth-types";
@@ -58,13 +59,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(
         await readSuccessData<PlatformSession>(
           response,
-          platformSessionViewSchema
-        )
+          platformSessionViewSchema,
+        ),
       );
       setSignOutFailed(false);
     } catch (cause) {
       setError(
-        cause instanceof Error ? cause.message : "Unable to load the session"
+        cause instanceof Error ? cause.message : "Unable to load the session",
       );
     } finally {
       setLoading(false);
@@ -74,6 +75,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  // Any screen whose request is refused sends the operator back to sign-in.
+  // The ignored request keeps its own error banner until the route changes.
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      setSession(null);
+      setSignOutFailed(false);
+      setError(null);
+      router.replace("/sign-in");
+    });
+    return () => {
+      setUnauthorizedHandler(null);
+    };
+  }, [router]);
 
   const signOut = useCallback(async () => {
     const outcome = await requestPlatformSignOut();
@@ -104,15 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut,
       forceSignOut,
     }),
-    [
-      session,
-      loading,
-      error,
-      signOutFailed,
-      refresh,
-      signOut,
-      forceSignOut,
-    ]
+    [session, loading, error, signOutFailed, refresh, signOut, forceSignOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -121,7 +128,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function usePlatformAuth(): AuthContextValue {
   const value = useContext(AuthContext);
   if (value === null) {
-    throw new InternalServerError("usePlatformAuth must be used inside AuthProvider");
+    throw new InternalServerError(
+      "usePlatformAuth must be used inside AuthProvider",
+    );
   }
   return value;
 }

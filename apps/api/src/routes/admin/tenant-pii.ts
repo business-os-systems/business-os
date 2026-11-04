@@ -36,12 +36,14 @@ const tenantParamsSchema = z.object({
 });
 
 /**
- * The reason is optional here on purpose: the database is the enforcement point
- * and answers PII_REASON_REQUIRED, so a missing reason maps to the registry
- * code instead of a generic schema failure.
+ * The reason travels in a header, never in the query string: a URL reason is
+ * retained by every proxy that logs request lines, and operators name members
+ * and cases in it. It stays optional here on purpose - the database is the
+ * enforcement point and answers PII_REASON_REQUIRED, so the client receives the
+ * registry code instead of a generic schema failure.
  */
-const piiQuerySchema = z.object({
-  reason: z.string().trim().max(255).optional(),
+const piiHeaderSchema = z.object({
+  "x-pii-reason": z.string().trim().max(255).optional(),
 });
 
 const readTenantPiiRoute = createRoute({
@@ -51,7 +53,7 @@ const readTenantPiiRoute = createRoute({
   summary: "Read tenant personal data",
   description:
     "Active member contact data for one tenant. Requires platform:pii:read and a recorded reason; every read is audited by the database. Responses must not be cached.",
-  request: { params: tenantParamsSchema, query: piiQuerySchema },
+  request: { params: tenantParamsSchema, headers: piiHeaderSchema },
   responses: {
     200: {
       description: "Tenant personal data",
@@ -102,12 +104,12 @@ tenantPiiRouter.use("*", async (c, next) => {
 
 tenantPiiRouter.openapi(readTenantPiiRoute, async (c) => {
   const { orgId } = c.req.valid("param");
-  const { reason } = c.req.valid("query");
+  const headers = c.req.valid("header");
 
   const result = await readTenantPii(getPlatformPrismaClient(), {
     organizationId: orgId,
     operatorId: operatorId(c),
-    reason: reason ?? "",
+    reason: headers["x-pii-reason"] ?? "",
     requestId: requestId(c),
   });
 

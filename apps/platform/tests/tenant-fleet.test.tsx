@@ -1,0 +1,209 @@
+import { describe, expect, it, vi } from "vitest";
+import React from "react";
+import { renderToString } from "react-dom/server";
+import { PLATFORM_CAPABILITIES } from "@suite/core";
+import {
+  ConfigTable,
+  type ConfigTableState,
+} from "../src/components/tables/config-table";
+import {
+  TENANT_FILTERED_EMPTY_STATE,
+  TENANT_TABLE_CONFIG,
+} from "../src/components/tables/tenant-table.config";
+import { TenantPiiPanel } from "../src/app/(platform)/tenants/[orgId]/tenant-pii-panel";
+import {
+  TENANT_TABS,
+  nextTabId,
+} from "../src/app/(platform)/tenants/[orgId]/tenant-record-tabs";
+import {
+  canReadPersonalData,
+  TENANT_STATUSES,
+  type TenantSummary,
+} from "../src/lib/tenant-api";
+import { toMessage } from "../src/lib/error-message";
+import { formatDate, formatDateTime, UNAVAILABLE } from "../src/lib/format";
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
+  usePathname: () => "/tenants",
+  useSearchParams: () => new URLSearchParams(),
+  useParams: () => ({ orgId: "org_probe" }),
+}));
+
+const TENANT: TenantSummary = {
+  id: "org_probe",
+  name: "River View",
+  slug: "river-view",
+  status: "ACTIVE",
+  createdAt: "2026-01-05T00:00:00.000Z",
+  branchCount: 2,
+  memberCount: 7,
+  installedAppIds: ["website-builder"],
+};
+
+const READY: ConfigTableState = { kind: "ready" };
+
+function renderTable(
+  rows: readonly TenantSummary[],
+  state: ConfigTableState,
+  options: { onRowClick?: (row: TenantSummary) => void } = {},
+): string {
+  return renderToString(
+    <ConfigTable
+      config={TENANT_TABLE_CONFIG}
+      rows={rows}
+      state={state}
+      rowKey={(row) => row.id}
+      rowLabel={(row) => row.name}
+      onRowClick={options.onRowClick}
+    />,
+  );
+}
+
+describe("Tenant fleet table", () => {
+  it("exposes no personal-data column", () => {
+    const headers = TENANT_TABLE_CONFIG.columns
+      .map((column) => column.header.toLowerCase())
+      .join(" ");
+    expect(headers).not.toContain("email");
+    expect(headers).not.toContain("personal");
+  });
+
+  it("renders the configured empty state instead of a blank table", () => {
+    const html = renderTable([], READY);
+    expect(html).toContain(TENANT_TABLE_CONFIG.emptyState.title);
+    expect(html).not.toContain("<table");
+  });
+
+  it("renders the filtered-empty state when the caller overrides it", () => {
+    const html = renderToString(
+      <ConfigTable
+        config={TENANT_TABLE_CONFIG}
+        rows={[]}
+        state={READY}
+        rowKey={(row) => row.id}
+        rowLabel={(row) => row.name}
+        emptyState={TENANT_FILTERED_EMPTY_STATE}
+      />,
+    );
+    expect(html).toContain(TENANT_FILTERED_EMPTY_STATE.title);
+    expect(html).not.toContain(TENANT_TABLE_CONFIG.emptyState.title);
+  });
+
+  it("renders the error state with the caller title", () => {
+    const html = renderTable([], {
+      kind: "error",
+      title: "Unable to load tenants",
+      message: "Capability denied.",
+    });
+    expect(html).toContain("Capability denied.");
+    expect(html).not.toContain("<table");
+  });
+
+  it("renders no table while loading", () => {
+    const html = renderTable([], { kind: "loading" });
+    expect(html).not.toContain("<table");
+    expect(html).not.toContain(TENANT_TABLE_CONFIG.emptyState.title);
+  });
+
+  it("renders a row with the tenant name, slug and status", () => {
+    const html = renderTable([TENANT], READY);
+    expect(html).toContain("River View");
+    expect(html).toContain("river-view");
+    expect(html).toContain("Active");
+  });
+
+  it("gives the first cell a keyboard-activatable control when a row opens", () => {
+    const html = renderTable([TENANT], READY, { onRowClick: () => undefined });
+    expect(html).toContain("<button");
+    expect(html).toContain("Open ");
+    expect(html).toContain("River View");
+  });
+
+  it("renders no row button when the row is not interactive", () => {
+    const html = renderTable([TENANT], READY);
+    expect(html).not.toContain("<button");
+  });
+});
+
+describe("Tenant personal-data gate", () => {
+  it("denies without a capability list", () => {
+    expect(canReadPersonalData(undefined)).toBe(false);
+    expect(canReadPersonalData(null)).toBe(false);
+    expect(canReadPersonalData([])).toBe(false);
+  });
+
+  it("denies every capability except the personal-data one", () => {
+    expect(canReadPersonalData([PLATFORM_CAPABILITIES.TENANTS_READ.code])).toBe(
+      false,
+    );
+    expect(canReadPersonalData([PLATFORM_CAPABILITIES.AUDIT_READ.code])).toBe(
+      false,
+    );
+  });
+
+  it("allows the personal-data capability", () => {
+    expect(canReadPersonalData([PLATFORM_CAPABILITIES.PII_READ.code])).toBe(
+      true,
+    );
+  });
+
+  it("renders nothing without the personal-data capability", () => {
+    const html = renderToString(
+      <TenantPiiPanel orgId={TENANT.id} canRead={false} />,
+    );
+    expect(html).toBe("");
+  });
+
+  it("offers the reveal action with the personal-data capability", () => {
+    const html = renderToString(
+      <TenantPiiPanel orgId={TENANT.id} canRead={true} />,
+    );
+    expect(html).toContain("Show personal data");
+    expect(html).toContain("recorded reason");
+  });
+});
+
+describe("Tenant record tabs", () => {
+  it("declares the four record tabs", () => {
+    expect(TENANT_TABS.map((tab) => tab.id)).toEqual([
+      "overview",
+      "entitlements",
+      "quotas",
+      "audit",
+    ]);
+  });
+
+  it("wraps forward and backward", () => {
+    expect(nextTabId("overview", "previous")).toBe("audit");
+    expect(nextTabId("audit", "next")).toBe("overview");
+    expect(nextTabId("overview", "next")).toBe("entitlements");
+  });
+});
+
+describe("Platform formatting helpers", () => {
+  it("renders an unusable timestamp as unavailable instead of throwing", () => {
+    expect(formatDateTime("not-a-date")).toBe(UNAVAILABLE);
+    expect(formatDate("not-a-date")).toBe(UNAVAILABLE);
+  });
+
+  it("formats a valid timestamp", () => {
+    expect(formatDate(TENANT.createdAt)).not.toBe(UNAVAILABLE);
+  });
+
+  it("never renders an object as text", () => {
+    expect(toMessage({ code: "X" })).toBe("An unexpected error occurred.");
+    expect(toMessage(new Error("boom"))).toBe("boom");
+    expect(toMessage("plain")).toBe("plain");
+  });
+
+  it("pins the tenant status vocabulary", () => {
+    expect(TENANT_STATUSES).toEqual([
+      "ACTIVE",
+      "TRIAL",
+      "PAST_DUE",
+      "SUSPENDED",
+      "ARCHIVED",
+    ]);
+  });
+});

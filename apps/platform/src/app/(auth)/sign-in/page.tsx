@@ -7,7 +7,16 @@ import {
   startAuthentication,
   startRegistration,
 } from "@simplewebauthn/browser";
-import { Alert, Button, Card, CardContent, CardHeader, CardTitle, ThemeToggle } from "@suite/ui";
+import {
+  Alert,
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Spinner,
+  ThemeToggle,
+} from "@suite/ui";
 import { LayersIcon } from "@suite/ui/icons";
 import {
   platformBootstrapOptionsSchema,
@@ -36,19 +45,61 @@ function SignInContent() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [supported, setSupported] = useState<boolean | null>(null);
+  const [checking, setChecking] = useState(true);
 
   useEffect(() => {
     setSupported(browserSupportsWebAuthn());
     const token = readBootstrapToken(window.location.hash);
     setBootstrapToken(token);
+
     if (token !== null) {
       clearBootstrapFragment(
         window.history,
         window.location.pathname,
-        window.location.search
+        window.location.search,
       );
+      setChecking(false);
+      return;
     }
-  }, []);
+
+    let cancelled = false;
+
+    async function leaveIfSignedIn(): Promise<void> {
+      try {
+        const response = await platformFetch(PLATFORM_API_PATHS.me);
+        if (cancelled) {
+          return;
+        }
+        if (response.ok) {
+          router.replace("/");
+          return;
+        }
+      } catch {
+        // The session cannot be confirmed, so the form stays available.
+        if (!cancelled) {
+          setChecking(false);
+        }
+        return;
+      }
+      if (!cancelled) {
+        setChecking(false);
+      }
+    }
+
+    void leaveIfSignedIn();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
+
+  if (checking || supported === null) {
+    return (
+      <div className="flex items-center justify-center p-10">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
 
   if (supported === false) {
     return (
@@ -58,10 +109,6 @@ function SignInContent() {
         message="Use a browser and device that supports passkeys to sign in."
       />
     );
-  }
-
-  if (supported === null) {
-    return null;
   }
 
   async function verify(path: string, body: Record<string, unknown>) {
@@ -83,7 +130,7 @@ function SignInContent() {
     try {
       const optionsResponse = await platformFetch(
         PLATFORM_API_PATHS.signInOptions,
-        { method: "POST" }
+        { method: "POST" },
       );
       if (!optionsResponse.ok) {
         setError(await readProblem(optionsResponse));
@@ -91,7 +138,7 @@ function SignInContent() {
       }
       const { flowId, options } = await readSuccessData<PlatformSignInOptions>(
         optionsResponse,
-        platformSignInOptionsSchema
+        platformSignInOptionsSchema,
       );
       const assertion = await startAuthentication({
         optionsJSON: parseRequestOptions(options),
@@ -117,16 +164,17 @@ function SignInContent() {
         {
           method: "POST",
           body: JSON.stringify({ token: bootstrapToken }),
-        }
+        },
       );
       if (!optionsResponse.ok) {
         setError(await readProblem(optionsResponse));
         return;
       }
-      const { flowId, options } = await readSuccessData<PlatformBootstrapOptions>(
-        optionsResponse,
-        platformBootstrapOptionsSchema
-      );
+      const { flowId, options } =
+        await readSuccessData<PlatformBootstrapOptions>(
+          optionsResponse,
+          platformBootstrapOptionsSchema,
+        );
       const credential = await startRegistration({
         optionsJSON: parseCreationOptions(options),
       });
@@ -163,7 +211,9 @@ function SignInContent() {
         </div>
         <div>
           <CardTitle className="text-xl">
-            {bootstrapToken ? "Create the first operator passkey" : "Operator sign-in"}
+            {bootstrapToken
+              ? "Create the first operator passkey"
+              : "Operator sign-in"}
           </CardTitle>
           <p className="mt-1 text-sm text-text-secondary">
             {bootstrapToken
@@ -173,7 +223,9 @@ function SignInContent() {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {error ? <Alert variant="error" title="Unable to continue" message={error} /> : null}
+        {error ? (
+          <Alert variant="error" title="Unable to continue" message={error} />
+        ) : null}
         <Button
           fullWidth
           size="lg"

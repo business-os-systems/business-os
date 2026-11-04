@@ -42,6 +42,10 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://businessos_admin:businessos_password@localhost:5432/business_os_dev
+      # Owner identity. The Platform suites build fixtures with it and skip
+      # themselves when it is absent, which would report green while running
+      # no database test at all.
+      DIRECT_URL: postgresql://businessos_admin:businessos_password@localhost:5432/business_os_dev
       PLATFORM_DATABASE_URL: postgresql://app_platform:platform_test_password@localhost:5432/business_os_dev
       TENANT_DATABASE_URL: postgresql://app_tenant:tenant_test_password@localhost:5432/business_os_dev
       CONTROL_SESSION_SECRET: platform-ci-session-secret-32-characters

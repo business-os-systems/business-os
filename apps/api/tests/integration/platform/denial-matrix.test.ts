@@ -102,7 +102,7 @@ const PROTECTED_ROUTES: readonly ProtectedRoute[] = [
   {
     id: "admin-tenants/pii",
     method: "GET",
-    path: "/tenants/tenant_denial_probe/pii?reason=denial+probe",
+    path: "/tenants/tenant_denial_probe/pii",
     router: "admin-tenant-pii",
     anonymous: { status: 401, code: PLATFORM_ERROR_CODE.AUTH_REQUIRED },
     originGuarded: false,
