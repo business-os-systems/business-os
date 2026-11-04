@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { sanitizePii, isSensitiveKey, REDACTED_MARKER } from "../src/sanitize.js";
+import {
+  sanitizePii,
+  isSensitiveKey,
+  scrubStringValues,
+  REDACTED_MARKER,
+} from "../src/sanitize.js";
 
 describe("Strict Zero-PII Sanitizer (@suite/logger)", () => {
   it("redacts sensitive keys regardless of case", () => {
@@ -47,6 +52,14 @@ describe("Strict Zero-PII Sanitizer (@suite/logger)", () => {
     expect(sanitized.message).not.toContain("123-456-7890");
     expect(sanitized.message).toContain("[EMAIL_REDACTED]");
     expect(sanitized.message).toContain("[PHONE_REDACTED]");
+  });
+
+  it("scrubs the single-use bootstrap link token", () => {
+    const scrubbed = scrubStringValues(
+      "Open http://localhost:3002/sign-in#bootstrap=live-token-abc123"
+    );
+
+    expect(scrubbed).not.toContain("live-token-abc123");
   });
 
   it("safely handles circular references without infinite loops", () => {

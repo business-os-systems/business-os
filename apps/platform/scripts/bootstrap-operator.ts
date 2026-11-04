@@ -1,4 +1,7 @@
-import { chmodSync, writeFileSync } from "node:fs";
+import {
+  describeBootstrapFailure,
+  writeBootstrapLink,
+} from "./bootstrap-link.js";
 import { InternalServerError } from "@suite/core/errors";
 import {
   appendPlatformAuditEvent,
@@ -54,9 +57,8 @@ async function main(): Promise<void> {
     const url = new URL("/sign-in", controlPlaneOrigin);
     url.hash = new URLSearchParams({ bootstrap: result.token }).toString();
     const destination = outputPath();
-    writeFileSync(destination, `${url.toString()}\n`, { mode: 0o600 });
-    chmodSync(destination, 0o600);
-    console.log(`Operator ${result.email} is ready.`);
+    writeBootstrapLink(destination, url.toString());
+    console.log(`Operator ${result.operatorId} is ready.`);
     console.log(
       `The single-use link was written to ${destination} with mode 0600.`
     );
@@ -68,6 +70,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((error: unknown) => {
-  console.error(error instanceof Error ? error.message : String(error));
+  console.error(describeBootstrapFailure(error));
   process.exitCode = 1;
 });

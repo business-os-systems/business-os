@@ -4,6 +4,7 @@
  * Zero hardcoded credentials, test keys, or magic strings (Constitution Principle XII).
  */
 
+import { isTemplateSecret } from "@suite/core";
 import { isProduction } from "./env";
 
 const SITEVERIFY_ENDPOINT = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
@@ -14,7 +15,16 @@ export function getTurnstileSiteKey(): string {
 }
 
 export function getTurnstileSecretKey(): string {
-  return process.env.TURNSTILE_SECRET_KEY || "";
+  const key = process.env.TURNSTILE_SECRET_KEY?.trim();
+  if (key === undefined || key.length === 0) {
+    return "";
+  }
+  if (process.env.NODE_ENV === "production" && isTemplateSecret(key)) {
+    throw new Error(
+      "TURNSTILE_SECRET_KEY still holds a published template value. Generate a real secret before starting in production."
+    );
+  }
+  return key;
 }
 
 export function isTurnstileConfigured(): boolean {

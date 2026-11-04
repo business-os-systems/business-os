@@ -18,14 +18,19 @@ import {
   readProblem,
   readSuccessData,
 } from "@/lib/api";
+import { requestPlatformSignOut } from "@/lib/logout";
 import type { PlatformSession } from "@/lib/auth-types";
 
 interface AuthContextValue {
   readonly session: PlatformSession | null;
   readonly loading: boolean;
   readonly error: string | null;
+  /** True when the last sign-out was rejected by the API. */
+  readonly signOutFailed: boolean;
   readonly refresh: () => Promise<void>;
   readonly signOut: () => Promise<void>;
+  /** Clears local state only; the server session may still be live. */
+  readonly forceSignOut: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -35,6 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<PlatformSession | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [signOutFailed, setSignOutFailed] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -55,6 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           platformSessionViewSchema
         )
       );
+      setSignOutFailed(false);
     } catch (cause) {
       setError(
         cause instanceof Error ? cause.message : "Unable to load the session"
@@ -69,14 +76,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   const signOut = useCallback(async () => {
-    await platformFetch(PLATFORM_API_PATHS.logout, { method: "POST" });
+    const outcome = await requestPlatformSignOut();
+    if (!outcome.ok) {
+      setSignOutFailed(true);
+      setError(outcome.message);
+      return;
+    }
+    setSignOutFailed(false);
+    setSession(null);
+    router.replace("/sign-in");
+  }, [router]);
+
+  const forceSignOut = useCallback(() => {
+    setSignOutFailed(false);
+    setError(null);
     setSession(null);
     router.replace("/sign-in");
   }, [router]);
 
   const value = useMemo(
-    () => ({ session, loading, error, refresh, signOut }),
-    [session, loading, error, refresh, signOut]
+    () => ({
+      session,
+      loading,
+      error,
+      signOutFailed,
+      refresh,
+      signOut,
+      forceSignOut,
+    }),
+    [
+      session,
+      loading,
+      error,
+      signOutFailed,
+      refresh,
+      signOut,
+      forceSignOut,
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -3,6 +3,8 @@
  * Single source of truth for runtime environment detection and configuration.
  */
 
+import { isTemplateSecret } from "@suite/core";
+
 export const isProduction = process.env.NODE_ENV === "production";
 export const isDevelopment = process.env.NODE_ENV === "development";
 export const isTest = process.env.NODE_ENV === "test";
@@ -18,6 +20,11 @@ export function getBetterAuthSecret(): string {
   if (!secret) {
     throw new Error(
       "BETTER_AUTH_SECRET environment variable is required to sign and verify session tokens."
+    );
+  }
+  if (process.env.NODE_ENV === "production" && isTemplateSecret(secret)) {
+    throw new Error(
+      "BETTER_AUTH_SECRET still holds a published template value. Generate a real secret before starting in production."
     );
   }
   return secret;

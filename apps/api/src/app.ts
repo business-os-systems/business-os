@@ -21,7 +21,7 @@ import {
   adminRouter,
   platformAuthRouter,
 } from "./routes/index.js";
-import { isProduction } from "./lib/env.js";
+import { assertProductionConfiguration, isProduction } from "./lib/env.js";
 import { createWebsiteBuilderRoutes } from "@suite/website-builder/routes";
 import { metricsRegistry } from "./telemetry.js";
 
@@ -34,6 +34,9 @@ export interface AppOptions {
  * Creates and configures the production Platform Core Hono v4 Application.
  */
 export function createApp(options: AppOptions = {}) {
+  // Every HTTP entrypoint constructs the app, so the production guard lives here.
+  assertProductionConfiguration();
+
   const app = new OpenAPIHono();
 
   // 1. Core Production Middleware Pipeline

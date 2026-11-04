@@ -20,6 +20,10 @@ import {
   parseRequestOptions,
 } from "@/lib/webauthn-options";
 import {
+  clearBootstrapFragment,
+  readBootstrapToken,
+} from "@/lib/bootstrap-token";
+import {
   PLATFORM_API_PATHS,
   platformFetch,
   readProblem,
@@ -35,8 +39,15 @@ function SignInContent() {
 
   useEffect(() => {
     setSupported(browserSupportsWebAuthn());
-    const params = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-    setBootstrapToken(params.get("bootstrap"));
+    const token = readBootstrapToken(window.location.hash);
+    setBootstrapToken(token);
+    if (token !== null) {
+      clearBootstrapFragment(
+        window.history,
+        window.location.pathname,
+        window.location.search
+      );
+    }
   }, []);
 
   if (supported === false) {
