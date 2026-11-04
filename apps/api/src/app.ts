@@ -9,8 +9,11 @@ import {
   rateLimitMiddleware,
   requireAuth,
   requireMetricsAuth,
+  createTenantAccessGuard,
   globalErrorHandler,
 } from "./middleware/index.js";
+import { prisma } from "@suite/db";
+import { redis } from "@suite/redis";
 import {
   healthRouter,
   systemRouter,
@@ -24,6 +27,13 @@ import {
 import { assertProductionConfiguration, isProduction } from "./lib/env.js";
 import { createWebsiteBuilderRoutes } from "@suite/website-builder/routes";
 import { metricsRegistry } from "./telemetry.js";
+
+/** Tenant-plane prefixes that require a session and a non-blocked workspace. */
+const TENANT_DATA_PREFIXES = [
+  "/api/v1/organizations",
+  "/api/v1/branches",
+  "/api/v1/audit-logs",
+] as const;
 
 export interface AppOptions {
   enableRateLimiting?: boolean;
@@ -66,13 +76,19 @@ export function createApp(options: AppOptions = {}) {
   app.route("/api/v1/system", systemRouter);
   app.route("/api/v1/auth", authRouter);
 
-  // Mount requireAuth across tenant operational routes (defense-in-depth)
-  app.use("/api/v1/organizations/*", requireAuth());
-  app.use("/api/v1/organizations", requireAuth());
-  app.use("/api/v1/branches/*", requireAuth());
-  app.use("/api/v1/branches", requireAuth());
-  app.use("/api/v1/audit-logs/*", requireAuth());
-  app.use("/api/v1/audit-logs", requireAuth());
+  // Tenant operational routes: requireAuth, then the suspension gate. One list
+  // so a new tenant router cannot be added to one pass and forgotten in the
+  // other. /api/v1/cms is NOT covered yet - its router has no auth middleware
+  // at all and needs its own security slice (see #222 review, SCR-002).
+  const tenantAccessGuard = createTenantAccessGuard({ prisma, redis });
+  for (const prefix of TENANT_DATA_PREFIXES) {
+    app.use(`${prefix}/*`, requireAuth());
+    app.use(prefix, requireAuth());
+  }
+  for (const prefix of TENANT_DATA_PREFIXES) {
+    app.use(`${prefix}/*`, tenantAccessGuard);
+    app.use(prefix, tenantAccessGuard);
+  }
 
   app.route("/api/v1/organizations", organizationsRouter);
   app.route("/api/v1/branches", branchesRouter);

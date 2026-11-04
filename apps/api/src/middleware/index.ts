@@ -18,6 +18,10 @@ export {
   type RequireAuthOptions,
 } from "./auth.js";
 export {
+  createTenantAccessGuard,
+  type TenantAccessGuardOptions,
+} from "./tenant-access.js";
+export {
   createEdgeAdmissionMiddleware,
   EDGE_ADMISSION_HEADER,
   type EdgeAdmissionOptions,

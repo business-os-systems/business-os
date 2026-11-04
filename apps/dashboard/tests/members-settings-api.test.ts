@@ -20,7 +20,7 @@ import { prisma } from "@suite/db";
 vi.mock("@suite/db", () => {
   const mockPrisma = {
     organization: {
-      findUnique: vi.fn().mockResolvedValue({ metadata: {} }),
+      findUnique: vi.fn().mockResolvedValue({ metadata: {}, status: "ACTIVE" }),
     },
     userOrganization: {
       findMany: vi.fn(),

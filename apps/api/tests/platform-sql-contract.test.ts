@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { PLATFORM_DATABASE_AUDIT_ACTIONS } from "@suite/auth/platform";
 import {
+  PERMISSIONS,
   PLATFORM_CAPABILITY_CODES,
   PLATFORM_CAPABILITIES,
   QUOTA_RESOURCE_DEFINITIONS,
@@ -16,6 +17,8 @@ import {
 const SQL_FILES = [
   "../../packages/db/prisma/schema/migrations/20261104120000_platform_audited_functions/migration.sql",
   "../../packages/db/prisma/schema/migrations/20261104130000_audit_chain_integrity/migration.sql",
+  "../../packages/db/prisma/schema/migrations/20261104140000_platform_tenant_admin_contacts/migration.sql",
+  "../../packages/db/prisma/schema/migrations/20261104150000_platform_notification_contacts_audit/migration.sql",
   "../../deploy/platform/reseal-audit-chain.sql",
 ].map((relativePath) => resolve(process.cwd(), relativePath));
 
@@ -30,6 +33,14 @@ const PUBLIC_FUNCTIONS = [
   "fn_set_app_setting",
   "fn_tenant_pii",
   "fn_verify_audit_chain",
+  "fn_tenant_admin_contacts",
+] as const;
+
+/** The notification audience must evaluate the same capability strings as RBAC. */
+const ADMIN_PERMISSION_ACTIONS = [
+  PERMISSIONS.WILDCARD,
+  PERMISSIONS.CORE.ALL,
+  PERMISSIONS.CORE.USERS_MANAGE,
 ] as const;
 
 const CAPABILITIES_USED = [
@@ -70,6 +81,12 @@ describe("Platform SQL contract", () => {
       } else {
         expect(sql, key).not.toContain(`WHEN '${key}' THEN (`);
       }
+    }
+  });
+
+  it("addresses tenant administrators by the same capability literals as RBAC", () => {
+    for (const action of ADMIN_PERMISSION_ACTIONS) {
+      expect(sql, action).toContain(`'${action}'`);
     }
   });
 

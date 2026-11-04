@@ -54,6 +54,16 @@ export function getGitCommitSha(): string {
   return sha;
 }
 
+/**
+ * Support address shown on a suspended or archived workspace notice (FR-022).
+ * Optional on purpose: a deployment without it shows the administrator
+ * instruction instead of a dead mail link, and no address is invented.
+ */
+export function getSupportContactEmail(): string | null {
+  const value = process.env.SUPPORT_CONTACT_EMAIL?.trim();
+  return value && value.length > 0 ? value : null;
+}
+
 export function getBuildTimestamp(): string {
   const ts = process.env.BUILD_TIMESTAMP;
   if (!ts) {

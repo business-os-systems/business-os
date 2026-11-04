@@ -21,7 +21,9 @@ BEGIN
     ('20261029160000_audit_pending_check'),
     ('20261029170000_audit_search_path'),
     ('20261104120000_platform_audited_functions'),
-    ('20261104130000_audit_chain_integrity')
+    ('20261104130000_audit_chain_integrity'),
+    ('20261104140000_platform_tenant_admin_contacts'),
+    ('20261104150000_platform_notification_contacts_audit')
   ) AS expected(name)
   WHERE NOT EXISTS (
     SELECT 1
@@ -59,6 +61,23 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'Audit chain integrity: actor FK is not ON DELETE RESTRICT (D-027)';
   END IF;
+
+  -- The notification audience is defined in the database, not in the tenant
+  -- runtime: the tenant role must never read another tenant's contact data.
+  IF NOT has_function_privilege(
+    'app_platform',
+    'platform.fn_tenant_admin_contacts(text, text, text)',
+    'EXECUTE'
+  ) THEN
+    RAISE EXCEPTION 'Notification boundary failed: app_platform cannot execute fn_tenant_admin_contacts';
+  END IF;
+  IF has_function_privilege(
+    'app_tenant',
+    'platform.fn_tenant_admin_contacts(text, text, text)',
+    'EXECUTE'
+  ) THEN
+    RAISE EXCEPTION 'Notification boundary failed: app_tenant can execute fn_tenant_admin_contacts';
+  END IF;
 END
 $$;
 
@@ -71,7 +90,9 @@ WHERE migration_name IN (
   '20261029160000_audit_pending_check',
   '20261029170000_audit_search_path',
   '20261104120000_platform_audited_functions',
-  '20261104130000_audit_chain_integrity'
+  '20261104130000_audit_chain_integrity',
+  '20261104140000_platform_tenant_admin_contacts',
+  '20261104150000_platform_notification_contacts_audit'
 )
 ORDER BY started_at;
 

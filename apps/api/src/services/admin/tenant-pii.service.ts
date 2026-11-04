@@ -5,6 +5,7 @@ import {
   NotFoundError,
   ValidationError,
 } from "@suite/core/errors";
+import { throwMappedPlatformSqlError } from "./platform-sql-errors.js";
 
 export interface TenantPiiMember {
   readonly userId: string;
@@ -35,66 +36,38 @@ interface TenantPiiRow {
   joinedAt: Date;
 }
 
-const RAW_SQL_ERROR_CODE = "P2010";
-const SQLSTATE_IN_MESSAGE = /Code: `([A-Z0-9]+)`/;
 const PII_REASON_IN_MESSAGE = /PII_REASON_REQUIRED/;
-
-function rawSqlState(error: unknown): string | null {
-  if (!(error instanceof Prisma.PrismaClientKnownRequestError)) {
-    return null;
-  }
-  if (error.code !== RAW_SQL_ERROR_CODE) {
-    return null;
-  }
-  const meta = error.meta as { code?: unknown } | undefined;
-  if (typeof meta?.code === "string") {
-    return meta.code;
-  }
-  const match = SQLSTATE_IN_MESSAGE.exec(error.message);
-  return match?.[1] ?? null;
-}
-
-function rawSqlMessage(error: unknown): string {
-  if (!(error instanceof Prisma.PrismaClientKnownRequestError)) {
-    return "";
-  }
-  const meta = error.meta as { message?: unknown } | undefined;
-  const fromMeta = typeof meta?.message === "string" ? meta.message : "";
-  return `${fromMeta} ${error.message}`;
-}
 
 /**
  * The database raises private PT classes (D-028). A genuine 42501 or 22023 is
  * a deploy fault, so it is never mapped to a business error here.
  */
-function throwMappedPiiError(error: unknown): never {
-  const sqlState = rawSqlState(error);
-
-  if (sqlState === "PT404") {
-    throw new NotFoundError("Tenant not found.", {
-      code: PLATFORM_ERROR_CODE.TENANT_NOT_FOUND,
-    });
-  }
-
-  if (sqlState === "PT403") {
-    throw new ForbiddenError("Capability denied.", {
-      code: PLATFORM_ERROR_CODE.CAPABILITY_DENIED,
-    });
-  }
-
-  if (
-    sqlState === "PT422" &&
-    PII_REASON_IN_MESSAGE.test(rawSqlMessage(error))
-  ) {
-    throw new ValidationError(
-      "A recorded reason is required to read personal data.",
-      undefined,
-      { code: PLATFORM_ERROR_CODE.PII_REASON_REQUIRED },
-    );
-  }
-
-  throw error;
-}
+const PII_ERROR_RULES = [
+  {
+    sqlState: "PT422",
+    messagePattern: PII_REASON_IN_MESSAGE,
+    create: () =>
+      new ValidationError(
+        "A recorded reason is required to read personal data.",
+        undefined,
+        { code: PLATFORM_ERROR_CODE.PII_REASON_REQUIRED }
+      ),
+  },
+  {
+    sqlState: "PT404",
+    create: () =>
+      new NotFoundError("Tenant not found.", {
+        code: PLATFORM_ERROR_CODE.TENANT_NOT_FOUND,
+      }),
+  },
+  {
+    sqlState: "PT403",
+    create: () =>
+      new ForbiddenError("Capability denied.", {
+        code: PLATFORM_ERROR_CODE.CAPABILITY_DENIED,
+      }),
+  },
+];
 
 /**
  * Reads active member contact data through the audited definer function.
@@ -112,7 +85,7 @@ export async function readTenantPii(
       Prisma.sql`SELECT * FROM platform.fn_tenant_pii(${input.organizationId}, ${input.operatorId}, ${input.reason}, ${input.requestId})`,
     );
   } catch (error) {
-    throwMappedPiiError(error);
+    throwMappedPlatformSqlError(error, PII_ERROR_RULES);
   }
 
   return {

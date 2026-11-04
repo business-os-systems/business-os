@@ -132,6 +132,16 @@ export const PLATFORM_ERROR_CODES = {
     title: "Tenant Not Active",
     slug: "/errors/tenant-not-active",
   },
+  TENANT_SUSPENDED: {
+    status: 403,
+    title: "Tenant Suspended",
+    slug: "/errors/tenant-suspended",
+  },
+  TENANT_ARCHIVED: {
+    status: 403,
+    title: "Tenant Archived",
+    slug: "/errors/tenant-archived",
+  },
   VALIDATION_FAILED: {
     status: 422,
     title: "Validation Failed",

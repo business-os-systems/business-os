@@ -38,8 +38,10 @@ export async function listUserTenants(
     where: {
       userId,
       status: "ACTIVE",
+      // A suspended workspace is not selectable: signing into one would mint
+      // a live session for a tenant the platform has blocked (FR-017).
       organization: {
-        status: { not: "ARCHIVED" },
+        status: { notIn: ["ARCHIVED", "SUSPENDED"] },
       },
     },
     include: {
@@ -166,6 +168,13 @@ export async function switchActiveTenant(
     throw new ForbiddenError(
       "This organization has been archived and cannot be accessed.",
       { code: "ORGANIZATION_ARCHIVED" }
+    );
+  }
+
+  if (userOrg.organization.status === "SUSPENDED") {
+    throw new ForbiddenError(
+      "This organization is suspended and cannot be accessed.",
+      { code: "ORGANIZATION_SUSPENDED" }
     );
   }
 
