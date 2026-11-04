@@ -226,7 +226,9 @@ model AuditEvent {
   recordHash      String    @db.VarChar(64)
   occurredAt      DateTime  @default(now()) @db.Timestamptz(6)
 
-  actor PlatformOperator? @relation("AuditEvents", fields: [actorOperatorId], references: [id], onDelete: SetNull)
+  // RESTRICT: audit history outlives its actor. SET NULL would rewrite a
+  // hashed field and permanently invalidate the chain (D-027).
+  actor PlatformOperator? @relation("AuditEvents", fields: [actorOperatorId], references: [id], onDelete: Restrict)
 
   @@index([occurredAt(sort: Desc)])
   @@index([organizationId, occurredAt(sort: Desc)])

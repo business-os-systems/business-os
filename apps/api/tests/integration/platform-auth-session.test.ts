@@ -58,6 +58,11 @@ describe.skipIf(!enabled)("Platform auth session lifecycle", () => {
 
   afterAll(async () => {
     if (operatorId) {
+      // RESTRICT (D-027): audit history outlives its actor, so the fixture rows
+      // are removed explicitly before the operator.
+      await ownerPrisma.auditEvent.deleteMany({
+        where: { actorOperatorId: operatorId },
+      });
       await ownerPrisma.platformOperator.delete({ where: { id: operatorId } });
     }
     await prisma.$disconnect();

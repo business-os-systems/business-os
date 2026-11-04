@@ -136,18 +136,14 @@ export async function bootstrapFirstOperator(
     ));
 
   const token = deps.createToken();
-  try {
-    await deps.storeToken({
-      redis: deps.redis,
-      token,
-      payload: { operatorId: operator.id, email: operator.email },
-    });
-  } catch (error) {
-    if (operator.action === PLATFORM_AUDIT_ACTIONS.BOOTSTRAPPED) {
-      await deps.prisma.platformOperator.delete({ where: { id: operator.id } });
-    }
-    throw error;
-  }
+  // A failed token store leaves operator zero with its BOOTSTRAPPED audit row;
+  // the next run reissues the link. Deleting it would require deleting audit
+  // history, which the chain forbids (D-027).
+  await deps.storeToken({
+    redis: deps.redis,
+    token,
+    payload: { operatorId: operator.id, email: operator.email },
+  });
 
   if (operator.action === PLATFORM_AUDIT_ACTIONS.BOOTSTRAP_REISSUED) {
     await deps.appendAudit(deps.prisma, {
