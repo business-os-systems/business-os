@@ -116,6 +116,7 @@ export {
 // Platform error-code registry
 export {
   PLATFORM_ERROR_CODES,
+  PLATFORM_ERROR_CODE,
   isPlatformErrorCode,
   getPlatformErrorDefinition,
   problemTypeForErrorCode,

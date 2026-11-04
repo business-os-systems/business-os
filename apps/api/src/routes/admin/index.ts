@@ -1,5 +1,6 @@
 import { OpenAPIHono } from "@hono/zod-openapi";
 import { adminFlagsRouter } from "../admin-flags.js";
+import { tenantAdminRouter } from "./tenants.js";
 
 /**
  * Admin API mount point. Future Platform routes join this router; request id,
@@ -8,3 +9,4 @@ import { adminFlagsRouter } from "../admin-flags.js";
 export const adminRouter = new OpenAPIHono();
 
 adminRouter.route("/", adminFlagsRouter);
+adminRouter.route("/", tenantAdminRouter);

@@ -1,56 +1,44 @@
-import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   isPlatformCapability,
   PLATFORM_CAPABILITIES,
+  PLATFORM_ERROR_CODE,
   type PlatformCapability,
 } from "@suite/core";
+import { AUTH_ERROR_CODES } from "@suite/auth";
 import { CONTROL_SESSION_COOKIE_NAME } from "@suite/auth/platform";
 import { platformAuthRouter } from "../../../src/routes/admin/auth.js";
 import { adminFlagsRouter } from "../../../src/routes/admin-flags.js";
+import { tenantAdminRouter } from "../../../src/routes/admin/tenants.js";
 import { globalErrorHandler } from "../../../src/middleware/error-handler.js";
+import { loadPlatformTestEnv } from "../../helpers/platform-env.js";
 
-function loadPlatformEnv(): void {
-  const envPath = resolve(process.cwd(), ".env");
-  if (!existsSync(envPath)) return;
-  const keys = new Set([
-    "DATABASE_URL",
-    "PLATFORM_DATABASE_URL",
-    "CONTROL_SESSION_SECRET",
-    "CONTROL_PLANE_ORIGIN",
-    "CONTROL_WEBAUTHN_RP_ID",
-  ]);
-  for (const line of readFileSync(envPath, "utf8").split("\n")) {
-    const trimmed = line.trim();
-    if (trimmed === "" || trimmed.startsWith("#") || !trimmed.includes("=")) {
-      continue;
-    }
-    const separator = trimmed.indexOf("=");
-    const key = trimmed.slice(0, separator).trim();
-    if (!keys.has(key) || process.env[key] !== undefined) continue;
-    process.env[key] = trimmed
-      .slice(separator + 1)
-      .trim()
-      .replace(/^["']|["']$/g, "");
+loadPlatformTestEnv();
+
+function requireControlPlaneOrigin(): string {
+  const value = process.env.CONTROL_PLANE_ORIGIN;
+  if (value === undefined) {
+    throw new Error(
+      "CONTROL_PLANE_ORIGIN must be declared before running the denial matrix"
+    );
   }
+  return value;
 }
 
-loadPlatformEnv();
-
-const CONTROL_PLANE_ORIGIN =
-  process.env.CONTROL_PLANE_ORIGIN ?? "http://localhost:3002";
+const CONTROL_PLANE_ORIGIN = requireControlPlaneOrigin();
 const FOREIGN_ORIGIN = "https://attacker.example";
 
 process.env.CONTROL_PLANE_ORIGIN = CONTROL_PLANE_ORIGIN;
 platformAuthRouter.onError(globalErrorHandler);
 adminFlagsRouter.onError(globalErrorHandler);
+tenantAdminRouter.onError(globalErrorHandler);
 
-type RouterKey = "platform-auth" | "admin-flags";
+type RouterKey = "platform-auth" | "admin-flags" | "admin-tenants";
 
 const ROUTERS = {
   "platform-auth": platformAuthRouter,
   "admin-flags": adminFlagsRouter,
+  "admin-tenants": tenantAdminRouter,
 } as const;
 
 /**
@@ -80,7 +68,7 @@ const PROTECTED_ROUTES: readonly ProtectedRoute[] = [
     method: "GET",
     path: "/me",
     router: "platform-auth",
-    anonymous: { status: 401, code: "AUTH_UNAUTHORIZED" },
+    anonymous: { status: 401, code: PLATFORM_ERROR_CODE.AUTH_REQUIRED },
     originGuarded: true,
   },
   {
@@ -92,11 +80,27 @@ const PROTECTED_ROUTES: readonly ProtectedRoute[] = [
     originGuarded: true,
   },
   {
+    id: "admin-tenants/list",
+    method: "GET",
+    path: "/tenants",
+    router: "admin-tenants",
+    anonymous: { status: 401, code: PLATFORM_ERROR_CODE.AUTH_REQUIRED },
+    originGuarded: false,
+  },
+  {
+    id: "admin-tenants/record",
+    method: "GET",
+    path: "/tenants/tenant_denial_probe",
+    router: "admin-tenants",
+    anonymous: { status: 401, code: PLATFORM_ERROR_CODE.AUTH_REQUIRED },
+    originGuarded: false,
+  },
+  {
     id: "admin-flags/list",
     method: "GET",
     path: "/flags",
     router: "admin-flags",
-    anonymous: { status: 401, code: "AUTH_UNAUTHORIZED" },
+    anonymous: { status: 401, code: AUTH_ERROR_CODES.AUTH_UNAUTHORIZED },
     originGuarded: false,
   },
   {
@@ -104,7 +108,7 @@ const PROTECTED_ROUTES: readonly ProtectedRoute[] = [
     method: "POST",
     path: "/flags",
     router: "admin-flags",
-    anonymous: { status: 401, code: "AUTH_UNAUTHORIZED" },
+    anonymous: { status: 401, code: AUTH_ERROR_CODES.AUTH_UNAUTHORIZED },
     originGuarded: false,
   },
   {
@@ -112,7 +116,7 @@ const PROTECTED_ROUTES: readonly ProtectedRoute[] = [
     method: "PATCH",
     path: "/flags/platform.denial",
     router: "admin-flags",
-    anonymous: { status: 401, code: "AUTH_UNAUTHORIZED" },
+    anonymous: { status: 401, code: AUTH_ERROR_CODES.AUTH_UNAUTHORIZED },
     originGuarded: false,
   },
 ];
@@ -208,7 +212,7 @@ describe("Platform denial matrix", () => {
 
       expect(response.status).toBe(403);
       const body = (await response.json()) as { code: string };
-      expect(body.code).toBe("CORS_ORIGIN_DENIED");
+      expect(body.code).toBe(PLATFORM_ERROR_CODE.CORS_ORIGIN_DENIED);
     });
   }
 });

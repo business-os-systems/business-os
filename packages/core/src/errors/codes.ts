@@ -22,6 +22,11 @@ export const PLATFORM_ERROR_CODES = {
     title: "Admission Denied",
     slug: "/errors/admission-denied",
   },
+  CORS_ORIGIN_DENIED: {
+    status: 403,
+    title: "Origin Denied",
+    slug: "/errors/cors-origin-denied",
+  },
   CAPABILITY_DENIED: {
     status: 403,
     title: "Capability Denied",
@@ -160,6 +165,20 @@ export const PLATFORM_ERROR_CODES = {
 } as const satisfies Record<string, PlatformErrorDefinition>;
 
 export type PlatformErrorCode = keyof typeof PLATFORM_ERROR_CODES;
+
+/**
+ * Canonical code strings. Call sites reference these instead of literals so a
+ * registry rename cannot drift from its consumers (CT-6 / XVI.6).
+ */
+export const PLATFORM_ERROR_CODE = Object.freeze(
+  Object.keys(PLATFORM_ERROR_CODES).reduce<Record<string, string>>(
+    (codes, code) => {
+      codes[code] = code;
+      return codes;
+    },
+    {}
+  )
+) as Readonly<Record<PlatformErrorCode, PlatformErrorCode>>;
 
 export function isPlatformErrorCode(
   value: string

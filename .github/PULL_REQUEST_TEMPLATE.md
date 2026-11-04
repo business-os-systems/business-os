@@ -22,6 +22,7 @@ Closes #<!-- Specify issue number, e.g. Closes #10 -->
 - [ ] **Input Validation:** All network request payloads parsed and validated via Zod.
 - [ ] **Error Handling:** RFC 7807 Problem Details envelopes used for errors.
 - [ ] **Automated Tests:** Unit or integration tests added and passing in Vitest.
+- [ ] **PR Size:** changed lines are within the 700-line soft ceiling, or the description explains why; never above the 1,000-line hard ceiling.
 - [ ] **Conventional Commit:** PR title follows `type(scope): description (closes #X)`.
 
 ## Definition of Done (Constitution XVII — mandatory)

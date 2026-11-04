@@ -1,7 +1,7 @@
 import type { MiddlewareHandler } from "hono";
 import type { PrismaClient } from "@suite/db";
 import type { Redis } from "@suite/redis";
-import type { PlatformCapability } from "@suite/core";
+import { PLATFORM_ERROR_CODE, type PlatformCapability } from "@suite/core";
 import { ForbiddenError, UnauthorizedError } from "@suite/core/errors";
 import { extractTokenFromCookie } from "@suite/auth/session";
 import {
@@ -31,7 +31,7 @@ export function createPlatformCapabilityGuard(
     );
     if (!token) {
       throw new UnauthorizedError("Authentication required.", {
-        code: "AUTH_REQUIRED",
+        code: PLATFORM_ERROR_CODE.AUTH_REQUIRED,
       });
     }
 
@@ -43,7 +43,7 @@ export function createPlatformCapabilityGuard(
     if (!session.valid) {
       throw new UnauthorizedError(
         "Control session is invalid or expired.",
-        { code: "AUTH_REQUIRED" }
+        { code: PLATFORM_ERROR_CODE.AUTH_REQUIRED }
       );
     }
 
@@ -54,7 +54,7 @@ export function createPlatformCapabilityGuard(
     });
     if (!capabilities.includes(options.capability)) {
       throw new ForbiddenError("Capability denied.", {
-        code: "CAPABILITY_DENIED",
+        code: PLATFORM_ERROR_CODE.CAPABILITY_DENIED,
       });
     }
 
