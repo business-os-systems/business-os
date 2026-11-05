@@ -1,13 +1,15 @@
 import type { MiddlewareHandler } from "hono";
-import type { Redis } from "@suite/redis";
+import { redis, type Redis } from "@suite/redis";
 import {
   IDEMPOTENCY_HEADER,
   createIdempotencyStore,
   type IdempotencyReservation,
 } from "@suite/redis";
+import { PLATFORM_ERROR_CODE } from "@suite/core";
 import {
   ConflictError,
   ServiceUnavailableError,
+  UnauthorizedError,
   ValidationError,
 } from "@suite/core/errors";
 
@@ -15,6 +17,8 @@ const IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9._:-]{8,128}$/;
 
 export interface IdempotencyMiddlewareOptions {
   readonly redis: Redis;
+  /** Applied only to the stored copy, so a replay cannot leak a once-only secret. */
+  readonly transformStoredBody?: (body: string) => string;
 }
 
 function idempotencyScope(
@@ -24,6 +28,31 @@ function idempotencyScope(
   key: string
 ): string {
   return `${operatorId}:${method}:${path}:${key}`;
+}
+
+/**
+ * Applies the default store to state-changing methods only, so reads never
+ * need an Idempotency-Key (CT-4). Platform mutations must run this after the
+ * capability guard; a missing actor fails closed instead of sharing the
+ * "anonymous" replay scope across operators.
+ */
+export function createMutationIdempotencyMiddleware(
+  options: {
+    readonly transformStoredBody?: (body: string) => string;
+  } = {}
+): MiddlewareHandler {
+  const inner = createIdempotencyMiddleware({ redis, ...options });
+  return async (c, next) => {
+    if (c.req.method === "GET" || c.req.method === "HEAD") {
+      return next();
+    }
+    if (typeof c.get("operatorId") !== "string") {
+      throw new UnauthorizedError("Authentication required.", {
+        code: PLATFORM_ERROR_CODE.AUTH_REQUIRED,
+      });
+    }
+    return inner(c, next);
+  };
 }
 
 /**
@@ -107,9 +136,10 @@ export function createIdempotencyMiddleware(
     const body = await c.res.clone().text();
     const contentType = c.res.headers.get("content-type");
     try {
+      const storedBody = options.transformStoredBody?.(body) ?? body;
       await store.complete(scope, {
         status: c.res.status,
-        body,
+        body: storedBody,
         headers: contentType ? { "content-type": contentType } : {},
       });
     } catch (error) {

@@ -116,6 +116,10 @@ async function issueSession(input: IssueSessionInput): Promise<PlatformSession> 
         },
       });
     }
+    await tx.platformOperator.update({
+      where: { id: operator.id },
+      data: { lastSeenAt: new Date() },
+    });
     await appendPlatformAuditEvent(tx, {
       actorOperatorId: operator.id,
       action: PLATFORM_AUDIT_ACTIONS.SIGNED_IN,

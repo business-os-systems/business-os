@@ -107,6 +107,21 @@ export const PLATFORM_ERROR_CODES = {
     title: "Operator Already Invited",
     slug: "/errors/operator-already-invited",
   },
+  OPERATOR_ALREADY_EXISTS: {
+    status: 409,
+    title: "Operator Already Exists",
+    slug: "/errors/operator-already-exists",
+  },
+  OPERATOR_NOT_FOUND: {
+    status: 404,
+    title: "Operator Not Found",
+    slug: "/errors/operator-not-found",
+  },
+  OPERATOR_INVITATION_INVALID: {
+    status: 401,
+    title: "Operator Invitation Invalid",
+    slug: "/errors/operator-invitation-invalid",
+  },
   IMPERSONATION_ALREADY_ACTIVE: {
     status: 409,
     title: "Support Session Already Active",
