@@ -10,51 +10,70 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Shared by every job. The test job additionally starts PostgreSQL and Redis.
+env:
+  DATABASE_URL: postgresql://businessos_admin:businessos_password@localhost:5432/business_os_dev
+  # Owner identity. The Platform suites build fixtures with it and skip
+  # themselves when it is absent, which would report green while running
+  # no database test at all.
+  DIRECT_URL: postgresql://businessos_admin:businessos_password@localhost:5432/business_os_dev
+  PLATFORM_DATABASE_URL: postgresql://app_platform:platform_test_password@localhost:5432/business_os_dev
+  TENANT_DATABASE_URL: postgresql://app_tenant:tenant_test_password@localhost:5432/business_os_dev
+  CONTROL_SESSION_SECRET: platform-ci-session-secret-32-characters
+  CONTROL_PLANE_ORIGIN: http://localhost:3002
+  CONTROL_WEBAUTHN_RP_ID: localhost
+  REDIS_URL: redis://localhost:6379
+  # Type-aware ESLint over the whole monorepo needs more than the 2 GB
+  # default heap on a fresh CI runner.
+  NODE_OPTIONS: --max-old-space-size=4096
+
 jobs:
-  verify:
-    name: Lint, Typecheck & Test
+  # Independent of every other job: no build outputs are needed, so it runs
+  # beside build and test instead of behind them.
+  lint:
+    name: Lint, rules & reports
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: businessos_admin
-          POSTGRES_PASSWORD: businessos_password
-          POSTGRES_DB: business_os_dev
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+          run_install: false
 
-    env:
-      DATABASE_URL: postgresql://businessos_admin:businessos_password@localhost:5432/business_os_dev
-      # Owner identity. The Platform suites build fixtures with it and skip
-      # themselves when it is absent, which would report green while running
-      # no database test at all.
-      DIRECT_URL: postgresql://businessos_admin:businessos_password@localhost:5432/business_os_dev
-      PLATFORM_DATABASE_URL: postgresql://app_platform:platform_test_password@localhost:5432/business_os_dev
-      TENANT_DATABASE_URL: postgresql://app_tenant:tenant_test_password@localhost:5432/business_os_dev
-      CONTROL_SESSION_SECRET: platform-ci-session-secret-32-characters
-      CONTROL_PLANE_ORIGIN: http://localhost:3002
-      CONTROL_WEBAUTHN_RP_ID: localhost
-      REDIS_URL: redis://localhost:6379
-      # Type-aware ESLint over the whole monorepo needs more than the 2 GB
-      # default heap on a fresh CI runner.
-      NODE_OPTIONS: --max-old-space-size=4096
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "pnpm"
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Type-aware ESLint resolves @suite/db types, which need the client.
+      - name: Generate Prisma Client
+        run: pnpm --filter @suite/db run prisma:generate
+
+      - name: Lint (legacy violations are baselined; new ones fail)
+        run: pnpm lint
+
+      - name: Custom Lint Rule Tests
+        run: pnpm test:rules
+
+      - name: Dead Code & Dependency Report
+        run: pnpm knip:report
+
+      - name: Architecture & Cycle Report
+        run: pnpm depcruise:report
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Source
@@ -94,6 +113,71 @@ jobs:
       - name: Turborepo Build
         run: pnpm turbo run build
 
+      - name: Report Turborepo Cache Size
+        if: always()
+        run: du -sh .turbo/cache || true
+
+  test:
+    name: Typecheck & Test
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: businessos_admin
+          POSTGRES_PASSWORD: businessos_password
+          POSTGRES_DB: business_os_dev
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+          run_install: false
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "pnpm"
+
+      - name: Restore Turborepo Cache
+        uses: actions/cache@v4
+        with:
+          path: .turbo/cache
+          key: turbo-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            turbo-${{ runner.os }}-
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm --filter @suite/db run prisma:generate
+
       - name: Apply Database Migrations
         run: pnpm --filter @suite/db run db:migrate:deploy
 
@@ -105,21 +189,16 @@ jobs:
         run: |
           printf "ALTER ROLE app_tenant WITH LOGIN PASSWORD 'tenant_test_password';" | pnpm --filter @suite/db exec prisma db execute --url "$DATABASE_URL" --stdin
 
-      - name: Lint (legacy violations are baselined; new ones fail)
-        run: pnpm lint
-
-      - name: Custom Lint Rule Tests
-        run: pnpm test:rules
-
       - name: Turborepo Typecheck & Test
         run: pnpm turbo run typecheck test
 
-      - name: Dead Code & Dependency Report
-        run: pnpm knip:report
+  # Keeps the check name branch protection and reviewers already know. The real
+  # signal is the three jobs above; this one only reports their result.
+  verify:
+    name: Lint, Typecheck & Test
+    runs-on: ubuntu-latest
+    needs: [lint, build, test]
 
-      - name: Architecture & Cycle Report
-        run: pnpm depcruise:report
-
-      - name: Report Turborepo Cache Size
-        if: always()
-        run: du -sh .turbo/cache || true
+    steps:
+      - name: All verification jobs passed
+        run: echo "lint, build and typecheck/test completed successfully."
