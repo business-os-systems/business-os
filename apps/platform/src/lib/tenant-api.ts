@@ -5,13 +5,10 @@ import {
   TENANT_LIFECYCLE_ACTION,
   type TenantLifecycleAction,
 } from "@suite/core";
-import { platformFetch, readSuccessData } from "./api";
+import { IDEMPOTENCY_HEADER, platformFetch, readSuccessData } from "./api";
 import { hasPlatformCapability } from "./capability";
 import { toProblemError } from "./problem-error";
 import { buildQueryString } from "./query";
-
-/** Mirrors @suite/redis IDEMPOTENCY_HEADER; Platform UI must not import redis. */
-export const IDEMPOTENCY_HEADER = "Idempotency-Key";
 
 export const TENANT_API_PATHS = {
   list: "/api/v1/admin/tenants",

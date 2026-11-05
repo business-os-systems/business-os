@@ -11,7 +11,7 @@ import {
 } from "@/lib/flags-api";
 import { FlagRuleAddForm } from "./flag-rule-add-form";
 import { FlagRuleRow, type EditableFlagRule } from "./flag-rule-row";
-import { useFlagMutation } from "./use-flag-mutation";
+import { useIdempotentMutation } from "@/lib/use-idempotent-mutation";
 
 interface FlagRulesModalProps {
   readonly flag: FlagRecord;
@@ -28,7 +28,7 @@ export function FlagRulesModal({ flag, onClose, onSaved }: FlagRulesModalProps) 
       priority: rule.priority,
     }))
   );
-  const mutation = useFlagMutation();
+  const mutation = useIdempotentMutation();
 
   function addRule(rule: FlagRuleBody): boolean {
     const duplicate = rules.some(

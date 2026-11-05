@@ -4,12 +4,13 @@ import { useId, useState } from "react";
 import { Alert, Button, Modal } from "@suite/ui";
 import { AppError, ConflictError } from "@suite/core/errors";
 import { PLATFORM_ERROR_CODE, type TenantLifecycleAction } from "@suite/core";
+import { createIdempotencyKey } from "@/lib/api";
 import { toMessage } from "@/lib/error-message";
 import { requestTenantLifecycle, type TenantLifecycleResult } from "@/lib/tenant-api";
 import { ConfigFormRenderer } from "./config-form-renderer";
 import {
   LIFECYCLE_ACTION_CONFIG, LIFECYCLE_CONFLICT_MESSAGE, LIFECYCLE_CONFLICT_TITLE,
-  buildLifecycleBody, createLifecycleIdempotencyKey, lifecycleFormFields,
+  buildLifecycleBody, lifecycleFormFields,
   validateLifecycleForm, type LifecycleFieldErrors, type LifecycleFormValues,
   type LifecycleTenant,
 } from "./lifecycle-form.config";
@@ -25,7 +26,7 @@ export function LifecycleModal({
   const formId = useId();
   const config = LIFECYCLE_ACTION_CONFIG[action];
   const fields = lifecycleFormFields({ action, slug: tenant.slug });
-  const [idempotencyKey, setIdempotencyKey] = useState(createLifecycleIdempotencyKey);
+  const [idempotencyKey, setIdempotencyKey] = useState(createIdempotencyKey);
   const [values, setValues] = useState<LifecycleFormValues>({ reason: "", confirmSlug: "" });
   const [errors, setErrors] = useState<LifecycleFieldErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -68,7 +69,7 @@ export function LifecycleModal({
           cause.status >= 400 &&
           cause.status < 500
         ) {
-          setIdempotencyKey(createLifecycleIdempotencyKey());
+          setIdempotencyKey(createIdempotencyKey());
         }
         setError(toMessage(cause));
       }

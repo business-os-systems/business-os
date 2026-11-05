@@ -9,6 +9,8 @@ export interface RateLimitOptions {
   windowSeconds?: number; // Time window in seconds
   keyPrefix?: string;
   failureMode?: "open" | "closed";
+  /** When present, only these HTTP methods consume the budget. */
+  methods?: readonly string[];
 }
 
 export async function clearRateLimitStore(keyPrefix = "test:rl"): Promise<void> {
@@ -115,11 +117,15 @@ export function rateLimitMiddleware(options: RateLimitOptions = {}): MiddlewareH
     windowSeconds = 60,
     keyPrefix = "rl:global",
     failureMode = "open",
+    methods,
   } = options;
 
   return async (c, next) => {
     const path = c.req.path;
     if (path.startsWith("/health") || path === "/metrics") {
+      return next();
+    }
+    if (methods !== undefined && !methods.includes(c.req.method)) {
       return next();
     }
 

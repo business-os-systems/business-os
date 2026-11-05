@@ -92,8 +92,3 @@ export function buildLifecycleBody(input: { readonly action: TenantLifecycleActi
 
 export const LIFECYCLE_CONFLICT_TITLE = "Status changed - reload";
 export const LIFECYCLE_CONFLICT_MESSAGE = "This tenant's status changed since you opened the record. Reload it to see the current state before trying again.";
-
-/** One key per modal opening; a replay after a timeout stays safe (CT-4). */
-export function createLifecycleIdempotencyKey(): string {
-  return globalThis.crypto.randomUUID();
-}

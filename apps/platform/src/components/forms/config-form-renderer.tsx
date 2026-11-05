@@ -1,6 +1,6 @@
 "use client";
 
-import { Input, Label, Select, Textarea } from "@suite/ui";
+import { Checkbox, Input, Label, Select, Textarea } from "@suite/ui";
 import type {
   ConfigFormErrors,
   ConfigFormField,
@@ -13,6 +13,24 @@ interface ConfigFormRendererProps<T extends object> {
   readonly disabled: boolean;
   readonly formId: string;
   readonly onChange: (name: keyof T & string, value: string) => void;
+}
+
+interface FieldRenderProps<T extends object> {
+  readonly field: ConfigFormField<T>;
+  readonly value: string;
+  readonly error: string | undefined;
+  readonly disabled: boolean;
+  readonly inputId: string;
+  readonly errorId: string;
+  readonly onChange: (name: keyof T & string, value: string) => void;
+}
+
+function describedBy(error: string | undefined, errorId: string): string | undefined {
+  return error === undefined ? undefined : errorId;
+}
+
+function fieldWrapperClass<T extends object>(field: ConfigFormField<T>): string {
+  return field.colSpan === 2 ? "space-y-1.5 sm:col-span-2" : "space-y-1.5";
 }
 
 function FieldLabel<T extends object>({ field }: { field: ConfigFormField<T> }) {
@@ -34,88 +52,144 @@ function FieldLabel<T extends object>({ field }: { field: ConfigFormField<T> }) 
   );
 }
 
+function FieldError({ errorId, error }: { readonly errorId: string; readonly error: string | undefined }) {
+  if (error === undefined) {
+    return null;
+  }
+  return (
+    <p id={errorId} role="alert" className="text-xs font-medium text-danger">
+      {error}
+    </p>
+  );
+}
+
+function CheckboxField<T extends object>({
+  field, value, error, disabled, inputId, errorId, onChange,
+}: FieldRenderProps<T>) {
+  return (
+    <div className={fieldWrapperClass(field)}>
+      <div className="flex items-start gap-2">
+        <Checkbox
+          id={inputId}
+          checked={value === "true"}
+          disabled={disabled}
+          aria-invalid={error === undefined ? undefined : true}
+          aria-describedby={describedBy(error, errorId)}
+          onChange={(event) => onChange(field.name, event.target.checked ? "true" : "false")}
+        />
+        <div className="space-y-0.5">
+          <Label htmlFor={inputId} className="text-xs font-medium text-text">
+            {field.label}
+            {field.required ? <span className="ml-0.5 text-danger">*</span> : null}
+          </Label>
+          {field.description === undefined ? null : (
+            <p className="text-[11px] text-text-muted">{field.description}</p>
+          )}
+        </div>
+      </div>
+      <FieldError errorId={errorId} error={error} />
+    </div>
+  );
+}
+
+function FieldControl<T extends object>({
+  field, value, error, disabled, inputId, errorId, onChange,
+}: FieldRenderProps<T>) {
+  if (field.type === "checkbox") {
+    return null;
+  }
+  if (field.type === "select") {
+    return (
+      <Select
+        id={inputId}
+        value={value}
+        options={field.options}
+        disabled={disabled}
+        hasError={error !== undefined}
+        aria-describedby={describedBy(error, errorId)}
+        aria-invalid={error === undefined ? undefined : true}
+        onChange={(next) => onChange(field.name, next)}
+      />
+    );
+  }
+  if (field.type === "textarea") {
+    return (
+      <Textarea
+        id={inputId}
+        value={value}
+        disabled={disabled}
+        maxLength={field.maxLength}
+        rows={field.rows}
+        placeholder={field.placeholder}
+        aria-invalid={error === undefined ? undefined : true}
+        aria-describedby={describedBy(error, errorId)}
+        onChange={(event) => onChange(field.name, event.target.value)}
+      />
+    );
+  }
+  return (
+    <Input
+      id={inputId}
+      type={field.type === "datetime-local" ? "datetime-local" : "text"}
+      value={value}
+      disabled={disabled}
+      maxLength={field.type === "text" ? field.maxLength : undefined}
+      placeholder={field.placeholder}
+      aria-invalid={error === undefined ? undefined : true}
+      aria-describedby={describedBy(error, errorId)}
+      onChange={(event) => onChange(field.name, event.target.value)}
+    />
+  );
+}
+
+function StandardField<T extends object>({
+  field, value, error, disabled, inputId, errorId, onChange,
+}: FieldRenderProps<T>) {
+  return (
+    <div className={fieldWrapperClass(field)}>
+      <Label htmlFor={inputId} className="text-xs font-medium text-text">
+        <FieldLabel field={field} />
+        {field.required ? <span className="ml-0.5 text-danger">*</span> : null}
+      </Label>
+      <FieldControl
+        field={field}
+        value={value}
+        error={error}
+        disabled={disabled}
+        inputId={inputId}
+        errorId={errorId}
+        onChange={onChange}
+      />
+      {field.description !== undefined && error === undefined ? (
+        <p className="text-[11px] text-text-muted">{field.description}</p>
+      ) : null}
+      <FieldError errorId={errorId} error={error} />
+    </div>
+  );
+}
+
 /** Renders a typed field schema through the shared design primitives. */
 export function ConfigFormRenderer<T extends object>({
-  fields,
-  values,
-  errors,
-  disabled,
-  formId,
-  onChange,
+  fields, values, errors, disabled, formId, onChange,
 }: ConfigFormRendererProps<T>) {
   return (
     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
       {fields.map((field) => {
         const inputId = `${formId}-${field.name}`;
         const errorId = `${inputId}-error`;
-        const error = errors[field.name];
-        const value = values[field.name];
-        const describedBy = error === undefined ? undefined : errorId;
-
-        return (
-          <div
-            key={field.name}
-            className={
-              field.colSpan === 2 ? "space-y-1.5 sm:col-span-2" : "space-y-1.5"
-            }
-          >
-            <Label htmlFor={inputId} className="text-xs font-medium text-text">
-              <FieldLabel field={field} />
-              {field.required ? (
-                <span className="ml-0.5 text-danger">*</span>
-              ) : null}
-            </Label>
-            {field.type === "select" ? (
-              <Select
-                id={inputId}
-                value={value}
-                options={field.options}
-                disabled={disabled}
-                hasError={error !== undefined}
-                aria-describedby={describedBy}
-                aria-invalid={error === undefined ? undefined : true}
-                onChange={(next) => onChange(field.name, next)}
-              />
-            ) : field.type === "textarea" ? (
-              <Textarea
-                id={inputId}
-                value={value}
-                disabled={disabled}
-                maxLength={field.maxLength}
-                rows={field.rows}
-                placeholder={field.placeholder}
-                aria-invalid={error === undefined ? undefined : true}
-                aria-describedby={describedBy}
-                onChange={(event) => onChange(field.name, event.target.value)}
-              />
-            ) : (
-              <Input
-                id={inputId}
-                type={field.type === "datetime-local" ? "datetime-local" : "text"}
-                value={value}
-                disabled={disabled}
-                maxLength={
-                  field.type === "text" ? field.maxLength : undefined
-                }
-                placeholder={field.placeholder}
-                aria-invalid={error === undefined ? undefined : true}
-                aria-describedby={describedBy}
-                onChange={(event) => onChange(field.name, event.target.value)}
-              />
-            )}
-            {field.description !== undefined && error === undefined ? (
-              <p className="text-[11px] text-text-muted">{field.description}</p>
-            ) : null}
-            {error !== undefined ? (
-              <p
-                id={errorId}
-                role="alert"
-                className="text-xs font-medium text-danger"
-              >
-                {error}
-              </p>
-            ) : null}
-          </div>
+        const fieldProps: FieldRenderProps<T> = {
+          field,
+          value: values[field.name],
+          error: errors[field.name],
+          disabled,
+          inputId,
+          errorId,
+          onChange,
+        };
+        return field.type === "checkbox" ? (
+          <CheckboxField key={field.name} {...fieldProps} />
+        ) : (
+          <StandardField key={field.name} {...fieldProps} />
         );
       })}
     </div>

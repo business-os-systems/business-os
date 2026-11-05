@@ -6,7 +6,7 @@ import {
   type FlagEnvironment,
   type FlagRuleType,
 } from "@suite/flags/contracts";
-import { platformFetch, readSuccessData } from "./api";
+import { IDEMPOTENCY_HEADER, platformFetch, readSuccessData } from "./api";
 import { toProblemError } from "./problem-error";
 import { buildQueryString } from "./query";
 
@@ -19,7 +19,6 @@ import { buildQueryString } from "./query";
 export type { FlagEnvironment, FlagRuleType };
 export { FLAG_ENVIRONMENTS, FLAG_PAGE_LIMIT, FLAG_RULE_TYPES };
 
-export const IDEMPOTENCY_HEADER = "Idempotency-Key";
 export const FLAG_API_PATH = "/api/v1/admin/flags";
 export const FLAG_PAGE_SIZE = 25;
 
@@ -182,9 +181,4 @@ export async function updateFlag(input: UpdateFlagInput): Promise<FlagRecord> {
     throw await toProblemError(response);
   }
   return readSuccessData(response, flagSchema);
-}
-
-/** One key per mutation attempt; a retry after a timeout stays safe (CT-4). */
-export function createFlagIdempotencyKey(): string {
-  return globalThis.crypto.randomUUID();
 }
