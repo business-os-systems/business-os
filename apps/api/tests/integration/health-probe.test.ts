@@ -24,8 +24,8 @@ interface HealthReadyProblemBody {
   database: string;
   redis: string;
   dependencies: {
-    database: { status: string; latencyMs: number; error?: string };
-    redis: { status: string; latencyMs: number; error?: string };
+    database: { status: string; latencyMs: number };
+    redis: { status: string; latencyMs: number };
   };
   timestamp: string;
 }
@@ -91,7 +91,10 @@ describe("Integration: Health & Readiness Probes Under Failure Modes", () => {
       expect(body.instance).toBe("/health/ready");
       expect(body.database).toBe("disconnected");
       expect(body.redis).toBe("connected");
-      expect(body.dependencies.database.error).toContain("Connection terminated unexpectedly");
+      expect(body.dependencies.database).not.toHaveProperty("error");
+      expect(JSON.stringify(body)).not.toContain(
+        "Connection terminated unexpectedly"
+      );
     });
 
     it("returns 503 RFC 7807 Problem Details when Redis cluster fails health check", async () => {
@@ -114,7 +117,8 @@ describe("Integration: Health & Readiness Probes Under Failure Modes", () => {
       expect(body.instance).toBe("/health/ready");
       expect(body.database).toBe("connected");
       expect(body.redis).toBe("disconnected");
-      expect(body.dependencies.redis.error).toContain("CLUSTERDOWN The cluster is down");
+      expect(body.dependencies.redis).not.toHaveProperty("error");
+      expect(JSON.stringify(body)).not.toContain("CLUSTERDOWN");
     });
 
     it("returns 503 RFC 7807 Problem Details when both PostgreSQL and Redis fail simultaneously", async () => {

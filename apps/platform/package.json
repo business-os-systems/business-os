@@ -15,6 +15,7 @@
   "dependencies": {
     "@simplewebauthn/browser": "14.0.0",
     "@suite/core": "workspace:*",
+    "@suite/flags": "workspace:*",
     "@suite/ui": "workspace:*",
     "next": "^15.3.9",
     "react": "^18.3.1",

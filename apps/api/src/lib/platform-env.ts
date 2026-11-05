@@ -16,6 +16,8 @@ export const PLATFORM_ENV_KEYS = {
   QUOTA_CACHE_TTL_SECONDS: "QUOTA_CACHE_TTL_SECONDS",
   CATALOG_CACHE_TTL_SECONDS: "CATALOG_CACHE_TTL_SECONDS",
   PLATFORM_BOOTSTRAP_OPERATOR_EMAIL: "PLATFORM_BOOTSTRAP_OPERATOR_EMAIL",
+  PLATFORM_BUILD_ID: "PLATFORM_BUILD_ID",
+  PLATFORM_BUILD_TIMESTAMP: "PLATFORM_BUILD_TIMESTAMP",
 } as const;
 
 export type PlatformEnvKey =
@@ -163,4 +165,37 @@ export function getPlatformBootstrapOperatorEmail(): string {
     );
   }
   return email.toLowerCase();
+}
+
+export interface PlatformBuildIdentity {
+  readonly buildId: string;
+  readonly buildTimestamp: string;
+}
+
+/**
+ * The Platform dashboard is a separate deployment. When its build identity is
+ * configured, the health view reports it alongside the API (FR-034); when it
+ * is absent, the API reports only the services it can attest to.
+ */
+export function getPlatformBuildIdentity(): PlatformBuildIdentity | null {
+  const rawBuildId = process.env[PLATFORM_ENV_KEYS.PLATFORM_BUILD_ID];
+  const rawBuildTimestamp = process.env[PLATFORM_ENV_KEYS.PLATFORM_BUILD_TIMESTAMP];
+  const buildId = rawBuildId === undefined ? "" : rawBuildId.trim();
+  const buildTimestamp =
+    rawBuildTimestamp === undefined ? "" : rawBuildTimestamp.trim();
+
+  if (buildId === "" && buildTimestamp === "") {
+    return null;
+  }
+  if (buildId === "" || buildTimestamp === "") {
+    throw new Error(
+      `${PLATFORM_ENV_KEYS.PLATFORM_BUILD_ID} and ${PLATFORM_ENV_KEYS.PLATFORM_BUILD_TIMESTAMP} must be set together`
+    );
+  }
+  if (Number.isNaN(Date.parse(buildTimestamp))) {
+    throw new Error(
+      `${PLATFORM_ENV_KEYS.PLATFORM_BUILD_TIMESTAMP} must be an ISO 8601 timestamp`
+    );
+  }
+  return { buildId, buildTimestamp };
 }

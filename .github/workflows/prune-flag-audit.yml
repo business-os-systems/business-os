@@ -1,0 +1,27 @@
+name: Prune flag audit logs
+
+on:
+  schedule:
+    # Daily at 03:00 UTC; the SQL keeps 24 months (OP-6).
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: prune-flag-audit
+  cancel-in-progress: false
+
+jobs:
+  prune:
+    name: Prune audit rows older than 24 months
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run the owner prune script on the deployed stack
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: developer
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: 22
+          script: |
+            cd /home/developer/app
+            docker compose run --rm api pnpm --filter @suite/api exec tsx scripts/prune-flag-audit.ts

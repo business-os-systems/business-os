@@ -10,8 +10,15 @@ model FeatureFlag {
   environment String  @default("development") @db.VarChar(32) // "development" | "staging" | "production"
 
   // Evaluation States
-  isEnabled      Boolean @default(true) // Global Master Switch
+  isEnabled      Boolean @default(false) // Global Master Switch; new flags ship off (T066)
   defaultEnabled Boolean @default(false) // Fallback when no targeting rule matches
+
+  // Lifecycle ownership (OP-8): who owns the flag, when it expires, and the
+  // ticket that removes it. The migration adds a NOT VALID check so legacy rows
+  // stay readable while every new or updated row must carry the metadata.
+  owner         String?   @db.VarChar(128)
+  expiresAt     DateTime? @db.Timestamptz(6)
+  removalTicket String?   @db.VarChar(128)
 
   // Optimistic Concurrency Control
   version Int @default(1)
@@ -29,6 +36,7 @@ model FeatureFlag {
   @@unique([environment, key])
   @@index([environment])
   @@index([key])
+  @@index([expiresAt])
   @@map("system_feature_flags")
 
   @@schema("public")

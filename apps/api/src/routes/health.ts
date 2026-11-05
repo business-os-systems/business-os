@@ -1,83 +1,11 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
-import { prisma } from "@suite/db";
-import { redisHealthCheck } from "@suite/redis";
-import { performance } from "node:perf_hooks";
+import {
+  measureEventLoopLag,
+  probeDatabase,
+  probeRedis,
+} from "../services/admin/health.service.js";
 
 export const healthRouter = new OpenAPIHono();
-
-export const DEFAULT_PROBE_TIMEOUT_MS = 150;
-
-export interface ProbeResult {
-  readonly status: "connected" | "disconnected";
-  readonly latencyMs: number;
-  readonly error?: string;
-}
-
-export async function measureEventLoopLag(): Promise<number> {
-  const start = performance.now();
-  await new Promise((resolve) => setImmediate(resolve));
-  return Math.round((performance.now() - start) * 100) / 100;
-}
-
-export async function probeDatabase(timeoutMs = DEFAULT_PROBE_TIMEOUT_MS): Promise<ProbeResult> {
-  const start = performance.now();
-  let timer: NodeJS.Timeout | undefined;
-  try {
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      timer = setTimeout(
-        () => reject(new Error(`Database probe timed out after ${timeoutMs}ms`)),
-        timeoutMs
-      );
-    });
-
-    await Promise.race([prisma.$queryRaw`SELECT 1`, timeoutPromise]);
-    const latencyMs = Math.round((performance.now() - start) * 100) / 100;
-    return { status: "connected", latencyMs };
-  } catch (err) {
-    const latencyMs = Math.round((performance.now() - start) * 100) / 100;
-    return {
-      status: "disconnected",
-      latencyMs,
-      error: err instanceof Error ? err.message : String(err),
-    };
-  } finally {
-    if (timer) clearTimeout(timer);
-  }
-}
-
-export async function probeRedis(timeoutMs = DEFAULT_PROBE_TIMEOUT_MS): Promise<ProbeResult> {
-  const start = performance.now();
-  let timer: NodeJS.Timeout | undefined;
-  try {
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      timer = setTimeout(
-        () => reject(new Error(`Redis probe timed out after ${timeoutMs}ms`)),
-        timeoutMs
-      );
-    });
-
-    const result = await Promise.race([redisHealthCheck(), timeoutPromise]);
-    const latencyMs = Math.round((performance.now() - start) * 100) / 100;
-
-    if (result.status === "healthy") {
-      return { status: "connected", latencyMs: result.latencyMs };
-    }
-    return {
-      status: "disconnected",
-      latencyMs,
-      error: result.error,
-    };
-  } catch (err) {
-    const latencyMs = Math.round((performance.now() - start) * 100) / 100;
-    return {
-      status: "disconnected",
-      latencyMs,
-      error: err instanceof Error ? err.message : String(err),
-    };
-  } finally {
-    if (timer) clearTimeout(timer);
-  }
-}
 
 const livenessResponseSchema = z.object({
   status: z.string().openapi({ example: "ok" }),
@@ -91,12 +19,6 @@ const livenessResponseSchema = z.object({
 const dependencyProbeSchema = z.object({
   status: z.enum(["connected", "disconnected"]),
   latencyMs: z.number().openapi({ description: "Probe latency in milliseconds", example: 1.2 }),
-});
-
-const dependencyProbeFailureSchema = z.object({
-  status: z.enum(["connected", "disconnected"]),
-  latencyMs: z.number().openapi({ description: "Probe latency in milliseconds", example: 1.2 }),
-  error: z.string().optional().openapi({ description: "Sanitized error message if failed" }),
 });
 
 const readinessSuccessResponseSchema = z.object({
@@ -122,8 +44,8 @@ const readinessFailureResponseSchema = z.object({
   database: z.enum(["connected", "disconnected"]).openapi({ example: "disconnected" }),
   redis: z.enum(["connected", "disconnected"]).openapi({ example: "connected" }),
   dependencies: z.object({
-    database: dependencyProbeFailureSchema,
-    redis: dependencyProbeFailureSchema,
+    database: dependencyProbeSchema,
+    redis: dependencyProbeSchema,
   }),
   timestamp: z.string().datetime().openapi({ example: "2026-10-08T12:00:00.000Z" }),
 });
@@ -205,8 +127,14 @@ healthRouter.openapi(getReadinessRoute, async (c) => {
         database: dbResult.status,
         redis: redisResult.status,
         dependencies: {
-          database: dbResult,
-          redis: redisResult,
+          database: {
+            status: dbResult.status,
+            latencyMs: dbResult.latencyMs,
+          },
+          redis: {
+            status: redisResult.status,
+            latencyMs: redisResult.latencyMs,
+          },
         },
         timestamp,
       },

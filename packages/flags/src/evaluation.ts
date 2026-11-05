@@ -1,5 +1,5 @@
 import type { FeatureFlagDefinition, FeatureFlagRuleDefinition, FlagEvaluationContext } from "./types.js";
-import { RULE_TYPES } from "./types.js";
+import { isFlagExpired, RULE_TYPES } from "./types.js";
 
 /**
  * Deterministically evaluates a feature flag using 4-tier precedence:
@@ -18,8 +18,9 @@ export function evaluateFeatureFlag(
     return false;
   }
 
-  // Tier 1: Global Master Switch (Kill switch)
-  if (!flag.isEnabled) {
+  // Tier 1: Global Master Switch (Kill switch) and the expiry fence. An
+  // expired flag is off even when its switch was left enabled.
+  if (!flag.isEnabled || isFlagExpired(flag.expiresAt)) {
     return false;
   }
 

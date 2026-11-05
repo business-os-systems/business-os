@@ -125,6 +125,7 @@ export class FeatureFlagClient implements IFeatureFlagClient {
         defaultEnabled: record.defaultEnabled,
         version: record.version,
         metadata: (record.metadata as Record<string, unknown>) ?? null,
+        expiresAt: record.expiresAt?.toISOString() ?? null,
         rules: record.rules.map((r) => ({
           id: r.id,
           ruleType: r.ruleType as RuleType,

@@ -4,8 +4,8 @@ import {
   TENANT_LIFECYCLE_TRANSITIONS, canApplyLifecycleAction,
   type TenantLifecycleAction, type TenantStatus,
 } from "@suite/core";
-import type { BaseFormFieldConfig } from "@suite/ui";
 import { z } from "zod";
+import type { ConfigFormField } from "./config-form.types";
 import { hasPlatformCapability } from "@/lib/capability";
 import type { TenantLifecycleBody, TenantRecord } from "@/lib/tenant-api";
 
@@ -13,10 +13,7 @@ import type { TenantLifecycleBody, TenantRecord } from "@/lib/tenant-api";
 export interface LifecycleFormValues { readonly reason: string; readonly confirmSlug: string }
 export type LifecycleTenant = Pick<TenantRecord["profile"], "id" | "name" | "slug" | "status">;
 
-interface BaseLifecycleField extends BaseFormFieldConfig<LifecycleFormValues> { readonly maxLength: number }
-interface TextLifecycleField extends BaseLifecycleField { readonly type: "text"; readonly highlight: string }
-interface TextareaLifecycleField extends BaseLifecycleField { readonly type: "textarea" }
-export type LifecycleFieldConfig = TextLifecycleField | TextareaLifecycleField;
+export type LifecycleFieldConfig = ConfigFormField<LifecycleFormValues>;
 
 export const LIFECYCLE_ACTION_CONFIG = {
   [TENANT_LIFECYCLE_ACTION.SUSPEND]: { label: "Suspend", confirmLabel: "Suspend tenant", pendingLabel: "Suspending...", description: "Blocks every tenant sign-in and request within sixty seconds. Data is retained.", successMessage: "Tenant suspended.", variant: "secondary" },

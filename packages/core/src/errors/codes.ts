@@ -57,6 +57,31 @@ export const PLATFORM_ERROR_CODES = {
     title: "Version Conflict",
     slug: "/errors/version-conflict",
   },
+  FLAG_NOT_FOUND: {
+    status: 404,
+    title: "Feature Flag Not Found",
+    slug: "/errors/flag-not-found",
+  },
+  FLAG_EXISTS: {
+    status: 409,
+    title: "Feature Flag Already Exists",
+    slug: "/errors/flag-exists",
+  },
+  FLAG_VERSION_CONFLICT: {
+    status: 409,
+    title: "Feature Flag Version Conflict",
+    slug: "/errors/flag-version-conflict",
+  },
+  FLAG_EXPIRED: {
+    status: 409,
+    title: "Feature Flag Expired",
+    slug: "/errors/flag-expired",
+  },
+  FLAG_LIFECYCLE_INCOMPLETE: {
+    status: 409,
+    title: "Feature Flag Lifecycle Incomplete",
+    slug: "/errors/flag-lifecycle-incomplete",
+  },
   QUOTA_CONFLICT: {
     status: 409,
     title: "Quota Conflict",

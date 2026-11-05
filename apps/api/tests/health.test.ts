@@ -105,7 +105,8 @@ describe("Health & Telemetry Routes", () => {
       expect(body.instance).toBe("/health/ready");
       expect(body.database).toBe("disconnected");
       expect(body.redis).toBe("connected");
-      expect(body.dependencies.database.error).toContain("DB Connection Refused");
+      expect(body.dependencies.database).not.toHaveProperty("error");
+      expect(JSON.stringify(body)).not.toContain("DB Connection Refused");
     });
 
     it("returns 503 RFC 7807 Problem Details when Redis is unhealthy", async () => {
@@ -127,7 +128,8 @@ describe("Health & Telemetry Routes", () => {
       expect(body.code).toBe("SERVICE_UNAVAILABLE");
       expect(body.database).toBe("connected");
       expect(body.redis).toBe("disconnected");
-      expect(body.dependencies.redis.error).toContain("ECONNREFUSED");
+      expect(body.dependencies.redis).not.toHaveProperty("error");
+      expect(JSON.stringify(body)).not.toContain("ECONNREFUSED");
     });
 
     it("ignores optional third-party service failures (e.g. Sentry) and succeeds when core dependencies pass", async () => {

@@ -1,4 +1,4 @@
-import { Badge, type TableConfig } from "@suite/ui";
+import { cn, type TableConfig } from "@suite/ui";
 import { formatDate } from "@/lib/format";
 import {
   isTenantStatus,
@@ -6,18 +6,19 @@ import {
   type TenantSummary,
 } from "@/lib/tenant-api";
 
-const STATUS_BADGE: Record<
+/**
+ * Status is plain text in tables: no badge, background, border or radius.
+ * The semantic text colour carries the category.
+ */
+const STATUS_TEXT: Record<
   TenantStatus,
-  {
-    readonly variant: "success" | "secondary" | "destructive" | "tertiary";
-    readonly label: string;
-  }
+  { readonly className: string; readonly label: string }
 > = {
-  ACTIVE: { variant: "success", label: "Active" },
-  TRIAL: { variant: "secondary", label: "Trial" },
-  PAST_DUE: { variant: "destructive", label: "Past due" },
-  SUSPENDED: { variant: "destructive", label: "Suspended" },
-  ARCHIVED: { variant: "tertiary", label: "Archived" },
+  ACTIVE: { className: "text-success", label: "Active" },
+  TRIAL: { className: "text-brand", label: "Trial" },
+  PAST_DUE: { className: "text-danger", label: "Past due" },
+  SUSPENDED: { className: "text-danger", label: "Suspended" },
+  ARCHIVED: { className: "text-text-secondary", label: "Archived" },
 };
 
 function statusOf(value: unknown): TenantStatus {
@@ -59,8 +60,17 @@ export const TENANT_TABLE_CONFIG: TableConfig<TenantSummary> = {
       header: "Status",
       width: "14%",
       render: (value) => {
-        const badge = STATUS_BADGE[statusOf(value)];
-        return <Badge variant={badge.variant}>{badge.label}</Badge>;
+        const status = STATUS_TEXT[statusOf(value)];
+        return (
+          <span
+            className={cn(
+              "whitespace-nowrap text-xs font-semibold",
+              status.className
+            )}
+          >
+            {status.label}
+          </span>
+        );
       },
     },
     {

@@ -192,6 +192,11 @@ You are **STRICTLY PROHIBITED** from:
   3. Navigation hierarchies (including the primary installed apps sidebar and the settings sub-navigation sidebar) MUST be generated from typed navigation configuration schemas where each node declares its icon, route, label, badge, and required RBAC permission.
   4. Data tables MUST derive columns, header labels, cell formatters, and row action triggers from typed table configuration schemas.
   5. The primary dashboard sidebar and all existing dashboard views MUST be progressively migrated to this config-driven standard.
+- ❌ **Badge Pills Inside Data Tables (Plain-Text Table Status Law):**
+  Status columns in data tables MUST render as plain, bold text with a semantic text color (`text-success`, `text-warning`, `text-danger`, `text-brand`, `text-text-secondary`). They MUST NOT use a Badge component, background fill, border or border radius in a table cell.
+  1. The text label MUST always be present; color is an additional signal, never the only signal.
+  2. The rule applies to every new or modified table; existing badge-based tables are converted when next touched.
+  3. Display labels for canonical enum values (environments, statuses, rule types) MUST be humanized consistently — `Development`, `Staging`, `Production`, `Active`, `Targeted` — while the stored/API value remains the canonical lowercase form.
 - ❌ **Defensive Cascading Fallbacks & Heuristic Guessing (Deterministic Registry Law):**
   AI agents and developers are **STRICTLY PROHIBITED** from using cascading `||` or heuristic guessing chains (e.g. `ICONS[category.icon] || ICONS[category.id] || BuildingIcon`, `item.name || item.title || item.appId`, or falling back across divergent object fields) to resolve assets, icons, titles, or presentation components.
   1. Every domain entity and configuration item must declare its canonical key, and lookup must be deterministic via strongly-typed registries (`ICON_REGISTRY`, `getNavIcon()`, `getSettingsIcon()`) that fail loudly if an unregistered key is supplied.

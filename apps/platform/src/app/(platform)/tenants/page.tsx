@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useRequestTicket } from "@/lib/use-request-ticket";
 import { useRouter } from "next/navigation";
 import { Button } from "@suite/ui";
 import {
@@ -33,12 +34,11 @@ export default function TenantsPage() {
   const [error, setError] = useState<string | null>(null);
 
   // Every fetch takes a ticket; only the newest answer is allowed to render.
-  const ticket = useRef(0);
+  const requestTicket = useRequestTicket();
 
   const loadFirstPage = useCallback(
     async (nextSearch: string, nextFilter: StatusFilter) => {
-      const current = ticket.current + 1;
-      ticket.current = current;
+      const current = requestTicket.begin();
 
       setIsLoading(true);
       setError(null);
@@ -52,14 +52,14 @@ export default function TenantsPage() {
           status: nextFilter.kind === "status" ? nextFilter.status : undefined,
           limit: PAGE_SIZE,
         });
-        if (ticket.current !== current) {
+        if (!requestTicket.isCurrent(current)) {
           return;
         }
         setRows(page.items);
         setCursor(page.nextCursor);
         setTotal(page.total);
       } catch (cause) {
-        if (ticket.current !== current) {
+        if (!requestTicket.isCurrent(current)) {
           return;
         }
         setRows([]);
@@ -67,12 +67,12 @@ export default function TenantsPage() {
         setTotal(null);
         setError(toMessage(cause));
       } finally {
-        if (ticket.current === current) {
+        if (requestTicket.isCurrent(current)) {
           setIsLoading(false);
         }
       }
     },
-    [],
+    [requestTicket],
   );
 
   useEffect(() => {
@@ -89,7 +89,7 @@ export default function TenantsPage() {
     if (cursor === null) {
       return;
     }
-    const current = ticket.current;
+    const current = requestTicket.current();
     setIsAppending(true);
     setError(null);
     try {
@@ -99,14 +99,14 @@ export default function TenantsPage() {
         cursor,
         limit: PAGE_SIZE,
       });
-      if (ticket.current !== current) {
+      if (!requestTicket.isCurrent(current)) {
         return;
       }
       setRows((existing) => [...existing, ...page.items]);
       setCursor(page.nextCursor);
       setTotal(page.total);
     } catch (cause) {
-      if (ticket.current === current) {
+      if (requestTicket.isCurrent(current)) {
         setError(toMessage(cause));
       }
     } finally {

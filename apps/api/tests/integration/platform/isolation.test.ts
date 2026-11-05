@@ -41,20 +41,44 @@ describe.skipIf(!enabled)("Platform database boundary (DB-2)", () => {
     await tenantPrisma.$disconnect();
   });
 
+  async function expectPermissionDenied(sql: string): Promise<void> {
+    try {
+      await tenantPrisma.$queryRawUnsafe(sql);
+      throw new Error("The tenant identity unexpectedly read a protected table");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      expect(message).toMatch(/42501|permission denied/i);
+    }
+  }
+
   it("denies the tenant identity access to platform.operators", async () => {
-    await expect(
-      tenantPrisma.$queryRawUnsafe(
-        'SELECT "id" FROM "platform"."operators" LIMIT 1'
-      )
-    ).rejects.toThrow(/permission denied|42501/i);
+    await expectPermissionDenied(
+      'SELECT "id" FROM "platform"."operators" LIMIT 1'
+    );
   });
 
   it("denies the tenant identity access to platform.audit_events", async () => {
-    await expect(
-      tenantPrisma.$queryRawUnsafe(
-        'SELECT "id" FROM "platform"."audit_events" LIMIT 1'
-      )
-    ).rejects.toThrow(/permission denied|42501/i);
+    await expectPermissionDenied(
+      'SELECT "id" FROM "platform"."audit_events" LIMIT 1'
+    );
+  });
+
+  it("denies the tenant identity access to system_feature_flags", async () => {
+    await expectPermissionDenied(
+      'SELECT "id" FROM "public"."system_feature_flags" LIMIT 1'
+    );
+  });
+
+  it("denies the tenant identity access to system_feature_flag_rules", async () => {
+    await expectPermissionDenied(
+      'SELECT "id" FROM "public"."system_feature_flag_rules" LIMIT 1'
+    );
+  });
+
+  it("denies the tenant identity access to the flag audit log", async () => {
+    await expectPermissionDenied(
+      'SELECT "id" FROM "public"."system_feature_flag_audit_logs" LIMIT 1'
+    );
   });
 
   it("reports no USAGE privilege on the platform schema", async () => {
