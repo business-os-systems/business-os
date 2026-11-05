@@ -17,17 +17,23 @@ loadPlatformTestEnv();
 const enabled = platformIntegrationTestsEnabled();
 
 /**
- * Metadata for the six public functions, used by the privilege test.
+ * Metadata for the public functions, used by the privilege test.
  * Adding a function without adding it here fails the suite, which keeps the
  * DB-2 boundary test exhaustive.
  */
 const PUBLIC_FUNCTIONS = [
   "fn_set_tenant_status",
   "fn_set_quota",
-  "fn_set_entitlement",
-  "fn_set_app_setting",
+  "fn_set_entitlement_versioned",
+  "fn_set_app_setting_versioned",
   "fn_tenant_pii",
   "fn_verify_audit_chain",
+] as const;
+
+/** Superseded by the versioned functions; owner-only after #229. */
+const RETIRED_FUNCTIONS = [
+  "fn_set_entitlement",
+  "fn_set_app_setting",
 ] as const;
 
 const ROLLBACK = new Error("rollback test transaction");
@@ -196,6 +202,34 @@ describe.skipIf(!enabled)("Platform audited functions (T016)", () => {
       for (const row of rows) {
         expect(row.platformAllowed, row.proname).toBe(true);
         expect(row.tenantAllowed, row.proname).toBe(false);
+      }
+    });
+
+    it("retires the unversioned write functions from the platform identity", async () => {
+      const rows = await ownerPrisma.$queryRaw<
+        {
+          proname: string;
+          platformAllowed: boolean;
+          tenantAllowed: boolean;
+          ownerAllowed: boolean;
+        }[]
+      >(Prisma.sql`
+        SELECT
+          p.proname,
+          has_function_privilege('app_platform', p.oid, 'EXECUTE') AS "platformAllowed",
+          has_function_privilege('app_tenant', p.oid, 'EXECUTE') AS "tenantAllowed",
+          has_function_privilege(current_user, p.oid, 'EXECUTE') AS "ownerAllowed"
+        FROM pg_proc p
+        JOIN pg_namespace n ON n.oid = p.pronamespace
+        WHERE n.nspname = 'platform'
+          AND p.proname IN (${Prisma.join(RETIRED_FUNCTIONS)})
+      `);
+
+      expect(rows).toHaveLength(RETIRED_FUNCTIONS.length);
+      for (const row of rows) {
+        expect(row.platformAllowed, row.proname).toBe(false);
+        expect(row.tenantAllowed, row.proname).toBe(false);
+        expect(row.ownerAllowed, row.proname).toBe(true);
       }
     });
 
@@ -481,7 +515,7 @@ describe.skipIf(!enabled)("Platform audited functions (T016)", () => {
         data: { organizationId: orgId, appId: "website-builder" },
       });
 
-      await withRollback(async (tx) => {
+      await withOwnerRollback(async (tx) => {
         const rows = await tx.$queryRaw<Array<{ isEnabled: boolean }>>(
           Prisma.sql`SELECT * FROM platform.fn_set_entitlement(${orgId}, ${"website-builder"}, ${false}, ${actorId}, ${"req-ent-1"})`,
         );
@@ -500,7 +534,7 @@ describe.skipIf(!enabled)("Platform audited functions (T016)", () => {
       ]);
 
       await expect(
-        platformPrisma.$queryRaw(
+        ownerPrisma.$queryRaw(
           Prisma.sql`SELECT * FROM platform.fn_set_entitlement(${"tenant_missing_probe"}, ${"website-builder"}, ${true}, ${actorId}, ${"req-ent-missing"})`,
         ),
       ).rejects.toThrow(/TENANT_NOT_FOUND/);
@@ -516,7 +550,7 @@ describe.skipIf(!enabled)("Platform audited functions (T016)", () => {
       });
 
       await expect(
-        platformPrisma.$queryRaw(
+        ownerPrisma.$queryRaw(
           Prisma.sql`SELECT * FROM platform.fn_set_entitlement(${orgId}, ${"website-builder"}, ${false}, ${actorId}, ${"req-ent-denied"})`,
         ),
       ).rejects.toThrow(/CAPABILITY_DENIED/);
@@ -529,7 +563,7 @@ describe.skipIf(!enabled)("Platform audited functions (T016)", () => {
       ]);
 
       await expect(
-        platformPrisma.$queryRaw(
+        ownerPrisma.$queryRaw(
           Prisma.sql`SELECT * FROM platform.fn_set_entitlement(${orgId}, ${"not-installed"}, ${true}, ${actorId}, ${"req-ent-2"})`,
         ),
       ).rejects.toThrow(/UNKNOWN_APP/);
@@ -544,7 +578,7 @@ describe.skipIf(!enabled)("Platform audited functions (T016)", () => {
         data: { organizationId: orgId, appId: "website-builder" },
       });
 
-      await withRollback(async (tx) => {
+      await withOwnerRollback(async (tx) => {
         const rows = await tx.$queryRaw<Array<{ settings: unknown }>>(
           Prisma.sql`SELECT * FROM platform.fn_set_app_setting(${orgId}, ${"website-builder"}, ${JSON.stringify({ theme: "dark" })}::jsonb, ${actorId}, ${"req-setting-1"})`,
         );
@@ -561,13 +595,13 @@ describe.skipIf(!enabled)("Platform audited functions (T016)", () => {
       });
 
       await expect(
-        platformPrisma.$queryRaw(
+        ownerPrisma.$queryRaw(
           Prisma.sql`SELECT * FROM platform.fn_set_app_setting(${orgId}, ${"website-builder"}, ${JSON.stringify({ theme: "light" })}::jsonb, ${await createOperator([PLATFORM_CAPABILITIES.TENANTS_READ.code])}, ${"req-setting-denied"})`,
         ),
       ).rejects.toThrow(/CAPABILITY_DENIED/);
 
       await expect(
-        platformPrisma.$queryRaw(
+        ownerPrisma.$queryRaw(
           Prisma.sql`SELECT * FROM platform.fn_set_app_setting(${orgId}, ${"website-builder"}, ${"[1,2]"}::jsonb, ${actorId}, ${"req-setting-2"})`,
         ),
       ).rejects.toThrow(/SETTINGS_INVALID/);

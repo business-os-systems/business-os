@@ -41,6 +41,19 @@ const PERMITTED_WRITES: readonly PermittedWrite[] = [
   { method: "POST", path: "/tenants/:orgId/suspend", reason: "tenant lifecycle" },
   { method: "POST", path: "/tenants/:orgId/restore", reason: "tenant lifecycle" },
   { method: "POST", path: "/tenants/:orgId/archive", reason: "tenant lifecycle" },
+  // Entitlements and app settings are platform-governed installation metadata.
+  // Both writes go through narrow audited definer functions; Platform never
+  // gains a grant on the public tenant tables.
+  {
+    method: "PUT",
+    path: "/tenants/:orgId/entitlements",
+    reason: "app entitlement governance",
+  },
+  {
+    method: "PUT",
+    path: "/tenants/:orgId/apps/:appId/settings",
+    reason: "validated application settings",
+  },
   // zod-openapi registers Hono's ":key" form, not the documented "{key}".
   { method: "PATCH", path: "/flags/:key", reason: "platform configuration" },
   { method: "POST", path: "/operators", reason: "operator invitation" },

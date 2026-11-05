@@ -23,7 +23,7 @@ export interface AppManifest {
   }>;
 }
 
-export const APP_MANIFESTS: Record<string, AppManifest> = {
+const APP_MANIFEST_REGISTRY = {
   "website-builder": {
     appId: "website-builder",
     name: "Website Builder",
@@ -58,11 +58,31 @@ export const APP_MANIFESTS: Record<string, AppManifest> = {
       },
     ],
   },
-};
+} as const satisfies Record<string, AppManifest>;
+
+/**
+ * The public lookup view keeps its established open-dictionary type, while the
+ * literal registry above remains the source of the compiled identifiers. A
+ * later quality slice can close this type once the tenant-plane fallbacks are
+ * removed (control-surface inventory gap #1).
+ */
+export const APP_MANIFESTS: Record<string, AppManifest> =
+  APP_MANIFEST_REGISTRY;
+
+/**
+ * The compiled application identifiers. The literal registry makes its keys the
+ * type: adding an application without registering its settings schema is a
+ * compile error, not a runtime surprise.
+ */
+export type AppId = keyof typeof APP_MANIFEST_REGISTRY;
+
+export function isAppId(value: string): value is AppId {
+  return Object.prototype.hasOwnProperty.call(APP_MANIFEST_REGISTRY, value);
+}
 
 /**
  * Returns canonical app manifest metadata for an application identifier.
  */
 export function getAppManifest(appId: string): AppManifest | undefined {
-  return APP_MANIFESTS[appId];
+  return isAppId(appId) ? APP_MANIFEST_REGISTRY[appId] : undefined;
 }
