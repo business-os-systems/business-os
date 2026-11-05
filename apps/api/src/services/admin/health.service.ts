@@ -8,7 +8,8 @@ import {
   getGitCommitSha,
   getNodeEnv,
 } from "../../lib/env.js";
-import { getPlatformBuildIdentity } from "../../lib/platform-env.js";
+import type { PlatformRuntimeConfig } from "../../lib/platform-env.js";
+import { readPlatformRuntimeConfig } from "../../lib/platform-env.js";
 import { withTimeout } from "../../lib/with-timeout.js";
 import {
   readQueueMetrics,
@@ -26,6 +27,13 @@ import {
 
 export const DEFAULT_PROBE_TIMEOUT_MS = 150;
 const API_SERVICE_NAME = "api";
+const PLATFORM_DASHBOARD_SERVICE_NAME = "platform-dashboard";
+
+/**
+ * A service whose own version is not configured reports this instead of
+ * inheriting another service's version (FR-034: never fabricate an identity).
+ */
+export const UNKNOWN_SERVICE_VERSION = "unknown";
 
 export const HEALTH_STATES = ["healthy", "degraded", "unavailable"] as const;
 export type HealthState = (typeof HEALTH_STATES)[number];
@@ -63,6 +71,7 @@ export interface PlatformHealthSnapshot {
   readonly version: string;
   readonly buildTimestamp: string;
   readonly environment: string;
+  readonly errorTrackingUrl: string | null;
   readonly checkedAt: string;
 }
 
@@ -208,17 +217,39 @@ function readServiceIdentity(): ServiceBuildIdentity {
   };
 }
 
+/**
+ * The probes are a seam, not an afterthought: a caller (or a test) supplies the
+ * same dependency set the production route builds, so cache and datastore
+ * outages are exercised through the interface callers actually use.
+ */
+export interface HealthProbes {
+  readonly database: () => Promise<ProbeResult>;
+  readonly cache: () => Promise<ProbeResult>;
+}
+
 export interface ReadPlatformHealthOptions {
   readonly platformPrisma: PrismaClient;
   readonly emailQueue: EmailQueueClient;
+  readonly probes?: HealthProbes;
+  readonly config?: PlatformRuntimeConfig;
 }
+
+const DEFAULT_PROBES: HealthProbes = {
+  database: () => probeDatabase(),
+  cache: () => probeRedis(),
+};
 
 /** One bounded read of every dependency, with a last-checked time per row. */
 export async function readPlatformHealth(
   options: ReadPlatformHealthOptions
 ): Promise<PlatformHealthSnapshot> {
   const checkedAt = new Date();
-  const [database, cache] = await Promise.all([probeDatabase(), probeRedis()]);
+  const probes = options.probes ?? DEFAULT_PROBES;
+  const config = options.config ?? readPlatformRuntimeConfig();
+  const [database, cache] = await Promise.all([
+    probes.database(),
+    probes.cache(),
+  ]);
   const queues = await readQueueMetrics({
     prisma: options.platformPrisma,
     now: checkedAt,
@@ -243,14 +274,15 @@ export async function readPlatformHealth(
     queueDependency(queues.queues, checkedAt),
   ];
   const identity = readServiceIdentity();
-  const platformBuild = getPlatformBuildIdentity();
   const services: ServiceBuildIdentity[] = [identity];
-  if (platformBuild !== null) {
+  if (config.buildIdentity !== null) {
     services.push({
-      name: "platform-dashboard",
-      version: identity.version,
-      buildId: platformBuild.buildId,
-      buildTimestamp: platformBuild.buildTimestamp,
+      name: PLATFORM_DASHBOARD_SERVICE_NAME,
+      // The dashboard's own version is not configured today, and copying the
+      // API's would be a fabricated identity (FR-034).
+      version: UNKNOWN_SERVICE_VERSION,
+      buildId: config.buildIdentity.buildId,
+      buildTimestamp: config.buildIdentity.buildTimestamp,
       environment: identity.environment,
     });
   }
@@ -262,6 +294,7 @@ export async function readPlatformHealth(
     version: identity.version,
     buildTimestamp: identity.buildTimestamp,
     environment: identity.environment,
+    errorTrackingUrl: config.errorTrackingUrl,
     checkedAt: checkedAt.toISOString(),
   };
 }

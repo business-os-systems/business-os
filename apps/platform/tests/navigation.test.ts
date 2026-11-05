@@ -49,6 +49,8 @@ describe("Platform navigation", () => {
       true
     );
     expect(canAccessPath(["platform:telemetry:read"], "/")).toBe(true);
+    expect(canAccessPath(["platform:telemetry:read"], "/system")).toBe(true);
+    expect(canAccessPath(["platform:tenants:read"], "/system")).toBe(false);
     expect(canAccessPath(["platform:tenants:read"], "/not-a-destination")).toBe(
       false
     );
