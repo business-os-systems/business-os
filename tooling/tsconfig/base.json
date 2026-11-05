@@ -11,9 +11,13 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "noUncheckedIndexedAccess": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "strict": true,
-    "target": "es2022"
+    "target": "es2022",
+    "useUnknownInCatchVariables": true
   }
 }

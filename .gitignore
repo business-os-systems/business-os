@@ -55,3 +55,4 @@ specs/
 skills-lock.json
 # One-time Platform bootstrap link (contains a secret)
 .platform-bootstrap-link
+/docs

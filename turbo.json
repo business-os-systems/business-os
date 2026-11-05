@@ -37,8 +37,8 @@
       "cache": false,
       "persistent": true
     },
-    "lint": {
-      "dependsOn": []
+    "//#lint": {
+      "cache": false
     },
     "typecheck": {
       "dependsOn": ["^build"]

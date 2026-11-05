@@ -355,6 +355,22 @@ These invariants are mandatory for every operator/auth/platform-shell change and
 10. **Tests are part of acceptance.** Every new route needs a denial test, every audit action needs an assertion, and every capability gate needs a direct-access test.
 11. **Passkey policy is explicit.** Synced passkeys are accepted only while the documented security-risk acceptance is current; adding device-bound enforcement requires the second-passkey/recovery flow first.
 
+## 5.4 Code Quality Standards (Binding)
+
+The concise rule catalog is [tooling/quality/code-quality-rules.md](tooling/quality/code-quality-rules.md); long examples, the flag-status refactor, and the ratchet workflow are in [tooling/quality/engineering-standards.md](tooling/quality/engineering-standards.md). Both are binding.
+
+- **Workflow:** before finishing any task, run `pnpm lint`, `pnpm typecheck`, and `pnpm test`; fix violations properly; list any principle you knowingly violated and why.
+- **No weakening:** never add a blanket `eslint-disable`, `@ts-ignore`, `any`, or a weakened test to get green.
+- **P1:** never return UI props (`variant`, `label`, `color`, `severity`, `icon`, `className`) from an `if`/`else` or `switch`. Derive a typed state and map it with `as const satisfies Record<State, ...>`.
+- **P2:** routes validate, call a service, and map; components render. No ORM or cache imports in routes, pages, or components. Domain packages import no UI framework.
+- **P3/P5/P6:** no repeated magic literals; no `any`, unchecked `as`, or `!`; replace boolean clusters with a discriminated union and an exhaustive `switch`.
+- **P7:** 60 lines, 3 nesting levels, 4 parameters, complexity 10, cognitive complexity 15; no chained ternaries.
+- **P9/P10:** never swallow errors; validate every boundary with Zod and infer types from the schema.
+- **P14:** read configuration only through the typed config module, never `process.env` in feature code.
+- **P17:** default-deny authorization, tenant-scoped data, no raw HTML injection.
+- **Legacy ratchet:** current violations live in `eslint-suppressions.json`. Do not hand-edit it to silence a new violation; fix new code and run `pnpm lint:prune` after removing a legacy one.
+- **Proof:** `pnpm test:rules` exercises every custom selector; `pnpm lint:p1` must fail on the original flag-status fixture.
+
 ---
 
 ## 6. Specification References

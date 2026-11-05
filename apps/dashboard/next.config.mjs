@@ -48,6 +48,12 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
+  // Lint is a dedicated CI gate with the eslint-suppressions.json ratchet;
+  // Next's build-time lint cannot read that baseline, so it would fail on
+  // legacy findings that the ratchet already tracks.
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   async headers() {
     return [
       {

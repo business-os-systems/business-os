@@ -52,6 +52,9 @@ jobs:
       CONTROL_PLANE_ORIGIN: http://localhost:3002
       CONTROL_WEBAUTHN_RP_ID: localhost
       REDIS_URL: redis://localhost:6379
+      # Type-aware ESLint over the whole monorepo needs more than the 2 GB
+      # default heap on a fresh CI runner.
+      NODE_OPTIONS: --max-old-space-size=4096
 
     steps:
       - name: Checkout Source
@@ -102,8 +105,20 @@ jobs:
         run: |
           printf "ALTER ROLE app_tenant WITH LOGIN PASSWORD 'tenant_test_password';" | pnpm --filter @suite/db exec prisma db execute --url "$DATABASE_URL" --stdin
 
-      - name: Turborepo Lint, Typecheck & Test
-        run: pnpm turbo run lint typecheck test
+      - name: Lint (legacy violations are baselined; new ones fail)
+        run: pnpm lint
+
+      - name: Custom Lint Rule Tests
+        run: pnpm test:rules
+
+      - name: Turborepo Typecheck & Test
+        run: pnpm turbo run typecheck test
+
+      - name: Dead Code & Dependency Report
+        run: pnpm knip:report
+
+      - name: Architecture & Cycle Report
+        run: pnpm depcruise:report
 
       - name: Report Turborepo Cache Size
         if: always()

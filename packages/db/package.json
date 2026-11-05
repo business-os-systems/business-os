@@ -23,21 +23,15 @@
     "db:seed": "tsx src/seed.ts",
     "db:studio": "prisma studio --schema=prisma/schema",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src/ tests/",
     "test": "vitest run"
   },
   "dependencies": {
     "@prisma/client": "^6.4.1",
     "@suite/core": "workspace:*"
   },
-
   "devDependencies": {
-    "@suite/eslint-config": "workspace:*",
     "@suite/tsconfig": "workspace:*",
     "@types/node": "^20.17.19",
-    "@typescript-eslint/eslint-plugin": "^8.26.0",
-    "@typescript-eslint/parser": "^8.26.0",
-    "eslint": "^8.57.1",
     "prisma": "^6.4.1",
     "tsx": "^4.19.3",
     "typescript": "^5.7.3",

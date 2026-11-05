@@ -121,9 +121,7 @@ business-os/
 │
 └── tooling/                      # Shared Developer Tooling & Configurations
     ├── tsconfig/                 # Shared tsconfig bases (base, nextjs, react, node)
-    ├── eslint-config/            # ESLint flat config + import boundary rules
-    ├── tailwind-config/          # Tailwind CSS v4 shared styling tokens
-    └── prettier-config/          # Shared formatting rules
+    └── eslint-rules/             # Custom selectors + RuleTester proof (root eslint.config.mjs)
 ```
 
 ### Architectural Boundary Directives:

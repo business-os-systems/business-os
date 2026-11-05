@@ -71,6 +71,7 @@ export function WorkspaceSwitcher({
         document.removeEventListener("mousedown", handleClickOutside);
       };
     }
+    return;
   }, []);
 
   const handleSwitchTenant = async (targetOrgId: string) => {
@@ -99,6 +100,7 @@ export function WorkspaceSwitcher({
     } finally {
       setSwitchingId(null);
     }
+    return;
   };
 
   const hasMultipleTenants = tenants.length > 1;
