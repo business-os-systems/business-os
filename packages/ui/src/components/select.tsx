@@ -26,6 +26,9 @@ export interface SelectProps {
   className?: string;
   onChange?: (value: string) => void;
   direction?: "auto" | "down" | "up";
+  "aria-label"?: string;
+  "aria-describedby"?: string;
+  "aria-invalid"?: boolean;
 }
 
 /**
@@ -49,6 +52,9 @@ export function Select({
   className,
   onChange,
   direction = "auto",
+  "aria-label": ariaLabel,
+  "aria-describedby": ariaDescribedBy,
+  "aria-invalid": ariaInvalid,
 }: SelectProps) {
   const [internalValue, setInternalValue] = useState<string>(
     controlledValue ?? defaultValue ?? "",
@@ -97,6 +103,7 @@ export function Select({
         document.removeEventListener("mousedown", handleClickOutside);
       };
     }
+    return;
   }, []);
 
   const handleSelect = (optionValue: string) => {
@@ -134,6 +141,9 @@ export function Select({
         }}
         aria-expanded={isOpen}
         aria-haspopup="listbox"
+        aria-label={ariaLabel}
+        aria-describedby={ariaDescribedBy}
+        aria-invalid={ariaInvalid}
         className={cn(
           "w-full h-auto px-3 py-2 justify-between text-left font-normal bg-surface border-border text-text hover:bg-surface-hover focus-visible:ring-action/20",
           hasError && "border-danger focus-visible:ring-danger/20",

@@ -8,13 +8,13 @@
     "build": "next build",
     "start": "next start -p 3002",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src/",
     "bootstrap-operator": "tsx scripts/bootstrap-operator.ts",
     "test": "vitest run"
   },
   "dependencies": {
     "@simplewebauthn/browser": "14.0.0",
     "@suite/core": "workspace:*",
+    "@suite/flags": "workspace:*",
     "@suite/ui": "workspace:*",
     "next": "^15.3.9",
     "react": "^18.3.1",
@@ -22,15 +22,11 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "@suite/eslint-config": "workspace:*",
     "@suite/tsconfig": "workspace:*",
     "@types/node": "^20.17.19",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
-    "@typescript-eslint/eslint-plugin": "^8.26.0",
-    "@typescript-eslint/parser": "^8.26.0",
     "autoprefixer": "^10.6.1",
-    "eslint": "^8.57.1",
     "postcss": "^8.5.29",
     "tailwindcss": "^3.4.19",
     "tsx": "^4.23.15",

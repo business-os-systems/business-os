@@ -5,10 +5,10 @@ import {
   PLATFORM_ERROR_CODE,
   type PlatformCapability,
 } from "@suite/core";
-import { AUTH_ERROR_CODES } from "@suite/auth";
 import { CONTROL_SESSION_COOKIE_NAME } from "@suite/auth/platform";
 import { platformAuthRouter } from "../../../src/routes/admin/auth.js";
-import { adminFlagsRouter } from "../../../src/routes/admin-flags.js";
+import { platformFlagsRouter } from "../../../src/routes/admin/flags.js";
+import { platformSystemRouter } from "../../../src/routes/admin/system.js";
 import { tenantAdminRouter } from "../../../src/routes/admin/tenants.js";
 import { tenantPiiRouter } from "../../../src/routes/admin/tenant-pii.js";
 import { tenantLifecycleRouter } from "../../../src/routes/admin/lifecycle.js";
@@ -32,13 +32,15 @@ const FOREIGN_ORIGIN = "https://attacker.example";
 
 process.env.CONTROL_PLANE_ORIGIN = CONTROL_PLANE_ORIGIN;
 platformAuthRouter.onError(globalErrorHandler);
-adminFlagsRouter.onError(globalErrorHandler);
+platformSystemRouter.onError(globalErrorHandler);
+platformFlagsRouter.onError(globalErrorHandler);
 tenantAdminRouter.onError(globalErrorHandler);
 tenantPiiRouter.onError(globalErrorHandler);
 tenantLifecycleRouter.onError(globalErrorHandler);
 
 type RouterKey =
   | "platform-auth"
+  | "admin-system"
   | "admin-flags"
   | "admin-tenants"
   | "admin-tenant-pii"
@@ -46,7 +48,8 @@ type RouterKey =
 
 const ROUTERS = {
   "platform-auth": platformAuthRouter,
-  "admin-flags": adminFlagsRouter,
+  "admin-system": platformSystemRouter,
+  "admin-flags": platformFlagsRouter,
   "admin-tenants": tenantAdminRouter,
   "admin-tenant-pii": tenantPiiRouter,
   "admin-tenant-lifecycle": tenantLifecycleRouter,
@@ -139,27 +142,43 @@ const PROTECTED_ROUTES: readonly ProtectedRoute[] = [
     originGuarded: false,
   },
   {
+    id: "admin-system/health",
+    method: "GET",
+    path: "/health",
+    router: "admin-system",
+    anonymous: { status: 401, code: PLATFORM_ERROR_CODE.AUTH_REQUIRED },
+    originGuarded: false,
+  },
+  {
+    id: "admin-system/queues",
+    method: "GET",
+    path: "/queues",
+    router: "admin-system",
+    anonymous: { status: 401, code: PLATFORM_ERROR_CODE.AUTH_REQUIRED },
+    originGuarded: false,
+  },
+  {
     id: "admin-flags/list",
     method: "GET",
-    path: "/flags",
+    path: "/",
     router: "admin-flags",
-    anonymous: { status: 401, code: AUTH_ERROR_CODES.AUTH_UNAUTHORIZED },
+    anonymous: { status: 401, code: PLATFORM_ERROR_CODE.AUTH_REQUIRED },
     originGuarded: false,
   },
   {
     id: "admin-flags/create",
     method: "POST",
-    path: "/flags",
+    path: "/",
     router: "admin-flags",
-    anonymous: { status: 401, code: AUTH_ERROR_CODES.AUTH_UNAUTHORIZED },
+    anonymous: { status: 401, code: PLATFORM_ERROR_CODE.AUTH_REQUIRED },
     originGuarded: false,
   },
   {
     id: "admin-flags/update",
     method: "PATCH",
-    path: "/flags/platform.denial",
+    path: "/platform.denial",
     router: "admin-flags",
-    anonymous: { status: 401, code: AUTH_ERROR_CODES.AUTH_UNAUTHORIZED },
+    anonymous: { status: 401, code: PLATFORM_ERROR_CODE.AUTH_REQUIRED },
     originGuarded: false,
   },
 ];
@@ -179,8 +198,8 @@ const CAPABILITY_ENFORCEMENT = {
   "platform:audit:read": "P-26 (#235)",
   "platform:catalogs:manage": "P-23 (#232)",
   "platform:impersonate": "P-28 (#237)",
-  "platform:telemetry:read": "P-15 (#224)",
-  "platform:flags:manage": "P-15 (#224)",
+  "platform:telemetry:read": "P-15 (#224), enforced by /system/health and /system/queues",
+  "platform:flags:manage": "P-15 (#224), enforced by /flags",
 } as const satisfies Record<PlatformCapability, string>;
 
 function anonymousHeaders(route: ProtectedRoute): Record<string, string> {

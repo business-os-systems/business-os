@@ -211,6 +211,41 @@ describe("Dynamic Feature Flag Evaluation (@suite/flags)", () => {
     });
   });
 
+  describe("Expiry fence (OP-8)", () => {
+    it("returns false for an expired flag even when its switch is enabled", () => {
+      const flag: FeatureFlagDefinition = {
+        ...baseFlag,
+        isEnabled: true,
+        defaultEnabled: true,
+        expiresAt: new Date(Date.now() - 60_000).toISOString(),
+      };
+
+      expect(evaluateFeatureFlag(flag)).toBe(false);
+    });
+
+    it("keeps evaluating a flag whose expiry is in the future", () => {
+      const flag: FeatureFlagDefinition = {
+        ...baseFlag,
+        isEnabled: true,
+        defaultEnabled: true,
+        expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      };
+
+      expect(evaluateFeatureFlag(flag)).toBe(true);
+    });
+
+    it("fails closed when the expiry is unparseable", () => {
+      const flag: FeatureFlagDefinition = {
+        ...baseFlag,
+        isEnabled: true,
+        defaultEnabled: true,
+        expiresAt: "not-a-date",
+      };
+
+      expect(evaluateFeatureFlag(flag)).toBe(false);
+    });
+  });
+
   describe("Fail-Closed Boundary & Nil Safety", () => {
     it("safely defaults to false when flag is null", () => {
       expect(evaluateFeatureFlag(null)).toBe(false);

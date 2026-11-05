@@ -1,0 +1,4833 @@
+{
+  "apps/api/scripts/prune-flag-audit.ts": {
+    "no-console": {
+      "count": 1
+    }
+  },
+  "apps/api/src/app.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
+  "apps/api/src/lib/env.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "apps/api/src/lib/platform-db.ts": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    }
+  },
+  "apps/api/src/middleware/auth.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 1
+    },
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/api/src/middleware/cors.ts": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "no-restricted-syntax": {
+      "count": 2
+    },
+    "security/detect-non-literal-regexp": {
+      "count": 1
+    }
+  },
+  "apps/api/src/middleware/error-handler.ts": {
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "apps/api/src/middleware/idempotency.ts": {
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 2
+    }
+  },
+  "apps/api/src/middleware/rate-limit.ts": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/api/src/middleware/request-id.ts": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 3
+    }
+  },
+  "apps/api/src/middleware/tenant-access.ts": {
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    }
+  },
+  "apps/api/src/routes/admin/auth.ts": {
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 1
+    }
+  },
+  "apps/api/src/routes/admin/flags.schema.ts": {
+    "security/detect-unsafe-regex": {
+      "count": 1
+    }
+  },
+  "apps/api/src/routes/admin/flags.ts": {
+    "@typescript-eslint/no-unsafe-argument": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "apps/api/src/routes/admin/lifecycle.ts": {
+    "@typescript-eslint/no-unsafe-argument": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "apps/api/src/routes/admin/system.ts": {
+    "@typescript-eslint/no-unsafe-argument": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "apps/api/src/routes/admin/tenant-pii.ts": {
+    "@typescript-eslint/no-unsafe-argument": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "apps/api/src/routes/admin/tenants.ts": {
+    "@typescript-eslint/no-unsafe-argument": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 2
+    }
+  },
+  "apps/api/src/routes/audit-logs.ts": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "apps/api/src/routes/auth.ts": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 3
+    },
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 3
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 2
+    },
+    "no-restricted-syntax": {
+      "count": 2
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 1
+    }
+  },
+  "apps/api/src/routes/branches.ts": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 1
+    }
+  },
+  "apps/api/src/routes/organizations.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 1
+    }
+  },
+  "apps/api/src/server.ts": {
+    "no-param-reassign": {
+      "count": 2
+    },
+    "no-restricted-syntax": {
+      "count": 3
+    }
+  },
+  "apps/api/src/services/admin/flags.service.ts": {
+    "@typescript-eslint/array-type": {
+      "count": 1
+    }
+  },
+  "apps/api/src/services/admin/platform-auth.service.ts": {
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 3
+    }
+  },
+  "apps/api/src/services/admin/platform-webauthn.service.ts": {
+    "@typescript-eslint/no-unnecessary-type-assertion": {
+      "count": 1
+    }
+  },
+  "apps/api/src/services/admin/queue-metrics.service.ts": {
+    "@typescript-eslint/array-type": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    }
+  },
+  "apps/api/src/services/admin/tenant-record.service.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/api/src/services/admin/tenant-view.service.ts": {
+    "@typescript-eslint/array-type": {
+      "count": 1
+    }
+  },
+  "apps/api/src/workers/platform-outbox.worker.ts": {
+    "@typescript-eslint/array-type": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/api/tests/contract/platform/lifecycle.test.ts": {
+    "@typescript-eslint/consistent-type-definitions": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/api/tests/contract/platform/tenants.test.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/api/tests/error-handler.test.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 2
+    }
+  },
+  "apps/api/tests/health-aggregation.test.ts": {
+    "sonarjs/no-duplicate-string": {
+      "count": 1
+    }
+  },
+  "apps/api/tests/health.test.ts": {
+    "max-lines-per-function": {
+      "count": 2
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 1
+    }
+  },
+  "apps/api/tests/helpers/auth.ts": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 6
+    }
+  },
+  "apps/api/tests/integration/health-probe.test.ts": {
+    "max-lines-per-function": {
+      "count": 2
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 2
+    }
+  },
+  "apps/api/tests/integration/manager-override.test.ts": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 3
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 2
+    }
+  },
+  "apps/api/tests/integration/night-audit-boundary.test.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 3
+    }
+  },
+  "apps/api/tests/integration/platform-auth-session.test.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/api/tests/integration/platform/audit-chain.test.ts": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/api/tests/integration/platform/audited-functions.test.ts": {
+    "@typescript-eslint/array-type": {
+      "count": 13
+    },
+    "max-lines-per-function": {
+      "count": 7
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 1
+    }
+  },
+  "apps/api/tests/integration/platform/flag-lifecycle.test.ts": {
+    "@typescript-eslint/consistent-type-definitions": {
+      "count": 4
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "max-params": {
+      "count": 1
+    }
+  },
+  "apps/api/tests/integration/platform/isolation.test.ts": {
+    "@typescript-eslint/array-type": {
+      "count": 1
+    }
+  },
+  "apps/api/tests/integration/platform/lifecycle.test.ts": {
+    "@typescript-eslint/require-await": {
+      "count": 3
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/api/tests/integration/platform/system-telemetry.test.ts": {
+    "@typescript-eslint/array-type": {
+      "count": 3
+    },
+    "@typescript-eslint/consistent-type-definitions": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/api/tests/integration/platform/tenant-pii.test.ts": {
+    "@typescript-eslint/array-type": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/api/tests/integration/platform/tenant-read.test.ts": {
+    "@typescript-eslint/array-type": {
+      "count": 4
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/api/tests/integration/rbac-matrix.test.ts": {
+    "max-lines-per-function": {
+      "count": 2
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 3
+    }
+  },
+  "apps/api/tests/integration/tenant-leak.test.ts": {
+    "@typescript-eslint/array-type": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 2
+    }
+  },
+  "apps/api/tests/middleware.test.ts": {
+    "max-lines-per-function": {
+      "count": 3
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 3
+    }
+  },
+  "apps/api/tests/platform-auth-audit.test.ts": {
+    "@typescript-eslint/consistent-type-assertions": {
+      "count": 4
+    },
+    "@typescript-eslint/require-await": {
+      "count": 18
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/api/tests/platform-auth-routes.test.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 1
+    }
+  },
+  "apps/api/tests/platform-auth-service.test.ts": {
+    "@typescript-eslint/require-await": {
+      "count": 4
+    }
+  },
+  "apps/api/tests/platform-capability.test.ts": {
+    "@typescript-eslint/require-await": {
+      "count": 7
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 1
+    }
+  },
+  "apps/api/tests/platform-edge-admission.test.ts": {
+    "@typescript-eslint/require-await": {
+      "count": 3
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/api/tests/platform-idempotency.test.ts": {
+    "@typescript-eslint/array-type": {
+      "count": 1
+    },
+    "@typescript-eslint/consistent-type-definitions": {
+      "count": 1
+    },
+    "@typescript-eslint/require-await": {
+      "count": 3
+    }
+  },
+  "apps/api/tests/platform-outbox-handlers.test.ts": {
+    "@typescript-eslint/require-await": {
+      "count": 5
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/api/tests/platform-tenant-access.test.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/api/tests/platform-webauthn-options.test.ts": {
+    "@typescript-eslint/require-await": {
+      "count": 3
+    }
+  },
+  "apps/api/tests/routes.test.ts": {
+    "@typescript-eslint/require-await": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 3
+    }
+  },
+  "apps/dashboard/sentry.client.config.ts": {
+    "no-param-reassign": {
+      "count": 2
+    }
+  },
+  "apps/dashboard/sentry.edge.config.ts": {
+    "no-param-reassign": {
+      "count": 2
+    }
+  },
+  "apps/dashboard/sentry.server.config.ts": {
+    "no-param-reassign": {
+      "count": 2
+    }
+  },
+  "apps/dashboard/src/app/(auth)/choose-tenant/page.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    },
+    "@typescript-eslint/no-misused-promises": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unsafe-argument": {
+      "count": 4
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 4
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 7
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 4
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "no-nested-ternary": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    },
+    "react/jsx-no-leaked-render": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/(auth)/forgot-password/page.tsx": {
+    "@typescript-eslint/no-misused-promises": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-argument": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 3
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 3
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "react/jsx-no-leaked-render": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/(auth)/invite/[token]/page.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-argument": {
+      "count": 5
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 7
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 4
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "react/jsx-no-leaked-render": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/(auth)/link-account/page.tsx": {
+    "@typescript-eslint/no-misused-promises": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-argument": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 4
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 7
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 4
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "react/jsx-no-leaked-render": {
+      "count": 2
+    }
+  },
+  "apps/dashboard/src/app/(auth)/login/page.tsx": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unsafe-argument": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 2
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 6
+    },
+    "complexity": {
+      "count": 3
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/(auth)/reset-password/page.tsx": {
+    "@typescript-eslint/no-misused-promises": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-argument": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 3
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 6
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "no-nested-ternary": {
+      "count": 1
+    },
+    "react/jsx-no-leaked-render": {
+      "count": 1
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 2
+    }
+  },
+  "apps/dashboard/src/app/(auth)/signup/page.tsx": {
+    "@typescript-eslint/no-unsafe-argument": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 3
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 3
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/(auth)/verify-expired/page.tsx": {
+    "@typescript-eslint/no-misused-promises": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-argument": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 3
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "no-nested-ternary": {
+      "count": 1
+    },
+    "react/jsx-no-leaked-render": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/(dashboard)/dashboard/dashboard.config.ts": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/(dashboard)/dashboard/page.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-argument": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 5
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 11
+    },
+    "complexity": {
+      "count": 3
+    },
+    "max-lines-per-function": {
+      "count": 3
+    },
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/(dashboard)/layout.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/(dashboard)/settings/addresses/addresses-client.tsx": {
+    "@typescript-eslint/array-type": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 14
+    },
+    "complexity": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/(dashboard)/settings/addresses/addresses.config.tsx": {
+    "@typescript-eslint/no-base-to-string": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 8
+    },
+    "max-lines-per-function": {
+      "count": 2
+    },
+    "react/jsx-no-leaked-render": {
+      "count": 2
+    }
+  },
+  "apps/dashboard/src/app/(dashboard)/settings/addresses/components/address-danger-modal.tsx": {
+    "@typescript-eslint/no-misused-promises": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 4
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/(dashboard)/settings/addresses/components/address-form-modal.tsx": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 11
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "no-nested-ternary": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/(dashboard)/settings/addresses/components/address-table-toolbar.tsx": {
+    "react/jsx-no-leaked-render": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/(dashboard)/settings/branches/branches-client.tsx": {
+    "@typescript-eslint/array-type": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 7
+    },
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 2
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/(dashboard)/settings/branches/branches.config.tsx": {
+    "@typescript-eslint/no-base-to-string": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 2
+    },
+    "react/jsx-no-leaked-render": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/(dashboard)/settings/branches/components/branch-danger-modal.tsx": {
+    "@typescript-eslint/no-misused-promises": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/(dashboard)/settings/branches/components/branch-form-modal.tsx": {
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "no-nested-ternary": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/(dashboard)/settings/branches/components/branch-table-toolbar.tsx": {
+    "react/jsx-no-leaked-render": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/(dashboard)/settings/branches/page.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/(dashboard)/settings/general/general-client.tsx": {
+    "@typescript-eslint/array-type": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 6
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-depth": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 2
+    }
+  },
+  "apps/dashboard/src/app/(dashboard)/settings/general/general.config.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/(dashboard)/settings/layout.tsx": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "react/jsx-no-leaked-render": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/(dashboard)/settings/members/components/member-add-modal.tsx": {
+    "@typescript-eslint/no-misused-promises": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "react/jsx-no-leaked-render": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/(dashboard)/settings/members/components/member-danger-modal.tsx": {
+    "@typescript-eslint/no-misused-promises": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/(dashboard)/settings/members/components/member-edit-modal.tsx": {
+    "@typescript-eslint/no-misused-promises": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 3
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 3
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "no-nested-ternary": {
+      "count": 2
+    },
+    "react/jsx-no-leaked-render": {
+      "count": 2
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/(dashboard)/settings/members/components/member-invite-modal.tsx": {
+    "@typescript-eslint/no-misused-promises": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 3
+    },
+    "complexity": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "no-nested-ternary": {
+      "count": 2
+    },
+    "react/jsx-no-leaked-render": {
+      "count": 1
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 2
+    }
+  },
+  "apps/dashboard/src/app/(dashboard)/settings/members/components/member-table-toolbar.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "react/jsx-no-leaked-render": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/(dashboard)/settings/members/members-client.tsx": {
+    "@typescript-eslint/array-type": {
+      "count": 2
+    },
+    "@typescript-eslint/no-redundant-type-constituents": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 3
+    },
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/(dashboard)/settings/members/members.config.tsx": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "no-nested-ternary": {
+      "count": 1
+    },
+    "react/jsx-no-leaked-render": {
+      "count": 2
+    },
+    "react/no-array-index-key": {
+      "count": 2
+    }
+  },
+  "apps/dashboard/src/app/(dashboard)/settings/roles/components/role-delete-modal.tsx": {
+    "@typescript-eslint/no-misused-promises": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "react/jsx-no-leaked-render": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/(dashboard)/settings/roles/components/role-form-modal.tsx": {
+    "@typescript-eslint/no-misused-promises": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 6
+    },
+    "complexity": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 2
+    },
+    "no-nested-ternary": {
+      "count": 3
+    },
+    "react/jsx-no-leaked-render": {
+      "count": 3
+    }
+  },
+  "apps/dashboard/src/app/(dashboard)/settings/roles/components/role-table-toolbar.tsx": {
+    "react/jsx-no-leaked-render": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/(dashboard)/settings/roles/roles-client.tsx": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/(dashboard)/settings/roles/roles.config.tsx": {
+    "@typescript-eslint/no-base-to-string": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "react/jsx-no-leaked-render": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/(dashboard)/sites/[siteId]/pages/page.tsx": {
+    "@typescript-eslint/dot-notation": {
+      "count": 1
+    },
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    },
+    "@typescript-eslint/no-misused-promises": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-argument": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 11
+    },
+    "@typescript-eslint/no-unsafe-call": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 12
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "react/jsx-no-leaked-render": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/(dashboard)/sites/onboarding/page.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    },
+    "@typescript-eslint/no-misused-promises": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unsafe-argument": {
+      "count": 5
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 5
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 10
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "react/jsx-no-leaked-render": {
+      "count": 2
+    }
+  },
+  "apps/dashboard/src/app/(dashboard)/sites/page.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    },
+    "@typescript-eslint/no-misused-promises": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 7
+    },
+    "@typescript-eslint/no-unsafe-call": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 6
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/(editor)/sites/[siteId]/editor/[pageId]/page.tsx": {
+    "@typescript-eslint/dot-notation": {
+      "count": 2
+    },
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 4
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 4
+    }
+  },
+  "apps/dashboard/src/app/(editor)/sites/[siteId]/preview/[pageId]/page.tsx": {
+    "@typescript-eslint/dot-notation": {
+      "count": 2
+    },
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 4
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 3
+    }
+  },
+  "apps/dashboard/src/app/api/auth/callback/[provider]/route.ts": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 8
+    },
+    "@typescript-eslint/no-unnecessary-type-assertion": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 2
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/api/auth/forgot-password/route.ts": {
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 3
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 2
+    }
+  },
+  "apps/dashboard/src/app/api/auth/link-account/route.ts": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 4
+    },
+    "@typescript-eslint/require-await": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 2
+    }
+  },
+  "apps/dashboard/src/app/api/auth/login/route.ts": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/api/auth/logout/route.ts": {
+    "@typescript-eslint/require-await": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/api/auth/oauth/[provider]/route.ts": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/api/auth/passkey/verify/route.ts": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 3
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 2
+    },
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/api/auth/register/route.ts": {
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 2
+    }
+  },
+  "apps/dashboard/src/app/api/auth/reset-password/route.ts": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 6
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 2
+    }
+  },
+  "apps/dashboard/src/app/api/auth/sso/[id]/login/route.ts": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 2
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-depth": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/api/auth/sso/discover/route.ts": {
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/api/auth/turnstile/config/route.ts": {
+    "@typescript-eslint/require-await": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/api/auth/verify-email/confirm/route.ts": {
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/api/auth/verify-email/request/route.ts": {
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 2
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-depth": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 2
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/api/cms/pages/[pageId]/content/route.ts": {
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/api/cms/pages/[pageId]/publish/route.ts": {
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/api/cms/sites/[siteId]/pages/route.ts": {
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/api/cms/sites/route.ts": {
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/api/cms/subdomain/check/route.ts": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/api/cms/templates/route.ts": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/api/v1/apps/[id]/install/route.ts": {
+    "@typescript-eslint/array-type": {
+      "count": 1
+    },
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/api/v1/auth/invitation/accept/route.ts": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 7
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 11
+    },
+    "complexity": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 2
+    },
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/api/v1/auth/switch-branch/route.ts": {
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 3
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/api/v1/auth/switch-tenant/route.ts": {
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 3
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/api/v1/auth/tenants/route.ts": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/api/v1/cms/admin/pages/[pageId]/content/route.ts": {
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 3
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/api/v1/installed-apps/route.ts": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/api/v1/onboarding/check-slug/route.ts": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 3
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-depth": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 2
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/api/v1/onboarding/complete/route.ts": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 3
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 8
+    },
+    "complexity": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/api/v1/onboarding/step-1/route.ts": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 5
+    },
+    "@typescript-eslint/no-unnecessary-type-assertion": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 11
+    },
+    "complexity": {
+      "count": 3
+    },
+    "max-lines-per-function": {
+      "count": 2
+    },
+    "no-nested-ternary": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/api/v1/onboarding/step-2/route.ts": {
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 5
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/api/v1/organizations/[orgId]/installed-apps/route.ts": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/api/v1/settings/addresses/[id]/route.ts": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 4
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 2
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/api/v1/settings/addresses/route.ts": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/api/v1/settings/branches/[id]/route.ts": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/api/v1/settings/branches/route.ts": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 3
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/api/v1/settings/members/[id]/role/route.ts": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/api/v1/settings/members/[id]/route.ts": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/api/v1/settings/members/[id]/status/route.ts": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/api/v1/settings/members/invitations/[id]/route.ts": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/api/v1/settings/members/route.ts": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 3
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-call": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 4
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 4
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/api/v1/settings/organization/route.ts": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/api/v1/settings/roles/[id]/route.ts": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 2
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/api/v1/settings/roles/route.ts": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/api/v1/system/version/route.ts": {
+    "@typescript-eslint/require-await": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/api/v1/user/preferences/route.ts": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/error.tsx": {
+    "react/jsx-no-leaked-render": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/global-error.tsx": {
+    "react/jsx-no-leaked-render": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/layout.tsx": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/onboarding/step-1/page.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 2
+    },
+    "@typescript-eslint/no-misused-promises": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-argument": {
+      "count": 6
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 5
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 13
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 3
+    },
+    "@typescript-eslint/require-await": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-depth": {
+      "count": 3
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "no-nested-ternary": {
+      "count": 1
+    },
+    "react/jsx-no-leaked-render": {
+      "count": 2
+    }
+  },
+  "apps/dashboard/src/app/onboarding/step-2/page.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    },
+    "@typescript-eslint/no-misused-promises": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-argument": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 3
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 3
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 3
+    },
+    "@typescript-eslint/require-await": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "react/jsx-no-leaked-render": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/app/onboarding/step-3/page.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-argument": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 2
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 3
+    },
+    "no-nested-ternary": {
+      "count": 6
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/components/auth/auth-card.tsx": {
+    "react/jsx-no-leaked-render": {
+      "count": 3
+    }
+  },
+  "apps/dashboard/src/components/auth/email-password-form.tsx": {
+    "@typescript-eslint/no-misused-promises": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "react/jsx-no-leaked-render": {
+      "count": 4
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 2
+    }
+  },
+  "apps/dashboard/src/components/auth/oauth-providers.tsx": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "apps/dashboard/src/components/auth/passkey-button.tsx": {
+    "@typescript-eslint/no-misused-promises": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 8
+    },
+    "@typescript-eslint/no-unsafe-argument": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 2
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 2
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 2
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/components/auth/sso-redirect-card.tsx": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "react/jsx-no-leaked-render": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/components/auth/turnstile.tsx": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 2
+    }
+  },
+  "apps/dashboard/src/components/config-renderers/config-card-renderer.tsx": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 2
+    },
+    "react/jsx-no-leaked-render": {
+      "count": 5
+    }
+  },
+  "apps/dashboard/src/components/config-renderers/config-form-renderer.tsx": {
+    "@typescript-eslint/no-base-to-string": {
+      "count": 3
+    },
+    "@typescript-eslint/no-misused-promises": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unnecessary-type-assertion": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 2
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-depth": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 2
+    },
+    "no-nested-ternary": {
+      "count": 1
+    },
+    "react/jsx-no-leaked-render": {
+      "count": 8
+    }
+  },
+  "apps/dashboard/src/components/config-renderers/config-table-renderer.tsx": {
+    "@typescript-eslint/no-base-to-string": {
+      "count": 3
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 2
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 2
+    },
+    "no-nested-ternary": {
+      "count": 2
+    },
+    "react/jsx-no-leaked-render": {
+      "count": 3
+    }
+  },
+  "apps/dashboard/src/components/editor/studio-header.tsx": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "react/jsx-no-leaked-render": {
+      "count": 2
+    }
+  },
+  "apps/dashboard/src/components/editor/studio-workspace.tsx": {
+    "@typescript-eslint/consistent-type-assertions": {
+      "count": 2
+    },
+    "@typescript-eslint/no-misused-promises": {
+      "count": 3
+    },
+    "@typescript-eslint/no-unnecessary-type-assertion": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "react/jsx-no-leaked-render": {
+      "count": 2
+    }
+  },
+  "apps/dashboard/src/components/layout/dashboard-shell.tsx": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 2
+    },
+    "react/jsx-no-leaked-render": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/components/layout/header-topbar.tsx": {
+    "@typescript-eslint/no-misused-promises": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "react/jsx-no-leaked-render": {
+      "count": 6
+    }
+  },
+  "apps/dashboard/src/components/layout/offline-view.tsx": {
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/components/layout/settings-nav.tsx": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "react/jsx-no-leaked-render": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/components/layout/sidebar-nav.tsx": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "react/jsx-no-leaked-render": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/components/layout/suspension-notice.tsx": {
+    "@typescript-eslint/no-misused-promises": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/components/layout/unverified-email-banner.tsx": {
+    "@typescript-eslint/no-misused-promises": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-argument": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 3
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "no-nested-ternary": {
+      "count": 1
+    },
+    "react/jsx-no-leaked-render": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/components/layout/workspace-switcher.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    },
+    "@typescript-eslint/no-misused-promises": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-argument": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 3
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "no-nested-ternary": {
+      "count": 1
+    },
+    "react/jsx-no-leaked-render": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/components/marketplace/install-gate-dialog.tsx": {
+    "@typescript-eslint/no-misused-promises": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-argument": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 3
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "no-nested-ternary": {
+      "count": 1
+    },
+    "react/jsx-no-leaked-render": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/components/onboarding/onboarding-stepper.tsx": {
+    "no-nested-ternary": {
+      "count": 2
+    }
+  },
+  "apps/dashboard/src/components/preview/preview-header.tsx": {
+    "@typescript-eslint/array-type": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/components/preview/preview-workspace.tsx": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/components/settings/copy-invite-button.tsx": {
+    "@typescript-eslint/no-misused-promises": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 2
+    }
+  },
+  "apps/dashboard/src/components/settings/danger-zone-card.tsx": {
+    "@typescript-eslint/no-misused-promises": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "react/jsx-no-leaked-render": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/components/settings/sticky-action-bar.tsx": {
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "react/jsx-no-leaked-render": {
+      "count": 2
+    }
+  },
+  "apps/dashboard/src/components/sites/create-page-dialog.tsx": {
+    "@typescript-eslint/dot-notation": {
+      "count": 4
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "react/jsx-no-leaked-render": {
+      "count": 2
+    }
+  },
+  "apps/dashboard/src/components/sites/create-site-dialog.tsx": {
+    "@typescript-eslint/dot-notation": {
+      "count": 6
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "react/jsx-no-leaked-render": {
+      "count": 3
+    }
+  },
+  "apps/dashboard/src/components/sites/page-explorer-table.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "react/jsx-no-leaked-render": {
+      "count": 3
+    }
+  },
+  "apps/dashboard/src/components/sites/site-list-table.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "react/jsx-no-leaked-render": {
+      "count": 3
+    }
+  },
+  "apps/dashboard/src/lib/api/cms-client.ts": {
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 21
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 16
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/lib/app-registry.ts": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/lib/auth-guard.ts": {
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/lib/env.ts": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "no-restricted-syntax": {
+      "count": 10
+    }
+  },
+  "apps/dashboard/src/lib/http-client.ts": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 2
+    },
+    "no-nested-ternary": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/lib/oauth-registry.ts": {
+    "@typescript-eslint/no-redundant-type-constituents": {
+      "count": 4
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "no-restricted-syntax": {
+      "count": 4
+    }
+  },
+  "apps/dashboard/src/lib/origin.ts": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 2
+    },
+    "complexity": {
+      "count": 1
+    },
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
+  "apps/dashboard/src/lib/route-dispatcher.ts": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 2
+    },
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/lib/session-helper.ts": {
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/lib/tenant-access.ts": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/lib/tenant-context.ts": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 3
+    }
+  },
+  "apps/dashboard/src/lib/turnstile-client.ts": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 3
+    }
+  },
+  "apps/dashboard/src/lib/turnstile.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "no-restricted-syntax": {
+      "count": 3
+    }
+  },
+  "apps/dashboard/src/middleware.ts": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 5
+    },
+    "complexity": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 2
+    },
+    "no-nested-ternary": {
+      "count": 2
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/services/addresses.service.ts": {
+    "@typescript-eslint/no-unnecessary-type-assertion": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 8
+    },
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 2
+    },
+    "no-restricted-imports": {
+      "count": 2
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/services/branches.service.ts": {
+    "@typescript-eslint/no-unnecessary-type-assertion": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 4
+    },
+    "complexity": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 3
+    }
+  },
+  "apps/dashboard/src/services/members/direct.ts": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 3
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/services/members/invitations.ts": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "@typescript-eslint/non-nullable-type-assertion-style": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-depth": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 2
+    },
+    "no-restricted-imports": {
+      "count": 2
+    },
+    "no-restricted-syntax": {
+      "count": 1
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/services/members/member-status.ts": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 2
+    },
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/services/members/member-update.ts": {
+    "@typescript-eslint/array-type": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unnecessary-type-assertion": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 2
+    },
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 2
+    },
+    "max-depth": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 2
+    },
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/services/members/queries.ts": {
+    "@typescript-eslint/array-type": {
+      "count": 2
+    },
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 4
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/services/members/safeguards.ts": {
+    "@typescript-eslint/array-type": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 2
+    },
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/services/members/types.ts": {
+    "@typescript-eslint/array-type": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/services/organization-settings.service.ts": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/services/roles.service.ts": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 2
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 3
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 1
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/src/services/tenant-context.service.ts": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/tests/account-security.test.tsx": {
+    "@typescript-eslint/array-type": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 13
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 14
+    },
+    "@typescript-eslint/no-unused-vars": {
+      "count": 5
+    },
+    "@typescript-eslint/require-await": {
+      "count": 5
+    },
+    "@typescript-eslint/unbound-method": {
+      "count": 4
+    },
+    "max-lines-per-function": {
+      "count": 4
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 5
+    }
+  },
+  "apps/dashboard/tests/addresses-settings-api.test.ts": {
+    "@typescript-eslint/no-unnecessary-type-assertion": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 13
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 24
+    },
+    "@typescript-eslint/unbound-method": {
+      "count": 15
+    },
+    "max-lines-per-function": {
+      "count": 3
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 4
+    }
+  },
+  "apps/dashboard/tests/auth-gate.test.tsx": {
+    "@typescript-eslint/await-thenable": {
+      "count": 1
+    },
+    "@typescript-eslint/no-empty-function": {
+      "count": 4
+    },
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 3
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 3
+    },
+    "max-lines-per-function": {
+      "count": 3
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 3
+    }
+  },
+  "apps/dashboard/tests/branches-settings-api.test.ts": {
+    "@typescript-eslint/consistent-type-assertions": {
+      "count": 4
+    },
+    "@typescript-eslint/no-unnecessary-type-assertion": {
+      "count": 9
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 14
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 15
+    },
+    "@typescript-eslint/unbound-method": {
+      "count": 17
+    },
+    "max-lines-per-function": {
+      "count": 3
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 2
+    }
+  },
+  "apps/dashboard/tests/cas-autosave.test.tsx": {
+    "@typescript-eslint/no-empty-function": {
+      "count": 4
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 2
+    },
+    "@typescript-eslint/require-await": {
+      "count": 5
+    },
+    "max-lines-per-function": {
+      "count": 2
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/tests/config-form-renderer.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/tests/config-table-renderer.test.tsx": {
+    "sonarjs/no-duplicate-string": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/tests/e2e-studio-integration.test.tsx": {
+    "@typescript-eslint/no-empty-function": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 2
+    },
+    "@typescript-eslint/require-await": {
+      "count": 4
+    },
+    "max-lines-per-function": {
+      "count": 3
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/tests/email-verification.test.tsx": {
+    "@typescript-eslint/array-type": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 10
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 17
+    },
+    "@typescript-eslint/no-unused-vars": {
+      "count": 4
+    },
+    "@typescript-eslint/require-await": {
+      "count": 4
+    },
+    "max-lines-per-function": {
+      "count": 3
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 2
+    }
+  },
+  "apps/dashboard/tests/gateway-security-boundary.test.ts": {
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 9
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 13
+    },
+    "@typescript-eslint/unbound-method": {
+      "count": 3
+    },
+    "max-lines-per-function": {
+      "count": 2
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/tests/invitation-accept-api.test.ts": {
+    "@typescript-eslint/consistent-type-assertions": {
+      "count": 17
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 12
+    },
+    "@typescript-eslint/no-unsafe-call": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 20
+    },
+    "@typescript-eslint/no-unsafe-return": {
+      "count": 1
+    },
+    "@typescript-eslint/require-await": {
+      "count": 1
+    },
+    "@typescript-eslint/unbound-method": {
+      "count": 21
+    },
+    "max-lines-per-function": {
+      "count": 4
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 3
+    }
+  },
+  "apps/dashboard/tests/lib/turnstile.test.ts": {
+    "@typescript-eslint/require-await": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/tests/members-settings-api.test.ts": {
+    "@typescript-eslint/consistent-type-assertions": {
+      "count": 44
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 20
+    },
+    "@typescript-eslint/no-unsafe-call": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 45
+    },
+    "@typescript-eslint/no-unsafe-return": {
+      "count": 1
+    },
+    "@typescript-eslint/require-await": {
+      "count": 1
+    },
+    "@typescript-eslint/unbound-method": {
+      "count": 67
+    },
+    "max-lines-per-function": {
+      "count": 8
+    },
+    "no-nested-ternary": {
+      "count": 1
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 9
+    }
+  },
+  "apps/dashboard/tests/navigation-shell.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/tests/oauth-flow.test.ts": {
+    "@typescript-eslint/consistent-type-assertions": {
+      "count": 3
+    },
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 3
+    },
+    "@typescript-eslint/no-unnecessary-type-assertion": {
+      "count": 3
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 2
+    },
+    "@typescript-eslint/unbound-method": {
+      "count": 7
+    },
+    "max-lines-per-function": {
+      "count": 2
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 2
+    }
+  },
+  "apps/dashboard/tests/onboarding.test.tsx": {
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 15
+    },
+    "@typescript-eslint/no-unsafe-call": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 31
+    },
+    "@typescript-eslint/no-unsafe-return": {
+      "count": 1
+    },
+    "@typescript-eslint/require-await": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 5
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 8
+    }
+  },
+  "apps/dashboard/tests/org-settings-api.test.ts": {
+    "@typescript-eslint/consistent-type-assertions": {
+      "count": 5
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 15
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 22
+    },
+    "@typescript-eslint/unbound-method": {
+      "count": 11
+    },
+    "max-lines-per-function": {
+      "count": 3
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 2
+    }
+  },
+  "apps/dashboard/tests/overview-dashboard.test.tsx": {
+    "max-lines-per-function": {
+      "count": 4
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 4
+    }
+  },
+  "apps/dashboard/tests/passkey-turnstile-audit.test.tsx": {
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 4
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 7
+    },
+    "@typescript-eslint/require-await": {
+      "count": 1
+    },
+    "@typescript-eslint/unbound-method": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 4
+    }
+  },
+  "apps/dashboard/tests/preview-mode.test.tsx": {
+    "@typescript-eslint/no-empty-function": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/tests/reactive-errors.test.tsx": {
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 4
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/tests/role-capability-and-persisted-apps.test.ts": {
+    "@typescript-eslint/consistent-type-assertions": {
+      "count": 4
+    },
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 4
+    },
+    "@typescript-eslint/unbound-method": {
+      "count": 7
+    },
+    "max-lines-per-function": {
+      "count": 2
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 2
+    }
+  },
+  "apps/dashboard/tests/role-governance-and-rbac.test.ts": {
+    "@typescript-eslint/consistent-type-assertions": {
+      "count": 7
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-call": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-return": {
+      "count": 1
+    },
+    "@typescript-eslint/require-await": {
+      "count": 1
+    },
+    "@typescript-eslint/unbound-method": {
+      "count": 13
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/tests/roles-settings-api.test.ts": {
+    "@typescript-eslint/consistent-type-assertions": {
+      "count": 10
+    },
+    "@typescript-eslint/no-unnecessary-type-assertion": {
+      "count": 3
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 11
+    },
+    "@typescript-eslint/no-unsafe-call": {
+      "count": 3
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 24
+    },
+    "@typescript-eslint/no-unsafe-return": {
+      "count": 1
+    },
+    "@typescript-eslint/require-await": {
+      "count": 1
+    },
+    "@typescript-eslint/unbound-method": {
+      "count": 25
+    },
+    "max-lines-per-function": {
+      "count": 5
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 4
+    }
+  },
+  "apps/dashboard/tests/session-helper.test.ts": {
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 6
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 6
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/tests/settings-navigation.test.tsx": {
+    "@typescript-eslint/no-unsafe-return": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 2
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 3
+    }
+  },
+  "apps/dashboard/tests/settings-primitives.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/tests/sites-explorer.test.tsx": {
+    "@typescript-eslint/no-empty-function": {
+      "count": 5
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/tests/sso-flow.test.tsx": {
+    "@typescript-eslint/no-empty-function": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 5
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 14
+    },
+    "@typescript-eslint/unbound-method": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 2
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 2
+    }
+  },
+  "apps/dashboard/tests/subdomain-tenant-boundary.test.ts": {
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/dashboard/tests/system-version-api.test.ts": {
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 3
+    }
+  },
+  "apps/dashboard/tests/tenant-suspension-signin.test.ts": {
+    "@typescript-eslint/consistent-type-assertions": {
+      "count": 1
+    },
+    "@typescript-eslint/require-await": {
+      "count": 2
+    },
+    "@typescript-eslint/unbound-method": {
+      "count": 3
+    }
+  },
+  "apps/dashboard/tests/tenant-switcher.test.tsx": {
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 5
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 12
+    },
+    "max-lines-per-function": {
+      "count": 3
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 3
+    }
+  },
+  "apps/dashboard/tests/turnstile-runtime-config.test.ts": {
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 2
+    }
+  },
+  "apps/dashboard/tests/visual-studio.test.tsx": {
+    "@typescript-eslint/no-empty-function": {
+      "count": 3
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/platform/scripts/bootstrap-link.ts": {
+    "no-undef": {
+      "count": 1
+    }
+  },
+  "apps/platform/scripts/bootstrap-operator.ts": {
+    "no-console": {
+      "count": 3
+    }
+  },
+  "apps/platform/src/app/(auth)/sign-in/page.tsx": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/platform/src/app/(platform)/flags/page.tsx": {
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/platform/src/app/(platform)/flags/use-flags.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/platform/src/app/(platform)/tenants/[orgId]/page.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/platform/src/app/(platform)/tenants/[orgId]/tenant-pii-panel.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/platform/src/app/(platform)/tenants/[orgId]/tenant-record-tablist.tsx": {
+    "no-param-reassign": {
+      "count": 1
+    }
+  },
+  "apps/platform/src/app/(platform)/tenants/page.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "no-nested-ternary": {
+      "count": 1
+    }
+  },
+  "apps/platform/src/components/auth/auth-provider.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/platform/src/components/flags/flag-create-modal.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/platform/src/components/flags/flag-form.config.ts": {
+    "security/detect-unsafe-regex": {
+      "count": 1
+    }
+  },
+  "apps/platform/src/components/flags/flag-lifecycle-modal.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/platform/src/components/flags/flag-rule.config.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/platform/src/components/flags/flag-rules-modal.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "react/no-array-index-key": {
+      "count": 1
+    }
+  },
+  "apps/platform/src/components/flags/flags-table.config.tsx": {
+    "@typescript-eslint/no-base-to-string": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "no-restricted-syntax": {
+      "count": 4
+    }
+  },
+  "apps/platform/src/components/forms/config-form-renderer.tsx": {
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 2
+    },
+    "no-nested-ternary": {
+      "count": 1
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "apps/platform/src/components/forms/lifecycle-form.config.ts": {
+    "@typescript-eslint/consistent-type-definitions": {
+      "count": 1
+    }
+  },
+  "apps/platform/src/components/forms/lifecycle-modal.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/platform/src/components/layout/platform-shell.tsx": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/platform/src/components/tables/config-table.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "apps/platform/src/lib/api.ts": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unnecessary-type-assertion": {
+      "count": 1
+    },
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "apps/platform/src/lib/bootstrap-operator.ts": {
+    "no-restricted-imports": {
+      "count": 2
+    }
+  },
+  "apps/platform/tests/bootstrap-operator.test.ts": {
+    "@typescript-eslint/array-type": {
+      "count": 1
+    },
+    "@typescript-eslint/consistent-type-assertions": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "@typescript-eslint/require-await": {
+      "count": 7
+    },
+    "@typescript-eslint/unbound-method": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 1
+    }
+  },
+  "apps/platform/tests/bootstrap-token.test.ts": {
+    "@typescript-eslint/array-type": {
+      "count": 1
+    }
+  },
+  "apps/platform/tests/flags.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 1
+    }
+  },
+  "apps/platform/tests/lifecycle.test.tsx": {
+    "@typescript-eslint/no-base-to-string": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "@typescript-eslint/require-await": {
+      "count": 3
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 1
+    }
+  },
+  "apps/platform/tests/logout.test.ts": {
+    "@typescript-eslint/require-await": {
+      "count": 3
+    }
+  },
+  "apps/platform/tests/navigation.test.ts": {
+    "sonarjs/no-duplicate-string": {
+      "count": 1
+    }
+  },
+  "apps/platform/tests/session-loss.test.ts": {
+    "@typescript-eslint/require-await": {
+      "count": 1
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 1
+    }
+  },
+  "packages/auth/src/auth.ts": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    },
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "packages/auth/src/email/transporter.ts": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 3
+    },
+    "@typescript-eslint/require-await": {
+      "count": 1
+    },
+    "no-console": {
+      "count": 7
+    },
+    "no-restricted-syntax": {
+      "count": 5
+    }
+  },
+  "packages/auth/src/oauth/exchange.ts": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 27
+    },
+    "complexity": {
+      "count": 3
+    },
+    "max-lines-per-function": {
+      "count": 2
+    },
+    "no-restricted-syntax": {
+      "count": 7
+    }
+  },
+  "packages/auth/src/oauth/types.ts": {
+    "@typescript-eslint/no-redundant-type-constituents": {
+      "count": 3
+    }
+  },
+  "packages/auth/src/pin/manager-override.ts": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/auth/src/pin/terminal-pin.ts": {
+    "@typescript-eslint/array-type": {
+      "count": 2
+    },
+    "complexity": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/auth/src/platform/audit.ts": {
+    "@typescript-eslint/no-unnecessary-type-assertion": {
+      "count": 1
+    }
+  },
+  "packages/auth/src/platform/control-session.ts": {
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    }
+  },
+  "packages/auth/src/platform/token.ts": {
+    "@typescript-eslint/no-redundant-type-constituents": {
+      "count": 1
+    }
+  },
+  "packages/auth/src/security/account-security.ts": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 2
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/auth/src/security/audit-logger.ts": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 2
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 5
+    },
+    "complexity": {
+      "count": 1
+    }
+  },
+  "packages/auth/src/session/branch-context.ts": {
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 2
+    },
+    "complexity": {
+      "count": 2
+    },
+    "max-depth": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 2
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "packages/auth/src/session/permissions.ts": {
+    "@typescript-eslint/array-type": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-depth": {
+      "count": 2
+    },
+    "sonarjs/no-collapsible-if": {
+      "count": 1
+    }
+  },
+  "packages/auth/src/session/role-permissions.ts": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    }
+  },
+  "packages/auth/src/session/session-token.ts": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 2
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 2
+    },
+    "complexity": {
+      "count": 2
+    },
+    "max-params": {
+      "count": 1
+    },
+    "no-restricted-syntax": {
+      "count": 3
+    }
+  },
+  "packages/auth/src/session/tenant-context.ts": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 4
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 8
+    },
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 2
+    },
+    "max-depth": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 2
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "packages/auth/src/session/user-state.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "packages/auth/src/sso/domain-discovery.ts": {
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 1
+    }
+  },
+  "packages/auth/src/sso/jit-provisioning.ts": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 2
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/auth/tests/account-security.test.ts": {
+    "@typescript-eslint/array-type": {
+      "count": 2
+    },
+    "@typescript-eslint/require-await": {
+      "count": 12
+    },
+    "@typescript-eslint/unbound-method": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 4
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 1
+    }
+  },
+  "packages/auth/tests/auth.test.ts": {
+    "@typescript-eslint/array-type": {
+      "count": 1
+    },
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 2
+    },
+    "@typescript-eslint/require-await": {
+      "count": 3
+    },
+    "max-lines-per-function": {
+      "count": 2
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 1
+    }
+  },
+  "packages/auth/tests/branch-context.test.ts": {
+    "@typescript-eslint/require-await": {
+      "count": 29
+    },
+    "max-lines-per-function": {
+      "count": 3
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 4
+    }
+  },
+  "packages/auth/tests/oauth.test.ts": {
+    "@typescript-eslint/no-unnecessary-type-assertion": {
+      "count": 4
+    },
+    "@typescript-eslint/require-await": {
+      "count": 8
+    },
+    "max-lines-per-function": {
+      "count": 2
+    }
+  },
+  "packages/auth/tests/pin-engine.test.ts": {
+    "@typescript-eslint/require-await": {
+      "count": 7
+    },
+    "max-lines-per-function": {
+      "count": 4
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 1
+    }
+  },
+  "packages/auth/tests/platform-audit.test.ts": {
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "@typescript-eslint/require-await": {
+      "count": 1
+    }
+  },
+  "packages/auth/tests/platform-bootstrap-token.test.ts": {
+    "@typescript-eslint/require-await": {
+      "count": 5
+    },
+    "@typescript-eslint/unbound-method": {
+      "count": 1
+    },
+    "max-params": {
+      "count": 1
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 1
+    }
+  },
+  "packages/auth/tests/platform-capabilities.test.ts": {
+    "@typescript-eslint/array-type": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    },
+    "@typescript-eslint/require-await": {
+      "count": 5
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 1
+    }
+  },
+  "packages/auth/tests/platform-control-session.test.ts": {
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 1
+    },
+    "@typescript-eslint/require-await": {
+      "count": 4
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 1
+    }
+  },
+  "packages/auth/tests/platform-step-up.test.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    },
+    "@typescript-eslint/require-await": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/auth/tests/session-expiration.test.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/auth/tests/sso-discovery.test.ts": {
+    "@typescript-eslint/require-await": {
+      "count": 15
+    },
+    "max-lines-per-function": {
+      "count": 2
+    }
+  },
+  "packages/auth/tests/verification.test.ts": {
+    "@typescript-eslint/require-await": {
+      "count": 11
+    },
+    "@typescript-eslint/unbound-method": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 3
+    }
+  },
+  "packages/core/src/catalog/validators.ts": {
+    "complexity": {
+      "count": 1
+    },
+    "security/detect-unsafe-regex": {
+      "count": 1
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "packages/core/src/clock/index.ts": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 6
+    },
+    "@typescript-eslint/no-unnecessary-type-assertion": {
+      "count": 2
+    },
+    "complexity": {
+      "count": 1
+    }
+  },
+  "packages/core/src/constants/app-manifests.ts": {
+    "@typescript-eslint/array-type": {
+      "count": 1
+    }
+  },
+  "packages/core/src/constants/countries.ts": {
+    "@typescript-eslint/array-type": {
+      "count": 1
+    }
+  },
+  "packages/core/src/constants/permissions.ts": {
+    "sonarjs/no-duplicate-string": {
+      "count": 1
+    }
+  },
+  "packages/core/src/errors/codes.ts": {
+    "no-param-reassign": {
+      "count": 1
+    }
+  },
+  "packages/core/src/errors/index.ts": {
+    "@typescript-eslint/array-type": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    }
+  },
+  "packages/core/src/rbac/index.ts": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 2
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-depth": {
+      "count": 4
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "packages/core/tests/clock.test.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 3
+    }
+  },
+  "packages/core/tests/errors.test.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/core/tests/rbac.test.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 4
+    }
+  },
+  "packages/core/tests/schemas.test.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/db/src/backfill-app-metadata.ts": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "no-console": {
+      "count": 8
+    }
+  },
+  "packages/db/src/client.ts": {
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
+  "packages/db/src/extension.ts": {
+    "@typescript-eslint/no-base-to-string": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 2
+    },
+    "max-depth": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "max-params": {
+      "count": 1
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "packages/db/src/seed.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "no-console": {
+      "count": 4
+    }
+  },
+  "packages/db/tests/tenant-isolation.test.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/flags/src/cache.ts": {
+    "max-params": {
+      "count": 2
+    }
+  },
+  "packages/flags/src/client.ts": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
+  "packages/flags/src/types.ts": {
+    "@typescript-eslint/no-redundant-type-constituents": {
+      "count": 1
+    }
+  },
+  "packages/flags/tests/cache.test.ts": {
+    "@typescript-eslint/no-unnecessary-type-assertion": {
+      "count": 2
+    },
+    "@typescript-eslint/require-await": {
+      "count": 4
+    },
+    "@typescript-eslint/unbound-method": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 2
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 1
+    }
+  },
+  "packages/flags/tests/evaluation.test.ts": {
+    "max-lines-per-function": {
+      "count": 2
+    }
+  },
+  "packages/logger/src/correlation.ts": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 7
+    },
+    "complexity": {
+      "count": 1
+    }
+  },
+  "packages/logger/src/error-reporter.ts": {
+    "@typescript-eslint/no-redundant-type-constituents": {
+      "count": 1
+    }
+  },
+  "packages/logger/src/logger.ts": {
+    "complexity": {
+      "count": 1
+    },
+    "no-restricted-syntax": {
+      "count": 3
+    }
+  },
+  "packages/logger/src/sanitize.ts": {
+    "@typescript-eslint/no-unsafe-return": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "security/detect-unsafe-regex": {
+      "count": 1
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "packages/logger/tests/logger.test.ts": {
+    "@typescript-eslint/no-unsafe-argument": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-call": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-return": {
+      "count": 2
+    },
+    "@typescript-eslint/unbound-method": {
+      "count": 6
+    },
+    "max-lines-per-function": {
+      "count": 2
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 2
+    }
+  },
+  "packages/logger/tests/platform-redaction.test.ts": {
+    "@typescript-eslint/no-unsafe-argument": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-call": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 1
+    },
+    "@typescript-eslint/unbound-method": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/modules/website-builder/src/ast/types.ts": {
+    "@typescript-eslint/array-type": {
+      "count": 2
+    }
+  },
+  "packages/modules/website-builder/src/ast/validator.ts": {
+    "@typescript-eslint/no-unnecessary-type-assertion": {
+      "count": 3
+    }
+  },
+  "packages/modules/website-builder/src/components/blocks/faq-block.tsx": {
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/modules/website-builder/src/components/blocks/features-block.tsx": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 2
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/modules/website-builder/src/components/blocks/footer-block.tsx": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    }
+  },
+  "packages/modules/website-builder/src/components/blocks/form-block.tsx": {
+    "@typescript-eslint/no-misused-promises": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 7
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/modules/website-builder/src/components/blocks/hero-block.tsx": {
+    "@typescript-eslint/dot-notation": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 4
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/modules/website-builder/src/components/blocks/navbar-block.tsx": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 4
+    },
+    "complexity": {
+      "count": 1
+    }
+  },
+  "packages/modules/website-builder/src/components/blocks/pricing-block.tsx": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 2
+    }
+  },
+  "packages/modules/website-builder/src/components/blocks/rich-text-block.tsx": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    }
+  },
+  "packages/modules/website-builder/src/editor/canvas/canvas-block-wrapper.tsx": {
+    "no-nested-ternary": {
+      "count": 1
+    }
+  },
+  "packages/modules/website-builder/src/editor/canvas/viewport-toolbar.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/modules/website-builder/src/editor/canvas/visual-canvas.tsx": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 5
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/modules/website-builder/src/editor/inspector/block-forms.tsx": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 16
+    }
+  },
+  "packages/modules/website-builder/src/editor/inspector/block-property-inspector.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/modules/website-builder/src/editor/inspector/design-token-editor.tsx": {
+    "@typescript-eslint/array-type": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 6
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/modules/website-builder/src/editor/inspector/link-target-configurator.tsx": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    }
+  },
+  "packages/modules/website-builder/src/editor/layers/add-block-drawer.tsx": {
+    "@typescript-eslint/no-unnecessary-type-assertion": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/modules/website-builder/src/editor/layers/block-tree-sidebar.tsx": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 2
+    }
+  },
+  "packages/modules/website-builder/src/editor/state/cas-conflict-dialog.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/modules/website-builder/src/editor/state/use-editor-autosave.ts": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "max-params": {
+      "count": 1
+    }
+  },
+  "packages/modules/website-builder/src/render/ast-renderer.tsx": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    }
+  },
+  "packages/modules/website-builder/src/render/section-renderer.tsx": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "packages/modules/website-builder/src/routes/admin/pages.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/modules/website-builder/src/routes/admin/sites.ts": {
+    "@typescript-eslint/no-unnecessary-type-assertion": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/modules/website-builder/src/routes/forms.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/modules/website-builder/src/services/form-service.ts": {
+    "@typescript-eslint/array-type": {
+      "count": 2
+    },
+    "@typescript-eslint/dot-notation": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    },
+    "@typescript-eslint/require-await": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "no-restricted-syntax": {
+      "count": 3
+    }
+  },
+  "packages/modules/website-builder/src/services/page-service.ts": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 6
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 6
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 3
+    }
+  },
+  "packages/modules/website-builder/src/services/site-service.ts": {
+    "@typescript-eslint/array-type": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-depth": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "packages/modules/website-builder/src/services/storefront-service.ts": {
+    "@typescript-eslint/array-type": {
+      "count": 1
+    }
+  },
+  "packages/modules/website-builder/tests/admin-crud-api.test.ts": {
+    "@typescript-eslint/array-type": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/modules/website-builder/tests/admin-pages.test.ts": {
+    "@typescript-eslint/array-type": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/modules/website-builder/tests/ast/schema-validator.test.ts": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/modules/website-builder/tests/components/blocks.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 1
+    }
+  },
+  "packages/modules/website-builder/tests/editor/autosave-cas.test.tsx": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/modules/website-builder/tests/editor/layers-and-drawer.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/modules/website-builder/tests/editor/property-inspector.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/modules/website-builder/tests/editor/visual-canvas.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/modules/website-builder/tests/forms.test.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 1
+    }
+  },
+  "packages/modules/website-builder/tests/functions.test.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/modules/website-builder/tests/integration/cas-concurrency-control.test.ts": {
+    "max-lines-per-function": {
+      "count": 2
+    }
+  },
+  "packages/modules/website-builder/tests/integration/form-ingestion-idempotency.test.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 1
+    }
+  },
+  "packages/modules/website-builder/tests/integration/outbox-event-dispatch.test.ts": {
+    "@typescript-eslint/dot-notation": {
+      "count": 3
+    },
+    "@typescript-eslint/no-unnecessary-type-assertion": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/modules/website-builder/tests/integration/storefront-resolution-minimization.test.ts": {
+    "@typescript-eslint/dot-notation": {
+      "count": 7
+    },
+    "max-lines-per-function": {
+      "count": 2
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 1
+    }
+  },
+  "packages/modules/website-builder/tests/integration/tenant-boundary-isolation.test.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/modules/website-builder/tests/outbox.test.ts": {
+    "@typescript-eslint/dot-notation": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/modules/website-builder/tests/render/ast-renderer.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/modules/website-builder/tests/scaffold.test.ts": {
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    }
+  },
+  "packages/modules/website-builder/tests/storefront.test.ts": {
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 1
+    }
+  },
+  "packages/redis/src/cache.ts": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/redis/src/client.ts": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "@typescript-eslint/restrict-template-expressions": {
+      "count": 1
+    },
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
+  "packages/redis/src/idempotency.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "packages/redis/src/lock.ts": {
+    "complexity": {
+      "count": 1
+    },
+    "max-params": {
+      "count": 1
+    }
+  },
+  "packages/redis/src/queue.ts": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    }
+  },
+  "packages/redis/tests/idempotency.test.ts": {
+    "@typescript-eslint/array-type": {
+      "count": 1
+    },
+    "@typescript-eslint/require-await": {
+      "count": 3
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 1
+    }
+  },
+  "packages/redis/tests/platform-outbox.test.ts": {
+    "@typescript-eslint/array-type": {
+      "count": 1
+    },
+    "@typescript-eslint/no-empty-function": {
+      "count": 2
+    },
+    "@typescript-eslint/require-await": {
+      "count": 6
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/redis/tests/redis.test.ts": {
+    "@typescript-eslint/require-await": {
+      "count": 4
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/ui/src/components/alert.tsx": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "react/jsx-no-leaked-render": {
+      "count": 4
+    }
+  },
+  "packages/ui/src/components/async-select.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "packages/ui/src/components/button.tsx": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "no-nested-ternary": {
+      "count": 1
+    },
+    "react/jsx-no-leaked-render": {
+      "count": 1
+    }
+  },
+  "packages/ui/src/components/checkbox.tsx": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    },
+    "react-hooks/rules-of-hooks": {
+      "count": 1
+    }
+  },
+  "packages/ui/src/components/input.tsx": {
+    "complexity": {
+      "count": 1
+    },
+    "react/jsx-no-leaked-render": {
+      "count": 2
+    }
+  },
+  "packages/ui/src/components/label.tsx": {
+    "react/jsx-no-leaked-render": {
+      "count": 1
+    }
+  },
+  "packages/ui/src/components/modal.tsx": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "react/jsx-no-leaked-render": {
+      "count": 5
+    }
+  },
+  "packages/ui/src/components/select.tsx": {
+    "@typescript-eslint/array-type": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 2
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "react/jsx-no-leaked-render": {
+      "count": 4
+    }
+  },
+  "packages/ui/src/components/sticky-action-bar.tsx": {
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "react/jsx-no-leaked-render": {
+      "count": 2
+    }
+  },
+  "packages/ui/src/components/theme-toggle.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    },
+    "sonarjs/no-duplicate-string": {
+      "count": 1
+    }
+  },
+  "packages/ui/tests/primitives.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  }
+}

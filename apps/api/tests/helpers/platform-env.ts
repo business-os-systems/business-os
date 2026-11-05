@@ -13,6 +13,9 @@ const PLATFORM_TEST_KEYS = new Set([
   "CONTROL_SESSION_SECRET",
   "CONTROL_PLANE_ORIGIN",
   "CONTROL_WEBAUTHN_RP_ID",
+  "APP_VERSION",
+  "GIT_COMMIT_SHA",
+  "BUILD_TIMESTAMP",
 ]);
 
 export function loadPlatformTestEnv(): void {

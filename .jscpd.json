@@ -1,0 +1,25 @@
+{
+  "threshold": 5,
+  "minLines": 10,
+  "minTokens": 70,
+  "reporters": ["console"],
+  "ignore": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/.next/**",
+    "**/coverage/**",
+    "**/tests/**",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/generated/**",
+    "**/migrations/**",
+    "**/*.md",
+    "**/*.json",
+    "**/*.yml",
+    "**/*.yaml",
+    "**/*.css",
+    "**/*.sql"
+  ],
+  "absolute": true,
+  "gitignore": true
+}

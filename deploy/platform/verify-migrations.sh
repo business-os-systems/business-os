@@ -23,7 +23,9 @@ BEGIN
     ('20261104120000_platform_audited_functions'),
     ('20261104130000_audit_chain_integrity'),
     ('20261104140000_platform_tenant_admin_contacts'),
-    ('20261104150000_platform_notification_contacts_audit')
+    ('20261104150000_platform_notification_contacts_audit'),
+    ('20261105001000_platform_flag_lifecycle'),
+    ('20261105002000_platform_flag_rules_and_retention')
   ) AS expected(name)
   WHERE NOT EXISTS (
     SELECT 1
@@ -78,6 +80,38 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'Notification boundary failed: app_tenant can execute fn_tenant_admin_contacts';
   END IF;
+
+  -- Feature flags live in public but are control-plane configuration. The
+  -- Platform identity may read and mutate them; the tenant identity may not,
+  -- and neither may delete them.
+  IF NOT has_table_privilege('app_platform', 'public.system_feature_flags', 'SELECT') THEN
+    RAISE EXCEPTION 'Flag boundary failed: app_platform cannot read system_feature_flags';
+  END IF;
+  IF NOT has_table_privilege('app_platform', 'public.system_feature_flag_audit_logs', 'INSERT') THEN
+    RAISE EXCEPTION 'Flag boundary failed: app_platform cannot write the flag audit log';
+  END IF;
+  IF has_table_privilege('app_platform', 'public.system_feature_flags', 'DELETE') THEN
+    RAISE EXCEPTION 'Flag boundary failed: app_platform can delete system_feature_flags';
+  END IF;
+  IF has_table_privilege('app_tenant', 'public.system_feature_flags', 'SELECT') THEN
+    RAISE EXCEPTION 'Flag boundary failed: app_tenant can read system_feature_flags';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'system_feature_flags_lifecycle_required'
+  ) THEN
+    RAISE EXCEPTION 'Flag lifecycle check system_feature_flags_lifecycle_required is missing (OP-8)';
+  END IF;
+  IF NOT has_table_privilege('app_platform', 'public.system_feature_flag_rules', 'DELETE') THEN
+    RAISE EXCEPTION 'Flag boundary failed: app_platform cannot replace targeting rules';
+  END IF;
+  IF has_table_privilege('app_tenant', 'public.system_feature_flag_rules', 'SELECT') THEN
+    RAISE EXCEPTION 'Flag boundary failed: app_tenant can read system_feature_flag_rules';
+  END IF;
+  IF COALESCE(obj_description('public.system_feature_flag_audit_logs'::regclass), '') NOT LIKE '%24 months%' THEN
+    RAISE EXCEPTION 'Flag audit retention is not declared (OP-6)';
+  END IF;
 END
 $$;
 
@@ -92,7 +126,9 @@ WHERE migration_name IN (
   '20261104120000_platform_audited_functions',
   '20261104130000_audit_chain_integrity',
   '20261104140000_platform_tenant_admin_contacts',
-  '20261104150000_platform_notification_contacts_audit'
+  '20261104150000_platform_notification_contacts_audit',
+  '20261105001000_platform_flag_lifecycle',
+  '20261105002000_platform_flag_rules_and_retention'
 )
 ORDER BY started_at;
 

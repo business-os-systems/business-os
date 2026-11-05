@@ -123,6 +123,7 @@ export function Modal({
         document.body.style.overflow = originalOverflow;
       };
     }
+    return;
   }, [isOpen, closeOnEscape, onClose]);
 
   if (!isMounted || !isOpen) {

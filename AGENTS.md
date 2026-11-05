@@ -192,6 +192,11 @@ You are **STRICTLY PROHIBITED** from:
   3. Navigation hierarchies (including the primary installed apps sidebar and the settings sub-navigation sidebar) MUST be generated from typed navigation configuration schemas where each node declares its icon, route, label, badge, and required RBAC permission.
   4. Data tables MUST derive columns, header labels, cell formatters, and row action triggers from typed table configuration schemas.
   5. The primary dashboard sidebar and all existing dashboard views MUST be progressively migrated to this config-driven standard.
+- ❌ **Badge Pills Inside Data Tables (Plain-Text Table Status Law):**
+  Status columns in data tables MUST render as plain, bold text with a semantic text color (`text-success`, `text-warning`, `text-danger`, `text-brand`, `text-text-secondary`). They MUST NOT use a Badge component, background fill, border or border radius in a table cell.
+  1. The text label MUST always be present; color is an additional signal, never the only signal.
+  2. The rule applies to every new or modified table; existing badge-based tables are converted when next touched.
+  3. Display labels for canonical enum values (environments, statuses, rule types) MUST be humanized consistently — `Development`, `Staging`, `Production`, `Active`, `Targeted` — while the stored/API value remains the canonical lowercase form.
 - ❌ **Defensive Cascading Fallbacks & Heuristic Guessing (Deterministic Registry Law):**
   AI agents and developers are **STRICTLY PROHIBITED** from using cascading `||` or heuristic guessing chains (e.g. `ICONS[category.icon] || ICONS[category.id] || BuildingIcon`, `item.name || item.title || item.appId`, or falling back across divergent object fields) to resolve assets, icons, titles, or presentation components.
   1. Every domain entity and configuration item must declare its canonical key, and lookup must be deterministic via strongly-typed registries (`ICON_REGISTRY`, `getNavIcon()`, `getSettingsIcon()`) that fail loudly if an unregistered key is supplied.
@@ -349,6 +354,22 @@ These invariants are mandatory for every operator/auth/platform-shell change and
 9. **No UI-app database access.** UI packages must not import `@suite/db` or `@suite/redis` at runtime; bootstrap/offline tooling belongs in a tooling package or devDependency.
 10. **Tests are part of acceptance.** Every new route needs a denial test, every audit action needs an assertion, and every capability gate needs a direct-access test.
 11. **Passkey policy is explicit.** Synced passkeys are accepted only while the documented security-risk acceptance is current; adding device-bound enforcement requires the second-passkey/recovery flow first.
+
+## 5.4 Code Quality Standards (Binding)
+
+The concise rule catalog is [tooling/quality/code-quality-rules.md](tooling/quality/code-quality-rules.md); long examples, the flag-status refactor, and the ratchet workflow are in [tooling/quality/engineering-standards.md](tooling/quality/engineering-standards.md). Both are binding.
+
+- **Workflow:** before finishing any task, run `pnpm lint`, `pnpm typecheck`, and `pnpm test`; fix violations properly; list any principle you knowingly violated and why.
+- **No weakening:** never add a blanket `eslint-disable`, `@ts-ignore`, `any`, or a weakened test to get green.
+- **P1:** never return UI props (`variant`, `label`, `color`, `severity`, `icon`, `className`) from an `if`/`else` or `switch`. Derive a typed state and map it with `as const satisfies Record<State, ...>`.
+- **P2:** routes validate, call a service, and map; components render. No ORM or cache imports in routes, pages, or components. Domain packages import no UI framework.
+- **P3/P5/P6:** no repeated magic literals; no `any`, unchecked `as`, or `!`; replace boolean clusters with a discriminated union and an exhaustive `switch`.
+- **P7:** 60 lines, 3 nesting levels, 4 parameters, complexity 10, cognitive complexity 15; no chained ternaries.
+- **P9/P10:** never swallow errors; validate every boundary with Zod and infer types from the schema.
+- **P14:** read configuration only through the typed config module, never `process.env` in feature code.
+- **P17:** default-deny authorization, tenant-scoped data, no raw HTML injection.
+- **Legacy ratchet:** current violations live in `eslint-suppressions.json`. Do not hand-edit it to silence a new violation; fix new code and run `pnpm lint:prune` after removing a legacy one.
+- **Proof:** `pnpm test:rules` exercises every custom selector; `pnpm lint:p1` must fail on the original flag-status fixture.
 
 ---
 

@@ -115,5 +115,6 @@ export function createIdempotencyMiddleware(
     } catch (error) {
       console.warn("[idempotency] failed to persist the response", error);
     }
+    return;
   };
 }

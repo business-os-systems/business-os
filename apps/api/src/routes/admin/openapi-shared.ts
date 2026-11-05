@@ -1,5 +1,24 @@
-import { z } from "@hono/zod-openapi";
-import { problemDetailsSchema } from "@suite/core";
+import { z, type Hook } from "@hono/zod-openapi";
+import type { Env } from "hono";
+import { ValidationError } from "@suite/core/errors";
+import { PLATFORM_ERROR_CODE, problemDetailsSchema } from "@suite/core";
+
+/**
+ * Every Platform router renders a schema failure as RFC 7807 problem details,
+ * not Hono's bare 400 body. Domain routing stays identical across slices.
+ */
+export const platformValidationHook: Hook<unknown, Env, string, unknown> = (result) => {
+  if (!result.success) {
+    throw new ValidationError(
+      "Invalid request parameters",
+      result.error.errors.map((issue) => ({
+        name: issue.path.join("."),
+        reason: issue.message,
+      })),
+      { code: PLATFORM_ERROR_CODE.VALIDATION_FAILED }
+    );
+  }
+};
 
 /**
  * OpenAPI response shapes shared by the Platform admin routers. Keeping them in

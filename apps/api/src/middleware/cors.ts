@@ -152,5 +152,6 @@ export function corsMiddleware(options: CorsOptions = {}): MiddlewareHandler {
     }
 
     await next();
+    return;
   };
 }

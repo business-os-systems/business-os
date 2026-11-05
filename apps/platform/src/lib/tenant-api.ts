@@ -1,21 +1,14 @@
 import { z } from "zod";
 import {
-  ConflictError,
-  ForbiddenError,
-  InternalServerError,
-  NotFoundError,
-  RateLimitError,
-  UnauthorizedError,
-  ValidationError,
-} from "@suite/core/errors";
-import {
   PII_REASON_HEADER,
   PLATFORM_CAPABILITIES,
   TENANT_LIFECYCLE_ACTION,
   type TenantLifecycleAction,
 } from "@suite/core";
-import { platformFetch, readProblemDetails, readSuccessData } from "./api";
+import { platformFetch, readSuccessData } from "./api";
 import { hasPlatformCapability } from "./capability";
+import { toProblemError } from "./problem-error";
+import { buildQueryString } from "./query";
 
 /** Mirrors @suite/redis IDEMPOTENCY_HEADER; Platform UI must not import redis. */
 export const IDEMPOTENCY_HEADER = "Idempotency-Key";
@@ -184,59 +177,13 @@ const TENANT_LIFECYCLE_PATH_SEGMENT: Record<TenantLifecycleAction, string> = {
   [TENANT_LIFECYCLE_ACTION.ARCHIVE]: "archive",
 };
 
-/**
- * Maps the response status onto a typed error that keeps the RFC 7807 detail,
- * so the screen shows the real reason instead of a generic failure message.
- * A 4xx detail is written for the operator; a 5xx detail may be infrastructure
- * text, so it is replaced by a message that carries the correlation id only.
- */
-async function toProblemError(response: Response): Promise<Error> {
-  const problem = await readProblemDetails(response);
-  const detail =
-    (problem.detail ?? problem.title ?? response.statusText) || "Request failed";
-
-  if (response.status === 401) {
-    return new UnauthorizedError(detail);
-  }
-  if (response.status === 403) {
-    return new ForbiddenError(detail);
-  }
-  if (response.status === 404) {
-    return new NotFoundError(detail);
-  }
-  if (response.status === 409) {
-    return new ConflictError(detail, { code: problem.code ?? "CONFLICT" });
-  }
-  if (response.status === 422) {
-    return new ValidationError(detail);
-  }
-  if (response.status === 429) {
-    return new RateLimitError(detail);
-  }
-
-  const requestId = response.headers.get("x-request-id");
-  const suffix = requestId === null ? "" : ` Reference ${requestId}.`;
-  return new InternalServerError(
-    `The platform API could not complete the request.${suffix}`,
-  );
-}
-
 function listQueryString(query: TenantListQuery): string {
-  const params = new URLSearchParams();
-  if (query.q !== undefined && query.q !== "") {
-    params.set("q", query.q);
-  }
-  if (query.status !== undefined) {
-    params.set("status", query.status);
-  }
-  if (query.cursor !== undefined) {
-    params.set("cursor", query.cursor);
-  }
-  if (query.limit !== undefined) {
-    params.set("limit", String(query.limit));
-  }
-  const value = params.toString();
-  return value === "" ? "" : `?${value}`;
+  return buildQueryString({
+    q: query.q === undefined || query.q === "" ? undefined : query.q,
+    status: query.status,
+    cursor: query.cursor,
+    limit: query.limit,
+  });
 }
 
 export async function fetchTenantPage(
