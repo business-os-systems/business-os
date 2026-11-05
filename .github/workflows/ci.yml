@@ -52,12 +52,28 @@ jobs:
           node-version: 22
           cache: "pnpm"
 
+      # Same key as build/test so a repeated run reuses the package outputs.
+      - name: Restore Turborepo Cache
+        uses: actions/cache@v4
+        with:
+          path: .turbo/cache
+          key: turbo-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            turbo-${{ runner.os }}-
+
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
 
       # Type-aware ESLint resolves @suite/db types, which need the client.
       - name: Generate Prisma Client
         run: pnpm --filter @suite/db run prisma:generate
+
+      # @suite/ui publishes types from dist, so type-aware ESLint degrades to
+      # `any` without it and reports unsafe-access errors across the dashboard.
+      # Building the workspace packages restores the precondition the old
+      # single job had (it ran lint after a full build).
+      - name: Build workspace packages for type-aware lint
+        run: pnpm turbo run build --filter='./packages/**'
 
       - name: Lint (legacy violations are baselined; new ones fail)
         run: pnpm lint
