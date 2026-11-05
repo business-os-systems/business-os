@@ -122,6 +122,11 @@ export const PLATFORM_ERROR_CODES = {
     title: "Operator Invitation Invalid",
     slug: "/errors/operator-invitation-invalid",
   },
+  RP_MIGRATION_REQUIRED: {
+    status: 401,
+    title: "Passkey Re-enrolment Required",
+    slug: "/errors/rp-migration-required",
+  },
   IMPERSONATION_ALREADY_ACTIVE: {
     status: 409,
     title: "Support Session Already Active",

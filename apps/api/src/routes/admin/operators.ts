@@ -43,6 +43,7 @@ import {
 
 const PLATFORM_OPERATORS = PLATFORM_CAPABILITIES.OPERATORS_MANAGE.code;
 const OPERATORS_TAG = "Platform Operators";
+export const OPERATOR_RATE_LIMIT_KEY = "rl:admin:operators";
 
 const listQuerySchema = z.object({
   cursor: z.string().trim().min(1).max(256).optional(),
@@ -209,7 +210,7 @@ platformOperatorsRouter.use(
   rateLimitMiddleware({
     limit: RATE_LIMITS.MAX_OPERATOR_MUTATIONS_PER_MINUTE,
     windowSeconds: RATE_LIMITS.WINDOW_1_MIN_SECONDS,
-    keyPrefix: "rl:admin:operators",
+    keyPrefix: OPERATOR_RATE_LIMIT_KEY,
     failureMode: "closed",
   })
 );

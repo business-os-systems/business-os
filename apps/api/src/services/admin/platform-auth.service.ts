@@ -1,10 +1,16 @@
 import type { PlatformOperator, PrismaClient } from "@suite/db";
 import type { Redis } from "@suite/redis";
-import type { PlatformCapability } from "@suite/core";
+import {
+  PLATFORM_ERROR_CODE,
+  getPlatformErrorDefinition,
+  type PlatformCapability,
+  type PlatformErrorCode,
+} from "@suite/core";
 import { UnauthorizedError } from "@suite/core/errors";
 import { AUTH_ERROR_CODES } from "@suite/auth";
 import {
   appendPlatformAuditEvent,
+  assessRelyingPartyBinding,
   consumeBootstrapToken,
   hashBootstrapToken,
   issueControlSession,
@@ -13,6 +19,7 @@ import {
   revokeControlSession,
   verifyAndTouchControlSession,
   PLATFORM_AUDIT_ACTIONS,
+  PLATFORM_SIGN_IN_FAILURE_REASONS,
   type IssuedControlSession,
 } from "@suite/auth/platform";
 import {
@@ -38,6 +45,8 @@ export interface PlatformAuthDependencies {
   readonly redis: Redis;
   readonly secret: string;
   readonly config: WebAuthnConfig;
+  /** Test seam; the factory defaults it to the shared WebAuthn verifier. */
+  readonly verifyAuthentication?: typeof finishAuthentication;
 }
 
 export interface PlatformOperatorIdentity {
@@ -74,6 +83,7 @@ async function audit(
     readonly entityId: string;
     readonly requestId: string;
     readonly reason?: string | null;
+    readonly after?: Record<string, string>;
   }
 ): Promise<void> {
   await appendPlatformAuditEvent(deps.prisma, {
@@ -81,6 +91,7 @@ async function audit(
     action: input.action,
     entityType: "PlatformOperator",
     entityId: input.entityId,
+    ...(input.after === undefined ? {} : { after: input.after }),
     reason: input.reason ?? null,
     requestId: input.requestId,
   });
@@ -93,6 +104,7 @@ interface IssueSessionInput {
   readonly passkeyUpdate?: {
     readonly id: string;
     readonly counter: number;
+    readonly rpId: string;
   };
 }
 
@@ -112,6 +124,7 @@ async function issueSession(input: IssueSessionInput): Promise<PlatformSession> 
         where: { id: input.passkeyUpdate.id },
         data: {
           counter: input.passkeyUpdate.counter,
+          rpId: input.passkeyUpdate.rpId,
           lastUsedAt: new Date(),
         },
       });
@@ -254,6 +267,7 @@ async function storeBootstrapPasskey(
         backedUp: verified.credential.backedUp,
         transports: verified.credential.transports.join(","),
         name: "Primary passkey",
+        rpId: deps.config.rpID,
       },
     });
     await tx.platformOperator.update({
@@ -269,6 +283,7 @@ async function storeBootstrapPasskey(
       action: PLATFORM_AUDIT_ACTIONS.PASSKEY_REGISTERED,
       entityType: "PlatformOperator",
       entityId: operator.id,
+      after: { rpID: deps.config.rpID },
       requestId,
     });
   });
@@ -322,6 +337,7 @@ interface SignInPasskey {
   readonly publicKey: string;
   readonly counter: number;
   readonly transports: string | null;
+  readonly rpId: string | null;
   readonly operator: {
     readonly id: string;
     readonly email: string;
@@ -331,23 +347,38 @@ interface SignInPasskey {
   };
 }
 
+interface SignInFailure {
+  readonly code: PlatformErrorCode;
+  readonly detail: string;
+}
+
 interface FailSignInInput {
   readonly deps: PlatformAuthDependencies;
   readonly input: FinishSignInInput;
   readonly actorOperatorId: string | null;
   readonly reason: string;
+  readonly failure?: SignInFailure;
+  readonly after?: Record<string, string>;
 }
 
 async function failSignIn(input: FailSignInInput): Promise<never> {
-  const { deps, actorOperatorId, reason } = input;
+  const { deps, actorOperatorId, reason, failure, after } = input;
   await audit(deps, {
     action: PLATFORM_AUDIT_ACTIONS.SIGN_IN_FAILED,
     actorOperatorId,
     entityId: actorOperatorId ?? "unknown",
     requestId: input.input.requestId,
     reason,
+    ...(after === undefined ? {} : { after }),
   });
-  throw unauthorized("Sign-in failed.");
+  if (failure === undefined) {
+    throw unauthorized("Sign-in failed.");
+  }
+  const definition = getPlatformErrorDefinition(failure.code);
+  throw new UnauthorizedError(failure.detail, {
+    code: failure.code,
+    title: definition.title,
+  });
 }
 
 async function loadSignInPasskey(
@@ -359,10 +390,36 @@ async function loadSignInPasskey(
     include: { operator: true },
   });
   if (passkey === null) {
-    return failSignIn({ deps, input, actorOperatorId: null, reason: "UNKNOWN_CREDENTIAL" });
+    return failSignIn({ deps, input, actorOperatorId: null, reason: PLATFORM_SIGN_IN_FAILURE_REASONS.UNKNOWN_CREDENTIAL });
   }
   if (passkey.operator.status !== "ACTIVE" || !passkey.operator.mfaEnrolled) {
-    return failSignIn({ deps, input, actorOperatorId: passkey.operatorId, reason: "OPERATOR_INACTIVE" });
+    return failSignIn({ deps, input, actorOperatorId: passkey.operatorId, reason: PLATFORM_SIGN_IN_FAILURE_REASONS.OPERATOR_INACTIVE });
+  }
+  const binding = assessRelyingPartyBinding({
+    currentRpID: deps.config.rpID,
+    enrolledRpID: passkey.rpId,
+  });
+  // A stale credential cannot pass the current-RP ceremony, so this branch is
+  // the only place to tell the operator to re-enrol. Credential IDs are not
+  // secrets, the route is Origin-guarded and rate-limited, and no domain or
+  // operator data is returned; the residual staleness disclosure is accepted
+  // (security review SCR-001).
+  if (binding.state === "re_enrolment_required") {
+    return failSignIn({
+      deps,
+      input,
+      actorOperatorId: passkey.operatorId,
+      reason: PLATFORM_SIGN_IN_FAILURE_REASONS.RP_IDENTITY_CHANGED,
+      failure: {
+        code: PLATFORM_ERROR_CODE.RP_MIGRATION_REQUIRED,
+        detail:
+          "This passkey must be re-enrolled before it can be used.",
+      },
+      after: {
+        enrolledRpID: binding.enrolledRpID,
+        currentRpID: binding.currentRpID,
+      },
+    });
   }
   return passkey;
 }
@@ -386,7 +443,8 @@ async function verifySignInPasskey(
       : [],
   };
   try {
-    return await finishAuthentication({
+    const verify = deps.verifyAuthentication ?? finishAuthentication;
+    return await verify({
       redis: deps.redis,
       config: deps.config,
       flowId: input.flowId,
@@ -394,7 +452,7 @@ async function verifySignInPasskey(
       credential,
     });
   } catch {
-    return failSignIn({ deps, input, actorOperatorId: passkey.operatorId, reason: "VERIFICATION_FAILED" });
+    return failSignIn({ deps, input, actorOperatorId: passkey.operatorId, reason: PLATFORM_SIGN_IN_FAILURE_REASONS.VERIFICATION_FAILED });
   }
 }
 
@@ -407,7 +465,11 @@ export async function finishSignIn(
   return issueSession({
     deps,
     operator: passkey.operator,
-    passkeyUpdate: { id: passkey.id, counter: newCounter },
+    passkeyUpdate: {
+      id: passkey.id,
+      counter: newCounter,
+      rpId: deps.config.rpID,
+    },
     context: {
       requestId: input.requestId,
       ip: input.ip,

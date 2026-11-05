@@ -71,6 +71,9 @@ model OperatorPasskey {
   backedUp     Boolean   @default(false)
   transports   String?   @db.VarChar(255)
   name         String?   @db.VarChar(100)
+  // The relying-party ID the credential was enrolled under. Nullable for
+  // passkeys created before P-18; a successful ceremony stamps it.
+  rpId         String?   @db.VarChar(253)
   createdAt    DateTime  @default(now()) @db.Timestamptz(6)
   lastUsedAt   DateTime? @db.Timestamptz(6)
 

@@ -1,3 +1,4 @@
+import { normalizeRelyingPartyId } from "@suite/auth/platform";
 import { logger, scrubStringValues } from "@suite/logger";
 
 /**
@@ -132,7 +133,15 @@ export function getControlPlaneOrigin(): string {
 }
 
 export function getControlWebauthnRpId(): string {
-  return readRequired(PLATFORM_ENV_KEYS.CONTROL_WEBAUTHN_RP_ID);
+  const raw = readRequired(PLATFORM_ENV_KEYS.CONTROL_WEBAUTHN_RP_ID);
+  try {
+    return normalizeRelyingPartyId(raw);
+  } catch (error) {
+    throw new Error(
+      `${PLATFORM_ENV_KEYS.CONTROL_WEBAUTHN_RP_ID} must be a valid domain name`,
+      { cause: error }
+    );
+  }
 }
 
 export function getControlSessionSecret(): string {
