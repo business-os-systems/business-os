@@ -1,7 +1,7 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
-import type { Context, MiddlewareHandler } from "hono";
-import { ForbiddenError, UnauthorizedError } from "@suite/core/errors";
+import type { MiddlewareHandler } from "hono";
+import { UnauthorizedError } from "@suite/core/errors";
 import { createSuccessResponseBody } from "@suite/core";
 import { AUTH_ERROR_CODES } from "@suite/auth";
 import {
@@ -36,6 +36,7 @@ import {
   parseRegistrationResponse,
 } from "../../services/admin/platform-webauthn-response.js";
 import { rateLimitMiddleware } from "../../middleware/rate-limit.js";
+import { controlPlaneOriginGuard } from "../../middleware/control-plane-origin.js";
 
 const SessionDataSchema = platformSessionViewSchema;
 
@@ -124,45 +125,6 @@ function dependencies(): PlatformAuthDependencies {
     },
   };
 }
-
-const READ_ONLY_METHODS: ReadonlySet<string> = new Set(["GET", "HEAD"]);
-
-/** `none` is a typed URL or bookmark; `same-origin` is the application itself. */
-const SAME_ORIGIN_FETCH_SITES: ReadonlySet<string> = new Set([
-  "same-origin",
-  "none",
-]);
-
-/**
- * Browsers omit Origin on same-origin reads but still send Sec-Fetch-Site.
- * Only that exact pair is exempt, so a cross-site request cannot ride the
- * exemption, and every state-changing method keeps the strict Origin check.
- */
-function assertControlPlaneOrigin(c: Context): void {
-  const origin = c.req.header("origin");
-  if (origin === getControlPlaneOrigin()) {
-    return;
-  }
-
-  const fetchSite = c.req.header("sec-fetch-site");
-  const isSameOriginRead =
-    origin === undefined &&
-    READ_ONLY_METHODS.has(c.req.method) &&
-    fetchSite !== undefined &&
-    SAME_ORIGIN_FETCH_SITES.has(fetchSite);
-  if (isSameOriginRead) {
-    return;
-  }
-
-  throw new ForbiddenError("Origin not allowed.", {
-    code: AUTH_ERROR_CODES.CORS_ORIGIN_DENIED,
-  });
-}
-
-const controlPlaneOriginGuard: MiddlewareHandler = async (c, next) => {
-  assertControlPlaneOrigin(c);
-  await next();
-};
 
 function writeSessionCookie(
   c: Parameters<MiddlewareHandler>[0],

@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@suite/db";
 import { createPlatformPrismaClient } from "@suite/db";
+import { redis, type Redis } from "@suite/redis";
 import { getPlatformDatabaseUrl } from "./platform-env.js";
 
 let client: PrismaClient | null = null;
@@ -15,4 +16,9 @@ export function getPlatformPrismaClient(): PrismaClient {
     });
   }
   return client;
+}
+
+/** Route-safe access to the shared cache client; routes import this, not Redis. */
+export function getPlatformRedis(): Redis {
+  return redis;
 }

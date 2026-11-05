@@ -8,6 +8,7 @@ import {
 import { CONTROL_SESSION_COOKIE_NAME } from "@suite/auth/platform";
 import { platformAuthRouter } from "../../../src/routes/admin/auth.js";
 import { platformFlagsRouter } from "../../../src/routes/admin/flags.js";
+import { platformOperatorsRouter } from "../../../src/routes/admin/operators.js";
 import { platformSystemRouter } from "../../../src/routes/admin/system.js";
 import { tenantAdminRouter } from "../../../src/routes/admin/tenants.js";
 import { tenantPiiRouter } from "../../../src/routes/admin/tenant-pii.js";
@@ -29,11 +30,13 @@ function requireControlPlaneOrigin(): string {
 
 const CONTROL_PLANE_ORIGIN = requireControlPlaneOrigin();
 const FOREIGN_ORIGIN = "https://attacker.example";
+const ADMIN_OPERATORS_ROUTER = "admin-operators" as const;
 
 process.env.CONTROL_PLANE_ORIGIN = CONTROL_PLANE_ORIGIN;
 platformAuthRouter.onError(globalErrorHandler);
 platformSystemRouter.onError(globalErrorHandler);
 platformFlagsRouter.onError(globalErrorHandler);
+platformOperatorsRouter.onError(globalErrorHandler);
 tenantAdminRouter.onError(globalErrorHandler);
 tenantPiiRouter.onError(globalErrorHandler);
 tenantLifecycleRouter.onError(globalErrorHandler);
@@ -42,6 +45,7 @@ type RouterKey =
   | "platform-auth"
   | "admin-system"
   | "admin-flags"
+  | typeof ADMIN_OPERATORS_ROUTER
   | "admin-tenants"
   | "admin-tenant-pii"
   | "admin-tenant-lifecycle";
@@ -50,6 +54,7 @@ const ROUTERS = {
   "platform-auth": platformAuthRouter,
   "admin-system": platformSystemRouter,
   "admin-flags": platformFlagsRouter,
+  [ADMIN_OPERATORS_ROUTER]: platformOperatorsRouter,
   "admin-tenants": tenantAdminRouter,
   "admin-tenant-pii": tenantPiiRouter,
   "admin-tenant-lifecycle": tenantLifecycleRouter,
@@ -65,7 +70,7 @@ type AnonymousOutcome =
 
 interface ProtectedRoute {
   readonly id: string;
-  readonly method: "GET" | "POST" | "PATCH";
+  readonly method: "GET" | "POST" | "PATCH" | "DELETE";
   readonly path: string;
   readonly router: RouterKey;
   readonly anonymous: AnonymousOutcome;
@@ -156,6 +161,54 @@ const PROTECTED_ROUTES: readonly ProtectedRoute[] = [
     router: "admin-system",
     anonymous: { status: 401, code: PLATFORM_ERROR_CODE.AUTH_REQUIRED },
     originGuarded: false,
+  },
+  {
+    id: "admin-operators/list",
+    method: "GET",
+    path: "/",
+    router: ADMIN_OPERATORS_ROUTER,
+    anonymous: { status: 401, code: PLATFORM_ERROR_CODE.AUTH_REQUIRED },
+    originGuarded: true,
+  },
+  {
+    id: "admin-operators/create",
+    method: "POST",
+    path: "/",
+    router: ADMIN_OPERATORS_ROUTER,
+    anonymous: { status: 401, code: PLATFORM_ERROR_CODE.AUTH_REQUIRED },
+    originGuarded: true,
+  },
+  {
+    id: "admin-operators/update",
+    method: "PATCH",
+    path: "/operator_denial_probe",
+    router: ADMIN_OPERATORS_ROUTER,
+    anonymous: { status: 401, code: PLATFORM_ERROR_CODE.AUTH_REQUIRED },
+    originGuarded: true,
+  },
+  {
+    id: "admin-operators/capabilities",
+    method: "PATCH",
+    path: "/operator_denial_probe/capabilities",
+    router: ADMIN_OPERATORS_ROUTER,
+    anonymous: { status: 401, code: PLATFORM_ERROR_CODE.AUTH_REQUIRED },
+    originGuarded: true,
+  },
+  {
+    id: "admin-operators/sessions",
+    method: "GET",
+    path: "/operator_denial_probe/sessions",
+    router: ADMIN_OPERATORS_ROUTER,
+    anonymous: { status: 401, code: PLATFORM_ERROR_CODE.AUTH_REQUIRED },
+    originGuarded: true,
+  },
+  {
+    id: "admin-operators/session-revoke",
+    method: "DELETE",
+    path: "/operator_denial_probe/sessions/session_denial_probe",
+    router: ADMIN_OPERATORS_ROUTER,
+    anonymous: { status: 401, code: PLATFORM_ERROR_CODE.AUTH_REQUIRED },
+    originGuarded: true,
   },
   {
     id: "admin-flags/list",

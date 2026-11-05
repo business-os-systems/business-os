@@ -43,6 +43,28 @@ const PERMITTED_WRITES: readonly PermittedWrite[] = [
   { method: "POST", path: "/tenants/:orgId/archive", reason: "tenant lifecycle" },
   // zod-openapi registers Hono's ":key" form, not the documented "{key}".
   { method: "PATCH", path: "/flags/:key", reason: "platform configuration" },
+  { method: "POST", path: "/operators", reason: "operator invitation" },
+  { method: "PATCH", path: "/operators/:operatorId", reason: "operator governance" },
+  {
+    method: "PATCH",
+    path: "/operators/:operatorId/capabilities",
+    reason: "operator governance",
+  },
+  {
+    method: "DELETE",
+    path: "/operators/:operatorId/sessions/:sessionId",
+    reason: "operator session revocation",
+  },
+  {
+    method: "POST",
+    path: "/operator-passkeys/enrolment/options",
+    reason: "invited-operator passkey enrolment",
+  },
+  {
+    method: "POST",
+    path: "/operator-passkeys/enrolment/verify",
+    reason: "invited-operator passkey enrolment",
+  },
 ];
 
 interface ForbiddenWritePattern {
