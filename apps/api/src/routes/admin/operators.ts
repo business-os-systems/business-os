@@ -44,6 +44,7 @@ import {
 const PLATFORM_OPERATORS = PLATFORM_CAPABILITIES.OPERATORS_MANAGE.code;
 const OPERATORS_TAG = "Platform Operators";
 export const OPERATOR_RATE_LIMIT_KEY = "rl:admin:operators";
+export const OPERATOR_READ_RATE_LIMIT_KEY = "rl:admin:operators:read";
 
 const listQuerySchema = z.object({
   cursor: z.string().trim().min(1).max(256).optional(),
@@ -205,15 +206,26 @@ export const platformOperatorsRouter = new OpenAPIHono({
   defaultHook: platformValidationHook,
 });
 
-platformOperatorsRouter.use(
-  "*",
-  rateLimitMiddleware({
-    limit: RATE_LIMITS.MAX_OPERATOR_MUTATIONS_PER_MINUTE,
-    windowSeconds: RATE_LIMITS.WINDOW_1_MIN_SECONDS,
-    keyPrefix: OPERATOR_RATE_LIMIT_KEY,
-    failureMode: "closed",
-  })
-);
+const operatorReadLimiter = rateLimitMiddleware({
+  limit: RATE_LIMITS.MAX_OPERATOR_READS_PER_MINUTE,
+  windowSeconds: RATE_LIMITS.WINDOW_1_MIN_SECONDS,
+  keyPrefix: OPERATOR_READ_RATE_LIMIT_KEY,
+  failureMode: "closed",
+  methods: ["GET", "HEAD"],
+});
+
+const operatorMutationLimiter = rateLimitMiddleware({
+  limit: RATE_LIMITS.MAX_OPERATOR_MUTATIONS_PER_MINUTE,
+  windowSeconds: RATE_LIMITS.WINDOW_1_MIN_SECONDS,
+  keyPrefix: OPERATOR_RATE_LIMIT_KEY,
+  failureMode: "closed",
+  methods: ["POST", "PATCH", "DELETE", "OPTIONS"],
+});
+
+// Reads drive the list, the record lookup and the session panel; the mutation
+// budget stays much smaller so a read burst cannot exhaust a status change.
+platformOperatorsRouter.use("*", operatorReadLimiter);
+platformOperatorsRouter.use("*", operatorMutationLimiter);
 
 // The control-plane origin check runs before any cookie-authenticated mutation
 // can reach the capability guard (CSRF defence; tenant origins share the site).

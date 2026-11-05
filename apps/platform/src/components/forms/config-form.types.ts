@@ -35,11 +35,18 @@ export interface DateTimeConfigFormField<T extends object>
   readonly type: "datetime-local";
 }
 
+/** A single boolean rendered as a checkbox; the string value is "true"/"false". */
+export interface CheckboxConfigFormField<T extends object>
+  extends ConfigFormFieldBase<T> {
+  readonly type: "checkbox";
+}
+
 export type ConfigFormField<T extends object> =
   | TextConfigFormField<T>
   | TextareaConfigFormField<T>
   | SelectConfigFormField<T>
-  | DateTimeConfigFormField<T>;
+  | DateTimeConfigFormField<T>
+  | CheckboxConfigFormField<T>;
 
 export type ConfigFormErrors<T extends object> = Partial<
   Record<keyof T & string, string>

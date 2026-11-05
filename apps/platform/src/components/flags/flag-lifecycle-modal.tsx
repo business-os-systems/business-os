@@ -12,7 +12,7 @@ import {
   validateFlagLifecycleForm,
   type FlagLifecycleFormValues,
 } from "./flag-lifecycle.config";
-import { useFlagMutation } from "./use-flag-mutation";
+import { useIdempotentMutation } from "@/lib/use-idempotent-mutation";
 
 interface FlagLifecycleModalProps {
   readonly flag: FlagRecord;
@@ -30,7 +30,7 @@ export function FlagLifecycleModal({
     toFlagLifecycleForm(flag)
   );
   const [errors, setErrors] = useState<ConfigFormErrors<FlagLifecycleFormValues>>({});
-  const mutation = useFlagMutation();
+  const mutation = useIdempotentMutation();
 
   function updateField(name: keyof FlagLifecycleFormValues, value: string): void {
     setValues((current) => ({ ...current, [name]: value }));

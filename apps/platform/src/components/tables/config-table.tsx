@@ -17,6 +17,30 @@ export type ConfigTableState =
   | { readonly kind: "error"; readonly title: string; readonly message: string }
   | { readonly kind: "ready" };
 
+export interface ConfigTableStateInput {
+  readonly isLoading: boolean;
+  readonly error: string | null;
+  readonly rowCount: number;
+  readonly errorTitle: string;
+}
+
+/** One loading/error/ready rule for every cursor-paged table. */
+export function resolveConfigTableState(
+  input: ConfigTableStateInput,
+): ConfigTableState {
+  if (input.isLoading && input.rowCount === 0) {
+    return { kind: "loading" };
+  }
+  if (input.error !== null && input.rowCount === 0) {
+    return {
+      kind: "error",
+      title: input.errorTitle,
+      message: input.error,
+    };
+  }
+  return { kind: "ready" };
+}
+
 export interface ConfigTableProps<T extends object> {
   readonly config: TableConfig<T>;
   readonly rows: readonly T[];

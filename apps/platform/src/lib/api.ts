@@ -1,5 +1,12 @@
 import { InternalServerError } from "@suite/core/errors";
 
+/** One header and one key factory for every control-plane mutation (CT-4). */
+export const IDEMPOTENCY_HEADER = "Idempotency-Key";
+
+export function createIdempotencyKey(): string {
+  return globalThis.crypto.randomUUID();
+}
+
 export const PLATFORM_API_PATHS = {
   signInOptions: "/api/v1/admin/auth/sign-in/options",
   signInVerify: "/api/v1/admin/auth/sign-in/verify",

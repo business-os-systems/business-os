@@ -12,7 +12,7 @@ import {
   validateFlagForm,
   type FlagFormValues,
 } from "./flag-form.config";
-import { useFlagMutation } from "./use-flag-mutation";
+import { useIdempotentMutation } from "@/lib/use-idempotent-mutation";
 
 interface FlagCreateModalProps {
   readonly onClose: () => void;
@@ -23,7 +23,7 @@ export function FlagCreateModal({ onClose, onCreated }: FlagCreateModalProps) {
   const formId = useId();
   const [values, setValues] = useState<FlagFormValues>(EMPTY_FLAG_FORM);
   const [errors, setErrors] = useState<ConfigFormErrors<FlagFormValues>>({});
-  const mutation = useFlagMutation();
+  const mutation = useIdempotentMutation();
 
   function updateField(name: keyof FlagFormValues, value: string): void {
     setValues((current) => ({ ...current, [name]: value }));

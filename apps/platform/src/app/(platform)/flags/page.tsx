@@ -5,7 +5,7 @@ import { Alert, Button } from "@suite/ui";
 import { PLATFORM_CAPABILITIES } from "@suite/core";
 import { usePlatformAuth } from "@/components/auth/auth-provider";
 import { hasPlatformCapability } from "@/lib/capability";
-import { ConfigTable, type ConfigTableState } from "@/components/tables/config-table";
+import { ConfigTable, resolveConfigTableState } from "@/components/tables/config-table";
 import {
   FLAG_FILTERED_EMPTY_STATE,
   createFlagsTableConfig,
@@ -17,22 +17,6 @@ import type { FlagRecord } from "@/lib/flags-api";
 import { ENVIRONMENT_ALL } from "./use-flags";
 import { useFlags } from "./use-flags";
 import { FlagsToolbar } from "./flags-toolbar";
-
-interface FlagTableStateInput {
-  readonly isLoading: boolean;
-  readonly error: string | null;
-  readonly rowCount: number;
-}
-
-function resolveTableState(input: FlagTableStateInput): ConfigTableState {
-  if (input.isLoading && input.rowCount === 0) {
-    return { kind: "loading" };
-  }
-  if (input.error !== null && input.rowCount === 0) {
-    return { kind: "error", title: "Unable to load flags", message: input.error };
-  }
-  return { kind: "ready" };
-}
 
 export default function FlagsPage() {
   const { session } = usePlatformAuth();
@@ -55,10 +39,11 @@ export default function FlagsPage() {
     );
   }
 
-  const state = resolveTableState({
+  const state = resolveConfigTableState({
     isLoading: flags.isLoading,
     error: flags.error,
     rowCount: flags.rows.length,
+    errorTitle: "Unable to load flags",
   });
 
   const tableConfig = createFlagsTableConfig({

@@ -4,11 +4,8 @@ import { act, type ReactElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { PLATFORM_CAPABILITIES, TENANT_LIFECYCLE_ACTION } from "@suite/core";
-import { setUnauthorizedHandler } from "../src/lib/api";
-import {
-  IDEMPOTENCY_HEADER,
-  requestTenantLifecycle,
-} from "../src/lib/tenant-api";
+import { IDEMPOTENCY_HEADER, setUnauthorizedHandler } from "../src/lib/api";
+import { requestTenantLifecycle } from "../src/lib/tenant-api";
 import {
   LIFECYCLE_ACTION_CONFIG,
   LIFECYCLE_CONFLICT_TITLE,

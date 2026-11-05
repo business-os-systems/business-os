@@ -371,20 +371,6 @@
       "count": 1
     }
   },
-  "apps/api/tests/integration/platform/system-telemetry.test.ts": {
-    "@typescript-eslint/array-type": {
-      "count": 3
-    },
-    "@typescript-eslint/consistent-type-definitions": {
-      "count": 2
-    },
-    "@typescript-eslint/no-unnecessary-condition": {
-      "count": 1
-    },
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
   "apps/api/tests/integration/platform/tenant-pii.test.ts": {
     "@typescript-eslint/array-type": {
       "count": 1
@@ -3464,20 +3450,6 @@
     },
     "no-restricted-syntax": {
       "count": 4
-    }
-  },
-  "apps/platform/src/components/forms/config-form-renderer.tsx": {
-    "complexity": {
-      "count": 1
-    },
-    "max-lines-per-function": {
-      "count": 2
-    },
-    "no-nested-ternary": {
-      "count": 1
-    },
-    "sonarjs/cognitive-complexity": {
-      "count": 1
     }
   },
   "apps/platform/src/components/forms/lifecycle-form.config.ts": {

@@ -14,7 +14,11 @@ import {
 } from "@suite/auth/platform";
 import { IDEMPOTENCY_HEADER } from "@suite/redis";
 import { platformOperatorPasskeysRouter } from "../../../src/routes/admin/operator-passkeys.js";
-import { platformOperatorsRouter } from "../../../src/routes/admin/operators.js";
+import {
+  OPERATOR_READ_RATE_LIMIT_KEY,
+  OPERATOR_RATE_LIMIT_KEY,
+  platformOperatorsRouter,
+} from "../../../src/routes/admin/operators.js";
 import { envelope } from "../../../src/routes/admin/openapi-shared.js";
 import { globalErrorHandler } from "../../../src/middleware/error-handler.js";
 import { clearRateLimitStore } from "../../../src/middleware/rate-limit.js";
@@ -90,10 +94,11 @@ function send(input: {
   readonly token?: string;
   readonly body?: unknown;
   readonly idempotencyKey?: string;
+  readonly forwardedFor?: string;
 }): Promise<Response> {
   const headers: Record<string, string> = {
     Origin: CONTROL_PLANE_ORIGIN,
-    "X-Forwarded-For": "198.51.100.20",
+    "X-Forwarded-For": input.forwardedFor ?? "198.51.100.20",
   };
   if (input.token !== undefined) {
     headers.Cookie = `${CONTROL_SESSION_COOKIE_NAME}=${input.token}`;
@@ -234,6 +239,25 @@ it.skipIf(!enabled)("paginates operators with a stable cursor", async () => {
   expect(second.status).toBe(200);
   const secondPage = operatorPageEnvelope.parse(await second.json());
   expect(secondPage.data.items[0]?.id).not.toBe(firstPage.data.items[0]?.id);
+});
+
+it.skipIf(!enabled)("gives reads a larger budget than mutations", async () => {
+  const forwardedFor = "198.51.100.99";
+  await clearRateLimitStore(OPERATOR_READ_RATE_LIMIT_KEY);
+  await clearRateLimitStore(OPERATOR_RATE_LIMIT_KEY);
+  const responses = await Promise.all(
+    Array.from({ length: 21 }, () =>
+      send({
+        method: "GET",
+        path: "/",
+        token: ownerToken,
+        forwardedFor,
+      }),
+    ),
+  );
+  for (const response of responses) {
+    expect(response.status).toBe(200);
+  }
 });
 
 it.skipIf(!enabled)("requires an idempotency key for an invitation", async () => {

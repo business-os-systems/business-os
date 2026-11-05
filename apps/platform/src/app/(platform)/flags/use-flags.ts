@@ -1,10 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { createIdempotencyKey } from "@/lib/api";
 import { toMessage } from "@/lib/error-message";
 import { useRequestTicket } from "@/lib/use-request-ticket";
 import {
-  createFlagIdempotencyKey,
   fetchFlagPage,
   isFlagEnvironment,
   updateFlag,
@@ -118,7 +118,7 @@ export function useFlags() {
           defaultEnabled: !flag.isEnabled,
           reason: flag.isEnabled ? "Disable via Platform" : "Enable via Platform",
         },
-        idempotencyKey: createFlagIdempotencyKey(),
+        idempotencyKey: createIdempotencyKey(),
       });
       replaceFlag(updated);
     } catch (cause) {
