@@ -182,3 +182,5 @@ export {
   formatBranchDateTimeWithZone,
   type BranchTimeContext,
 } from "./time/index.js";
+// Platform system telemetry contract (FR-031..FR-038)
+export * from "./system/contracts.js";

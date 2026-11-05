@@ -6,7 +6,10 @@ import {
 } from "@suite/core";
 import { getEmailQueue, redis } from "@suite/redis";
 import { rateLimitMiddleware } from "../../middleware/rate-limit.js";
-import { getControlSessionSecret } from "../../lib/platform-env.js";
+import {
+  getControlSessionSecret,
+  readPlatformRuntimeConfig,
+} from "../../lib/platform-env.js";
 import { getPlatformPrismaClient } from "../../lib/platform-db.js";
 import { readPlatformHealth } from "../../services/admin/health.service.js";
 import { readQueueMetrics } from "../../services/admin/queue-metrics.service.js";
@@ -61,7 +64,10 @@ platformSystemRouter.use(
     limit: RATE_LIMITS.MAX_TELEMETRY_READS_PER_MINUTE,
     windowSeconds: RATE_LIMITS.WINDOW_1_MIN_SECONDS,
     keyPrefix: "rl:admin:system",
-    failureMode: "closed",
+    // Telemetry is read-only and exists to report a cache outage. A closed
+    // limiter would answer 503 from the same Redis the screen probes, hiding
+    // the degradation (US3 AC2, SCR-001). Authorization stays fail-closed.
+    failureMode: "open",
   })
 );
 
@@ -78,6 +84,7 @@ platformSystemRouter.openapi(healthRoute, async (c) => {
   const data = await readPlatformHealth({
     platformPrisma: getPlatformPrismaClient(),
     emailQueue: getEmailQueue(),
+    config: readPlatformRuntimeConfig(),
   });
   return c.json(createSuccessResponseBody({ data, requestId: readRequestId(c) }), 200);
 });

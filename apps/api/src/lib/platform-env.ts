@@ -1,8 +1,11 @@
+import { logger, scrubStringValues } from "@suite/logger";
+
 /**
  * Platform control-plane environment configuration.
  *
- * Every variable is pre-declared in `.env.example`. Missing or malformed values
- * fail loudly; there are no inline fallbacks and no server-local defaults.
+ * Every variable is pre-declared in `.env.example`. Required values fail loudly;
+ * optional presentation values go through the same validator and are reported,
+ * then treated as unset, so they cannot take the API (and the tenant plane) down.
  */
 
 export const PLATFORM_ENV_KEYS = {
@@ -18,6 +21,7 @@ export const PLATFORM_ENV_KEYS = {
   PLATFORM_BOOTSTRAP_OPERATOR_EMAIL: "PLATFORM_BOOTSTRAP_OPERATOR_EMAIL",
   PLATFORM_BUILD_ID: "PLATFORM_BUILD_ID",
   PLATFORM_BUILD_TIMESTAMP: "PLATFORM_BUILD_TIMESTAMP",
+  PLATFORM_ERROR_TRACKING_URL: "PLATFORM_ERROR_TRACKING_URL",
 } as const;
 
 export type PlatformEnvKey =
@@ -44,32 +48,67 @@ function readPositiveInteger(
 ): number {
   const raw = readRequired(key);
   if (!/^\d+$/.test(raw)) {
-    throw new Error(`${key} must be a positive integer, received "${raw}"`);
+    throw new Error(`${key} must be a positive integer`);
   }
   const value = Number.parseInt(raw, 10);
   if (value < 1 || value > maximum) {
-    throw new Error(`${key} must be between 1 and ${maximum}, received ${value}`);
+    throw new Error(`${key} must be between 1 and ${maximum}`);
   }
   return value;
 }
 
-function readHttpUrl(key: PlatformEnvKey): string {
-  const raw = readRequired(key);
+/**
+ * One URL parser for every URL-shaped setting. Messages name the key and the
+ * failure, never the value: console URLs routinely carry query tokens and
+ * credentials, and an error string is the easiest place to leak them (SCR-003).
+ */
+function parseHttpUrl(raw: string, key: PlatformEnvKey): URL {
   let parsed: URL;
   try {
     parsed = new URL(raw);
   } catch (error) {
-    throw new Error(`${key} must be an absolute URL, received "${raw}"`, {
-      cause: error,
-    });
+    throw new Error(`${key} must be an absolute URL`, { cause: error });
   }
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-    throw new Error(`${key} must use http or https, received "${parsed.protocol}"`);
+    throw new Error(`${key} must use http or https`);
+  }
+  if (parsed.username !== "" || parsed.password !== "") {
+    throw new Error(`${key} must not embed credentials`);
   }
   if (process.env.NODE_ENV === "production" && parsed.protocol !== "https:") {
     throw new Error(`${key} must use https in production`);
   }
-  return parsed.origin;
+  return parsed;
+}
+
+function readHttpOrigin(key: PlatformEnvKey): string {
+  return parseHttpUrl(readRequired(key), key).origin;
+}
+
+/**
+ * An optional URL that must still parse when present. A malformed value is
+ * reported and treated as unset rather than thrown: the console link is a
+ * presentation concern and must not stop the API from booting.
+ */
+function readOptionalHttpUrl(key: PlatformEnvKey): string | null {
+  const raw = process.env[key];
+  if (raw === undefined || raw.trim() === "") {
+    return null;
+  }
+  try {
+    return parseHttpUrl(raw.trim(), key).toString();
+  } catch (error) {
+    logger.error(
+      {
+        envKey: key,
+        error: scrubStringValues(
+          error instanceof Error ? error.message : String(error)
+        ),
+      },
+      "Optional platform URL is invalid; treating it as unset"
+    );
+    return null;
+  }
 }
 
 function readPostgresUrl(key: PlatformEnvKey): string {
@@ -89,7 +128,7 @@ function readPostgresUrl(key: PlatformEnvKey): string {
 }
 
 export function getControlPlaneOrigin(): string {
-  return readHttpUrl(PLATFORM_ENV_KEYS.CONTROL_PLANE_ORIGIN);
+  return readHttpOrigin(PLATFORM_ENV_KEYS.CONTROL_PLANE_ORIGIN);
 }
 
 export function getControlWebauthnRpId(): string {
@@ -172,6 +211,11 @@ export interface PlatformBuildIdentity {
   readonly buildTimestamp: string;
 }
 
+export interface PlatformRuntimeConfig {
+  readonly errorTrackingUrl: string | null;
+  readonly buildIdentity: PlatformBuildIdentity | null;
+}
+
 /**
  * The Platform dashboard is a separate deployment. When its build identity is
  * configured, the health view reports it alongside the API (FR-034); when it
@@ -198,4 +242,34 @@ export function getPlatformBuildIdentity(): PlatformBuildIdentity | null {
     );
   }
   return { buildId, buildTimestamp };
+}
+
+function readBuildIdentity(): PlatformBuildIdentity | null {
+  try {
+    return getPlatformBuildIdentity();
+  } catch (error) {
+    logger.error(
+      {
+        error: scrubStringValues(
+          error instanceof Error ? error.message : String(error)
+        ),
+      },
+      "Platform dashboard build identity is invalid; reporting it as unset"
+    );
+    return null;
+  }
+}
+
+/**
+ * One validated read of the optional platform presentation config. The system
+ * route reads it once per request and injects it, so the health service works
+ * from data instead of reaching into ambient environment state.
+ */
+export function readPlatformRuntimeConfig(): PlatformRuntimeConfig {
+  return {
+    errorTrackingUrl: readOptionalHttpUrl(
+      PLATFORM_ENV_KEYS.PLATFORM_ERROR_TRACKING_URL
+    ),
+    buildIdentity: readBuildIdentity(),
+  };
 }

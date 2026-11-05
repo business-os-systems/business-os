@@ -22,7 +22,8 @@
     "DOMAIN_ROOT",
     "NEXT_PUBLIC_APP_URL",
     "NEXT_PUBLIC_TURNSTILE_SITE_KEY",
-    "NEXT_PUBLIC_API_URL"
+    "NEXT_PUBLIC_API_URL",
+    "PLATFORM_ERROR_TRACKING_URL"
   ],
   "tasks": {
     "build": {
