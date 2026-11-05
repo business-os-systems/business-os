@@ -28,6 +28,10 @@ import {
 import type { RegistrationResponseJSON } from "@simplewebauthn/server";
 import { decodeIdCursor, pageSlice } from "../../lib/id-cursor.js";
 import {
+  assertAnotherOperatorManager,
+  lockOperatorGovernance,
+} from "./operator-guard.js";
+import {
   finishRegistration,
   startRegistration,
   type VerifiedRegistration,
@@ -54,7 +58,6 @@ const OPERATOR_INVITATION_ENTITY_TYPE = "PlatformOperatorInvitation";
 const OPERATOR_EMAIL_CONFLICT_DETAIL =
   "An operator with this email address already exists.";
 const MILLISECONDS_PER_HOUR = 3_600_000;
-const GOVERNANCE_LOCK_KEY = "platform:operator-governance";
 
 const STATUS_TRANSITIONS: Record<
   PlatformOperatorStatus,
@@ -394,59 +397,6 @@ function operatorEmailConflict(
   });
 }
 
-function lastOperatorGuard(): ConflictError {
-  return new ConflictError(
-    "The last operator able to manage operators cannot be demoted.",
-    { code: PLATFORM_ERROR_CODE.LAST_OPERATOR_GUARD }
-  );
-}
-
-function isLastOperatorManager(input: {
-  readonly targetIsActive: boolean;
-  readonly targetHasCapability: boolean;
-  readonly otherActiveManagerCount: number;
-}): boolean {
-  return (
-    input.targetIsActive &&
-    input.targetHasCapability &&
-    input.otherActiveManagerCount === 0
-  );
-}
-
-async function lockOperatorGovernance(
-  tx: Prisma.TransactionClient
-): Promise<void> {
-  // Serializes the last-operator check across API instances so two concurrent
-  // demotions cannot each observe the other as the surviving manager.
-  await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${GOVERNANCE_LOCK_KEY}))::text AS locked`;
-}
-
-async function assertAnotherOperatorManager(
-  tx: Prisma.TransactionClient,
-  target: OperatorWithCapabilities
-): Promise<void> {
-  const targetHasCapability = activeCapabilities(target).includes(
-    PLATFORM_CAPABILITIES.OPERATORS_MANAGE.code
-  );
-  const otherActiveManagerCount = await tx.operatorCapability.count({
-    where: {
-      capability: PLATFORM_CAPABILITIES.OPERATORS_MANAGE.code,
-      revokedAt: null,
-      operatorId: { not: target.id },
-      operator: { status: OPERATOR_STATUS.ACTIVE },
-    },
-  });
-  if (
-    isLastOperatorManager({
-      targetIsActive: target.status === OPERATOR_STATUS.ACTIVE,
-      targetHasCapability,
-      otherActiveManagerCount,
-    })
-  ) {
-    throw lastOperatorGuard();
-  }
-}
-
 function assertStatusTransition(
   from: PlatformOperatorStatus,
   to: OperatorGovernanceStatus
@@ -745,12 +695,13 @@ interface ActivateInvitedOperatorInput {
   readonly invitationId: string;
   readonly verified: VerifiedRegistration;
   readonly requestId: string;
+  readonly rpID: string;
 }
 
 async function activateInvitedOperator(
   input: ActivateInvitedOperatorInput
 ): Promise<PlatformOperator> {
-  const { prisma, operator, invitationId, verified, requestId } = input;
+  const { prisma, operator, invitationId, verified, requestId, rpID } = input;
   const now = new Date();
   return prisma.$transaction(async (tx) => {
     await lockOperatorGovernance(tx);
@@ -776,6 +727,7 @@ async function activateInvitedOperator(
         backedUp: verified.credential.backedUp,
         transports: verified.credential.transports.join(","),
         name: "Primary passkey",
+        rpId: rpID,
       },
     });
     const activated = await tx.platformOperator.updateMany({
@@ -793,6 +745,7 @@ async function activateInvitedOperator(
       action: PLATFORM_AUDIT_ACTIONS.PASSKEY_REGISTERED,
       entityType: OPERATOR_ENTITY_TYPE,
       entityId: operator.id,
+      after: { rpID },
       requestId,
     });
     await appendPlatformAuditEvent(tx, {
@@ -838,6 +791,7 @@ async function finishOperatorEnrolment(
     invitationId: invitation.id,
     verified,
     requestId: input.requestId,
+    rpID: dependencies.config.rpID,
   });
   const rows = await dependencies.prisma.operatorCapability.findMany({
     where: { operatorId: operator.id, revokedAt: null },
