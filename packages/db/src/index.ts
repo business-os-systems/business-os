@@ -34,8 +34,12 @@ export {
 } from "./platform-client.js";
 
 export { seed } from "./seed.js";
+export {
+  seedPlatformCatalogs,
+  type PlatformCatalogSeedClient,
+  type PlatformCatalogSeedResult,
+} from "./seed-platform-catalogs.js";
 export { backfillAppMetadata } from "./backfill-app-metadata.js";
-
 
 export {
   Prisma,
