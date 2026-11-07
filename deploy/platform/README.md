@@ -35,6 +35,19 @@ set +a
 
 It fails if a Platform migration is missing, if `app_platform` cannot reach the Platform schema, if the audit actor FK is not `ON DELETE RESTRICT` (D-027), if the tenant identity cannot execute the quota gate, or if either identity crosses the quota/catalog grant boundary.
 
+## Seed reference catalogs
+
+The ten reference catalogs are seeded by an insert-only, idempotent command. It creates missing catalog rows and missing `(catalogKey, code)` values; it never updates an existing value, so operator edits and retirements survive a re-run, and it never deletes.
+
+```bash
+set -a
+. ./deploy/platform/.env
+set +a
+pnpm --filter @suite/db db:seed:catalogs
+```
+
+The approved launch content lives in `packages/db/src/reference-catalog-seed-data.ts`. Run the command as the owner/migration identity. It is not a `prisma db seed` reset and it does not touch tenant or platform data. Re-running it against a shared database requires explicit human approval (Human Seeding Gate).
+
 ## Re-seal the audit chain (break-glass)
 
 `reseal-audit-chain.sql` is the one-time repair for a chain damaged before `20261104130000_audit_chain_integrity`. It is owner-only, skips a healthy chain, refuses a second run, detects both hash and link breaks, recomputes `prevHash`/`recordHash` in place, records the database `session_user`, and appends an `AUDIT_CHAIN_RESEALED` audit row.
