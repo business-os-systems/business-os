@@ -40,9 +40,13 @@ const TENANT_ITEM_KEYS = [
 const PROFILE_KEYS = ["createdAt", "id", "name", "slug", "status"];
 const COUNT_KEYS = ["branches", "members"];
 const QUOTA_RECORD_KEYS = [
+  "asOf",
+  "currentValue",
   "isEnforced",
+  "isMeasurable",
   "limitValue",
   "resourceKey",
+  "unit",
   "updatedAt",
 ];
 
@@ -67,6 +71,10 @@ interface ListBody {
 interface QuotaItem {
   resourceKey: string;
   limitValue: string;
+  unit: "count" | "bytes" | null;
+  currentValue: string | null;
+  isMeasurable: boolean;
+  asOf: string;
   isEnforced: boolean;
   updatedAt: string;
 }
@@ -285,6 +293,10 @@ describe.skipIf(!enabled)("Platform tenant contract", () => {
     expect(quota.resourceKey).toBe(QUOTA_KEYS.BRANCHES);
     expect(typeof quota.limitValue).toBe("string");
     expect(typeof quota.isEnforced).toBe("boolean");
+    expect(quota.unit).toBe("count");
+    expect(quota.currentValue).toBe("0");
+    expect(quota.isMeasurable).toBe(true);
+    expect(isIsoTimestamp(quota.asOf)).toBe(true);
     expect(isIsoTimestamp(quota.updatedAt)).toBe(true);
 
     expect(Array.isArray(body.data.lifecycle)).toBe(true);

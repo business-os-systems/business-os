@@ -79,6 +79,12 @@ describe.skipIf(!enabled)("Platform tenant read routes", () => {
 
   afterAll(async () => {
     // app_platform has no DELETE grant; fixtures are removed as the owner.
+    // Quotas first: their updatedBy FK restricts deleting the operator.
+    if (createdOrgIds.length > 0) {
+      await ownerPrisma.quota.deleteMany({
+        where: { organizationId: { in: createdOrgIds } },
+      });
+    }
     if (createdOperatorIds.length > 0) {
       await ownerPrisma.operatorCapability.deleteMany({
         where: { operatorId: { in: createdOperatorIds } },
@@ -176,6 +182,42 @@ describe.skipIf(!enabled)("Platform tenant read routes", () => {
     expect(body.data.profile.name).toBe(tenant.name);
     expect(body.data.counts).toEqual({ branches: 0, members: 0 });
     expect(Array.isArray(body.data.apps)).toBe(true);
+  });
+
+  it("includes quota consumption, unit and as-of time in the tenant record", async () => {
+    const tenant = await createTenant("quota-usage");
+    const operatorId = createdOperatorIds[0];
+    if (operatorId === undefined) {
+      throw new Error("No operator fixture is available.");
+    }
+
+    await ownerPrisma.quota.create({
+      data: {
+        organizationId: tenant.id,
+        resourceKey: "core.branches",
+        limitValue: 5n,
+        isEnforced: true,
+        updatedBy: operatorId,
+      },
+    });
+
+    const response = await authedGet(`/tenants/${tenant.id}`, readerToken);
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      data: { quotas: Record<string, unknown>[] };
+    };
+    const quota = body.data.quotas.find(
+      (item) => item.resourceKey === "core.branches"
+    );
+    expect(quota).toMatchObject({
+      limitValue: "5",
+      unit: "count",
+      currentValue: "0",
+      isMeasurable: true,
+      isEnforced: true,
+    });
+    expect(typeof quota?.asOf).toBe("string");
   });
 
   it("returns TENANT_NOT_FOUND for an unknown tenant", async () => {

@@ -7,6 +7,7 @@ import { tenantLifecycleRouter } from "./lifecycle.js";
 import { platformOperatorsRouter } from "./operators.js";
 import { platformOperatorPasskeysRouter } from "./operator-passkeys.js";
 import { platformEntitlementsRouter } from "./entitlements.js";
+import { platformQuotasRouter } from "./quotas.js";
 
 /**
  * Admin API mount point. Future Platform routes join this router; request id,
@@ -21,8 +22,9 @@ adminRouter.route("/flags", platformFlagsRouter);
 adminRouter.route("/operators", platformOperatorsRouter);
 adminRouter.route("/operator-passkeys", platformOperatorPasskeysRouter);
 // Registered before the tenants router: that router's capability middleware is
-// mounted on "/" and would otherwise gate these entitlement-only paths.
+// mounted on "/" and would otherwise gate the entitlement- and quota-only paths.
 adminRouter.route("/", platformEntitlementsRouter);
+adminRouter.route("/", platformQuotasRouter);
 adminRouter.route("/", tenantAdminRouter);
 adminRouter.route("/", tenantPiiRouter);
 adminRouter.route("/", tenantLifecycleRouter);

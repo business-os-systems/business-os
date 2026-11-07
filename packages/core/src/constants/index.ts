@@ -53,6 +53,7 @@ export {
   QUOTA_KEYS,
   QUOTA_RESOURCE_DEFINITIONS,
   QUOTA_KEY_CODES,
+  MAX_QUOTA_LIMIT,
   isQuotaKey,
   type QuotaKey,
   type QuotaUnit,
