@@ -19,12 +19,8 @@ export function FeaturesBlock({ props, styles }: FeaturesBlockComponentProps) {
   const gridColsClass = GRID_COLUMNS_MAP[columns] ?? GRID_COLUMNS_MAP[3];
 
   const paddingStyle: React.CSSProperties = {
-    paddingTop:
-      styles?.paddingTop !== undefined ? `${styles.paddingTop}px` : "64px",
-    paddingBottom:
-      styles?.paddingBottom !== undefined
-        ? `${styles.paddingBottom}px`
-        : "64px",
+    paddingTop: styles?.paddingTop !== undefined ? `${styles.paddingTop}px` : "64px",
+    paddingBottom: styles?.paddingBottom !== undefined ? `${styles.paddingBottom}px` : "64px",
     backgroundColor: styles?.backgroundColor,
     color: styles?.textColor,
   };
@@ -35,7 +31,7 @@ export function FeaturesBlock({ props, styles }: FeaturesBlockComponentProps) {
       style={paddingStyle}
       className={`w-full px-4 sm:px-6 lg:px-8 ${styles?.customClassName || ""}`}
     >
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-full mx-auto">
         {props.headline || props.subheadline ? (
           <div className="text-center max-w-3xl mx-auto mb-12">
             {props.headline ? (
@@ -44,26 +40,19 @@ export function FeaturesBlock({ props, styles }: FeaturesBlockComponentProps) {
               </h2>
             ) : null}
             {props.subheadline ? (
-              <p className="mt-4 text-lg text-on-surface-variant">
-                {props.subheadline}
-              </p>
+              <p className="mt-4 text-lg text-on-surface-variant">{props.subheadline}</p>
             ) : null}
           </div>
         ) : null}
 
         <div className={`grid gap-8 ${gridColsClass}`}>
           {(props.features || []).map((feature) => (
-            <Card
-              key={feature.id}
-              className="hover:shadow-md transition-shadow"
-            >
+            <Card key={feature.id} className="hover:shadow-md transition-shadow">
               <CardHeader className="pb-3">
                 <div className="h-10 w-10 rounded-lg bg-surface-container flex items-center justify-center text-on-surface mb-2">
                   <SparklesIcon size={20} />
                 </div>
-                <CardTitle className="text-xl font-heading">
-                  {feature.title}
-                </CardTitle>
+                <CardTitle className="text-xl font-heading">{feature.title}</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-on-surface-variant text-sm leading-relaxed">

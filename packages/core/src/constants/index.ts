@@ -18,6 +18,11 @@ export {
   type AppManifest,
 } from "./app-manifests.js";
 export {
+  APP_CATALOG_AVAILABILITIES,
+  MAX_CATALOG_SORT_ORDER,
+  type AppCatalogAvailability,
+} from "./app-catalog.js";
+export {
   INSTALLED_APP_SETTINGS_METADATA_KEYS,
   isInstalledAppSettingsMetadataKey,
   type InstalledAppSettingsMetadataKey,

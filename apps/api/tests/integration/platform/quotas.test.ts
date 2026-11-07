@@ -1,5 +1,7 @@
 import { afterAll, beforeAll, beforeEach, expect, it } from "vitest";
+import { assertTenantWriteQuotaAvailable } from "@suite/db";
 import { PLATFORM_CAPABILITIES, PLATFORM_ERROR_CODE } from "@suite/core";
+import { QuotaExceededError } from "@suite/core/errors";
 import { PLATFORM_AUDIT_ACTIONS } from "@suite/auth/platform";
 import {
   QUOTA_RATE_LIMIT_KEY,
@@ -107,6 +109,9 @@ afterAll(async () => {
   if (!enabled) return;
   if (organizationIds.length > 0) {
     await fixture.ownerPrisma.quota.deleteMany({
+      where: { organizationId: { in: organizationIds } },
+    });
+    await fixture.ownerPrisma.branch.deleteMany({
       where: { organizationId: { in: organizationIds } },
     });
     await fixture.ownerPrisma.auditEvent.deleteMany({
@@ -333,6 +338,97 @@ it.skipIf(!enabled)("keeps quotas scoped to one tenant (FR-030)", async () => {
 
   const other = await readQuotas(secondOrganization);
   expect(other).toEqual([]);
+});
+
+async function createBranch(
+  organizationId: string,
+  code: string
+): Promise<void> {
+  await fixture.ownerPrisma.branch.create({
+    data: {
+      organizationId,
+      name: `Branch ${code}`,
+      code,
+      type: "HOSPITALITY_LODGING",
+    },
+  });
+}
+
+it.skipIf(!enabled)("hard-blocks creation at a limit set through the API", async () => {
+  const organizationId = await createTenant("hard-block");
+  await putQuotas(organizationId, [
+    {
+      resourceKey: BRANCHES_KEY,
+      limitValue: "1",
+      isEnforced: true,
+      expectedVersion: null,
+    },
+  ]);
+  await createBranch(organizationId, "HB-1");
+
+  await expect(
+    fixture.ownerPrisma.$transaction(async (tx) => {
+      await assertTenantWriteQuotaAvailable(tx, {
+        organizationId,
+        resourceKey: BRANCHES_KEY,
+      });
+      await tx.branch.create({
+        data: {
+          organizationId,
+          name: "Blocked Branch",
+          code: "HB-2",
+          type: "HOSPITALITY_LODGING",
+        },
+      });
+    })
+  ).rejects.toBeInstanceOf(QuotaExceededError);
+
+  const branches = await fixture.ownerPrisma.branch.count({
+    where: { organizationId },
+  });
+  expect(branches).toBe(1);
+});
+
+it.skipIf(!enabled)("keeps content and surfaces over-limit after an API lower", async () => {
+  const organizationId = await createTenant("lowered");
+  await createBranch(organizationId, "LOW-1");
+  await createBranch(organizationId, "LOW-2");
+
+  const response = await putQuotas(organizationId, [
+    {
+      resourceKey: BRANCHES_KEY,
+      limitValue: "1",
+      isEnforced: true,
+      expectedVersion: null,
+    },
+  ]);
+  expect(response.status).toBe(200);
+  const body = (await response.json()) as Envelope<{ items: QuotaItem[] }>;
+  const branches = body.data.items.find(
+    (item) => item.resourceKey === BRANCHES_KEY
+  );
+  expect(branches).toMatchObject({
+    limitValue: "1",
+    currentValue: "2",
+    isOverLimit: true,
+  });
+
+  const after = await readQuotas(organizationId);
+  expect(after.find((item) => item.resourceKey === BRANCHES_KEY)?.isOverLimit).toBe(
+    true
+  );
+  expect(
+    await fixture.ownerPrisma.branch.count({ where: { organizationId } })
+  ).toBe(2);
+
+  const audit = await fixture.ownerPrisma.auditEvent.findFirst({
+    where: {
+      organizationId,
+      action: PLATFORM_AUDIT_ACTIONS.TENANT_QUOTA_SET,
+    },
+    orderBy: { occurredAt: "desc" },
+  });
+  expect(audit?.after).toMatchObject({ limitValue: "1", isEnforced: true });
 });
 
 it.skipIf(!enabled)("denies quota reads and writes without the capability", async () => {

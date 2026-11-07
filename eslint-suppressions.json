@@ -3461,9 +3461,6 @@
     "@typescript-eslint/no-unnecessary-condition": {
       "count": 1
     },
-    "@typescript-eslint/no-unnecessary-type-assertion": {
-      "count": 1
-    },
     "no-restricted-syntax": {
       "count": 1
     }
@@ -4219,9 +4216,6 @@
     },
     "complexity": {
       "count": 1
-    },
-    "max-lines-per-function": {
-      "count": 1
     }
   },
   "packages/modules/website-builder/src/components/blocks/footer-block.tsx": {
@@ -4254,9 +4248,6 @@
       "count": 4
     },
     "complexity": {
-      "count": 1
-    },
-    "max-lines-per-function": {
       "count": 1
     }
   },

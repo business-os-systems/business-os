@@ -1,26 +1,24 @@
 import { z } from "zod";
+import {
+  APP_CATALOG_AVAILABILITIES,
+  MAX_CATALOG_SORT_ORDER,
+  type AppCatalogAvailability,
+} from "@suite/core";
 
 /**
- * Operational catalog availability. It mirrors the PlatformAppAvailability
- * database enum, but the contract declares it independently so the route layer
- * does not import the database client. The contract test proves the two lists
- * stay identical.
+ * The shared catalog vocabulary lives in @suite/core so the API contract and
+ * the Platform UI cannot drift. The contract test still proves it matches the
+ * PlatformAppAvailability database enum.
  */
-export const APP_CATALOG_AVAILABILITIES = [
-  "HIDDEN",
-  "PREVIEW",
-  "AVAILABLE",
-  "RETIRED",
-] as const;
-
-export type AppCatalogAvailability =
-  (typeof APP_CATALOG_AVAILABILITIES)[number];
+export {
+  APP_CATALOG_AVAILABILITIES,
+  MAX_CATALOG_SORT_ORDER,
+  type AppCatalogAvailability,
+};
 
 /** A registry app with no stored override is available by default. */
 export const DEFAULT_APP_CATALOG_AVAILABILITY: AppCatalogAvailability =
   "AVAILABLE";
-
-export const MAX_CATALOG_SORT_ORDER = 10_000;
 
 const appIdSchema = z.string().trim().min(1).max(64);
 

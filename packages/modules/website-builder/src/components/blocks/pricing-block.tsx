@@ -1,13 +1,5 @@
 import React from "react";
-import {
-  Button,
-  Badge,
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  CardFooter,
-} from "@suite/ui";
+import { Button, Badge, Card, CardHeader, CardTitle, CardContent, CardFooter } from "@suite/ui";
 import { CheckIcon } from "@suite/ui/icons";
 import type { PricingBlockProps, BlockStyleTokens } from "../../ast/types.js";
 
@@ -18,12 +10,8 @@ export interface PricingBlockComponentProps {
 
 export function PricingBlock({ props, styles }: PricingBlockComponentProps) {
   const paddingStyle: React.CSSProperties = {
-    paddingTop:
-      styles?.paddingTop !== undefined ? `${styles.paddingTop}px` : "64px",
-    paddingBottom:
-      styles?.paddingBottom !== undefined
-        ? `${styles.paddingBottom}px`
-        : "64px",
+    paddingTop: styles?.paddingTop !== undefined ? `${styles.paddingTop}px` : "64px",
+    paddingBottom: styles?.paddingBottom !== undefined ? `${styles.paddingBottom}px` : "64px",
     backgroundColor: styles?.backgroundColor,
     color: styles?.textColor,
   };
@@ -34,7 +22,7 @@ export function PricingBlock({ props, styles }: PricingBlockComponentProps) {
       style={paddingStyle}
       className={`w-full px-4 sm:px-6 lg:px-8 ${styles?.customClassName ?? ""}`}
     >
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-full mx-auto">
         {props.headline || props.subheadline ? (
           <div className="text-center max-w-3xl mx-auto mb-12">
             {props.headline ? (
@@ -43,9 +31,7 @@ export function PricingBlock({ props, styles }: PricingBlockComponentProps) {
               </h2>
             ) : null}
             {props.subheadline ? (
-              <p className="mt-4 text-lg text-on-surface-variant">
-                {props.subheadline}
-              </p>
+              <p className="mt-4 text-lg text-on-surface-variant">{props.subheadline}</p>
             ) : null}
           </div>
         ) : null}
@@ -62,20 +48,13 @@ export function PricingBlock({ props, styles }: PricingBlockComponentProps) {
             >
               <CardHeader>
                 {tier.badge ? (
-                  <Badge
-                    variant={tier.isFeatured ? "default" : "secondary"}
-                    className="w-fit mb-2"
-                  >
+                  <Badge variant={tier.isFeatured ? "default" : "secondary"} className="w-fit mb-2">
                     {tier.badge}
                   </Badge>
                 ) : null}
-                <CardTitle className="text-2xl font-heading">
-                  {tier.name}
-                </CardTitle>
+                <CardTitle className="text-2xl font-heading">{tier.name}</CardTitle>
                 {tier.description ? (
-                  <p className="text-sm text-on-surface-variant mt-1">
-                    {tier.description}
-                  </p>
+                  <p className="text-sm text-on-surface-variant mt-1">{tier.description}</p>
                 ) : null}
                 <div className="mt-4 flex items-baseline">
                   <span className="text-4xl font-extrabold text-on-surface">
@@ -90,10 +69,7 @@ export function PricingBlock({ props, styles }: PricingBlockComponentProps) {
               <CardContent className="flex-1">
                 <ul className="space-y-3 mt-4">
                   {tier.features.map((feat, idx) => (
-                    <li
-                      key={idx}
-                      className="flex items-center text-sm text-on-surface"
-                    >
+                    <li key={idx} className="flex items-center text-sm text-on-surface">
                       <span
                         className={`mr-3 inline-flex h-5 w-5 items-center justify-center rounded-full ${
                           feat.included
@@ -103,11 +79,7 @@ export function PricingBlock({ props, styles }: PricingBlockComponentProps) {
                       >
                         <CheckIcon size={14} />
                       </span>
-                      <span
-                        className={
-                          feat.included ? "" : "line-through text-outline"
-                        }
-                      >
+                      <span className={feat.included ? "" : "line-through text-outline"}>
                         {feat.text}
                       </span>
                     </li>

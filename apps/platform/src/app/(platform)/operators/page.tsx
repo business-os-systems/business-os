@@ -5,16 +5,9 @@ import { useRouter } from "next/navigation";
 import { Alert, Button } from "@suite/ui";
 import { usePlatformAuth } from "@/components/auth/auth-provider";
 import { OperatorCapabilityDenied } from "@/components/operators/operator-denied";
-import {
-  ConfigTable,
-  resolveConfigTableState,
-} from "@/components/tables/config-table";
+import { ConfigTable, resolveConfigTableState } from "@/components/tables/config-table";
 import { OPERATOR_TABLE_CONFIG } from "@/components/tables/operator-table.config";
-import {
-  OPERATOR_PAGE_SIZE,
-  canManageOperators,
-  fetchOperatorPage,
-} from "@/lib/operators-api";
+import { OPERATOR_PAGE_SIZE, canManageOperators, fetchOperatorPage } from "@/lib/operators-api";
 import { useCursorPage } from "@/lib/use-cursor-page";
 
 function useOperatorList(enabled: boolean) {
@@ -43,13 +36,12 @@ export default function OperatorsPage() {
   });
 
   return (
-    <div className="max-w-5xl space-y-4">
+    <div className="max-w-full space-y-4">
       <div>
         <h1 className="text-2xl font-semibold">Operators</h1>
         <p className="mt-1 text-sm text-text-secondary">
-          Every platform operator, their sign-in state and the capabilities they
-          hold. Open a record to change status or edit capabilities; every change
-          is audited.
+          Every platform operator, their sign-in state and the capabilities they hold. Open a record
+          to change status or edit capabilities; every change is audited.
         </p>
       </div>
 

@@ -4,6 +4,7 @@ import { hasPlatformCapability } from "@/lib/capability";
 export type PlatformNavIconKey =
   | "home"
   | "tenants"
+  | "apps"
   | "flags"
   | "audit"
   | "operators"
@@ -38,6 +39,14 @@ export const PLATFORM_NAV_ITEMS: readonly PlatformNavItem[] = [
     icon: "tenants",
     group: "operator",
     capability: PLATFORM_CAPABILITIES.TENANTS_READ.code,
+  },
+  {
+    id: "apps",
+    label: "Applications",
+    href: "/apps",
+    icon: "apps",
+    group: "operator",
+    capability: PLATFORM_CAPABILITIES.ENTITLEMENTS_MANAGE.code,
   },
   {
     id: "flags",
