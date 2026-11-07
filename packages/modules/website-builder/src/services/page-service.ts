@@ -1,4 +1,10 @@
-import { prisma, Prisma } from "@suite/db";
+import {
+  prisma,
+  Prisma,
+  tenantWriteQuotaGuard,
+  type QuotaGuard,
+} from "@suite/db";
+import { QUOTA_KEYS } from "@suite/core";
 
 export interface PageContentMutationResult {
   success: boolean;
@@ -58,7 +64,15 @@ export interface CreatePageInput {
 }
 
 export class PageService {
-  constructor(private readonly db = prisma) {}
+  constructor(
+    private readonly db = prisma,
+    private readonly quotaGuard: QuotaGuard = tenantWriteQuotaGuard
+  ) {}
+
+  /** Composition without an undefined positional placeholder. */
+  static withQuotaGuard(quotaGuard: QuotaGuard): PageService {
+    return new PageService(prisma, quotaGuard);
+  }
 
   /**
    * Lists pages scoped strictly to tenant and site from PostgreSQL
@@ -108,26 +122,35 @@ export class PageService {
       },
     };
 
-    const created = await this.db.cmsPage.create({
-      data: {
-        id: pageId,
+    const created = await this.db.$transaction(async (tx) => {
+      // The gate and the insert share one transaction, so the advisory lock it
+      // takes serializes concurrent creates at the last free slot (FR-025).
+      await this.quotaGuard.assertAvailable(tx, {
         organizationId: input.organizationId,
-        siteId: input.siteId,
-        title: input.title,
-        slug: normalizedSlug,
-        isHomePage: input.isHomePage || false,
-        orderIndex: input.orderIndex || 0,
-        status: "DRAFT",
-        revision: 1,
-        content: {
-          create: {
-            draftAst: initialAst as unknown as Prisma.InputJsonValue,
+        resourceKey: QUOTA_KEYS.PAGES,
+      });
+
+      return tx.cmsPage.create({
+        data: {
+          id: pageId,
+          organizationId: input.organizationId,
+          siteId: input.siteId,
+          title: input.title,
+          slug: normalizedSlug,
+          isHomePage: input.isHomePage || false,
+          orderIndex: input.orderIndex || 0,
+          status: "DRAFT",
+          revision: 1,
+          content: {
+            create: {
+              draftAst: initialAst as unknown as Prisma.InputJsonValue,
+            },
           },
         },
-      },
-      include: {
-        content: true,
-      },
+        include: {
+          content: true,
+        },
+      });
     });
 
     return {

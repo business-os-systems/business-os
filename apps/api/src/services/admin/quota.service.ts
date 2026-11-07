@@ -33,6 +33,7 @@ interface QuotaUsageRow {
   readonly isMeasurable: boolean;
   readonly asOf: Date;
   readonly isEnforced: boolean;
+  readonly isOverLimit: boolean;
   readonly version: string;
 }
 
@@ -94,6 +95,7 @@ function toQuotaItem(row: QuotaUsageRow): QuotaItem {
     isMeasurable: row.isMeasurable,
     asOf: row.asOf.toISOString(),
     isEnforced: row.isEnforced,
+    isOverLimit: row.isOverLimit,
     version: row.version,
   };
 }
@@ -111,6 +113,7 @@ export async function readTenantQuotas(
       "isMeasurable",
       "asOf",
       "isEnforced",
+      "isOverLimit",
       to_char(
         "limitUpdatedAt" AT TIME ZONE 'UTC',
         'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'

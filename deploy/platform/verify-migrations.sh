@@ -30,7 +30,10 @@ BEGIN
     ('20261106100000_platform_retire_unversioned_writes'),
     ('20261106120000_platform_quota_versioning'),
     ('20261106130000_platform_retire_unversioned_quota'),
-    ('20261106140000_platform_quota_create_guard')
+    ('20261106140000_platform_quota_create_guard'),
+    ('20261107150000_platform_quota_enforcement'),
+    ('20261107151000_platform_app_installation_counts'),
+    ('20261107152000_platform_quota_gate_types')
   ) AS expected(name)
   WHERE NOT EXISTS (
     SELECT 1
@@ -188,6 +191,44 @@ BEGIN
   IF has_table_privilege('app_platform', 'platform.quotas', 'TRUNCATE') THEN
     RAISE EXCEPTION 'Quota boundary failed: app_platform can truncate platform.quotas';
   END IF;
+  -- The tenant write paths cannot read platform.quotas. They call one narrow
+  -- definer gate in the public schema (T094, DB-2).
+  IF NOT has_function_privilege(
+    'app_tenant',
+    'public.fn_assert_quota_available(text, text, bigint)',
+    'EXECUTE'
+  ) THEN
+    RAISE EXCEPTION 'Quota enforcement failed: app_tenant cannot execute fn_assert_quota_available';
+  END IF;
+  IF has_function_privilege(
+    'app_platform',
+    'public.fn_assert_quota_available(text, text, bigint)',
+    'EXECUTE'
+  ) THEN
+    RAISE EXCEPTION 'Quota enforcement failed: app_platform can execute the tenant quota gate';
+  END IF;
+  IF has_table_privilege('app_tenant', 'platform.quotas', 'SELECT') THEN
+    RAISE EXCEPTION 'Quota enforcement failed: app_tenant can read platform.quotas';
+  END IF;
+  -- The catalog counts installations through a curated aggregate view; the
+  -- Platform identity must not gain a direct grant on the tenant table.
+  IF NOT has_table_privilege(
+    'app_platform',
+    'platform.v_app_installation_counts',
+    'SELECT'
+  ) THEN
+    RAISE EXCEPTION 'Catalog boundary failed: app_platform cannot read v_app_installation_counts';
+  END IF;
+  IF has_table_privilege(
+    'app_tenant',
+    'platform.v_app_installation_counts',
+    'SELECT'
+  ) THEN
+    RAISE EXCEPTION 'Catalog boundary failed: app_tenant can read v_app_installation_counts';
+  END IF;
+  IF has_table_privilege('app_platform', 'public.installed_apps', 'SELECT') THEN
+    RAISE EXCEPTION 'Catalog boundary failed: app_platform can read installed_apps directly';
+  END IF;
 
   -- Feature flags live in public but are control-plane configuration. The
   -- Platform identity may read and mutate them; the tenant identity may not,
@@ -241,7 +282,10 @@ WHERE migration_name IN (
   '20261106100000_platform_retire_unversioned_writes',
   '20261106120000_platform_quota_versioning',
   '20261106130000_platform_retire_unversioned_quota',
-  '20261106140000_platform_quota_create_guard'
+  '20261106140000_platform_quota_create_guard',
+  '20261107150000_platform_quota_enforcement',
+  '20261107151000_platform_app_installation_counts',
+  '20261107152000_platform_quota_gate_types'
 )
 ORDER BY started_at;
 

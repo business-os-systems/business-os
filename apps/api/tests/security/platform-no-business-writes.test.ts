@@ -59,6 +59,13 @@ const PERMITTED_WRITES: readonly PermittedWrite[] = [
   { method: "PUT", path: "/tenants/:orgId/quotas", reason: "quota governance" },
   // zod-openapi registers Hono's ":key" form, not the documented "{key}".
   { method: "PATCH", path: "/flags/:key", reason: "platform configuration" },
+  // Catalog overrides change Platform-owned presentation only; hiding an app
+  // never disables an existing installation (FR-083, FR-084).
+  {
+    method: "PATCH",
+    path: "/catalog/:appId",
+    reason: "app catalog overrides",
+  },
   { method: "POST", path: "/operators", reason: "operator invitation" },
   { method: "PATCH", path: "/operators/:operatorId", reason: "operator governance" },
   {

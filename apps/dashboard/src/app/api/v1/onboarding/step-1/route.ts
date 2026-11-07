@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma, type Prisma } from "@suite/db";
+import { assertTenantWriteQuotaAvailable, prisma, type Prisma } from "@suite/db";
+import { QUOTA_KEYS } from "@suite/core";
 import {
   encodeSessionPayload,
   signSessionToken,
@@ -8,6 +9,7 @@ import {
 import { isProduction } from "@/lib/env";
 import { getAuthenticatedSession } from "@/lib/session-helper";
 import { problemResponse, successResponse } from "@/lib/api-response";
+import { quotaProblemResponse } from "@/lib/quota-problem";
 import { z } from "zod";
 
 const step1Schema = z.object({
@@ -174,6 +176,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         where: { organizationId: org.id, code: "MAIN" },
       });
       if (!branch) {
+        // The onboarding branch is a branch write point too. A brand-new org
+        // has no quota row, so this allows; a re-onboarded org is enforced.
+        await assertTenantWriteQuotaAvailable(tx, {
+          organizationId: org.id,
+          resourceKey: QUOTA_KEYS.BRANCHES,
+        });
         branch = await tx.branch.create({
           data: {
             organizationId: org.id,
@@ -185,6 +193,26 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }
 
       // 3. Link user membership as ACTIVE Owner
+      const existingOwnership = await tx.userOrganization.findUnique({
+        where: {
+          userId_organizationId: {
+            userId: session.userId,
+            organizationId: org.id,
+          },
+        },
+      });
+      // A REVOKED membership does not occupy a seat; reactivating it is a
+      // member creation write and must pass the gate (FR-025).
+      const occupiesSeat =
+        existingOwnership !== null &&
+        existingOwnership.status !== "REVOKED";
+      if (!occupiesSeat) {
+        await assertTenantWriteQuotaAvailable(tx, {
+          organizationId: org.id,
+          resourceKey: QUOTA_KEYS.MEMBERS,
+        });
+      }
+
       await tx.userOrganization.upsert({
         where: {
           userId_organizationId: {
@@ -241,7 +269,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           if (allPermissions.length > 0) {
             await tx.rolePermission.createMany({
               data: allPermissions.map((p: { id: string }) => ({
-                roleId: ownerRole!.id,
+                roleId: ownerRole.id,
                 permissionId: p.id,
               })),
               skipDuplicates: true,
@@ -345,6 +373,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     return response;
   } catch (error: unknown) {
+    const quotaProblem = quotaProblemResponse(error);
+    if (quotaProblem) {
+      return quotaProblem;
+    }
+
     console.error("Error in onboarding step 1:", error);
     const err = error as { code?: string; message?: string };
     if (err?.code === "P2002" || err?.message?.includes("Unique constraint failed")) {

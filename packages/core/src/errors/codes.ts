@@ -87,6 +87,11 @@ export const PLATFORM_ERROR_CODES = {
     title: "Quota Conflict",
     slug: "/errors/quota-conflict",
   },
+  QUOTA_EXCEEDED: {
+    status: 409,
+    title: "Quota Exceeded",
+    slug: "/errors/quota-exceeded",
+  },
   DUPLICATE_CODE: {
     status: 409,
     title: "Duplicate Reference Code",

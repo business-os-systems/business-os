@@ -10,15 +10,17 @@ export function createAdminRouter(
   siteService?: SiteService
 ): OpenAPIHono {
   const router = new OpenAPIHono();
+  const pages = pageService ?? new PageService();
+  const sites = siteService ?? new SiteService();
 
   // Mount Sites endpoints
-  router.route("/", createAdminSitesRouter(siteService));
+  router.route("/", createAdminSitesRouter(sites));
 
   // Mount Pages endpoints
-  router.route("/", createAdminPagesRouter(pageService));
+  router.route("/", createAdminPagesRouter(pages));
 
   // Mount Subdomain checker endpoints
-  router.route("/", createAdminSubdomainRouter(siteService));
+  router.route("/", createAdminSubdomainRouter(sites));
 
   return router;
 }

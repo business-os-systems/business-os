@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
-import { prisma, type Prisma } from "@suite/db";
+import { assertTenantWriteQuotaAvailable, prisma, type Prisma } from "@suite/db";
+import { QUOTA_KEYS } from "@suite/core";
 import { hashPin } from "@suite/auth/pin";
 import { hashToken } from "@suite/auth";
 import type {
@@ -112,6 +113,15 @@ export async function createDirectMember(
     );
   }
 
+  // Fail before any user row is created; the transaction below repeats the
+  // check so the last seat cannot be handed out twice.
+  await prisma.$transaction((tx) =>
+    assertTenantWriteQuotaAvailable(tx, {
+      organizationId,
+      resourceKey: QUOTA_KEYS.MEMBERS,
+    })
+  );
+
   const pinHash = input.managerPin ? await hashPin(input.managerPin) : null;
 
   // 3. Upsert user in database
@@ -141,6 +151,13 @@ export async function createDirectMember(
 
   // 4. Upsert UserOrganization & UserBranchRole in transaction
   const userOrg = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    // The gate and the membership insert share this transaction, so the last
+    // free seat cannot be handed to two concurrent adds (FR-025).
+    await assertTenantWriteQuotaAvailable(tx, {
+      organizationId,
+      resourceKey: QUOTA_KEYS.MEMBERS,
+    });
+
     const uo = await tx.userOrganization.upsert({
       where: {
         userId_organizationId: { userId: user.id, organizationId },

@@ -1,5 +1,6 @@
-import { prisma } from "@suite/db";
+import { assertTenantWriteQuotaAvailable, prisma } from "@suite/db";
 import type { Prisma } from "@suite/db";
+import { QUOTA_KEYS } from "@suite/core";
 import { redis } from "@suite/redis";
 
 export interface BranchAddressDto {
@@ -130,6 +131,53 @@ export async function checkBranchCodeConflict(
   return existing !== null;
 }
 
+interface CreateBranchWithinQuotaInput {
+  readonly tx: Prisma.TransactionClient;
+  readonly organizationId: string;
+  readonly input: CreateBranchInput;
+  readonly currency: string;
+  readonly locale: string;
+}
+
+async function createBranchWithinQuota(
+  options: CreateBranchWithinQuotaInput
+): Promise<BranchListItemDto> {
+  const { tx, organizationId, input, currency, locale } = options;
+
+  // FR-025: the check and the insert share one transaction so the gate's
+  // advisory lock covers the write; a lowered limit blocks only new rows.
+  await assertTenantWriteQuotaAvailable(tx, {
+    organizationId,
+    resourceKey: QUOTA_KEYS.BRANCHES,
+  });
+
+  const created = await tx.branch.create({
+    data: {
+      organizationId,
+      name: input.name,
+      code: input.code,
+      type: input.type,
+      capabilities: input.capabilities ?? [],
+      status: "ACTIVE",
+      timezone: input.timezone ?? "Asia/Kolkata",
+      nightAuditHour: input.nightAuditHour ?? 4,
+      currency,
+      locale,
+      dateFormat: input.dateFormat ?? "YYYY-MM-DD",
+      timeFormat: input.timeFormat ?? "12h",
+      taxIdentifier: input.taxIdentifier ?? null,
+      addressId: input.addressId ?? null,
+      parentBranchId: input.parentBranchId ?? null,
+      metadata: (input.metadata ?? {}) as Prisma.InputJsonValue,
+    },
+    include: {
+      address: true,
+    },
+  });
+
+  return created as BranchListItemDto;
+}
+
 export async function createBranchRecord(
   organizationId: string,
   input: CreateBranchInput
@@ -158,31 +206,9 @@ export async function createBranchRecord(
     const currency = input.currency || org?.currency || "INR";
     const locale = input.locale || org?.defaultLocale || "en";
 
-    const created = await prisma.branch.create({
-      data: {
-        organizationId,
-        name: input.name,
-        code: input.code,
-        type: input.type,
-        capabilities: input.capabilities ?? [],
-        status: "ACTIVE",
-        timezone: input.timezone ?? "Asia/Kolkata",
-        nightAuditHour: input.nightAuditHour ?? 4,
-        currency,
-        locale,
-        dateFormat: input.dateFormat ?? "YYYY-MM-DD",
-        timeFormat: input.timeFormat ?? "12h",
-        taxIdentifier: input.taxIdentifier ?? null,
-        addressId: input.addressId ?? null,
-        parentBranchId: input.parentBranchId ?? null,
-        metadata: (input.metadata ?? {}) as Prisma.InputJsonValue,
-      },
-      include: {
-        address: true,
-      },
-    });
-
-    return created as BranchListItemDto;
+    return await prisma.$transaction((tx) =>
+      createBranchWithinQuota({ tx, organizationId, input, currency, locale })
+    );
   } finally {
     if (lockAcquired) {
       try {
@@ -194,28 +220,84 @@ export async function createBranchRecord(
   }
 }
 
-export async function updateBranchRecord(
-  organizationId: string,
-  branchId: string,
-  input: UpdateBranchInput
-): Promise<BranchListItemDto> {
-  const updateData: Record<string, unknown> = {};
+type BranchUpdateClient = Pick<Prisma.TransactionClient, "branch">;
 
+const ARCHIVED_BRANCH_STATUS = "ARCHIVED";
+
+function buildBranchUpdateData(
+  input: UpdateBranchInput
+): Record<string, unknown> {
+  const updateData: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(input)) {
     if (value !== undefined) {
       updateData[key] = value;
     }
   }
+  return updateData;
+}
 
-  const updated = await prisma.branch.update({
-    where: {
-      id: branchId,
-    },
-    data: updateData as Prisma.BranchUpdateInput,
-    include: {
-      address: true,
-    },
+async function isRestoringArchivedBranch(
+  organizationId: string,
+  branchId: string,
+  nextStatus: string | undefined
+): Promise<boolean> {
+  if (nextStatus === undefined || nextStatus === ARCHIVED_BRANCH_STATUS) {
+    return false;
+  }
+  const current = await prisma.branch.findFirst({
+    where: { id: branchId, organizationId },
+    select: { status: true },
   });
+  return current?.status === ARCHIVED_BRANCH_STATUS;
+}
 
+interface ApplyBranchUpdateInput {
+  readonly client: BranchUpdateClient;
+  readonly branchId: string;
+  readonly organizationId: string;
+  readonly updateData: Record<string, unknown>;
+}
+
+function applyBranchUpdate(options: ApplyBranchUpdateInput) {
+  const { client, branchId, organizationId, updateData } = options;
+  return client.branch.update({
+    // Tenant scope is part of the predicate, not only a route pre-check.
+    where: { id: branchId, organizationId },
+    data: updateData,
+    include: { address: true },
+  });
+}
+
+export async function updateBranchRecord(
+  organizationId: string,
+  branchId: string,
+  input: UpdateBranchInput
+): Promise<BranchListItemDto> {
+  const updateData = buildBranchUpdateData(input);
+
+  // Restoring an archived branch consumes a branch seat again; a plain edit
+  // does not (FR-025: a tenant must never exceed a configured limit).
+  if (await isRestoringArchivedBranch(organizationId, branchId, input.status)) {
+    const restored = await prisma.$transaction(async (tx) => {
+      await assertTenantWriteQuotaAvailable(tx, {
+        organizationId,
+        resourceKey: QUOTA_KEYS.BRANCHES,
+      });
+      return applyBranchUpdate({
+        client: tx,
+        branchId,
+        organizationId,
+        updateData,
+      });
+    });
+    return restored as BranchListItemDto;
+  }
+
+  const updated = await applyBranchUpdate({
+    client: prisma,
+    branchId,
+    organizationId,
+    updateData,
+  });
   return updated as BranchListItemDto;
 }

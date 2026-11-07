@@ -12,6 +12,7 @@ export interface TenantQuota {
   readonly isMeasurable: boolean;
   readonly asOf: string;
   readonly isEnforced: boolean;
+  readonly isOverLimit: boolean;
   readonly updatedAt: string;
 }
 
@@ -106,6 +107,7 @@ export async function getTenantRecord(
       isMeasurable: quota.isMeasurable,
       asOf: quota.asOf,
       isEnforced: quota.isEnforced,
+      isOverLimit: quota.isOverLimit,
       // The version token is the UTC update time; the record keeps its
       // established millisecond ISO shape.
       updatedAt: new Date(quota.version).toISOString(),

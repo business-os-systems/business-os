@@ -1,4 +1,11 @@
-import { prisma, Prisma } from "@suite/db";
+import {
+  prisma,
+  Prisma,
+  tenantWriteQuotaGuard,
+  type PrismaClient,
+  type QuotaGuard,
+} from "@suite/db";
+import { QUOTA_KEYS } from "@suite/core";
 
 export interface CreateSiteInput {
   organizationId: string;
@@ -35,8 +42,85 @@ export interface SubdomainAvailabilityResult {
 /**
  * Service for multi-tenant CmsSite domain operations backed by PostgreSQL via Prisma.
  */
+async function resolveInitialHomeAst(
+  db: PrismaClient,
+  input: CreateSiteInput
+): Promise<Record<string, unknown>> {
+  let initialHomeAst: Record<string, unknown> = {
+    root: {
+      id: "root-section-1",
+      type: "section",
+      children: [],
+    },
+  };
+
+  if (!input.initialTemplate) {
+    return initialHomeAst;
+  }
+
+  const template = await db.cmsTemplate.findFirst({
+    where: {
+      OR: [
+        { id: input.initialTemplate },
+        { id: `tpl_${input.initialTemplate}` },
+      ],
+    },
+  });
+
+  if (!template?.blueprintJson || typeof template.blueprintJson !== "object") {
+    return initialHomeAst;
+  }
+
+  const blueprint = template.blueprintJson as Record<string, unknown>;
+  if (!blueprint.ast || typeof blueprint.ast !== "object") {
+    return initialHomeAst;
+  }
+
+  initialHomeAst = JSON.parse(JSON.stringify(blueprint.ast));
+  const root = initialHomeAst.root as Record<string, unknown> | undefined;
+  if (!root || !Array.isArray(root.children)) {
+    return initialHomeAst;
+  }
+
+  const hero = (root.children as Record<string, unknown>[]).find(
+    (child) => child.type === "hero"
+  );
+  if (hero?.props && typeof hero.props === "object") {
+    (hero.props as Record<string, unknown>).heading = `Welcome to ${input.title}`;
+  }
+  return initialHomeAst;
+}
+
+interface ProvisionSiteInput {
+  readonly tx: Prisma.TransactionClient;
+  readonly input: CreateSiteInput;
+  readonly normalizedSlug: string;
+  readonly initialHomeAst: Record<string, unknown>;
+}
+
+interface CreateSiteRecordInput {
+  readonly tx: Prisma.TransactionClient;
+  readonly input: CreateSiteInput;
+  readonly normalizedSlug: string;
+}
+
+interface CreateHomePageInput {
+  readonly tx: Prisma.TransactionClient;
+  readonly input: CreateSiteInput;
+  readonly siteId: string;
+  readonly initialHomeAst: Record<string, unknown>;
+}
+
 export class SiteService {
-  constructor(private readonly db = prisma) {}
+  constructor(
+    private readonly db = prisma,
+    private readonly quotaGuard: QuotaGuard = tenantWriteQuotaGuard
+  ) {}
+
+  /** Composition without an undefined positional placeholder. */
+  static withQuotaGuard(quotaGuard: QuotaGuard): SiteService {
+    return new SiteService(prisma, quotaGuard);
+  }
 
   /**
    * Lists all sites belonging to the specified organization with aggregate page counts.
@@ -141,104 +225,92 @@ export class SiteService {
    * Creates Site, SiteSettings, CmsDomain, and default Home Page with CmsPageContent.
    */
   public async createSite(input: CreateSiteInput) {
-    const normalizedSlug = input.slug.toLowerCase().trim().replace(/[^a-z0-9-]/g, "-");
-    const stagingHostname = `${normalizedSlug}.business-os.site`;
+    const normalizedSlug = input.slug
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9-]/g, "-");
+    const initialHomeAst = await resolveInitialHomeAst(this.db, input);
 
-    // Retrieve initial page AST from dynamic database-backed CMS templates
-    let initialHomeAst: Record<string, unknown> = {
-      root: {
-        id: "root-section-1",
-        type: "section",
-        children: [],
+    return this.db.$transaction((tx) =>
+      this.provisionSite({ tx, input, normalizedSlug, initialHomeAst })
+    );
+  }
+
+  private async provisionSite(options: ProvisionSiteInput) {
+    const { tx, input, normalizedSlug, initialHomeAst } = options;
+
+    // A site provisions one subdomain and one home page. Only the page seat is
+    // charged; a *.business-os.site subdomain is not a custom domain.
+    await this.quotaGuard.assertAvailable(tx, {
+      organizationId: input.organizationId,
+      resourceKey: QUOTA_KEYS.PAGES,
+    });
+
+    const site = await this.createSiteRecord({ tx, input, normalizedSlug });
+    const homePage = await this.createHomePage({
+      tx,
+      input,
+      siteId: site.id,
+      initialHomeAst,
+    });
+    return { site, homePage };
+  }
+
+  private async createSiteRecord(options: CreateSiteRecordInput) {
+    const { tx, input, normalizedSlug } = options;
+    return tx.cmsSite.create({
+      data: {
+        organizationId: input.organizationId,
+        branchId: input.branchId ?? null,
+        title: input.title,
+        slug: normalizedSlug,
+        primaryLocale: input.primaryLocale ?? "en",
+        timezone: input.timezone ?? "Asia/Kolkata",
+        status: "DRAFT",
+        settings: {
+          create: {
+            brandName: input.brandName ?? input.title,
+          },
+        },
+        seoSettings: {
+          create: {
+            metaTitle: input.title,
+          },
+        },
+        domains: {
+          create: {
+            hostname: `${normalizedSlug}.business-os.site`,
+            isPrimary: true,
+            isSubdomain: true,
+            status: "ACTIVE",
+            verificationToken: `vtoken_${Date.now()}`,
+            verifiedAt: new Date(),
+          },
+        },
       },
-    };
+    });
+  }
 
-    if (input.initialTemplate) {
-      const template = await this.db.cmsTemplate.findFirst({
-        where: {
-          OR: [
-            { id: input.initialTemplate },
-            { id: `tpl_${input.initialTemplate}` },
-          ],
-        },
-      });
-
-      if (template?.blueprintJson && typeof template.blueprintJson === "object") {
-        const bp = template.blueprintJson as Record<string, unknown>;
-        if (bp.ast && typeof bp.ast === "object") {
-          initialHomeAst = JSON.parse(JSON.stringify(bp.ast));
-          const rootObj = initialHomeAst.root as Record<string, unknown> | undefined;
-          if (rootObj && Array.isArray(rootObj.children)) {
-            const children = rootObj.children as Array<Record<string, unknown>>;
-            const heroBlock = children.find((c) => c.type === "hero");
-            if (heroBlock && heroBlock.props && typeof heroBlock.props === "object") {
-              (heroBlock.props as Record<string, unknown>).heading = `Welcome to ${input.title}`;
-            }
-          }
-        }
-      }
-    }
-
-    // Execute atomic provisioning transaction
-    return this.db.$transaction(async (tx) => {
-      // 1. Create CmsSite record
-      const site = await tx.cmsSite.create({
-        data: {
-          organizationId: input.organizationId,
-          branchId: input.branchId ?? null,
-          title: input.title,
-          slug: normalizedSlug,
-          primaryLocale: input.primaryLocale ?? "en",
-          timezone: input.timezone ?? "Asia/Kolkata",
-          status: "DRAFT",
-          settings: {
-            create: {
-              brandName: input.brandName ?? input.title,
-            },
-          },
-          seoSettings: {
-            create: {
-              metaTitle: input.title,
-            },
-          },
-          domains: {
-            create: {
-              hostname: stagingHostname,
-              isPrimary: true,
-              isSubdomain: true,
-              status: "ACTIVE",
-              verificationToken: `vtoken_${Date.now()}`,
-              verifiedAt: new Date(),
-            },
+  private async createHomePage(options: CreateHomePageInput) {
+    const { tx, input, siteId, initialHomeAst } = options;
+    return tx.cmsPage.create({
+      data: {
+        organizationId: input.organizationId,
+        siteId,
+        title: "Home",
+        slug: "/",
+        isHomePage: true,
+        status: "DRAFT",
+        revision: 1,
+        content: {
+          create: {
+            draftAst: initialHomeAst as unknown as Prisma.InputJsonValue,
           },
         },
-      });
-
-      // 2. Create Default Home Page
-      const homePage = await tx.cmsPage.create({
-        data: {
-          organizationId: input.organizationId,
-          siteId: site.id,
-          title: "Home",
-          slug: "/",
-          isHomePage: true,
-          status: "DRAFT",
-          revision: 1,
-          content: {
-            create: {
-              draftAst: initialHomeAst as unknown as Prisma.InputJsonValue,
-            },
-          },
-        },
-        include: {
-          content: true,
-        },
-      });
-
-      return {
-        site,
-        homePage,
-      };
+      },
+      include: {
+        content: true,
+      },
     });
   }
 

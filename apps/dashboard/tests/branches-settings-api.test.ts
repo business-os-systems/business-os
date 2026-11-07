@@ -27,8 +27,18 @@ vi.mock("@suite/db", () => {
     installedApp: {
       findMany: vi.fn(),
     },
+    $transaction: vi.fn((arg: unknown) => {
+      if (typeof arg !== "function") {
+        return Promise.resolve(arg);
+      }
+      const run = arg as (client: unknown) => unknown;
+      return Promise.resolve(run(mockPrisma));
+    }),
   };
-  return { prisma: mockPrisma };
+  return {
+    prisma: mockPrisma,
+    assertTenantWriteQuotaAvailable: vi.fn().mockResolvedValue(undefined),
+  };
 });
 
 describe("Operational Branches Directory & Management API (Issue #155)", () => {
@@ -85,9 +95,9 @@ describe("Operational Branches Directory & Management API (Issue #155)", () => {
     vi.clearAllMocks();
     vi.mocked(prisma.branch.findMany).mockResolvedValue([mockBranchData] as never);
     vi.mocked(prisma.branch.findFirst).mockResolvedValue(null);
-    vi.mocked(prisma.branch.findUnique).mockResolvedValue(mockBranchData as never);
-    vi.mocked(prisma.branch.create).mockResolvedValue(mockBranchData as never);
-    vi.mocked(prisma.branch.update).mockResolvedValue(mockBranchData as never);
+    vi.mocked(prisma.branch.findUnique).mockResolvedValue(mockBranchData);
+    vi.mocked(prisma.branch.create).mockResolvedValue(mockBranchData);
+    vi.mocked(prisma.branch.update).mockResolvedValue(mockBranchData);
   });
 
   async function createSignedRequest(
@@ -249,7 +259,7 @@ describe("Operational Branches Directory & Management API (Issue #155)", () => {
         code: "CAFE-01",
         type: "restaurant",
         capabilities: ["dining"],
-      } as never);
+      });
 
       const req = await createSignedRequest(
         "http://localhost:3001/api/v1/settings/branches",
@@ -293,7 +303,7 @@ describe("Operational Branches Directory & Management API (Issue #155)", () => {
     });
 
     it("returns 400 IMMUTABLE_FIELD when attempting to mutate branch code", async () => {
-      vi.mocked(prisma.branch.findFirst).mockResolvedValueOnce(mockBranchData as never);
+      vi.mocked(prisma.branch.findFirst).mockResolvedValueOnce(mockBranchData);
 
       const req = await createSignedRequest(
         "http://localhost:3001/api/v1/settings/branches/br_manali_01",
@@ -311,12 +321,12 @@ describe("Operational Branches Directory & Management API (Issue #155)", () => {
     });
 
     it("returns 200 and updates operational attributes successfully", async () => {
-      vi.mocked(prisma.branch.findFirst).mockResolvedValueOnce(mockBranchData as never);
+      vi.mocked(prisma.branch.findFirst).mockResolvedValueOnce(mockBranchData);
       vi.mocked(prisma.branch.update).mockResolvedValueOnce({
         ...mockBranchData,
         name: "River View Luxury Resort",
         timezone: "Asia/Kolkata",
-      } as never);
+      });
 
       const req = await createSignedRequest(
         "http://localhost:3001/api/v1/settings/branches/br_manali_01",
@@ -333,7 +343,10 @@ describe("Operational Branches Directory & Management API (Issue #155)", () => {
       expect(data.name).toBe("River View Luxury Resort");
       expect(prisma.branch.update).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { id: "br_manali_01" },
+          where: {
+            id: "br_manali_01",
+            organizationId: "org_riverview",
+          },
           data: expect.objectContaining({
             name: "River View Luxury Resort",
           }),
@@ -342,11 +355,11 @@ describe("Operational Branches Directory & Management API (Issue #155)", () => {
     });
 
     it("returns 200 when executing soft deactivation or archival", async () => {
-      vi.mocked(prisma.branch.findFirst).mockResolvedValueOnce(mockBranchData as never);
+      vi.mocked(prisma.branch.findFirst).mockResolvedValueOnce(mockBranchData);
       vi.mocked(prisma.branch.update).mockResolvedValueOnce({
         ...mockBranchData,
         status: "TEMPORARILY_CLOSED",
-      } as never);
+      });
 
       const req = await createSignedRequest(
         "http://localhost:3001/api/v1/settings/branches/br_manali_01",

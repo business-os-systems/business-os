@@ -44,7 +44,7 @@ vi.mock("@suite/db", () => {
     },
     userOrganization: {
       upsert: vi.fn(),
-      findUnique: vi.fn(),
+      findUnique: vi.fn().mockResolvedValue(null),
       findMany: vi.fn().mockResolvedValue([]),
     },
     role: {
@@ -90,7 +90,10 @@ vi.mock("@suite/db", () => {
       return cb(mockPrisma);
     }),
   };
-  return { prisma: mockPrisma };
+  return {
+    prisma: mockPrisma,
+    assertTenantWriteQuotaAvailable: vi.fn().mockResolvedValue(undefined),
+  };
 });
 
 import { prisma } from "@suite/db";

@@ -8,6 +8,20 @@ export {
 } from "./client.js";
 
 export {
+  assertQuotaAvailable,
+  assertTenantWriteQuotaAvailable,
+  databaseQuotaGuard,
+  readQuotaAvailability,
+  TENANT_CONTEXT_SETTING,
+  TENANT_WRITE_QUOTA_KEYS,
+  tenantWriteQuotaGuard,
+  type QuotaAvailability,
+  type QuotaCheckInput,
+  type QuotaGuard,
+  type QuotaGuardClient,
+} from "./quota-guard.js";
+
+export {
   tenantIsolationExtension,
   TenantIsolationViolationError,
   type TenantContext,

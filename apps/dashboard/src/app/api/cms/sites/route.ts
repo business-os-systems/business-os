@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { PLATFORM_ERROR_CODE } from "@suite/core";
 import { SiteService } from "@suite/website-builder/services";
 import { resolveTenantContext } from "@/lib/tenant-context";
 import { problemResponse } from "@/lib/problem-response";
+import { quotaAwareProblemResponse } from "@/lib/quota-problem";
 
 const CreateSiteSchema = z.object({
   title: z.string().min(1, "Website title is required"),
@@ -86,10 +88,8 @@ export async function POST(request: Request) {
     );
   } catch (err: unknown) {
     console.error("Error provisioning CMS site:", err);
-    return problemResponse({
-      status: 500,
-      code: "INTERNAL_ERROR",
-      title: "Internal Server Error",
+    return quotaAwareProblemResponse(err, {
+      code: PLATFORM_ERROR_CODE.INTERNAL_ERROR,
       detail: "An unexpected error occurred while provisioning site.",
     });
   }

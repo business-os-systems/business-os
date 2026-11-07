@@ -62,7 +62,10 @@ vi.mock("@suite/db", () => {
       Array.isArray(arg) ? Promise.all(arg) : typeof arg === "function" ? arg(mockPrisma) : arg
     ),
   };
-  return { prisma: mockPrisma };
+  return {
+    prisma: mockPrisma,
+    assertTenantWriteQuotaAvailable: vi.fn().mockResolvedValue(undefined),
+  };
 });
 
 describe("Team Members, Invitations & Enterprise Safeguards API (Issue #156)", () => {

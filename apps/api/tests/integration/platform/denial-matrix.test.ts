@@ -11,6 +11,7 @@ import { platformFlagsRouter } from "../../../src/routes/admin/flags.js";
 import { platformOperatorsRouter } from "../../../src/routes/admin/operators.js";
 import { platformEntitlementsRouter } from "../../../src/routes/admin/entitlements.js";
 import { platformQuotasRouter } from "../../../src/routes/admin/quotas.js";
+import { platformAppCatalogRouter } from "../../../src/routes/admin/app-catalog.js";
 import { platformSystemRouter } from "../../../src/routes/admin/system.js";
 import { tenantAdminRouter } from "../../../src/routes/admin/tenants.js";
 import { tenantPiiRouter } from "../../../src/routes/admin/tenant-pii.js";
@@ -35,6 +36,7 @@ const FOREIGN_ORIGIN = "https://attacker.example";
 const ADMIN_OPERATORS_ROUTER = "admin-operators" as const;
 const ADMIN_ENTITLEMENTS_ROUTER = "admin-entitlements" as const;
 const ADMIN_QUOTAS_ROUTER = "admin-quotas" as const;
+const ADMIN_CATALOG_ROUTER = "admin-catalog" as const;
 
 process.env.CONTROL_PLANE_ORIGIN = CONTROL_PLANE_ORIGIN;
 platformAuthRouter.onError(globalErrorHandler);
@@ -43,6 +45,7 @@ platformFlagsRouter.onError(globalErrorHandler);
 platformOperatorsRouter.onError(globalErrorHandler);
 platformEntitlementsRouter.onError(globalErrorHandler);
 platformQuotasRouter.onError(globalErrorHandler);
+platformAppCatalogRouter.onError(globalErrorHandler);
 tenantAdminRouter.onError(globalErrorHandler);
 tenantPiiRouter.onError(globalErrorHandler);
 tenantLifecycleRouter.onError(globalErrorHandler);
@@ -54,6 +57,7 @@ type RouterKey =
   | typeof ADMIN_OPERATORS_ROUTER
   | typeof ADMIN_ENTITLEMENTS_ROUTER
   | typeof ADMIN_QUOTAS_ROUTER
+  | typeof ADMIN_CATALOG_ROUTER
   | "admin-tenants"
   | "admin-tenant-pii"
   | "admin-tenant-lifecycle";
@@ -65,6 +69,7 @@ const ROUTERS = {
   [ADMIN_OPERATORS_ROUTER]: platformOperatorsRouter,
   [ADMIN_ENTITLEMENTS_ROUTER]: platformEntitlementsRouter,
   [ADMIN_QUOTAS_ROUTER]: platformQuotasRouter,
+  [ADMIN_CATALOG_ROUTER]: platformAppCatalogRouter,
   "admin-tenants": tenantAdminRouter,
   "admin-tenant-pii": tenantPiiRouter,
   "admin-tenant-lifecycle": tenantLifecycleRouter,
@@ -121,6 +126,22 @@ const PROTECTED_ROUTES: readonly ProtectedRoute[] = [
     method: "PUT",
     path: "/tenants/tenant_denial_probe/quotas",
     router: ADMIN_QUOTAS_ROUTER,
+    anonymous: { status: 401, code: PLATFORM_ERROR_CODE.AUTH_REQUIRED },
+    originGuarded: true,
+  },
+  {
+    id: "admin-catalog/list",
+    method: "GET",
+    path: "/",
+    router: ADMIN_CATALOG_ROUTER,
+    anonymous: { status: 401, code: PLATFORM_ERROR_CODE.AUTH_REQUIRED },
+    originGuarded: true,
+  },
+  {
+    id: "admin-catalog/update",
+    method: "PATCH",
+    path: "/website-builder",
+    router: ADMIN_CATALOG_ROUTER,
     anonymous: { status: 401, code: PLATFORM_ERROR_CODE.AUTH_REQUIRED },
     originGuarded: true,
   },
