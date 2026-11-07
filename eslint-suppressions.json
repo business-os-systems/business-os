@@ -1651,14 +1651,8 @@
     }
   },
   "apps/dashboard/src/app/api/v1/onboarding/step-1/route.ts": {
-    "@typescript-eslint/no-non-null-assertion": {
-      "count": 1
-    },
     "@typescript-eslint/no-unnecessary-condition": {
       "count": 5
-    },
-    "@typescript-eslint/no-unnecessary-type-assertion": {
-      "count": 1
     },
     "@typescript-eslint/no-unsafe-assignment": {
       "count": 1
@@ -2630,9 +2624,6 @@
     }
   },
   "apps/dashboard/src/services/branches.service.ts": {
-    "@typescript-eslint/no-unnecessary-type-assertion": {
-      "count": 1
-    },
     "@typescript-eslint/prefer-nullish-coalescing": {
       "count": 4
     },
@@ -2869,10 +2860,7 @@
   },
   "apps/dashboard/tests/branches-settings-api.test.ts": {
     "@typescript-eslint/consistent-type-assertions": {
-      "count": 4
-    },
-    "@typescript-eslint/no-unnecessary-type-assertion": {
-      "count": 9
+      "count": 1
     },
     "@typescript-eslint/no-unsafe-assignment": {
       "count": 14
@@ -3972,9 +3960,6 @@
     }
   },
   "packages/core/src/errors/index.ts": {
-    "@typescript-eslint/array-type": {
-      "count": 2
-    },
     "@typescript-eslint/no-unnecessary-condition": {
       "count": 1
     },
@@ -4400,9 +4385,6 @@
     }
   },
   "packages/modules/website-builder/src/routes/admin/sites.ts": {
-    "@typescript-eslint/no-unnecessary-type-assertion": {
-      "count": 1
-    },
     "max-lines-per-function": {
       "count": 1
     }
