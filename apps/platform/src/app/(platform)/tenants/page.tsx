@@ -4,21 +4,14 @@ import { useCallback, useEffect, useState } from "react";
 import { useRequestTicket } from "@/lib/use-request-ticket";
 import { useRouter } from "next/navigation";
 import { Button } from "@suite/ui";
-import {
-  ConfigTable,
-  type ConfigTableState,
-} from "@/components/tables/config-table";
+import { ConfigTable, type ConfigTableState } from "@/components/tables/config-table";
 import {
   TENANT_FILTERED_EMPTY_STATE,
   TENANT_TABLE_CONFIG,
 } from "@/components/tables/tenant-table.config";
 import { toMessage } from "@/lib/error-message";
 import { fetchTenantPage, type TenantSummary } from "@/lib/tenant-api";
-import {
-  STATUS_ALL,
-  TenantListToolbar,
-  type StatusFilter,
-} from "./tenant-list-toolbar";
+import { STATUS_ALL, TenantListToolbar, type StatusFilter } from "./tenant-list-toolbar";
 
 const PAGE_SIZE = 25;
 
@@ -124,12 +117,12 @@ export default function TenantsPage() {
         : { kind: "ready" };
 
   return (
-    <div className="max-w-5xl space-y-4">
+    <div className="max-w-full space-y-4">
       <div>
         <h1 className="text-2xl font-semibold">Tenants</h1>
         <p className="mt-1 text-sm text-text-secondary">
-          Every organization on the platform. Personal data is not shown here;
-          open a tenant to request it with a recorded reason.
+          Every organization on the platform. Personal data is not shown here; open a tenant to
+          request it with a recorded reason.
         </p>
       </div>
 
@@ -156,11 +149,7 @@ export default function TenantsPage() {
 
       {cursor !== null ? (
         <div className="flex justify-center">
-          <Button
-            variant="secondary"
-            disabled={isAppending}
-            onClick={() => void loadMore()}
-          >
+          <Button variant="secondary" disabled={isAppending} onClick={() => void loadMore()}>
             {isAppending ? "Loading..." : "Load more"}
           </Button>
         </div>

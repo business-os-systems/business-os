@@ -11,18 +11,17 @@ export default function PlatformOverviewPage() {
   // The shell owns the denial; this only decides whether to poll at all.
   const allowed = hasPlatformCapability(
     session?.capabilities,
-    PLATFORM_CAPABILITIES.TELEMETRY_READ.code
+    PLATFORM_CAPABILITIES.TELEMETRY_READ.code,
   );
   const telemetry = useSystemTelemetry({ enabled: allowed });
 
   return (
-    <div className="max-w-5xl space-y-4">
+    <div className="max-w-full space-y-4">
       <header>
         <h1 className="text-2xl font-semibold">Platform overview</h1>
         <p className="mt-1 text-sm text-text-secondary">
-          Whether the platform is healthy, which build is running and what
-          background work is failing — refreshed automatically without a page
-          reload.
+          Whether the platform is healthy, which build is running and what background work is
+          failing — refreshed automatically without a page reload.
         </p>
       </header>
       <OverviewView

@@ -67,6 +67,26 @@ const settingsViewSchema = z
   })
   .strict();
 
+const settingsWriteResultSchema = z
+  .object({
+    appId: z.string().min(1),
+    values: z.record(z.unknown()),
+    removedFields: z.array(z.string()),
+    staleFields: z.array(
+      z.object({ name: z.string(), reason: z.string() }).strict()
+    ),
+    version: z.string().min(1),
+  })
+  .strict();
+
+const updateEntitlementBodySchema = z
+  .object({
+    appId: z.string().min(1),
+    enabled: z.boolean(),
+    expectedVersion: z.string().min(1),
+  })
+  .strict();
+
 function envelopeSchema<T extends z.ZodTypeAny>(data: T) {
   return z
     .object({
@@ -76,6 +96,13 @@ function envelopeSchema<T extends z.ZodTypeAny>(data: T) {
       timestamp: z.string().datetime(),
     })
     .strict();
+}
+
+function requireVersion(value: string | undefined): string {
+  if (value === undefined) {
+    throw new Error("The entitlement response did not carry a version.");
+  }
+  return value;
 }
 
 let fixture: OperatorFixture;
@@ -165,6 +192,62 @@ it.skipIf(!enabled)("keeps the settings schema and values contract", async () =>
   expect(keys).toEqual(["customDomainEnabled", "defaultLocale"]);
   expect(body.data.values).toEqual({});
   expect(body.data.staleFields).toEqual([]);
+});
+
+it.skipIf(!enabled)("keeps the entitlement write envelope", async () => {
+  const organizationId = await createTenantWithApp("write-envelope");
+  const read = await send({
+    method: "GET",
+    path: `/tenants/${organizationId}/entitlements`,
+    token: managerToken,
+  });
+  const observed = envelopeSchema(entitlementListSchema).parse(await read.json());
+
+  const response = await send({
+    method: "PUT",
+    path: `/tenants/${organizationId}/entitlements`,
+    token: managerToken,
+    body: updateEntitlementBodySchema.parse({
+      appId: APP_ID,
+      enabled: false,
+      expectedVersion: requireVersion(observed.data.apps[0]?.version),
+    }),
+  });
+
+  expect(response.status).toBe(200);
+  const body = envelopeSchema(entitlementListSchema).parse(await response.json());
+  expect(body.data.apps[0]?.isEnabled).toBe(false);
+  expect(body.data.apps[0]?.version).not.toBe(observed.data.apps[0]?.version);
+});
+
+it.skipIf(!enabled)("keeps the settings write envelope with removed fields", async () => {
+  const organizationId = await createTenantWithApp("write-settings");
+
+  const read = await send({
+    method: "GET",
+    path: `/tenants/${organizationId}/apps/${APP_ID}/settings`,
+    token: managerToken,
+  });
+  const observed = envelopeSchema(settingsViewSchema).parse(await read.json());
+
+  const response = await send({
+    method: "PUT",
+    path: `/tenants/${organizationId}/apps/${APP_ID}/settings`,
+    token: managerToken,
+    body: {
+      values: { customDomainEnabled: true },
+      expectedVersion: observed.data.version,
+    },
+  });
+
+  expect(response.status).toBe(200);
+  const body = envelopeSchema(settingsWriteResultSchema).parse(
+    await response.json()
+  );
+  expect(body.data.values).toEqual({ customDomainEnabled: true });
+  expect(body.data.removedFields).toEqual([]);
+  expect(body.data.staleFields).toEqual([]);
+  expect(body.data.version).not.toBe(observed.data.version);
 });
 
 function denialCases(organizationId: string) {

@@ -26,7 +26,7 @@ export default function FlagsPage() {
   const [editFlag, setEditFlag] = useState<FlagRecord | null>(null);
   const allowed = hasPlatformCapability(
     session?.capabilities,
-    PLATFORM_CAPABILITIES.FLAGS_MANAGE.code
+    PLATFORM_CAPABILITIES.FLAGS_MANAGE.code,
   );
 
   if (!allowed) {
@@ -54,14 +54,13 @@ export default function FlagsPage() {
   const isFiltered = flags.environment !== ENVIRONMENT_ALL;
 
   return (
-    <div className="max-w-6xl space-y-4">
+    <div className="max-w-full space-y-4">
       <div>
         <h1 className="text-2xl font-semibold">Feature flags</h1>
         <p className="mt-1 text-sm text-text-secondary">
           Gate any app feature with a namespaced key such as{" "}
-          <span className="font-mono text-xs text-text">pos.offline_mode</span>.
-          Flags start off, expire automatically and carry an owner and a removal
-          ticket.
+          <span className="font-mono text-xs text-text">pos.offline_mode</span>. Flags start off,
+          expire automatically and carry an owner and a removal ticket.
         </p>
       </div>
 

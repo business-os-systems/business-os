@@ -8,6 +8,7 @@ import { NotFoundError } from "@suite/core/errors";
 import { usePlatformAuth } from "@/components/auth/auth-provider";
 import { TenantLifecycleActions } from "@/components/forms/tenant-lifecycle-actions";
 import { canManageLifecycle } from "@/components/forms/lifecycle-form.config";
+import { canManageEntitlements, canManageQuotas } from "@/lib/capability";
 import { toMessage } from "@/lib/error-message";
 import {
   canReadPersonalData,
@@ -23,12 +24,19 @@ import {
 } from "./tenant-record-tabs";
 import { TenantPiiPanel } from "./tenant-pii-panel";
 
+function sessionCapabilities(
+  session: { readonly capabilities: readonly string[] } | null | undefined
+): readonly string[] {
+  return session?.capabilities ?? [];
+}
+
 export default function TenantRecordPage() {
   const params = useParams<{ orgId: string }>();
   const router = useRouter();
   const orgId = params.orgId;
   const { session } = usePlatformAuth();
-  const canReadPii = canReadPersonalData(session?.capabilities);
+  const capabilities = sessionCapabilities(session);
+  const canReadPii = canReadPersonalData(capabilities);
   const [record, setRecord] = useState<TenantRecord | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -97,6 +105,14 @@ export default function TenantRecordPage() {
       <TenantRecordHeader
         record={record}
         onBack={() => router.push("/tenants")}
+        canManageSettings={canManageEntitlements(capabilities)}
+        canManageQuotas={canManageQuotas(capabilities)}
+        onOpenSettings={() =>
+          router.push(`/tenants/${encodeURIComponent(record.profile.id)}/settings`)
+        }
+        onOpenQuotas={() =>
+          router.push(`/tenants/${encodeURIComponent(record.profile.id)}/quotas`)
+        }
       />
       {notice !== null ? (
         <Alert variant="success" message={notice} dismissible onDismiss={() => setNotice(null)} />

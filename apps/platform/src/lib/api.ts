@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { InternalServerError } from "@suite/core/errors";
 
 /** One header and one key factory for every control-plane mutation (CT-4). */
@@ -16,11 +17,26 @@ export const PLATFORM_API_PATHS = {
   logout: "/api/v1/admin/auth/logout",
 } as const;
 
-export interface ProblemDetails {
-  readonly title?: string;
-  readonly detail?: string;
-  readonly code?: string;
-}
+const invalidParamSchema = z.object({
+  name: z.string(),
+  reason: z.string(),
+  code: z.string().optional(),
+});
+
+const problemDetailsSchema = z
+  .object({
+    type: z.string().optional(),
+    title: z.string().optional(),
+    detail: z.string().optional(),
+    status: z.number().int().optional(),
+    code: z.string().optional(),
+    requestId: z.string().optional(),
+    invalidParams: z.array(invalidParamSchema).optional(),
+  })
+  .passthrough();
+
+/** The RFC 7807 body, validated at the network boundary. */
+export type ProblemDetails = z.infer<typeof problemDetailsSchema>;
 
 export function platformApiUrl(path: string): string {
   const baseUrl = process.env.NEXT_PUBLIC_API_URL;
@@ -73,15 +89,16 @@ export async function platformFetch(
   return response;
 }
 
+export function parseProblemDetails(value: unknown): ProblemDetails | null {
+  const parsed = problemDetailsSchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
+}
+
 export async function readProblemDetails(response: Response): Promise<ProblemDetails> {
   const raw = await response.text();
   if (raw.trim() === "") return {};
   try {
-    const parsed = JSON.parse(raw) as unknown;
-    if (parsed !== null && typeof parsed === "object") {
-      return parsed as ProblemDetails;
-    }
-    return { detail: raw.trim() };
+    return parseProblemDetails(JSON.parse(raw)) ?? { detail: raw.trim() };
   } catch {
     return { detail: raw.trim() };
   }

@@ -3,6 +3,7 @@ import {
   BuildingIcon,
   HomeIcon,
   MonitorIcon,
+  PackageIcon,
   SettingsIcon,
   ShieldIcon,
   UsersIcon,
@@ -17,6 +18,7 @@ export const PLATFORM_NAV_ICONS: Readonly<
 > = {
   home: HomeIcon,
   tenants: BuildingIcon,
+  apps: PackageIcon,
   flags: SettingsIcon,
   audit: ShieldIcon,
   operators: UsersIcon,

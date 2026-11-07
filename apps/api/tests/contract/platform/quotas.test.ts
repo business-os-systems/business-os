@@ -139,6 +139,36 @@ it.skipIf(!enabled)("keeps the quota item contract with usage and version", asyn
   expect(item?.version).toMatch(/^\d{4}-\d{2}-\d{2}T/);
 });
 
+it.skipIf(!enabled)("keeps the unmeasurable quota envelope", async () => {
+  const organizationId = await createTenant("storage");
+
+  const response = await send({
+    method: "PUT",
+    path: `/tenants/${organizationId}/quotas`,
+    token: managerToken,
+    body: {
+      items: [
+        {
+          resourceKey: "media.storage",
+          limitValue: "1024",
+          isEnforced: false,
+          expectedVersion: null,
+        },
+      ],
+    },
+  });
+
+  expect(response.status).toBe(200);
+  const body = envelopeSchema(quotaListSchema).parse(await response.json());
+  const item = body.data.items[0];
+  expect(item?.limitValue).toBe("1024");
+  expect(item?.unit).toBe("bytes");
+  expect(item?.currentValue).toBeNull();
+  expect(item?.isMeasurable).toBe(false);
+  expect(item?.isOverLimit).toBe(false);
+  expect(item?.asOf).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+});
+
 function quotaBody(
   resourceKey: string,
   limitValue: string,

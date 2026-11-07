@@ -126,6 +126,9 @@ export {
   type QuotaResourceDefinition,
   PII_REASON_HEADER,
   FORM_IDEMPOTENCY_HEADER,
+  APP_CATALOG_AVAILABILITIES,
+  MAX_CATALOG_SORT_ORDER,
+  type AppCatalogAvailability,
 } from "./constants/index.js";
 
 // App settings schema registry (T090)

@@ -15,16 +15,11 @@ const TEXT_ALIGN_MAP: Record<string, string> = {
 };
 
 export function HeroBlock({ props, styles }: HeroBlockComponentProps) {
-  const textAlignClass =
-    TEXT_ALIGN_MAP[styles?.textAlign || "left"] || TEXT_ALIGN_MAP["left"];
+  const textAlignClass = TEXT_ALIGN_MAP[styles?.textAlign || "left"] || TEXT_ALIGN_MAP["left"];
 
   const paddingStyle: React.CSSProperties = {
-    paddingTop:
-      styles?.paddingTop !== undefined ? `${styles.paddingTop}px` : "64px",
-    paddingBottom:
-      styles?.paddingBottom !== undefined
-        ? `${styles.paddingBottom}px`
-        : "64px",
+    paddingTop: styles?.paddingTop !== undefined ? `${styles.paddingTop}px` : "64px",
+    paddingBottom: styles?.paddingBottom !== undefined ? `${styles.paddingBottom}px` : "64px",
     backgroundColor: styles?.backgroundColor,
     color: styles?.textColor,
   };
@@ -35,9 +30,7 @@ export function HeroBlock({ props, styles }: HeroBlockComponentProps) {
       style={paddingStyle}
       className={`w-full flex flex-col justify-center px-4 sm:px-6 lg:px-8 ${styles?.customClassName || ""}`}
     >
-      <div
-        className={`max-w-5xl mx-auto w-full flex flex-col ${textAlignClass}`}
-      >
+      <div className={`max-w-full mx-auto w-full flex flex-col ${textAlignClass}`}>
         {props.badge ? (
           <Badge variant="secondary" className="mb-4">
             {props.badge}
