@@ -9,6 +9,7 @@ import { CONTROL_SESSION_COOKIE_NAME } from "@suite/auth/platform";
 import { platformAuthRouter } from "../../../src/routes/admin/auth.js";
 import { platformFlagsRouter } from "../../../src/routes/admin/flags.js";
 import { platformOperatorsRouter } from "../../../src/routes/admin/operators.js";
+import { platformEntitlementsRouter } from "../../../src/routes/admin/entitlements.js";
 import { platformSystemRouter } from "../../../src/routes/admin/system.js";
 import { tenantAdminRouter } from "../../../src/routes/admin/tenants.js";
 import { tenantPiiRouter } from "../../../src/routes/admin/tenant-pii.js";
@@ -31,12 +32,14 @@ function requireControlPlaneOrigin(): string {
 const CONTROL_PLANE_ORIGIN = requireControlPlaneOrigin();
 const FOREIGN_ORIGIN = "https://attacker.example";
 const ADMIN_OPERATORS_ROUTER = "admin-operators" as const;
+const ADMIN_ENTITLEMENTS_ROUTER = "admin-entitlements" as const;
 
 process.env.CONTROL_PLANE_ORIGIN = CONTROL_PLANE_ORIGIN;
 platformAuthRouter.onError(globalErrorHandler);
 platformSystemRouter.onError(globalErrorHandler);
 platformFlagsRouter.onError(globalErrorHandler);
 platformOperatorsRouter.onError(globalErrorHandler);
+platformEntitlementsRouter.onError(globalErrorHandler);
 tenantAdminRouter.onError(globalErrorHandler);
 tenantPiiRouter.onError(globalErrorHandler);
 tenantLifecycleRouter.onError(globalErrorHandler);
@@ -46,6 +49,7 @@ type RouterKey =
   | "admin-system"
   | "admin-flags"
   | typeof ADMIN_OPERATORS_ROUTER
+  | typeof ADMIN_ENTITLEMENTS_ROUTER
   | "admin-tenants"
   | "admin-tenant-pii"
   | "admin-tenant-lifecycle";
@@ -55,6 +59,7 @@ const ROUTERS = {
   "admin-system": platformSystemRouter,
   "admin-flags": platformFlagsRouter,
   [ADMIN_OPERATORS_ROUTER]: platformOperatorsRouter,
+  [ADMIN_ENTITLEMENTS_ROUTER]: platformEntitlementsRouter,
   "admin-tenants": tenantAdminRouter,
   "admin-tenant-pii": tenantPiiRouter,
   "admin-tenant-lifecycle": tenantLifecycleRouter,
@@ -70,7 +75,7 @@ type AnonymousOutcome =
 
 interface ProtectedRoute {
   readonly id: string;
-  readonly method: "GET" | "POST" | "PATCH" | "DELETE";
+  readonly method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   readonly path: string;
   readonly router: RouterKey;
   readonly anonymous: AnonymousOutcome;
@@ -113,6 +118,38 @@ const PROTECTED_ROUTES: readonly ProtectedRoute[] = [
     router: "admin-tenants",
     anonymous: { status: 401, code: PLATFORM_ERROR_CODE.AUTH_REQUIRED },
     originGuarded: false,
+  },
+  {
+    id: "admin-entitlements/list",
+    method: "GET",
+    path: "/tenants/tenant_denial_probe/entitlements",
+    router: ADMIN_ENTITLEMENTS_ROUTER,
+    anonymous: { status: 401, code: PLATFORM_ERROR_CODE.AUTH_REQUIRED },
+    originGuarded: true,
+  },
+  {
+    id: "admin-entitlements/update",
+    method: "PUT",
+    path: "/tenants/tenant_denial_probe/entitlements",
+    router: ADMIN_ENTITLEMENTS_ROUTER,
+    anonymous: { status: 401, code: PLATFORM_ERROR_CODE.AUTH_REQUIRED },
+    originGuarded: true,
+  },
+  {
+    id: "admin-entitlements/settings",
+    method: "GET",
+    path: "/tenants/tenant_denial_probe/apps/website-builder/settings",
+    router: ADMIN_ENTITLEMENTS_ROUTER,
+    anonymous: { status: 401, code: PLATFORM_ERROR_CODE.AUTH_REQUIRED },
+    originGuarded: true,
+  },
+  {
+    id: "admin-entitlements/settings-update",
+    method: "PUT",
+    path: "/tenants/tenant_denial_probe/apps/website-builder/settings",
+    router: ADMIN_ENTITLEMENTS_ROUTER,
+    anonymous: { status: 401, code: PLATFORM_ERROR_CODE.AUTH_REQUIRED },
+    originGuarded: true,
   },
   {
     id: "admin-tenants/pii",
@@ -245,7 +282,8 @@ const CAPABILITY_ENFORCEMENT = {
   "platform:tenants:read": "P-11 (#220)",
   "platform:tenants:lifecycle": "P-13 (#222), enforced by the lifecycle routes",
   "platform:quotas:manage": "P-21 (#230)",
-  "platform:entitlements:manage": "P-20 (#229)",
+  "platform:entitlements:manage":
+    "P-20 (#229), enforced by the entitlement and app-settings routes",
   "platform:operators:manage": "P-17 (#226)",
   "platform:pii:read": "P-11 (#220)",
   "platform:audit:read": "P-26 (#235)",

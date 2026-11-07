@@ -19,6 +19,8 @@ const SQL_FILES = [
   "../../packages/db/prisma/schema/migrations/20261104130000_audit_chain_integrity/migration.sql",
   "../../packages/db/prisma/schema/migrations/20261104140000_platform_tenant_admin_contacts/migration.sql",
   "../../packages/db/prisma/schema/migrations/20261104150000_platform_notification_contacts_audit/migration.sql",
+  "../../packages/db/prisma/schema/migrations/20261106090000_platform_app_entitlements/migration.sql",
+  "../../packages/db/prisma/schema/migrations/20261106100000_platform_retire_unversioned_writes/migration.sql",
   "../../deploy/platform/reseal-audit-chain.sql",
 ].map((relativePath) => resolve(process.cwd(), relativePath));
 
@@ -31,6 +33,8 @@ const PUBLIC_FUNCTIONS = [
   "fn_set_quota",
   "fn_set_entitlement",
   "fn_set_app_setting",
+  "fn_set_entitlement_versioned",
+  "fn_set_app_setting_versioned",
   "fn_tenant_pii",
   "fn_verify_audit_chain",
   "fn_tenant_admin_contacts",

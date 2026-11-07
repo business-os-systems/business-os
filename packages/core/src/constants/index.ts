@@ -13,8 +13,15 @@ export {
 export {
   APP_MANIFESTS,
   getAppManifest,
+  isAppId,
+  type AppId,
   type AppManifest,
 } from "./app-manifests.js";
+export {
+  INSTALLED_APP_SETTINGS_METADATA_KEYS,
+  isInstalledAppSettingsMetadataKey,
+  type InstalledAppSettingsMetadataKey,
+} from "./installed-app-metadata.js";
 export { RATE_LIMITS, TIMEOUTS } from "./timeouts.js";
 export { PII_REASON_HEADER, FORM_IDEMPOTENCY_HEADER } from "./http-headers.js";
 export {

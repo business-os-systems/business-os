@@ -1,4 +1,6 @@
 import { Prisma, type PrismaClient } from "@suite/db";
+import { PLATFORM_ERROR_CODE } from "@suite/core";
+import { NotFoundError } from "@suite/core/errors";
 
 export interface TenantOverviewRow {
   readonly id: string;
@@ -88,7 +90,7 @@ export async function countTenantOverview(
 }
 
 export async function readTenantOverview(
-  prisma: PrismaClient,
+  prisma: Prisma.TransactionClient,
   organizationId: string
 ): Promise<TenantOverviewRow | null> {
   const rows = await prisma.$queryRaw<TenantOverviewRow[]>(Prisma.sql`
@@ -98,4 +100,21 @@ export async function readTenantOverview(
     LIMIT 1
   `);
   return rows[0] ?? null;
+}
+
+/**
+ * Every entitlement and settings read or write names a real tenant before it
+ * touches anything else. The guard lives beside the view so the 404 contract
+ * cannot drift between services.
+ */
+export async function assertTenantExists(
+  prisma: Prisma.TransactionClient,
+  organizationId: string
+): Promise<void> {
+  const overview = await readTenantOverview(prisma, organizationId);
+  if (overview === null) {
+    throw new NotFoundError("Tenant not found.", {
+      code: PLATFORM_ERROR_CODE.TENANT_NOT_FOUND,
+    });
+  }
 }

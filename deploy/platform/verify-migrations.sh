@@ -25,7 +25,9 @@ BEGIN
     ('20261104140000_platform_tenant_admin_contacts'),
     ('20261104150000_platform_notification_contacts_audit'),
     ('20261105001000_platform_flag_lifecycle'),
-    ('20261105002000_platform_flag_rules_and_retention')
+    ('20261105002000_platform_flag_rules_and_retention'),
+    ('20261106090000_platform_app_entitlements'),
+    ('20261106100000_platform_retire_unversioned_writes')
   ) AS expected(name)
   WHERE NOT EXISTS (
     SELECT 1
@@ -81,6 +83,71 @@ BEGIN
     RAISE EXCEPTION 'Notification boundary failed: app_tenant can execute fn_tenant_admin_contacts';
   END IF;
 
+  -- Entitlements and app settings are read through a granted view and written
+  -- through definer functions: the Platform identity must never hold a direct
+  -- grant on the tenant-owned public tables (DB-2).
+  IF NOT has_table_privilege(
+    'app_platform',
+    'platform.v_tenant_app_entitlements',
+    'SELECT'
+  ) THEN
+    RAISE EXCEPTION 'Entitlement boundary failed: app_platform cannot read v_tenant_app_entitlements';
+  END IF;
+  IF has_table_privilege(
+    'app_tenant',
+    'platform.v_tenant_app_entitlements',
+    'SELECT'
+  ) THEN
+    RAISE EXCEPTION 'Entitlement boundary failed: app_tenant can read v_tenant_app_entitlements';
+  END IF;
+  IF has_table_privilege('app_platform', 'public.installed_apps', 'UPDATE') THEN
+    RAISE EXCEPTION 'Entitlement boundary failed: app_platform can update public.installed_apps directly';
+  END IF;
+  IF NOT has_function_privilege(
+    'app_platform',
+    'platform.fn_set_entitlement_versioned(text, text, boolean, text, text, text)',
+    'EXECUTE'
+  ) THEN
+    RAISE EXCEPTION 'Entitlement boundary failed: app_platform cannot execute fn_set_entitlement_versioned';
+  END IF;
+  IF has_function_privilege(
+    'app_tenant',
+    'platform.fn_set_entitlement_versioned(text, text, boolean, text, text, text)',
+    'EXECUTE'
+  ) THEN
+    RAISE EXCEPTION 'Entitlement boundary failed: app_tenant can execute fn_set_entitlement_versioned';
+  END IF;
+  IF NOT has_function_privilege(
+    'app_platform',
+    'platform.fn_set_app_setting_versioned(text, text, jsonb, text, text, text)',
+    'EXECUTE'
+  ) THEN
+    RAISE EXCEPTION 'Entitlement boundary failed: app_platform cannot execute fn_set_app_setting_versioned';
+  END IF;
+  IF has_function_privilege(
+    'app_tenant',
+    'platform.fn_set_app_setting_versioned(text, text, jsonb, text, text, text)',
+    'EXECUTE'
+  ) THEN
+    RAISE EXCEPTION 'Entitlement boundary failed: app_tenant can execute fn_set_app_setting_versioned';
+  END IF;
+  -- The unversioned writers are superseded. A platform runtime that can call
+  -- them could bypass the optimistic-concurrency guard (CT-3).
+  IF has_function_privilege(
+    'app_platform',
+    'platform.fn_set_entitlement(text, text, boolean, text, text)',
+    'EXECUTE'
+  ) THEN
+    RAISE EXCEPTION 'Entitlement boundary failed: app_platform can execute the retired fn_set_entitlement';
+  END IF;
+  IF has_function_privilege(
+    'app_platform',
+    'platform.fn_set_app_setting(text, text, jsonb, text, text)',
+    'EXECUTE'
+  ) THEN
+    RAISE EXCEPTION 'Entitlement boundary failed: app_platform can execute the retired fn_set_app_setting';
+  END IF;
+
   -- Feature flags live in public but are control-plane configuration. The
   -- Platform identity may read and mutate them; the tenant identity may not,
   -- and neither may delete them.
@@ -128,7 +195,9 @@ WHERE migration_name IN (
   '20261104140000_platform_tenant_admin_contacts',
   '20261104150000_platform_notification_contacts_audit',
   '20261105001000_platform_flag_lifecycle',
-  '20261105002000_platform_flag_rules_and_retention'
+  '20261105002000_platform_flag_rules_and_retention',
+  '20261106090000_platform_app_entitlements',
+  '20261106100000_platform_retire_unversioned_writes'
 )
 ORDER BY started_at;
 

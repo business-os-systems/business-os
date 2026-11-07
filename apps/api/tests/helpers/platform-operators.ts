@@ -42,6 +42,8 @@ export interface SendRequestInput {
   readonly path: string;
   readonly token?: string;
   readonly body?: unknown;
+  /** Fixed key for a deliberate replay; otherwise every mutation gets a fresh one. */
+  readonly idempotencyKey?: string;
 }
 
 export interface InvitationFixture {
@@ -220,7 +222,7 @@ export function sendOperatorRequest(
     headers["Content-Type"] = "application/json";
   }
   if (input.method !== "GET") {
-    headers[IDEMPOTENCY_HEADER] = randomUUID();
+    headers[IDEMPOTENCY_HEADER] = input.idempotencyKey ?? randomUUID();
   }
   return Promise.resolve(
     router.request(input.path, {

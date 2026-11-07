@@ -89,7 +89,12 @@ export {
   DEFAULT_COUNTRY_CODE,
   APP_MANIFESTS,
   getAppManifest,
+  isAppId,
+  type AppId,
   type AppManifest,
+  INSTALLED_APP_SETTINGS_METADATA_KEYS,
+  isInstalledAppSettingsMetadataKey,
+  type InstalledAppSettingsMetadataKey,
   RATE_LIMITS,
   TIMEOUTS,
   PLATFORM_CAPABILITIES,
@@ -121,6 +126,19 @@ export {
   PII_REASON_HEADER,
   FORM_IDEMPOTENCY_HEADER,
 } from "./constants/index.js";
+
+// App settings schema registry (T090)
+export {
+  settingsFieldDefinitionSchema,
+  getAppSettingsDefinition,
+  isSettingsValues,
+  validateAppSettings,
+  type AppSettingsDefinition,
+  type SettingsFieldDefinition,
+  type SettingsValidationIssue,
+  type SettingsValidationResult,
+  type SettingsValues,
+} from "./apps/settings-schemas.js";
 
 // Platform error-code registry
 export {
