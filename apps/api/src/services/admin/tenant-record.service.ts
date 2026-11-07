@@ -2,10 +2,15 @@ import type { OrgStatus, PrismaClient } from "@suite/db";
 import { NotFoundError } from "@suite/core/errors";
 import { PLATFORM_ERROR_CODE } from "@suite/core";
 import { readTenantOverview } from "./tenant-view.service.js";
+import { readTenantQuotas } from "./quota.service.js";
 
 export interface TenantQuota {
   readonly resourceKey: string;
   readonly limitValue: string;
+  readonly unit: "count" | "bytes" | null;
+  readonly currentValue: string | null;
+  readonly isMeasurable: boolean;
+  readonly asOf: string;
   readonly isEnforced: boolean;
   readonly updatedAt: string;
 }
@@ -58,11 +63,8 @@ export async function getTenantRecord(
     });
   }
 
-  const [quotas, lifecycle, audit] = await Promise.all([
-    prisma.quota.findMany({
-      where: { organizationId },
-      orderBy: { resourceKey: "asc" },
-    }),
+  const [quotaList, lifecycle, audit] = await Promise.all([
+    readTenantQuotas(prisma, organizationId),
     prisma.lifecycleEvent.findMany({
       where: { organizationId },
       orderBy: { occurredAt: "desc" },
@@ -96,11 +98,17 @@ export async function getTenantRecord(
       members: overview.memberCount,
     },
     apps: overview.installedAppIds,
-    quotas: quotas.map((quota) => ({
+    quotas: quotaList.items.map((quota) => ({
       resourceKey: quota.resourceKey,
-      limitValue: quota.limitValue.toString(),
+      limitValue: quota.limitValue,
+      unit: quota.unit,
+      currentValue: quota.currentValue,
+      isMeasurable: quota.isMeasurable,
+      asOf: quota.asOf,
       isEnforced: quota.isEnforced,
-      updatedAt: quota.updatedAt.toISOString(),
+      // The version token is the UTC update time; the record keeps its
+      // established millisecond ISO shape.
+      updatedAt: new Date(quota.version).toISOString(),
     })),
     lifecycleHasMore: lifecycle.length > LIFECYCLE_PAGE_SIZE,
     lifecycle: lifecycle.slice(0, LIFECYCLE_PAGE_SIZE).map((event) => ({

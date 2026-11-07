@@ -23,15 +23,16 @@ const enabled = platformIntegrationTestsEnabled();
  */
 const PUBLIC_FUNCTIONS = [
   "fn_set_tenant_status",
-  "fn_set_quota",
+  "fn_set_quota_versioned",
   "fn_set_entitlement_versioned",
   "fn_set_app_setting_versioned",
   "fn_tenant_pii",
   "fn_verify_audit_chain",
 ] as const;
 
-/** Superseded by the versioned functions; owner-only after #229. */
+/** Superseded by the versioned functions; owner-only after #229/#230. */
 const RETIRED_FUNCTIONS = [
+  "fn_set_quota",
   "fn_set_entitlement",
   "fn_set_app_setting",
 ] as const;
@@ -152,6 +153,12 @@ describe.skipIf(!enabled)("Platform audited functions (T016)", () => {
   afterAll(async () => {
     const orgIds = createdOrgIds;
     if (orgIds.length > 0) {
+      await ownerPrisma.quota.deleteMany({
+        where: { organizationId: { in: orgIds } },
+      });
+      await ownerPrisma.auditEvent.deleteMany({
+        where: { organizationId: { in: orgIds } },
+      });
       await ownerPrisma.installedApp.deleteMany({
         where: { organizationId: { in: orgIds } },
       });
@@ -231,6 +238,27 @@ describe.skipIf(!enabled)("Platform audited functions (T016)", () => {
         expect(row.tenantAllowed, row.proname).toBe(false);
         expect(row.ownerAllowed, row.proname).toBe(true);
       }
+
+      const [table] = await ownerPrisma.$queryRaw<
+        {
+          canInsert: boolean;
+          canUpdate: boolean;
+          canDelete: boolean;
+          canTruncate: boolean;
+        }[]
+      >(Prisma.sql`
+        SELECT
+          has_table_privilege('app_platform', 'platform.quotas', 'INSERT') AS "canInsert",
+          has_table_privilege('app_platform', 'platform.quotas', 'UPDATE') AS "canUpdate",
+          has_table_privilege('app_platform', 'platform.quotas', 'DELETE') AS "canDelete",
+          has_table_privilege('app_platform', 'platform.quotas', 'TRUNCATE') AS "canTruncate"
+      `);
+      expect(table).toEqual({
+        canInsert: false,
+        canUpdate: false,
+        canDelete: false,
+        canTruncate: false,
+      });
     });
 
     it("creates no PUBLIC EXECUTE grant on the public functions", async () => {
@@ -396,7 +424,7 @@ describe.skipIf(!enabled)("Platform audited functions (T016)", () => {
         PLATFORM_CAPABILITIES.QUOTAS_MANAGE.code,
       ]);
 
-      await withRollback(async (tx) => {
+      await withOwnerRollback(async (tx) => {
         await tx.$queryRaw(
           Prisma.sql`SELECT * FROM platform.fn_set_quota(${orgId}, ${QUOTA_KEYS.MEMBERS}, ${5n}, ${true}, ${actorId}, ${"req-quota-1"})`,
         );
@@ -423,6 +451,64 @@ describe.skipIf(!enabled)("Platform audited functions (T016)", () => {
       });
     });
 
+    it("version-guards a quota update and audits it", async () => {
+      const orgId = await createTenant("quota-versioned");
+      const actorId = await createOperator([
+        PLATFORM_CAPABILITIES.QUOTAS_MANAGE.code,
+      ]);
+
+      const [created] = await ownerPrisma.$queryRaw<{ version: string }[]>(
+        Prisma.sql`SELECT * FROM platform.fn_set_quota_versioned(${orgId}, ${QUOTA_KEYS.MEMBERS}, ${5n}, ${true}, ${null}, ${actorId}, ${"req-qv-1"})`,
+      );
+      if (created === undefined) {
+        throw new Error("The versioned quota function returned no row.");
+      }
+
+      await expect(
+        ownerPrisma.$queryRaw(
+          Prisma.sql`SELECT * FROM platform.fn_set_quota_versioned(${orgId}, ${QUOTA_KEYS.MEMBERS}, ${10n}, ${true}, ${"stale"}, ${actorId}, ${"req-qv-stale"})`,
+        ),
+      ).rejects.toThrow(/QUOTA_CONFLICT/);
+
+      const [updated] = await ownerPrisma.$queryRaw<
+        { limitValue: bigint; version: string }[]
+      >(
+        Prisma.sql`SELECT * FROM platform.fn_set_quota_versioned(${orgId}, ${QUOTA_KEYS.MEMBERS}, ${10n}, ${true}, ${created.version}, ${actorId}, ${"req-qv-2"})`,
+      );
+      expect(updated?.limitValue).toBe(10n);
+      expect(updated?.version).not.toBe(created.version);
+
+      const audits = await ownerPrisma.$queryRaw<
+        { requestId: string; before: unknown; after: unknown }[]
+      >(
+        Prisma.sql`SELECT "requestId", "before", "after" FROM platform.audit_events WHERE "organizationId" = ${orgId} AND "action" = ${PLATFORM_AUDIT_ACTIONS.TENANT_QUOTA_SET} ORDER BY "occurredAt"`,
+      );
+      expect(audits).toHaveLength(2);
+      expect(audits[0]?.before).toBeNull();
+      expect(audits[1]?.before).toMatchObject({ limitValue: "5" });
+      expect(audits[1]?.after).toMatchObject({ limitValue: "10" });
+    });
+
+    it("rejects one of two concurrent creates instead of overwriting", async () => {
+      const orgId = await createTenant("quota-create-race");
+      const actorId = await createOperator([
+        PLATFORM_CAPABILITIES.QUOTAS_MANAGE.code,
+      ]);
+
+      const create = (limit: bigint) =>
+        ownerPrisma.$queryRaw(
+          Prisma.sql`SELECT * FROM platform.fn_set_quota_versioned(${orgId}, ${QUOTA_KEYS.MEMBERS}, ${limit}, ${true}, ${null}, ${actorId}, ${"req-qv-race"})`,
+        );
+
+      const results = await Promise.allSettled([create(5n), create(10n)]);
+      const fulfilled = results.filter((result) => result.status === "fulfilled");
+      const rejected = results.filter((result) => result.status === "rejected");
+
+      expect(fulfilled).toHaveLength(1);
+      expect(rejected).toHaveLength(1);
+      expect(String(rejected[0]?.reason)).toMatch(/QUOTA_CONFLICT/);
+    });
+
     it("measures consumption only where a source exists", async () => {
       const orgId = await createTenant("usage");
       const actorId = await createOperator([
@@ -436,7 +522,7 @@ describe.skipIf(!enabled)("Platform audited functions (T016)", () => {
         data: { userId: member.id, organizationId: orgId, status: "ACTIVE" },
       });
 
-      await withRollback(async (tx) => {
+      await withOwnerRollback(async (tx) => {
         await tx.$queryRaw(
           Prisma.sql`SELECT * FROM platform.fn_set_quota(${orgId}, ${QUOTA_KEYS.MEMBERS}, ${3n}, ${true}, ${actorId}, ${"req-usage-1"})`,
         );
@@ -472,7 +558,7 @@ describe.skipIf(!enabled)("Platform audited functions (T016)", () => {
       ]);
 
       await expect(
-        platformPrisma.$queryRaw(
+        ownerPrisma.$queryRaw(
           Prisma.sql`SELECT * FROM platform.fn_set_quota(${orgId}, ${QUOTA_KEYS.STORAGE}, ${1024n}, ${true}, ${actorId}, ${"req-storage-enforced"})`,
         ),
       ).rejects.toThrow(/VALIDATION_FAILED/);
@@ -485,7 +571,7 @@ describe.skipIf(!enabled)("Platform audited functions (T016)", () => {
       ]);
 
       await expect(
-        platformPrisma.$queryRaw(
+        ownerPrisma.$queryRaw(
           Prisma.sql`SELECT * FROM platform.fn_set_quota(${orgId}, ${QUOTA_KEYS.MEMBERS}, ${3n}, ${true}, ${actorId}, ${"req-quota-denied"})`,
         ),
       ).rejects.toThrow(/CAPABILITY_DENIED/);
@@ -498,7 +584,7 @@ describe.skipIf(!enabled)("Platform audited functions (T016)", () => {
       ]);
 
       await expect(
-        platformPrisma.$queryRaw(
+        ownerPrisma.$queryRaw(
           Prisma.sql`SELECT * FROM platform.fn_set_quota(${orgId}, ${QUOTA_KEYS.PAGES}, ${-1n}, ${true}, ${actorId}, ${"req-negative"})`,
         ),
       ).rejects.toThrow(/VALIDATION_FAILED/);

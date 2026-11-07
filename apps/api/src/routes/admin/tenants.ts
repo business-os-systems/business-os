@@ -53,6 +53,10 @@ const tenantRecordSchema = z.object({
     z.object({
       resourceKey: z.string(),
       limitValue: z.string(),
+      unit: z.enum(["count", "bytes"]).nullable(),
+      currentValue: z.string().nullable(),
+      isMeasurable: z.boolean(),
+      asOf: z.string(),
       isEnforced: z.boolean(),
       updatedAt: z.string(),
     })

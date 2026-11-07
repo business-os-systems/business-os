@@ -21,6 +21,9 @@ const SQL_FILES = [
   "../../packages/db/prisma/schema/migrations/20261104150000_platform_notification_contacts_audit/migration.sql",
   "../../packages/db/prisma/schema/migrations/20261106090000_platform_app_entitlements/migration.sql",
   "../../packages/db/prisma/schema/migrations/20261106100000_platform_retire_unversioned_writes/migration.sql",
+  "../../packages/db/prisma/schema/migrations/20261106120000_platform_quota_versioning/migration.sql",
+  "../../packages/db/prisma/schema/migrations/20261106130000_platform_retire_unversioned_quota/migration.sql",
+  "../../packages/db/prisma/schema/migrations/20261106140000_platform_quota_create_guard/migration.sql",
   "../../deploy/platform/reseal-audit-chain.sql",
 ].map((relativePath) => resolve(process.cwd(), relativePath));
 
@@ -31,6 +34,7 @@ const sql = SQL_FILES.map((filePath) => readFileSync(filePath, "utf8")).join(
 const PUBLIC_FUNCTIONS = [
   "fn_set_tenant_status",
   "fn_set_quota",
+  "fn_set_quota_versioned",
   "fn_set_entitlement",
   "fn_set_app_setting",
   "fn_set_entitlement_versioned",

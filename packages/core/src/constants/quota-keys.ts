@@ -50,3 +50,6 @@ const QUOTA_KEY_CODE_SET: ReadonlySet<string> = new Set(QUOTA_KEY_CODES);
 export function isQuotaKey(value: string): value is QuotaKey {
   return QUOTA_KEY_CODE_SET.has(value);
 }
+
+/** The largest signed 64-bit value a quota limit may carry (PostgreSQL bigint). */
+export const MAX_QUOTA_LIMIT = 9223372036854775807n;

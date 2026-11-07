@@ -10,6 +10,7 @@ import { platformAuthRouter } from "../../../src/routes/admin/auth.js";
 import { platformFlagsRouter } from "../../../src/routes/admin/flags.js";
 import { platformOperatorsRouter } from "../../../src/routes/admin/operators.js";
 import { platformEntitlementsRouter } from "../../../src/routes/admin/entitlements.js";
+import { platformQuotasRouter } from "../../../src/routes/admin/quotas.js";
 import { platformSystemRouter } from "../../../src/routes/admin/system.js";
 import { tenantAdminRouter } from "../../../src/routes/admin/tenants.js";
 import { tenantPiiRouter } from "../../../src/routes/admin/tenant-pii.js";
@@ -33,6 +34,7 @@ const CONTROL_PLANE_ORIGIN = requireControlPlaneOrigin();
 const FOREIGN_ORIGIN = "https://attacker.example";
 const ADMIN_OPERATORS_ROUTER = "admin-operators" as const;
 const ADMIN_ENTITLEMENTS_ROUTER = "admin-entitlements" as const;
+const ADMIN_QUOTAS_ROUTER = "admin-quotas" as const;
 
 process.env.CONTROL_PLANE_ORIGIN = CONTROL_PLANE_ORIGIN;
 platformAuthRouter.onError(globalErrorHandler);
@@ -40,6 +42,7 @@ platformSystemRouter.onError(globalErrorHandler);
 platformFlagsRouter.onError(globalErrorHandler);
 platformOperatorsRouter.onError(globalErrorHandler);
 platformEntitlementsRouter.onError(globalErrorHandler);
+platformQuotasRouter.onError(globalErrorHandler);
 tenantAdminRouter.onError(globalErrorHandler);
 tenantPiiRouter.onError(globalErrorHandler);
 tenantLifecycleRouter.onError(globalErrorHandler);
@@ -50,6 +53,7 @@ type RouterKey =
   | "admin-flags"
   | typeof ADMIN_OPERATORS_ROUTER
   | typeof ADMIN_ENTITLEMENTS_ROUTER
+  | typeof ADMIN_QUOTAS_ROUTER
   | "admin-tenants"
   | "admin-tenant-pii"
   | "admin-tenant-lifecycle";
@@ -60,6 +64,7 @@ const ROUTERS = {
   "admin-flags": platformFlagsRouter,
   [ADMIN_OPERATORS_ROUTER]: platformOperatorsRouter,
   [ADMIN_ENTITLEMENTS_ROUTER]: platformEntitlementsRouter,
+  [ADMIN_QUOTAS_ROUTER]: platformQuotasRouter,
   "admin-tenants": tenantAdminRouter,
   "admin-tenant-pii": tenantPiiRouter,
   "admin-tenant-lifecycle": tenantLifecycleRouter,
@@ -101,6 +106,22 @@ const PROTECTED_ROUTES: readonly ProtectedRoute[] = [
     path: "/logout",
     router: "platform-auth",
     anonymous: { status: 204, code: null },
+    originGuarded: true,
+  },
+  {
+    id: "admin-quotas/list",
+    method: "GET",
+    path: "/tenants/tenant_denial_probe/quotas",
+    router: ADMIN_QUOTAS_ROUTER,
+    anonymous: { status: 401, code: PLATFORM_ERROR_CODE.AUTH_REQUIRED },
+    originGuarded: true,
+  },
+  {
+    id: "admin-quotas/update",
+    method: "PUT",
+    path: "/tenants/tenant_denial_probe/quotas",
+    router: ADMIN_QUOTAS_ROUTER,
+    anonymous: { status: 401, code: PLATFORM_ERROR_CODE.AUTH_REQUIRED },
     originGuarded: true,
   },
   {
@@ -281,7 +302,8 @@ const PROTECTED_ROUTES: readonly ProtectedRoute[] = [
 const CAPABILITY_ENFORCEMENT = {
   "platform:tenants:read": "P-11 (#220)",
   "platform:tenants:lifecycle": "P-13 (#222), enforced by the lifecycle routes",
-  "platform:quotas:manage": "P-21 (#230)",
+  "platform:quotas:manage":
+    "P-21 (#230), enforced by the quota routes",
   "platform:entitlements:manage":
     "P-20 (#229), enforced by the entitlement and app-settings routes",
   "platform:operators:manage": "P-17 (#226)",

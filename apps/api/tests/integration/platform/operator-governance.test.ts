@@ -187,13 +187,27 @@ afterAll(async () => {
 });
 
 it.skipIf(!enabled)("lists operators without exposing invitation secrets", async () => {
-  const allowed = await send({ method: "GET", path: "/", token: ownerToken });
-  expect(allowed.status).toBe(200);
-  const page = operatorPageEnvelope.parse(await allowed.json());
-  expect(page.data.items.map((item) => item.id)).toContain(ownerId);
-  const serialized = JSON.stringify(page);
-  expect(serialized).not.toContain("invitationToken");
-  expect(serialized).not.toContain("tokenHash");
+  const seen = new Set<string>();
+  let cursor: string | null = null;
+
+  do {
+    const path =
+      cursor === null
+        ? "/?limit=100"
+        : `/?limit=100&cursor=${encodeURIComponent(cursor)}`;
+    const allowed = await send({ method: "GET", path, token: ownerToken });
+    expect(allowed.status).toBe(200);
+    const page = operatorPageEnvelope.parse(await allowed.json());
+    for (const item of page.data.items) {
+      seen.add(item.id);
+    }
+    const serialized = JSON.stringify(page);
+    expect(serialized).not.toContain("invitationToken");
+    expect(serialized).not.toContain("tokenHash");
+    cursor = page.data.nextCursor;
+  } while (cursor !== null);
+
+  expect(seen.has(ownerId)).toBe(true);
 });
 
 it.skipIf(!enabled)("denies listing and inviting without the capability", async () => {

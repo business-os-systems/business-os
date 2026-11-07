@@ -27,7 +27,10 @@ BEGIN
     ('20261105001000_platform_flag_lifecycle'),
     ('20261105002000_platform_flag_rules_and_retention'),
     ('20261106090000_platform_app_entitlements'),
-    ('20261106100000_platform_retire_unversioned_writes')
+    ('20261106100000_platform_retire_unversioned_writes'),
+    ('20261106120000_platform_quota_versioning'),
+    ('20261106130000_platform_retire_unversioned_quota'),
+    ('20261106140000_platform_quota_create_guard')
   ) AS expected(name)
   WHERE NOT EXISTS (
     SELECT 1
@@ -148,6 +151,44 @@ BEGIN
     RAISE EXCEPTION 'Entitlement boundary failed: app_platform can execute the retired fn_set_app_setting';
   END IF;
 
+  -- Quota writes go through the versioned function only; the tenant identity
+  -- must not reach the platform schema.
+  IF NOT has_function_privilege(
+    'app_platform',
+    'platform.fn_set_quota_versioned(text, text, bigint, boolean, text, text, text)',
+    'EXECUTE'
+  ) THEN
+    RAISE EXCEPTION 'Quota boundary failed: app_platform cannot execute fn_set_quota_versioned';
+  END IF;
+  IF has_function_privilege(
+    'app_tenant',
+    'platform.fn_set_quota_versioned(text, text, bigint, boolean, text, text, text)',
+    'EXECUTE'
+  ) THEN
+    RAISE EXCEPTION 'Quota boundary failed: app_tenant can execute fn_set_quota_versioned';
+  END IF;
+  -- The unversioned quota write is retired: neither the function nor a direct
+  -- table update may bypass the version guard and audit row (CT-3).
+  IF has_function_privilege(
+    'app_platform',
+    'platform.fn_set_quota(text, text, bigint, boolean, text, text)',
+    'EXECUTE'
+  ) THEN
+    RAISE EXCEPTION 'Quota boundary failed: app_platform can execute the retired fn_set_quota';
+  END IF;
+  IF has_table_privilege('app_platform', 'platform.quotas', 'INSERT') THEN
+    RAISE EXCEPTION 'Quota boundary failed: app_platform can insert into platform.quotas directly';
+  END IF;
+  IF has_table_privilege('app_platform', 'platform.quotas', 'UPDATE') THEN
+    RAISE EXCEPTION 'Quota boundary failed: app_platform can update platform.quotas directly';
+  END IF;
+  IF has_table_privilege('app_platform', 'platform.quotas', 'DELETE') THEN
+    RAISE EXCEPTION 'Quota boundary failed: app_platform can delete platform.quotas';
+  END IF;
+  IF has_table_privilege('app_platform', 'platform.quotas', 'TRUNCATE') THEN
+    RAISE EXCEPTION 'Quota boundary failed: app_platform can truncate platform.quotas';
+  END IF;
+
   -- Feature flags live in public but are control-plane configuration. The
   -- Platform identity may read and mutate them; the tenant identity may not,
   -- and neither may delete them.
@@ -197,7 +238,10 @@ WHERE migration_name IN (
   '20261105001000_platform_flag_lifecycle',
   '20261105002000_platform_flag_rules_and_retention',
   '20261106090000_platform_app_entitlements',
-  '20261106100000_platform_retire_unversioned_writes'
+  '20261106100000_platform_retire_unversioned_writes',
+  '20261106120000_platform_quota_versioning',
+  '20261106130000_platform_retire_unversioned_quota',
+  '20261106140000_platform_quota_create_guard'
 )
 ORDER BY started_at;
 
