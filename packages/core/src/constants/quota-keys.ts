@@ -53,3 +53,11 @@ export function isQuotaKey(value: string): value is QuotaKey {
 
 /** The largest signed 64-bit value a quota limit may carry (PostgreSQL bigint). */
 export const MAX_QUOTA_LIMIT = 9223372036854775807n;
+
+/**
+ * FR-025 requires the refusal to name the upgrade path. There is no
+ * self-service billing surface yet, so the path is the workspace administrator
+ * (who can ask a Platform operator to raise the limit).
+ */
+export const QUOTA_UPGRADE_PATH =
+  "Contact your workspace administrator to raise the limit.";

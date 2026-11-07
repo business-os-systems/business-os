@@ -31,6 +31,8 @@ export const quotaItemSchema = z
     isMeasurable: z.boolean(),
     asOf: z.string().datetime(),
     isEnforced: z.boolean(),
+    // FR-081: a lowered limit leaves content intact and marks the tenant.
+    isOverLimit: z.boolean(),
     version: quotaVersionSchema,
   })
   .strict();

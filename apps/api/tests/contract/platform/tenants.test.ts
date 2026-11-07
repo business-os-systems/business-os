@@ -44,6 +44,7 @@ const QUOTA_RECORD_KEYS = [
   "currentValue",
   "isEnforced",
   "isMeasurable",
+  "isOverLimit",
   "limitValue",
   "resourceKey",
   "unit",

@@ -1,5 +1,6 @@
 import { z } from "zod";
-import type { PrismaClient } from "@suite/db";
+import { assertTenantWriteQuotaAvailable, type PrismaClient } from "@suite/db";
+import { QUOTA_KEYS } from "@suite/core";
 import { NotFoundError, ValidationError } from "@suite/core/errors";
 
 export interface ProvisionJitUserParams {
@@ -90,12 +91,21 @@ export async function provisionJitSsoUser(
   });
 
   if (!existingUserOrg) {
-    await prisma.userOrganization.create({
-      data: {
-        userId: user.id,
+    // JIT provisioning creates an active member seat. The gate and the insert
+    // share one transaction so the last seat cannot be handed out twice
+    // (FR-025).
+    await prisma.$transaction(async (tx) => {
+      await assertTenantWriteQuotaAvailable(tx, {
         organizationId,
-        status: "ACTIVE",
-      },
+        resourceKey: QUOTA_KEYS.MEMBERS,
+      });
+      await tx.userOrganization.create({
+        data: {
+          userId: user.id,
+          organizationId,
+          status: "ACTIVE",
+        },
+      });
     });
   }
 

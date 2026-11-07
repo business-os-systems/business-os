@@ -42,7 +42,10 @@ vi.mock("@suite/db", () => {
     },
     $transaction: vi.fn(async (callback) => callback(mockPrisma)),
   };
-  return { prisma: mockPrisma };
+  return {
+    prisma: mockPrisma,
+    assertTenantWriteQuotaAvailable: vi.fn().mockResolvedValue(undefined),
+  };
 });
 
 // Mock @suite/auth hashPassword to avoid running real argon2 in tests

@@ -1,5 +1,15 @@
-import { describe, it, expect } from "vitest";
-import type { PrismaClient } from "@suite/db";
+import { describe, it, expect, vi } from "vitest";
+import { assertTenantWriteQuotaAvailable, type PrismaClient } from "@suite/db";
+import { QUOTA_KEYS } from "@suite/core";
+import { QuotaExceededError } from "@suite/core/errors";
+
+vi.mock("@suite/db", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@suite/db")>();
+  return {
+    ...actual,
+    assertTenantWriteQuotaAvailable: vi.fn().mockResolvedValue(undefined),
+  };
+});
 import {
   extractDomainFromEmail,
   isPublicEmailDomain,
@@ -132,6 +142,7 @@ describe("Enterprise SSO Domain Discovery & JIT Provisioning Engine", () => {
             return captured.createdRoleAssignment;
           },
         },
+        $transaction: (cb: (tx: unknown) => unknown) => Promise.resolve(cb(mockPrisma)),
       } as unknown as PrismaClient;
 
       const result = await provisionJitSsoUser({
@@ -181,6 +192,7 @@ describe("Enterprise SSO Domain Discovery & JIT Provisioning Engine", () => {
             return captured.createdUserOrg;
           },
         },
+        $transaction: (cb: (tx: unknown) => unknown) => Promise.resolve(cb(mockPrisma)),
       } as unknown as PrismaClient;
 
       const result = await provisionJitSsoUser({
@@ -195,6 +207,56 @@ describe("Enterprise SSO Domain Discovery & JIT Provisioning Engine", () => {
       expect(captured.createdUserOrg).toBeDefined();
       expect(captured.createdUserOrg?.organizationId).toBe("org_secondary");
       expect(captured.createdUserOrg?.status).toBe("ACTIVE");
+    });
+
+    it("refuses JIT provisioning when the member seat limit is reached", async () => {
+      const mockPrisma = {
+        ssoConnection: {
+          findUnique: () =>
+            Promise.resolve({
+              id: "sso_conn_limit",
+              organizationId: "org_limit",
+              defaultRoleId: null,
+            }),
+        },
+        user: {
+          findUnique: () => Promise.resolve(null),
+          create: () =>
+            Promise.resolve({
+              id: "user_limit",
+              email: "limit@corporate.com",
+              name: "Limit",
+              emailVerified: true,
+            }),
+        },
+        userOrganization: {
+          findUnique: () => Promise.resolve(null),
+          create: () =>
+            Promise.reject(
+              new Error("membership must not be created at the limit")
+            ),
+        },
+        $transaction: (cb: (tx: unknown) => unknown) => Promise.resolve(cb(mockPrisma)),
+      } as unknown as PrismaClient;
+
+      vi.mocked(assertTenantWriteQuotaAvailable).mockRejectedValueOnce(
+        new QuotaExceededError({
+          resourceKey: QUOTA_KEYS.MEMBERS,
+          resourceLabel: "Members",
+          limitValue: "1",
+          currentValue: "1",
+          unit: "count",
+        })
+      );
+
+      await expect(
+        provisionJitSsoUser({
+          email: "limit@corporate.com",
+          name: "Limit",
+          ssoConnectionId: "sso_conn_limit",
+          prisma: mockPrisma,
+        })
+      ).rejects.toBeInstanceOf(QuotaExceededError);
     });
 
     it("throws NotFoundError if SSO connection does not exist", async () => {

@@ -1651,20 +1651,14 @@
     }
   },
   "apps/dashboard/src/app/api/v1/onboarding/step-1/route.ts": {
-    "@typescript-eslint/no-non-null-assertion": {
-      "count": 1
-    },
     "@typescript-eslint/no-unnecessary-condition": {
       "count": 5
-    },
-    "@typescript-eslint/no-unnecessary-type-assertion": {
-      "count": 1
     },
     "@typescript-eslint/no-unsafe-assignment": {
       "count": 1
     },
     "@typescript-eslint/prefer-nullish-coalescing": {
-      "count": 11
+      "count": 10
     },
     "complexity": {
       "count": 3
@@ -2630,9 +2624,6 @@
     }
   },
   "apps/dashboard/src/services/branches.service.ts": {
-    "@typescript-eslint/no-unnecessary-type-assertion": {
-      "count": 1
-    },
     "@typescript-eslint/prefer-nullish-coalescing": {
       "count": 4
     },
@@ -2661,12 +2652,6 @@
     }
   },
   "apps/dashboard/src/services/members/invitations.ts": {
-    "@typescript-eslint/no-unnecessary-condition": {
-      "count": 1
-    },
-    "@typescript-eslint/non-nullable-type-assertion-style": {
-      "count": 1
-    },
     "complexity": {
       "count": 1
     },
@@ -2875,10 +2860,7 @@
   },
   "apps/dashboard/tests/branches-settings-api.test.ts": {
     "@typescript-eslint/consistent-type-assertions": {
-      "count": 4
-    },
-    "@typescript-eslint/no-unnecessary-type-assertion": {
-      "count": 9
+      "count": 1
     },
     "@typescript-eslint/no-unsafe-assignment": {
       "count": 14
@@ -3978,9 +3960,6 @@
     }
   },
   "packages/core/src/errors/index.ts": {
-    "@typescript-eslint/array-type": {
-      "count": 2
-    },
     "@typescript-eslint/no-unnecessary-condition": {
       "count": 1
     },
@@ -4406,9 +4385,6 @@
     }
   },
   "packages/modules/website-builder/src/routes/admin/sites.ts": {
-    "@typescript-eslint/no-unnecessary-type-assertion": {
-      "count": 1
-    },
     "max-lines-per-function": {
       "count": 1
     }
@@ -4445,36 +4421,18 @@
     "@typescript-eslint/prefer-nullish-coalescing": {
       "count": 6
     },
-    "complexity": {
-      "count": 1
-    },
     "max-lines-per-function": {
       "count": 3
     }
   },
   "packages/modules/website-builder/src/services/site-service.ts": {
-    "@typescript-eslint/array-type": {
-      "count": 1
-    },
     "@typescript-eslint/no-unsafe-assignment": {
       "count": 1
     },
     "@typescript-eslint/prefer-nullish-coalescing": {
       "count": 1
     },
-    "@typescript-eslint/prefer-optional-chain": {
-      "count": 1
-    },
     "complexity": {
-      "count": 1
-    },
-    "max-depth": {
-      "count": 2
-    },
-    "max-lines-per-function": {
-      "count": 1
-    },
-    "sonarjs/cognitive-complexity": {
       "count": 1
     }
   },

@@ -26,6 +26,11 @@ import {
 } from "./routes/index.js";
 import { assertProductionConfiguration, isProduction } from "./lib/env.js";
 import { createWebsiteBuilderRoutes } from "@suite/website-builder/routes";
+import {
+  PageService,
+  SiteService,
+} from "@suite/website-builder/services";
+import { tenantQuotaGuard } from "./services/admin/quota-guard.service.js";
 import { metricsRegistry } from "./telemetry.js";
 
 /** Tenant-plane prefixes that require a session and a non-blocked workspace. */
@@ -93,7 +98,13 @@ export function createApp(options: AppOptions = {}) {
   app.route("/api/v1/organizations", organizationsRouter);
   app.route("/api/v1/branches", branchesRouter);
   app.route("/api/v1/audit-logs", auditLogsRouter);
-  app.route("/api/v1/cms", createWebsiteBuilderRoutes());
+  app.route(
+    "/api/v1/cms",
+    createWebsiteBuilderRoutes(
+      PageService.withQuotaGuard(tenantQuotaGuard),
+      SiteService.withQuotaGuard(tenantQuotaGuard)
+    )
+  );
 
   // Platform operator auth is public/session-based, not tenant-auth.
   app.route("/api/v1/admin/auth", platformAuthRouter);

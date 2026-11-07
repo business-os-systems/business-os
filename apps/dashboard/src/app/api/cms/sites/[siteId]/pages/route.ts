@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { PLATFORM_ERROR_CODE } from "@suite/core";
 import { PageService } from "@suite/website-builder/services";
 import { resolveTenantContext } from "@/lib/tenant-context";
 import { problemResponse } from "@/lib/problem-response";
+import { quotaAwareProblemResponse } from "@/lib/quota-problem";
 
 const CreatePageBodySchema = z.object({
   title: z.string().min(1, "Page title is required"),
@@ -79,10 +81,8 @@ export async function POST(
     return NextResponse.json({ success: true, page }, { status: 201 });
   } catch (err: unknown) {
     console.error("Error creating CMS page for site:", err);
-    return problemResponse({
-      status: 500,
-      code: "INTERNAL_ERROR",
-      title: "Internal Server Error",
+    return quotaAwareProblemResponse(err, {
+      code: PLATFORM_ERROR_CODE.INTERNAL_ERROR,
       detail: "An unexpected error occurred while creating page.",
     });
   }

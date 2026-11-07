@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma, type Prisma } from "@suite/db";
+import { assertTenantWriteQuotaAvailable, prisma, type Prisma } from "@suite/db";
+import { PLATFORM_ERROR_CODE, QUOTA_KEYS } from "@suite/core";
+import { QuotaExceededError } from "@suite/core/errors";
 import {
   encodeSessionPayload,
   signSessionToken,
@@ -155,6 +157,61 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       detail: "Failed to resolve invitation details.",
     });
   }
+}
+
+interface CompleteInvitationAcceptanceInput {
+  readonly tx: Prisma.TransactionClient;
+  readonly invitationId: string;
+  readonly organizationId: string;
+  readonly targetUserId: string;
+}
+
+async function completeInvitationAcceptance(
+  options: CompleteInvitationAcceptanceInput
+): Promise<void> {
+  const { tx, invitationId, organizationId, targetUserId } = options;
+
+  await tx.organizationInvitation.update({
+    where: { id: invitationId },
+    data: { status: "ACCEPTED" },
+  });
+
+  const dbUser = await tx.user.findUnique({
+    where: { id: targetUserId },
+    select: { metadata: true },
+  });
+  const meta = (dbUser?.metadata || {}) as Record<string, unknown>;
+
+  await tx.user.update({
+    where: { id: targetUserId },
+    data: {
+      metadata: {
+        ...meta,
+        onboarding_status: "COMPLETED",
+        current_onboarding_step: null,
+        active_organization_id: organizationId,
+      },
+    },
+  });
+}
+
+interface AssertMembershipSeatInput {
+  readonly tx: Prisma.TransactionClient;
+  readonly organizationId: string;
+  readonly hasExistingMembership: boolean;
+}
+
+async function assertMembershipSeatAvailable(
+  options: AssertMembershipSeatInput
+): Promise<void> {
+  const { tx, organizationId, hasExistingMembership } = options;
+  if (hasExistingMembership) {
+    return;
+  }
+  await assertTenantWriteQuotaAvailable(tx, {
+    organizationId,
+    resourceKey: QUOTA_KEYS.MEMBERS,
+  });
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -360,6 +417,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     // Fast-Track Membership Enrollment in transaction
     await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      // A pending invitation is not a membership row, so acceptance is the
+      // member-creation write point. An existing non-revoked member already
+      // occupies a seat and is not a new write.
+      await assertMembershipSeatAvailable({
+        tx,
+        organizationId: invitation.organizationId,
+        hasExistingMembership: Boolean(existingUserOrg),
+      });
+
       // 1. Link UserOrganization
       await tx.userOrganization.upsert({
         where: {
@@ -403,29 +469,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         },
       });
 
-      // 3. Mark invitation ACCEPTED
-      await tx.organizationInvitation.update({
-        where: { id: invitation.id },
-        data: { status: "ACCEPTED" },
-      });
-
-      // 4. Update user onboarding status to COMPLETED immediately
-      const dbUser = await tx.user.findUnique({
-        where: { id: targetUserId },
-        select: { metadata: true },
-      });
-      const meta = (dbUser?.metadata || {}) as Record<string, unknown>;
-
-      await tx.user.update({
-        where: { id: targetUserId },
-        data: {
-          metadata: {
-            ...meta,
-            onboarding_status: "COMPLETED",
-            current_onboarding_step: null,
-            active_organization_id: invitation.organizationId,
-          },
-        },
+      // 3-4. Mark the invitation accepted and finish onboarding atomically.
+      await completeInvitationAcceptance({
+        tx,
+        invitationId: invitation.id,
+        organizationId: invitation.organizationId,
+        targetUserId,
       });
     });
 
@@ -471,6 +520,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     return response;
   } catch (error) {
+    if (error instanceof QuotaExceededError) {
+      // The invitee is not yet a member; do not disclose seat limits or
+      // consumption to an unauthenticated holder of an invitation token.
+      return problemResponse({
+        status: 409,
+        code: PLATFORM_ERROR_CODE.QUOTA_EXCEEDED,
+        title: "Workspace Member Limit Reached",
+        detail:
+          "This workspace cannot accept another member right now. Contact the workspace administrator.",
+      });
+    }
+
     console.error("Error accepting invitation:", error);
     return problemResponse({
       status: 500,

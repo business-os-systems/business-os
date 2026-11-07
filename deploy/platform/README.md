@@ -19,6 +19,8 @@ The script sets both role passwords and checks the Platform boundary:
 - `app_tenant` has no `USAGE` on `platform`.
 - `app_platform` has `USAGE` on `platform` and can select `platform.operators`.
 - `app_tenant` can select `reference.v_active_catalog_values`.
+- `app_tenant` can execute only `public.fn_assert_quota_available` for quota enforcement; it cannot read `platform.quotas`.
+- `app_platform` can read `platform.v_app_installation_counts` and has no direct grant on `public.installed_apps`.
 
 ## Verify migrations
 
@@ -31,7 +33,7 @@ set +a
 ./deploy/platform/verify-migrations.sh
 ```
 
-It fails if a Platform migration is missing, if `app_platform` cannot reach the Platform schema, or if the audit actor FK is not `ON DELETE RESTRICT` (D-027).
+It fails if a Platform migration is missing, if `app_platform` cannot reach the Platform schema, if the audit actor FK is not `ON DELETE RESTRICT` (D-027), if the tenant identity cannot execute the quota gate, or if either identity crosses the quota/catalog grant boundary.
 
 ## Re-seal the audit chain (break-glass)
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { PERMISSIONS, hasPermission } from "@suite/core";
 import { getAuthenticatedSession } from "@/lib/session-helper";
+import { quotaAwareProblemResponse } from "@/lib/quota-problem";
 import {
   listOrganizationBranches,
   createBranchRecord,
@@ -173,15 +174,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(created, { status: 201 });
   } catch (error) {
-    return NextResponse.json(
-      {
-        type: "/errors/internal-server-error",
-        title: "Internal Server Error",
-        status: 500,
-        detail: error instanceof Error ? error.message : "Internal server error.",
-        code: "INTERNAL_SERVER_ERROR",
-      },
-      { status: 500, headers: { "Content-Type": "application/problem+json" } }
-    );
+    return quotaAwareProblemResponse(error, {
+      detail:
+        error instanceof Error ? error.message : "Internal server error.",
+    });
   }
 }

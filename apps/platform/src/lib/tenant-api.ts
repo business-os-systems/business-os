@@ -71,6 +71,7 @@ const tenantQuotaSchema = z.object({
   resourceKey: z.string().min(1).max(64),
   limitValue: z.string().max(32),
   isEnforced: z.boolean(),
+  isOverLimit: z.boolean(),
   updatedAt: timestampSchema,
 });
 

@@ -1,3 +1,6 @@
+import { QUOTA_UPGRADE_PATH } from "../constants/quota-keys.js";
+import { PLATFORM_ERROR_CODE } from "./codes.js";
+
 export interface InvalidParamDetail {
   readonly name: string;
   readonly reason: string;
@@ -137,6 +140,42 @@ export class ConflictError extends AppError {
       detail,
       ...options,
     });
+  }
+}
+
+export interface QuotaExceededContext {
+  readonly resourceKey: string;
+  readonly resourceLabel: string;
+  readonly limitValue: string;
+  readonly currentValue: string;
+  readonly unit: "count" | "bytes" | null;
+}
+
+/**
+ * 409 Conflict raised when a write would exceed a measured, enforced quota
+ * (FR-025). It carries the numbers so the route can render an actionable
+ * refusal instead of a generic failure.
+ */
+export class QuotaExceededError extends AppError {
+  readonly resourceKey: string;
+  readonly resourceLabel: string;
+  readonly limitValue: string;
+  readonly currentValue: string;
+  readonly unit: "count" | "bytes" | null;
+
+  constructor(context: QuotaExceededContext) {
+    const unit = context.unit ?? "unit";
+    super({
+      status: 409,
+      code: PLATFORM_ERROR_CODE.QUOTA_EXCEEDED,
+      title: "Quota Exceeded",
+      detail: `${context.resourceLabel} limit reached: ${context.currentValue} of ${context.limitValue} ${unit} in use. Existing content is preserved. ${QUOTA_UPGRADE_PATH}`,
+    });
+    this.resourceKey = context.resourceKey;
+    this.resourceLabel = context.resourceLabel;
+    this.limitValue = context.limitValue;
+    this.currentValue = context.currentValue;
+    this.unit = context.unit;
   }
 }
 
@@ -333,10 +372,10 @@ export function createSuccessEnvelope<T>(input: SuccessPayloadInput<T>): Success
 }
 
 export interface ZodErrorLike {
-  issues: Array<{
-    path: Array<string | number>;
+  issues: {
+    path: (string | number)[];
     message: string;
-  }>;
+  }[];
 }
 
 export interface ZodProblemOptions {

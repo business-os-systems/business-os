@@ -1,4 +1,5 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
+import { isAppError } from "@suite/core/errors";
 import { PageService } from "../../services/page-service.js";
 
 const ProblemDetailsSchema = z.object({
@@ -395,6 +396,13 @@ export function createAdminPagesRouter(
 
       return c.json({ success: true, page }, 201);
     } catch (err: unknown) {
+      // Typed application errors (including quota refusals) are RFC 7807
+      // messages; let the app error handler render them instead of flattening
+      // them to a generic 400.
+      if (isAppError(err)) {
+        throw err;
+      }
+
       return c.json(
         {
           type: "/errors/cms-page-creation-failed",

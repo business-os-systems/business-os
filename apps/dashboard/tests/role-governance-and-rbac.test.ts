@@ -51,7 +51,10 @@ vi.mock("@suite/db", () => {
     },
     $transaction: vi.fn(async (cb) => (typeof cb === "function" ? cb(mockPrisma) : cb)),
   };
-  return { prisma: mockPrisma };
+  return {
+    prisma: mockPrisma,
+    assertTenantWriteQuotaAvailable: vi.fn().mockResolvedValue(undefined),
+  };
 });
 
 describe("Role Governance, Atomic Reassignment & Pure Capability RBAC (Issue #169)", () => {

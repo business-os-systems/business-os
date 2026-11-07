@@ -1,4 +1,5 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
+import { isAppError } from "@suite/core/errors";
 import { SiteService } from "../../services/site-service.js";
 
 const ProblemDetailsSchema = z.object({
@@ -199,6 +200,13 @@ export function createAdminSitesRouter(
         201
       );
     } catch (err: unknown) {
+      // Typed application errors (including quota refusals) are RFC 7807
+      // messages; let the app error handler render them instead of flattening
+      // them to a generic 400.
+      if (isAppError(err)) {
+        throw err;
+      }
+
       return c.json(
         {
           type: "/errors/cms-site-creation-failed",
@@ -233,7 +241,7 @@ export function createAdminSitesRouter(
       );
     }
 
-    return c.json({ site: site as unknown as Record<string, unknown> }, 200);
+    return c.json({ site: site }, 200);
   });
 
   return router;

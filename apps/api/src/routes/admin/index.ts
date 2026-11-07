@@ -8,6 +8,7 @@ import { platformOperatorsRouter } from "./operators.js";
 import { platformOperatorPasskeysRouter } from "./operator-passkeys.js";
 import { platformEntitlementsRouter } from "./entitlements.js";
 import { platformQuotasRouter } from "./quotas.js";
+import { platformAppCatalogRouter } from "./app-catalog.js";
 
 /**
  * Admin API mount point. Future Platform routes join this router; request id,
@@ -21,6 +22,7 @@ adminRouter.route("/system", platformSystemRouter);
 adminRouter.route("/flags", platformFlagsRouter);
 adminRouter.route("/operators", platformOperatorsRouter);
 adminRouter.route("/operator-passkeys", platformOperatorPasskeysRouter);
+adminRouter.route("/catalog", platformAppCatalogRouter);
 // Registered before the tenants router: that router's capability middleware is
 // mounted on "/" and would otherwise gate the entitlement- and quota-only paths.
 adminRouter.route("/", platformEntitlementsRouter);

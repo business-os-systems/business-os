@@ -3,6 +3,7 @@ import { z } from "zod";
 import { PERMISSIONS, hasPermission } from "@suite/core";
 import { getAuthenticatedSession } from "@/lib/session-helper";
 import { problemResponse, successResponse } from "@/lib/api-response";
+import { quotaProblemResponse } from "@/lib/quota-problem";
 import { resolveRequestOrigin } from "@/lib/origin";
 import {
   listOrganizationMembers,
@@ -59,6 +60,41 @@ const inviteMemberSchema = z
     message: "At least one role is required",
     path: ["roleId"],
   });
+
+function mapMemberMutationError(error: unknown): NextResponse {
+  const quotaProblem = quotaProblemResponse(error);
+  if (quotaProblem !== null) {
+    return quotaProblem;
+  }
+
+  if (error instanceof ConflictError) {
+    return problemResponse({
+      type: "/errors/conflict",
+      title: "Member Already Exists",
+      status: 409,
+      detail: error.message,
+      code: "MEMBER_CONFLICT",
+    });
+  }
+
+  if (error instanceof NotFoundError) {
+    return problemResponse({
+      type: "/errors/not-found",
+      title: "Resource Not Found",
+      status: 404,
+      detail: error.message,
+      code: "NOT_FOUND",
+    });
+  }
+
+  return problemResponse({
+    type: "/errors/internal-server-error",
+    title: "Internal Server Error",
+    status: 500,
+    detail: error instanceof Error ? error.message : "Internal server error.",
+    code: "INTERNAL_SERVER_ERROR",
+  });
+}
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
@@ -179,32 +215,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     return successResponse(result, { status: 201 });
   } catch (error) {
-    if (error instanceof ConflictError) {
-      return problemResponse({
-        type: "/errors/conflict",
-        title: "Member Already Exists",
-        status: 409,
-        detail: error.message,
-        code: "MEMBER_CONFLICT",
-      });
-    }
-
-    if (error instanceof NotFoundError) {
-      return problemResponse({
-        type: "/errors/not-found",
-        title: "Resource Not Found",
-        status: 404,
-        detail: error.message,
-        code: "NOT_FOUND",
-      });
-    }
-
-    return problemResponse({
-      type: "/errors/internal-server-error",
-      title: "Internal Server Error",
-      status: 500,
-      detail: error instanceof Error ? error.message : "Internal server error.",
-      code: "INTERNAL_SERVER_ERROR",
-    });
+    return mapMemberMutationError(error);
   }
 }

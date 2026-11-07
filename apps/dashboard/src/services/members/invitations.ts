@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
-import { prisma, type Prisma } from "@suite/db";
+import { assertTenantWriteQuotaAvailable, prisma, type Prisma } from "@suite/db";
+import { QUOTA_KEYS } from "@suite/core";
 import { hashToken, invalidateUserPermissionsCache } from "@suite/auth";
 import { redis } from "@suite/redis";
 import type { InviteMemberInput, MemberListItemDto } from "./types";
@@ -25,6 +26,20 @@ function resolveTargetBranchIds(input: InviteMemberInput): string[] {
   if (input.branchIds && input.branchIds.length > 0) return input.branchIds;
   if (input.branchId) return [input.branchId];
   return [];
+}
+
+function resolveMemberStatus(
+  status: string | undefined
+): MemberListItemDto["status"] {
+  if (
+    status === "ACTIVE" ||
+    status === "INVITED" ||
+    status === "SUSPENDED" ||
+    status === "REVOKED"
+  ) {
+    return status;
+  }
+  return "INVITED";
 }
 
 function resolveMemberName(userName?: string | null, email?: string): string {
@@ -110,6 +125,18 @@ export async function inviteOrganizationMember(
 
   // Execute all mutations atomically inside a transaction (Issue 08)
   const { createdInvitation, token } = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    // FR-025: an invitation for a new seat is refused at the limit. A
+    // non-revoked member already occupies a seat; a revoked membership does
+    // not and must pass the gate before it can be restored.
+    const occupiesSeat =
+      existingOrg !== undefined && existingOrg.status !== "REVOKED";
+    if (!occupiesSeat) {
+      await assertTenantWriteQuotaAvailable(tx, {
+        organizationId,
+        resourceKey: QUOTA_KEYS.MEMBERS,
+      });
+    }
+
     // If user already exists in org, update their branch role to the invited roles & branches
     if (existingUser) {
       await tx.userBranchRole.deleteMany({
@@ -247,7 +274,7 @@ export async function inviteOrganizationMember(
     email: createdInvitation.email,
     mobile: existingUser?.mobile ?? null,
     image: existingUser?.image ?? null,
-    status: (existingOrg?.status as MemberListItemDto["status"]) || "INVITED",
+    status: resolveMemberStatus(existingOrg?.status),
     roleId: role.id,
     roleName: role.name,
     roleSlug: role.slug,

@@ -24,6 +24,9 @@ const SQL_FILES = [
   "../../packages/db/prisma/schema/migrations/20261106120000_platform_quota_versioning/migration.sql",
   "../../packages/db/prisma/schema/migrations/20261106130000_platform_retire_unversioned_quota/migration.sql",
   "../../packages/db/prisma/schema/migrations/20261106140000_platform_quota_create_guard/migration.sql",
+  "../../packages/db/prisma/schema/migrations/20261107150000_platform_quota_enforcement/migration.sql",
+  "../../packages/db/prisma/schema/migrations/20261107151000_platform_app_installation_counts/migration.sql",
+  "../../packages/db/prisma/schema/migrations/20261107152000_platform_quota_gate_types/migration.sql",
   "../../deploy/platform/reseal-audit-chain.sql",
 ].map((relativePath) => resolve(process.cwd(), relativePath));
 
@@ -102,5 +105,12 @@ describe("Platform SQL contract", () => {
     for (const name of PUBLIC_FUNCTIONS) {
       expect(sql).toContain(`platform.${name}(`);
     }
+  });
+
+  it("declares the tenant-callable quota gate in the public schema", () => {
+    expect(sql).toContain("public.fn_assert_quota_available(");
+    expect(sql).toContain(
+      "GRANT EXECUTE ON FUNCTION public.fn_assert_quota_available(text, text, bigint) TO app_tenant"
+    );
   });
 });
