@@ -66,6 +66,18 @@ const PERMITTED_WRITES: readonly PermittedWrite[] = [
     path: "/catalog/:appId",
     reason: "app catalog overrides",
   },
+  // Reference catalogs are Platform-owned shared vocabularies; adding or
+  // retiring a value writes no tenant business record (FR-101, FR-107, CT-7).
+  {
+    method: "POST",
+    path: "/catalogs/:category/values",
+    reason: "reference catalog governance",
+  },
+  {
+    method: "PATCH",
+    path: "/catalogs/:category/values/:code",
+    reason: "reference catalog governance",
+  },
   { method: "POST", path: "/operators", reason: "operator invitation" },
   { method: "PATCH", path: "/operators/:operatorId", reason: "operator governance" },
   {
