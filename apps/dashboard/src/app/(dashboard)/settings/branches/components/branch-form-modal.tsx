@@ -4,7 +4,6 @@ import React, { useState, useEffect } from "react";
 import { Modal, Button, Input, Select } from "@suite/ui";
 import type { FormFieldOption } from "@suite/ui";
 import {
-  DEFAULT_BRANCH_TYPES,
   TIMEZONE_OPTIONS,
   NIGHT_AUDIT_OPTIONS,
   DATE_FORMAT_OPTIONS,
@@ -22,6 +21,8 @@ export interface BranchFormModalProps {
   initialValues: BranchFormValues;
   parentBranchOptions: FormFieldOption[];
   addressOptions?: FormFieldOption[];
+  /** Active branch types from the reference catalog (FR-113: never hardcoded). */
+  branchTypes: readonly FormFieldOption[];
   onSubmit: (values: BranchFormValues) => void | Promise<void>;
   isSubmitting?: boolean;
 }
@@ -33,6 +34,7 @@ export function BranchFormModal({
   initialValues,
   parentBranchOptions,
   addressOptions = [],
+  branchTypes,
   onSubmit,
   isSubmitting = false,
 }: BranchFormModalProps) {
@@ -161,7 +163,7 @@ export function BranchFormModal({
             <Select
               value={form.type}
               onChange={(val) => setForm((p) => ({ ...p, type: val }))}
-              options={DEFAULT_BRANCH_TYPES}
+              options={[...branchTypes]}
               className="text-xs"
             />
           </div>

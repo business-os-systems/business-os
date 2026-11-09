@@ -31,6 +31,7 @@ export interface BranchesClientProps {
   userPermissions?: string[];
   organizationDefaults?: OrganizationDefaults;
   addressOptions?: FormFieldOption[];
+  branchTypes: FormFieldOption[];
 }
 
 interface ApiProblemDetails {
@@ -38,13 +39,13 @@ interface ApiProblemDetails {
   title?: string;
   status?: number;
   detail?: string;
-  errors?: Array<{ message?: string } | string>;
+  errors?: ({ message?: string } | string)[];
 }
 
 function extractApiErrorMessage(errData: unknown, fallback: string): string {
   if (!errData) return fallback;
   if (typeof errData === "string") return errData;
-  if (typeof errData === "object" && errData !== null) {
+  if (typeof errData === "object") {
     const problem = errData as ApiProblemDetails;
     if (typeof problem.detail === "string" && problem.detail.trim().length > 0) {
       return problem.detail;
@@ -68,6 +69,7 @@ export function BranchesClient({
   userPermissions = [],
   organizationDefaults,
   addressOptions = [],
+  branchTypes,
 }: BranchesClientProps) {
   const router = useRouter();
   const [branches, setBranches] = useState<BranchListItemDto[]>(initialBranches);
@@ -117,7 +119,7 @@ export function BranchesClient({
       dateFormat: editingBranch.dateFormat,
       timeFormat: editingBranch.timeFormat,
       taxIdentifier: editingBranch.taxIdentifier || "",
-      capabilities: editingBranch.capabilities || [],
+      capabilities: editingBranch.capabilities,
     };
   }, [editingBranch, defaultCreateValues]);
 
@@ -140,7 +142,7 @@ export function BranchesClient({
         b.name.toLowerCase().includes(q) ||
         b.code.toLowerCase().includes(q) ||
         b.type.toLowerCase().includes(q) ||
-        (b.address?.city && b.address.city.toLowerCase().includes(q));
+        (b.address?.city.toLowerCase().includes(q) ?? false);
 
       return matchesStatus && matchesSearch;
     });
@@ -278,8 +280,9 @@ export function BranchesClient({
         onToggleStatus: (b) => void handleToggleStatus(b),
         onArchive: (b) => setArchivingBranch(b),
         onAddBranch: () => setIsCreateOpen(true),
+        branchTypes,
       }),
-    [activeBranchId]
+    [activeBranchId, branchTypes]
   );
 
   return (
@@ -326,6 +329,7 @@ export function BranchesClient({
         initialValues={defaultCreateValues}
         parentBranchOptions={parentBranchOptions}
         addressOptions={addressOptions}
+        branchTypes={branchTypes}
         onSubmit={handleCreateSubmit}
         isSubmitting={isSubmitting}
       />
@@ -337,6 +341,7 @@ export function BranchesClient({
         initialValues={editInitialValues}
         parentBranchOptions={parentBranchOptions}
         addressOptions={addressOptions}
+        branchTypes={branchTypes}
         onSubmit={handleEditSubmit}
         isSubmitting={isSubmitting}
       />

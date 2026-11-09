@@ -1,7 +1,7 @@
 import React from "react";
 import { z } from "zod";
 import { Badge, PencilIcon, PowerIcon, TrashIcon } from "@suite/ui";
-import type { FormConfig, FormFieldOption, TableConfig } from "@suite/ui";
+import type { FormFieldOption, TableConfig } from "@suite/ui";
 import { PERMISSIONS } from "@suite/core";
 import type { BranchListItemDto } from "@/services/branches.service";
 
@@ -108,18 +108,6 @@ export const BRANCH_STATUS_FILTERS: readonly BranchStatusFilterOption[] = [
   { id: "ARCHIVED", label: "Archived" },
 ] as const;
 
-export const DEFAULT_BRANCH_TYPES: FormFieldOption[] = [
-  { label: "Hotel / Resort", value: "hotel" },
-  { label: "Homestay / B&B", value: "homestay" },
-  { label: "Restaurant", value: "restaurant" },
-  { label: "Cafe / Bistro", value: "cafe" },
-  { label: "Retail Store", value: "retail" },
-  { label: "Central Warehouse", value: "warehouse" },
-  { label: "Salon / Spa", value: "salon" },
-  { label: "Corporate Office", value: "office" },
-  { label: "Other / Custom", value: "other" },
-];
-
 export const TIMEZONE_OPTIONS: FormFieldOption[] = [
   { label: "Asia/Kolkata (IST, UTC+5:30)", value: "Asia/Kolkata" },
   { label: "UTC (Coordinated Universal Time)", value: "UTC" },
@@ -169,133 +157,10 @@ export const BRANCH_CAPABILITY_OPTIONS = [
   { id: "wellness", label: "Spa & Wellness" },
 ] as const;
 
-export function createBranchFormConfig(
-  mode: "create" | "edit" = "create",
-  customTypes: FormFieldOption[] = DEFAULT_BRANCH_TYPES,
-): FormConfig<BranchFormValues> {
-  const isEdit = mode === "edit";
-
-  return {
-    id: `branch-${mode}-form`,
-    title: isEdit
-      ? "Edit Operational Branch"
-      : "Register New Operational Branch",
-    description: isEdit
-      ? "Update operational parameters, turnover clock, and tax credentials."
-      : "Register an execution site, terminal location, or store outlet.",
-    sections: [
-      {
-        id: "branch-identity",
-        title: "Branch Identity & Classification",
-        description: "Primary name, unique code, and venue classification.",
-        permission: PERMISSIONS.CORE.BRANCHES_WRITE,
-        fields: [
-          {
-            name: "name",
-            label: "Branch Name",
-            type: "text",
-            placeholder: "e.g. River View Manali Main Lodge",
-            description:
-              "Display name shown across staff terminals and receipts.",
-            required: true,
-            colSpan: 1,
-          },
-          {
-            name: "code",
-            label: isEdit ? "Branch Code (Locked)" : "Branch Code",
-            type: "text",
-            placeholder: "e.g. MANALI-01",
-            description: isEdit
-              ? "Branch code is permanent and cannot be modified."
-              : "Unique uppercase identifier for receipts, barcodes, and shifts.",
-            required: true,
-            disabled: isEdit,
-            colSpan: 1,
-          },
-          {
-            name: "type",
-            label: "Venue Type",
-            type: "select",
-            description: "Primary operational classification for this site.",
-            options: customTypes,
-            required: true,
-            colSpan: 2,
-          },
-        ],
-      },
-      {
-        id: "branch-operations",
-        title: "Operational Clock & Turnover (Ground Reality)",
-        description: "Local IANA timezone and night audit rollover hour.",
-        fields: [
-          {
-            name: "timezone",
-            label: "Local Timezone",
-            type: "select",
-            options: TIMEZONE_OPTIONS,
-            description:
-              "Timezone used for timestamping shifts and folio turnover.",
-            required: true,
-            colSpan: 1,
-          },
-          {
-            name: "nightAuditHour",
-            label: "Night Audit Rollover Hour",
-            type: "select",
-            options: NIGHT_AUDIT_OPTIONS,
-            description:
-              "Operational cutoff hour when business day officially flips.",
-            required: true,
-            colSpan: 1,
-          },
-        ],
-      },
-      {
-        id: "branch-localization",
-        title: "Localization & State Tax",
-        description:
-          "Currency, date formats, and optional branch-specific tax ID.",
-        fields: [
-          {
-            name: "currency",
-            label: "Operational Currency",
-            type: "text",
-            placeholder: "INR",
-            description: "3-letter ISO currency code.",
-            required: true,
-            colSpan: 1,
-          },
-          {
-            name: "taxIdentifier",
-            label: "Branch Tax ID (GSTIN / VAT / State TIN)",
-            type: "text",
-            placeholder: "e.g. 02AAAAA0000A1Z5",
-            description:
-              "State-specific tax registration number for this outlet.",
-            colSpan: 1,
-          },
-          {
-            name: "dateFormat",
-            label: "Date Format",
-            type: "select",
-            options: DATE_FORMAT_OPTIONS,
-            colSpan: 1,
-          },
-          {
-            name: "timeFormat",
-            label: "Time Format",
-            type: "select",
-            options: TIME_FORMAT_OPTIONS,
-            colSpan: 1,
-          },
-        ],
-      },
-    ],
-  };
-}
-
 export interface BranchTableConfigOptions {
   activeBranchId?: string;
+  /** Active branch types from the reference catalog (FR-113: never hardcoded). */
+  branchTypes: readonly FormFieldOption[];
   onEdit: (branch: BranchListItemDto) => void;
   onToggleStatus: (branch: BranchListItemDto) => void;
   onArchive: (branch: BranchListItemDto) => void;
@@ -307,7 +172,7 @@ export interface BranchTableConfigOptions {
 export function createBranchTableConfig(
   options: BranchTableConfigOptions,
 ): TableConfig<BranchListItemDto> {
-  const { onEdit, onToggleStatus, onArchive, onAddBranch } = options;
+  const { onEdit, onToggleStatus, onArchive, onAddBranch, branchTypes } = options;
 
   return {
     id: "branches-directory-table",
@@ -345,7 +210,7 @@ export function createBranchTableConfig(
         sortable: true,
         render: (value) => {
           const typeStr = String(value || "");
-          const match = DEFAULT_BRANCH_TYPES.find((t) => t.value === typeStr);
+          const match = branchTypes.find((t) => t.value === typeStr);
           return (
             <span className="capitalize">{match ? match.label : typeStr}</span>
           );

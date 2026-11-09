@@ -5,9 +5,10 @@
 
 import { isTemplateSecret } from "@suite/core";
 
-export const isProduction = process.env.NODE_ENV === "production";
-export const isDevelopment = process.env.NODE_ENV === "development";
-export const isTest = process.env.NODE_ENV === "test";
+const NODE_ENV = process.env.NODE_ENV;
+export const isProduction = NODE_ENV === "production";
+export const isDevelopment = NODE_ENV === "development";
+export const isTest = NODE_ENV === "test";
 export const isBrowser = typeof window !== "undefined";
 export const isServer = !isBrowser;
 
@@ -28,6 +29,21 @@ export function getBetterAuthSecret(): string {
     );
   }
   return secret;
+}
+
+/**
+ * Base URL of the Platform API. NEXT_PUBLIC_API_URL is pre-declared in the env
+ * templates; there is no inline fallback, so a missing value fails loudly
+ * instead of silently calling a developer machine (P14).
+ */
+export function getPublicApiUrl(): string {
+  const url = process.env.NEXT_PUBLIC_API_URL;
+  if (!url) {
+    throw new Error(
+      "NEXT_PUBLIC_API_URL environment variable must be pre-declared in .env"
+    );
+  }
+  return url.replace(/\/$/, "");
 }
 
 export function getNodeEnv(): string {

@@ -23,6 +23,7 @@ import {
   auditLogsRouter,
   adminRouter,
   platformAuthRouter,
+  referenceRouter,
 } from "./routes/index.js";
 import {
   assertProductionConfiguration,
@@ -116,6 +117,10 @@ export function createApp(options: AppOptions = {}) {
 
   // Admin API — auth and rate limiting are applied inside the router.
   app.route("/api/v1/admin", adminRouter);
+
+  // Shared reference vocabularies. Every application reads these; the path is
+  // read-only and sits outside /admin by contract (FR-105, FR-112).
+  app.route("/api/v1/reference", referenceRouter);
 
   // 5. Environment Guarded OpenAPI 3.1 Documentation & Interactive Scalar UI
   // In production, internal documentation is locked or restricted to authorized internal access.
