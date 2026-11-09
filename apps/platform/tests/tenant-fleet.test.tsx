@@ -2,10 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import React from "react";
 import { renderToString } from "react-dom/server";
 import { PLATFORM_CAPABILITIES } from "@suite/core";
-import {
-  ConfigTable,
-  type ConfigTableState,
-} from "../src/components/tables/config-table";
+import { ConfigTableRenderer } from "@suite/ui";
+import type { ConfigTableState } from "../src/components/tables/config-table";
 import {
   TENANT_FILTERED_EMPTY_STATE,
   TENANT_TABLE_CONFIG,
@@ -46,13 +44,15 @@ function renderTable(
   options: { onRowClick?: (row: TenantSummary) => void } = {},
 ): string {
   return renderToString(
-    <ConfigTable
+    <ConfigTableRenderer
       config={TENANT_TABLE_CONFIG}
-      rows={rows}
-      state={state}
+      data={rows}
       rowKey={(row) => row.id}
       rowLabel={(row) => row.name}
-      onRowClick={options.onRowClick}
+      isLoading={state.kind === "loading"}
+      error={state.kind === "error" ? state.message : null}
+      errorTitle={state.kind === "error" ? state.title : undefined}
+      onRowOpen={options.onRowClick}
     />,
   );
 }
@@ -74,10 +74,9 @@ describe("Tenant fleet table", () => {
 
   it("renders the filtered-empty state when the caller overrides it", () => {
     const html = renderToString(
-      <ConfigTable
+      <ConfigTableRenderer
         config={TENANT_TABLE_CONFIG}
-        rows={[]}
-        state={READY}
+        data={[]}
         rowKey={(row) => row.id}
         rowLabel={(row) => row.name}
         emptyState={TENANT_FILTERED_EMPTY_STATE}
