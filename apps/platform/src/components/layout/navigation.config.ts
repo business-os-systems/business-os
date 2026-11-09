@@ -5,6 +5,7 @@ export type PlatformNavIconKey =
   | "home"
   | "tenants"
   | "apps"
+  | "catalogs"
   | "flags"
   | "audit"
   | "operators"
@@ -53,6 +54,13 @@ export const PLATFORM_NAV_GROUPS: readonly PlatformNavGroup[] = [
         href: "/apps",
         icon: "apps",
         capability: PLATFORM_CAPABILITIES.ENTITLEMENTS_MANAGE.code,
+      },
+      {
+        id: "catalogs",
+        label: "Catalogs",
+        href: "/catalogs",
+        icon: "catalogs",
+        capability: PLATFORM_CAPABILITIES.CATALOGS_MANAGE.code,
       },
       {
         id: "flags",

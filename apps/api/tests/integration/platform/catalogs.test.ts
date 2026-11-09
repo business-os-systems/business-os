@@ -9,7 +9,12 @@ import {
   REFERENCE_CATALOG_READ_RATE_LIMIT_KEY,
 } from "../../../src/routes/admin/catalogs.js";
 import { catalogValueSchema } from "../../../src/services/admin/catalog-admin.contract.js";
+import {
+  referenceRouter,
+  REFERENCE_READ_RATE_LIMIT_KEY,
+} from "../../../src/routes/reference.js";
 import { globalErrorHandler } from "../../../src/middleware/error-handler.js";
+import { createCatalogCache, redis } from "@suite/redis";
 import { clearRateLimitStore } from "../../../src/middleware/rate-limit.js";
 import { loadPlatformTestEnv } from "../../helpers/platform-env.js";
 import {
@@ -32,6 +37,31 @@ const envelopeSchema = z
     timestamp: z.string(),
   })
   .strict();
+
+const referenceListSchema = z
+  .object({
+    data: z
+      .object({
+        catalogs: z.array(
+          z
+            .object({
+              key: z.string(),
+              values: z.array(z.object({ code: z.string() }).passthrough()),
+            })
+            .passthrough(),
+        ),
+      })
+      .passthrough(),
+  })
+  .passthrough();
+
+function referenceCodes(body: unknown, catalogKey: string): readonly string[] {
+  const parsed = referenceListSchema.parse(body);
+  const catalog = parsed.data.catalogs.find((item) => item.key === catalogKey);
+  return catalog?.values.map((value) => value.code) ?? [];
+}
+
+const catalogCache = createCatalogCache(redis);
 
 let fixture: OperatorFixture;
 let managerToken: string;
@@ -106,6 +136,9 @@ beforeEach(async () => {
   if (!enabled) return;
   await clearRateLimitStore(REFERENCE_CATALOG_RATE_LIMIT_KEY);
   await clearRateLimitStore(REFERENCE_CATALOG_READ_RATE_LIMIT_KEY);
+  await clearRateLimitStore(REFERENCE_READ_RATE_LIMIT_KEY);
+  await Promise.all(CATALOG_KEYS.map((key) => catalogCache.invalidate(key)));
+  await catalogCache.invalidate(null);
 });
 
 afterAll(async () => {
@@ -270,6 +303,35 @@ it.skipIf(!enabled)("serializes two concurrent updates with one winner", async (
   expect(row?.version).toBe(created.version + 1);
   expect(["Winner A", "Winner B"]).toContain(row?.label);
   expect(await auditCount(entityId)).toBe(1);
+});
+
+it.skipIf(!enabled)("invalidates the reference read cache after a catalog change", async () => {
+  const warm = await sendOperatorRequest(referenceRouter, {
+    method: "GET",
+    path: "/catalogs",
+    token: managerToken,
+  });
+  expect(warm.status).toBe(200);
+  const cached = await catalogCache.read({
+    catalogKey: null,
+    parse: (value) => value,
+  });
+  expect(cached).not.toBeNull();
+
+  const created = await createValue("Cache Invalidation Integration");
+  const afterMutation = await catalogCache.read({
+    catalogKey: null,
+    parse: (value) => value,
+  });
+  expect(afterMutation).toBeNull();
+
+  const after = await sendOperatorRequest(referenceRouter, {
+    method: "GET",
+    path: "/catalogs",
+    token: managerToken,
+  });
+  expect(after.status).toBe(200);
+  expect(referenceCodes(await after.json(), "branch_type")).toContain(created.code);
 });
 
 it.skipIf(!enabled)("returns 404 for a missing value", async () => {

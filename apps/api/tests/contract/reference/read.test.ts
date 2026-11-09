@@ -3,6 +3,7 @@ import { afterAll, beforeAll, beforeEach, expect, it } from "vitest";
 import { z } from "zod";
 import { CATALOG_KEYS } from "@suite/core";
 import { SESSION_COOKIE_NAME } from "@suite/auth/session";
+import { createCatalogCache, redis } from "@suite/redis";
 import {
   referenceRouter,
   REFERENCE_CACHE_CONTROL,
@@ -58,6 +59,8 @@ const catalogEnvelopeSchema = envelopeSchema(
   z.object({ catalog: catalogSchema, asOf: z.string().datetime() }).strict(),
 );
 
+const BRANCH_TYPE_PATH = "/catalogs/branch_type";
+
 let fixture: OperatorFixture;
 const createdValues: { catalogKey: string; code: string }[] = [];
 
@@ -105,9 +108,18 @@ beforeAll(async () => {
   });
 });
 
+const catalogCache = createCatalogCache(redis);
+
+/** The cache is process-wide, so every case starts from a cold catalog. */
+async function clearReferenceCatalogCache(): Promise<void> {
+  await Promise.all(CATALOG_KEYS.map((key) => catalogCache.invalidate(key)));
+  await catalogCache.invalidate(null);
+}
+
 beforeEach(async () => {
   if (!enabled) return;
   await clearRateLimitStore(REFERENCE_READ_RATE_LIMIT_KEY);
+  await clearReferenceCatalogCache();
 });
 
 afterAll(async () => {
@@ -142,7 +154,7 @@ it.skipIf(!enabled)("returns only active values and never a retired one", async 
   const activeCode = await createCatalogValue({ isActive: true });
   const retiredCode = await createCatalogValue({ isActive: false });
 
-  const response = await read("/catalogs/branch_type", {
+  const response = await read(BRANCH_TYPE_PATH, {
     Cookie: await tenantCookie(),
   });
 
@@ -153,12 +165,22 @@ it.skipIf(!enabled)("returns only active values and never a retired one", async 
   expect(codes).not.toContain(retiredCode);
 });
 
+it.skipIf(!enabled)("serves a cached single catalog on the second read", async () => {
+  const cookie = await tenantCookie();
+  const first = await read(BRANCH_TYPE_PATH, { Cookie: cookie });
+  expect(first.status).toBe(200);
+
+  const second = await read(BRANCH_TYPE_PATH, { Cookie: cookie });
+  expect(second.status).toBe(200);
+  expect(second.headers.get("ETag")).toBe(first.headers.get("ETag"));
+});
+
 it.skipIf(!enabled)("serves the catalog to an operator control session", async () => {
   const operator = await fixture.createOperator([]);
 
   const response = await sendOperatorRequest(referenceRouter, {
     method: "GET",
-    path: "/catalogs/branch_type",
+    path: BRANCH_TYPE_PATH,
     token: operator.token,
   });
 

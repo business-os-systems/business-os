@@ -1,5 +1,9 @@
 import type { Prisma } from "@prisma/client";
-import { CATALOG_KEYS, validateCatalogCode } from "@suite/core";
+import {
+  CATALOG_DEFINITIONS,
+  CATALOG_KEYS,
+  validateCatalogCode,
+} from "@suite/core";
 import { describe, expect, it } from "vitest";
 import { prisma } from "../src/client.js";
 import {
@@ -71,6 +75,17 @@ describe("reference catalog launch data", () => {
           expect(validation.normalized).toBe(value.code);
         }
       }
+    }
+  });
+
+  it("keeps the launched catalog labels aligned with the shared registry", () => {
+    const seed = buildReferenceCatalogSeed();
+
+    for (const catalog of seed.catalogs) {
+      expect(catalog.label).toBe(CATALOG_DEFINITIONS[catalog.key].label);
+      expect(catalog.description).toBe(
+        CATALOG_DEFINITIONS[catalog.key].description,
+      );
     }
   });
 

@@ -9,7 +9,7 @@ import {
   canAccessPath,
   visibleNavigationGroups,
 } from "./navigation.config";
-import { isTenantRecordHubRoute } from "./tenant-record-nav.config";
+import { isPlatformHubRoute } from "./hub-routes";
 import { PlatformSidebar } from "./platform-sidebar";
 import { SupportSessionMarker } from "./support-session-marker";
 
@@ -62,7 +62,7 @@ export function PlatformShell({ children }: { children: ReactNode }) {
       <PlatformSidebar
         groups={groups}
         pathname={pathnameValue}
-        collapsed={isTenantRecordHubRoute(pathnameValue)}
+        collapsed={isPlatformHubRoute(pathnameValue)}
       />
 
       <div className="flex flex-1 flex-col overflow-hidden">
