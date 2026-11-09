@@ -2,9 +2,8 @@
 
 import React, { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { toast, Card, cn } from "@suite/ui";
+import { toast, Card, cn, ConfigTableRenderer } from "@suite/ui";
 import { PERMISSIONS, hasPermission } from "@suite/core";
-import { ConfigTableRenderer } from "@/components/config-renderers/config-table-renderer";
 import { httpClient } from "@/lib/http-client";
 import type { AddressListItemDto } from "@/services/addresses.service";
 import {
@@ -27,7 +26,7 @@ interface ApiProblemDetails {
   status?: number;
   detail?: string;
   inUseReason?: string;
-  errors?: Record<string, string[]> | Array<{ message?: string } | string>;
+  errors?: Record<string, string[]> | ({ message?: string } | string)[];
 }
 
 function extractApiErrorMessage(errData: unknown, fallback: string): string {
@@ -238,6 +237,7 @@ export function AddressesClient({
       <Card className={cn("flex-1 min-h-[300px] overflow-hidden border border-border bg-surface p-0 shadow-2xs flex flex-col")}>
         <ConfigTableRenderer
           config={tableConfig}
+          rowKey={(row) => row.id}
           data={filteredAddresses}
           userPermissions={userPermissions}
           className="border-0 rounded-none shadow-none flex-1 min-h-0 overflow-auto"

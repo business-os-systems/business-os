@@ -2,9 +2,8 @@
 
 import React, { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { toast, Card, cn } from "@suite/ui";
+import { toast, Card, cn, ConfigTableRenderer } from "@suite/ui";
 import { PERMISSIONS, hasPermission } from "@suite/core";
-import { ConfigTableRenderer } from "@/components/config-renderers/config-table-renderer";
 import { httpClient } from "@/lib/http-client";
 import type { RoleDetailDto, PermissionDto } from "@/services/roles.service";
 import {
@@ -210,6 +209,7 @@ export function RolesClient({
       >
         <ConfigTableRenderer
           config={tableConfig}
+          rowKey={(row) => row.id}
           data={filteredRoles}
           userPermissions={userPermissions}
           className="border-0 rounded-none shadow-none flex-1 min-h-0 overflow-auto"

@@ -2,11 +2,10 @@
 
 import React, { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { toast, Card, cn } from "@suite/ui";
+import { toast, Card, cn, ConfigTableRenderer } from "@suite/ui";
 import type { SelectOption } from "@suite/ui";
 import { PERMISSIONS, hasPermission } from "@suite/core";
 import { isBrowser } from "@/lib/env";
-import { ConfigTableRenderer } from "@/components/config-renderers/config-table-renderer";
 import { httpClient } from "@/lib/http-client";
 import type {
   MemberListItemDto,
@@ -22,7 +21,7 @@ import { MemberDangerModal } from "./components/member-danger-modal";
 export interface MembersClientProps {
   initialMembers: MemberListItemDto[];
   roles: RoleOptionDto[];
-  branches: Array<{ id: string; name: string }>;
+  branches: { id: string; name: string }[];
   organizationId: string;
   userPermissions?: string[];
 }
@@ -32,7 +31,7 @@ interface ApiProblemDetails {
   title?: string;
   status?: number;
   detail?: string;
-  errors?: Array<{ message?: string } | string>;
+  errors?: ({ message?: string } | string)[];
 }
 
 function extractApiErrorMessage(errData: unknown, fallback: string): string {
@@ -444,6 +443,7 @@ export function MembersClient({
       >
         <ConfigTableRenderer
           config={tableConfig}
+          rowKey={(row) => row.id}
           data={filteredMembers}
           userPermissions={userPermissions}
           className="border-0 rounded-none shadow-none flex-1 min-h-0 overflow-auto"

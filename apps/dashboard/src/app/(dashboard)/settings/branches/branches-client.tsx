@@ -2,10 +2,9 @@
 
 import React, { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { toast, Card, cn } from "@suite/ui";
+import { toast, Card, cn, ConfigTableRenderer } from "@suite/ui";
 import type { FormFieldOption } from "@suite/ui";
 import { PERMISSIONS, hasPermission } from "@suite/core";
-import { ConfigTableRenderer } from "@/components/config-renderers/config-table-renderer";
 import { httpClient } from "@/lib/http-client";
 import type { BranchListItemDto } from "@/services/branches.service";
 import {
@@ -315,6 +314,7 @@ export function BranchesClient({
       <Card className={cn("flex-1 min-h-[300px] overflow-hidden border border-border bg-surface p-0 shadow-2xs flex flex-col")}>
         <ConfigTableRenderer
           config={tableConfig}
+          rowKey={(row) => row.id}
           data={filteredBranches}
           userPermissions={userPermissions}
           className="border-0 rounded-none shadow-none flex-1 min-h-0 overflow-auto"
