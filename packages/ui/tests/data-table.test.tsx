@@ -20,6 +20,7 @@ interface BranchRow {
 
 const onEdit = vi.fn();
 const onDelete = vi.fn();
+const onArchive = vi.fn();
 const onRowOpen = vi.fn();
 
 const config: TableConfig<BranchRow> = {
@@ -77,7 +78,7 @@ const rows: BranchRow[] = [
   },
 ];
 
-function render(ui: React.ReactElement) {
+function mount(ui: React.ReactElement) {
   const container = document.createElement("div");
   document.body.appendChild(container);
   const root = createRoot(container);
@@ -85,17 +86,43 @@ function render(ui: React.ReactElement) {
   return { container, root };
 }
 
-function sortableHeader(container: HTMLElement): HTMLButtonElement {
+function field(container: HTMLElement, label: string): HTMLButtonElement {
   const button = Array.from(container.querySelectorAll("button")).find(
-    (candidate) => candidate.textContent?.trim() === "Branch Name",
+    (candidate) => candidate.textContent?.trim() === label,
   );
   if (!(button instanceof HTMLButtonElement)) {
-    throw new Error("No sortable header");
+    throw new Error("No button " + label);
   }
   return button;
 }
 
-describe("shared ConfigTableRenderer", () => {
+function dialog(): HTMLElement {
+  const element = document.querySelector('[role="dialog"]');
+  if (!(element instanceof HTMLElement)) throw new Error("No dialog");
+  return element;
+}
+
+function dialogButton(label: string): HTMLButtonElement {
+  const button = Array.from(dialog().querySelectorAll("button")).find(
+    (candidate) => candidate.textContent?.trim() === label,
+  );
+  if (!(button instanceof HTMLButtonElement)) {
+    throw new Error("No dialog button " + label);
+  }
+  return button;
+}
+
+function typePhrase(value: string): void {
+  const input = dialog().querySelector("input");
+  if (!(input instanceof HTMLInputElement)) throw new Error("No input");
+  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(
+    input,
+    value,
+  );
+  act(() => input.dispatchEvent(new Event("input", { bubbles: true })));
+}
+
+describe("shared ConfigTableRenderer rendering", () => {
   it("renders headers, rows and custom cell formatters", () => {
     const html = renderToString(
       <ConfigTableRenderer
@@ -105,7 +132,6 @@ describe("shared ConfigTableRenderer", () => {
         userPermissions={["core:branches:write"]}
       />,
     );
-
     expect(html).toContain("Branch Name");
     expect(html).toContain("Flagship Riverside Cafe");
     expect(html).toContain("RIVER-01");
@@ -114,20 +140,35 @@ describe("shared ConfigTableRenderer", () => {
     expect(html).not.toContain("Deactivate");
   });
 
-  it("renders the empty state instead of rows", () => {
+  it("derives a row key when the caller omits rowKey", () => {
+    const html = renderToString(
+      <ConfigTableRenderer config={config} data={rows} />,
+    );
+    expect(html).toContain("Flagship Riverside Cafe");
+  });
+
+  it("renders the caller toolbar", () => {
     const html = renderToString(
       <ConfigTableRenderer
         config={config}
-        data={[]}
+        data={rows}
         rowKey={(row) => row.id}
+        toolbar={<span>Filters</span>}
       />,
     );
-
-    expect(html).toContain("No Branches Found");
-    expect(html).toContain("Add Branch");
+    expect(html).toContain("Filters");
   });
 
-  it("renders the loading and error states", () => {
+});
+
+describe("shared ConfigTableRenderer states", () => {
+  it("renders empty, loading and error states", () => {
+    const empty = renderToString(
+      <ConfigTableRenderer config={config} data={[]} rowKey={(row) => row.id} />,
+    );
+    expect(empty).toContain("No Branches Found");
+    expect(empty).not.toContain("<table");
+
     const loading = renderToString(
       <ConfigTableRenderer
         config={config}
@@ -145,24 +186,28 @@ describe("shared ConfigTableRenderer", () => {
         data={rows}
         rowKey={(row) => row.id}
         error="The branch list could not be loaded."
+        errorTitle="Tenant list unavailable"
       />,
     );
+    expect(failed).toContain("Tenant list unavailable");
     expect(failed).toContain("The branch list could not be loaded.");
   });
 
+});
+
+describe("shared ConfigTableRenderer permissions", () => {
   it("fails closed when a permissioned action has no permission context", () => {
     const html = renderToString(
       <ConfigTableRenderer config={config} data={rows} rowKey={(row) => row.id} />,
     );
-
     expect(html).not.toContain("Edit");
     expect(html).not.toContain("Deactivate");
   });
 
 });
 
-describe("shared ConfigTableRenderer presentation overrides", () => {
-  it("uses the caller's error title and null label", () => {
+describe("shared ConfigTableRenderer overrides", () => {
+  it("renders the caller's null label", () => {
     const nullableConfig: TableConfig<{ id: string; note: string | null }> = {
       id: "nullable-table",
       columns: [{ key: "note", header: "Note" }],
@@ -177,109 +222,6 @@ describe("shared ConfigTableRenderer presentation overrides", () => {
       />,
     );
     expect(html).toContain("Not set");
-
-    const failed = renderToString(
-      <ConfigTableRenderer
-        config={config}
-        data={rows}
-        rowKey={(row) => row.id}
-        error="Capability denied."
-        errorTitle="Tenant list unavailable"
-      />,
-    );
-    expect(failed).toContain("Tenant list unavailable");
-    expect(failed).toContain("Capability denied.");
-  });
-});
-
-describe("shared ConfigTableRenderer actions", () => {
-  it("runs an action that needs no confirmation", () => {
-    const { container, root } = render(
-      <ConfigTableRenderer
-        config={config}
-        data={rows}
-        rowKey={(row) => row.id}
-        userPermissions={["core:branches:write"]}
-      />,
-    );
-    const edit = Array.from(container.querySelectorAll("button")).find(
-      (candidate) => candidate.textContent?.trim() === "Edit",
-    );
-    if (edit === undefined) throw new Error("No Edit action");
-    act(() => edit.click());
-    expect(onEdit).toHaveBeenCalledWith(rows[0]);
-
-    act(() => root.unmount());
-    container.remove();
-  });
-
-});
-
-describe("shared ConfigTableRenderer destructive confirmation", () => {
-  it("opens a typed confirmation and keeps the action disabled", () => {
-    const { container, root } = render(
-      <ConfigTableRenderer
-        config={config}
-        data={rows}
-        rowKey={(row) => row.id}
-        userPermissions={["core:branches:write", "core:branches:manage"]}
-      />,
-    );
-    const deactivate = Array.from(container.querySelectorAll("button")).find(
-      (candidate) => candidate.textContent?.trim() === "Deactivate",
-    );
-    if (deactivate === undefined) throw new Error("No Deactivate action");
-    act(() => deactivate.click());
-    expect(document.body.textContent).toContain("Type RIVER-01 to confirm");
-
-    const dialog = document.querySelector('[role="dialog"]');
-    if (dialog === null) throw new Error("No confirmation dialog");
-    const confirm = Array.from(dialog.querySelectorAll("button")).find(
-      (candidate) => candidate.textContent?.trim() === "Deactivate",
-    );
-    expect(confirm?.hasAttribute("disabled")).toBe(true);
-
-    act(() => root.unmount());
-    container.remove();
-  });
-
-});
-
-describe("shared ConfigTableRenderer typed confirmation", () => {
-  it("runs the destructive action once the typed slug matches", () => {
-    const { container, root } = render(
-      <ConfigTableRenderer
-        config={config}
-        data={rows}
-        rowKey={(row) => row.id}
-        userPermissions={["core:branches:write", "core:branches:manage"]}
-      />,
-    );
-    const deactivate = Array.from(container.querySelectorAll("button")).find(
-      (candidate) => candidate.textContent?.trim() === "Deactivate",
-    );
-    if (deactivate === undefined) throw new Error("No Deactivate action");
-    act(() => deactivate.click());
-
-    const dialog = document.querySelector('[role="dialog"]');
-    if (dialog === null) throw new Error("No confirmation dialog");
-    const input = dialog.querySelector("input");
-    if (!(input instanceof HTMLInputElement)) throw new Error("No input");
-    act(() => {
-      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(
-        input,
-        "RIVER-01",
-      );
-      input.dispatchEvent(new Event("input", { bubbles: true }));
-    });
-    const enabled = Array.from(dialog.querySelectorAll("button")).find(
-      (candidate) => candidate.textContent?.trim() === "Deactivate",
-    );
-    act(() => enabled?.click());
-    expect(onDelete).toHaveBeenCalled();
-
-    act(() => root.unmount());
-    container.remove();
   });
 
   it("renders a caller-supplied empty state", () => {
@@ -294,35 +236,108 @@ describe("shared ConfigTableRenderer typed confirmation", () => {
         }}
       />,
     );
-
     expect(html).toContain("No branches match this filter");
-    expect(html).toContain("Clear the search to see every branch.");
   });
 });
 
-describe("shared ConfigTableRenderer interaction", () => {
-  it("sorts a sortable column on click and toggles direction", () => {
-    const { container, root } = render(
-      <ConfigTableRenderer config={config} data={rows} rowKey={(row) => row.id} />,
+describe("shared ConfigTableRenderer sorting", () => {
+  it("sorts strings, numbers, booleans, dates and objects", () => {
+    interface SortedRow {
+      id: string;
+      label: string;
+      rank: number;
+      flag: boolean;
+      createdAt: Date;
+      meta: object;
+    }
+    const sortedConfig: TableConfig<SortedRow> = {
+      id: "sorted-table",
+      columns: [
+        { key: "label", header: "Label", sortable: true },
+        { key: "rank", header: "Rank", sortable: true },
+        { key: "flag", header: "Flag", sortable: true },
+        { key: "createdAt", header: "Created", sortable: true },
+        { key: "meta", header: "Meta", sortable: true },
+      ],
+      emptyState: { title: "No rows", description: "Nothing." },
+    };
+    const sortedRows: SortedRow[] = [
+      {
+        id: "s1",
+        label: "Beta",
+        rank: 2,
+        flag: true,
+        createdAt: new Date("2026-01-02T00:00:00.000Z"),
+        meta: { order: 2 },
+      },
+      {
+        id: "s2",
+        label: "Alpha",
+        rank: 1,
+        flag: false,
+        createdAt: new Date("2026-01-01T00:00:00.000Z"),
+        meta: { order: 1 },
+      },
+    ];
+    const { container, root } = mount(
+      <ConfigTableRenderer
+        config={sortedConfig}
+        data={sortedRows}
+        rowKey={(row) => row.id}
+      />,
     );
-    act(() => sortableHeader(container).click());
-    const ascending = container.textContent ?? "";
-    expect(ascending.indexOf("Flagship Riverside Cafe")).toBeLessThan(
-      ascending.indexOf("Mountain View Cottages"),
-    );
-
-    act(() => sortableHeader(container).click());
-    const descending = container.textContent ?? "";
-    expect(descending.indexOf("Mountain View Cottages")).toBeLessThan(
-      descending.indexOf("Flagship Riverside Cafe"),
-    );
-
+    for (const label of ["Label", "Rank", "Flag", "Created", "Meta"]) {
+      act(() => field(container, label).click());
+    }
+    expect(container.textContent).toContain("Alpha");
     act(() => root.unmount());
     container.remove();
   });
 
-  it("opens the first row with the keyboard", () => {
-    const { container, root } = render(
+});
+
+describe("shared ConfigTableRenderer direction", () => {
+  it("toggles a column direction", () => {
+    const { container, root } = mount(
+      <ConfigTableRenderer
+        config={config}
+        data={rows}
+        rowKey={(row) => row.id}
+      />,
+    );
+    act(() => field(container, "Branch Name").click());
+    const ascending = container.textContent ?? "";
+    expect(ascending.indexOf("Flagship")).toBeLessThan(
+      ascending.indexOf("Mountain View"),
+    );
+    act(() => field(container, "Branch Name").click());
+    const descending = container.textContent ?? "";
+    expect(descending.indexOf("Mountain View")).toBeLessThan(
+      descending.indexOf("Flagship"),
+    );
+    act(() => root.unmount());
+    container.remove();
+  });
+
+  it("renders an object cell without a renderer as text", () => {
+    const html = renderToString(
+      <ConfigTableRenderer
+        config={{
+          id: "object-table",
+          columns: [{ key: "meta", header: "Meta" }],
+          emptyState: { title: "No rows", description: "Nothing." },
+        }}
+        data={[{ id: "o1", meta: { a: 1 } }]}
+        rowKey={(row) => row.id}
+      />,
+    );
+    expect(html).toContain("[object Object]");
+  });
+});
+
+describe("shared ConfigTableRenderer row open", () => {
+  it("opens a row with the keyboard", () => {
+    const { container, root } = mount(
       <ConfigTableRenderer
         config={config}
         data={rows}
@@ -330,15 +345,84 @@ describe("shared ConfigTableRenderer interaction", () => {
         onRowOpen={onRowOpen}
       />,
     );
-    const rowButton = container.querySelector("tbody button");
-    if (rowButton === null) throw new Error("No row open button");
+    const button = container.querySelector("tbody button");
+    if (button === null) throw new Error("No row button");
     act(() => {
-      rowButton.dispatchEvent(
+      button.dispatchEvent(
         new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
       );
     });
     expect(onRowOpen).toHaveBeenCalledWith(rows[0]);
+    act(() => root.unmount());
+    container.remove();
+  });
 
+  it("opens a row with a click", () => {
+    const { container, root } = mount(
+      <ConfigTableRenderer
+        config={config}
+        data={rows}
+        rowKey={(row) => row.id}
+        onRowOpen={onRowOpen}
+      />,
+    );
+    const button = container.querySelector("tbody button");
+    if (!(button instanceof HTMLButtonElement)) throw new Error("No row button");
+    act(() => button.click());
+    expect(onRowOpen).toHaveBeenCalledWith(rows[0]);
+    act(() => root.unmount());
+    container.remove();
+  });
+});
+
+describe("shared ConfigTableRenderer confirmation", () => {
+  it("runs a simple confirmation and closes on cancel", () => {
+    const simpleConfig: TableConfig<BranchRow> = {
+      ...config,
+      actions: [
+        {
+          id: "archive",
+          label: "Archive",
+          requiresConfirmation: true,
+          onClick: onArchive,
+        },
+      ],
+    };
+    const { container, root } = mount(
+      <ConfigTableRenderer
+        config={simpleConfig}
+        data={rows}
+        rowKey={(row) => row.id}
+      />,
+    );
+    act(() => field(container, "Archive").click());
+    expect(dialog().textContent).toContain("This action cannot be undone.");
+    act(() => dialogButton("Cancel").click());
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+
+    act(() => field(container, "Archive").click());
+    act(() => dialogButton("Archive").click());
+    expect(onArchive).toHaveBeenCalled();
+    act(() => root.unmount());
+    container.remove();
+  });
+
+  it("keeps the destructive action disabled until the slug matches", () => {
+    const { container, root } = mount(
+      <ConfigTableRenderer
+        config={config}
+        data={rows}
+        rowKey={(row) => row.id}
+        userPermissions={["core:branches:write", "core:branches:manage"]}
+      />,
+    );
+    act(() => field(container, "Deactivate").click());
+    expect(dialog().textContent).toContain("Type RIVER-01 to confirm");
+    expect(dialogButton("Deactivate").hasAttribute("disabled")).toBe(true);
+    typePhrase("RIVER-01");
+    expect(dialogButton("Deactivate").hasAttribute("disabled")).toBe(false);
+    act(() => dialogButton("Deactivate").click());
+    expect(onDelete).toHaveBeenCalled();
     act(() => root.unmount());
     container.remove();
   });

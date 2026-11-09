@@ -27,7 +27,7 @@ interface SortState<T extends object> {
 export interface ConfigTableRendererProps<T extends object> {
   readonly config: TableConfig<T>;
   readonly data: readonly T[];
-  readonly rowKey: (row: T) => string;
+  readonly rowKey?: (row: T) => string;
   readonly isLoading?: boolean;
   readonly error?: string | null;
   readonly errorTitle?: string;
@@ -88,6 +88,11 @@ function compareValues(
     numeric: true,
   });
   return direction === "asc" ? result : -result;
+}
+
+function defaultRowKey<T extends object>(row: T): string {
+  const id: unknown = "id" in row ? row.id : undefined;
+  return typeof id === "string" ? id : "";
 }
 
 function resolveLabel<T>(
@@ -589,8 +594,8 @@ export function ConfigTableRenderer<T extends object>({
         errorTitle={errorTitle}
         nullLabel={nullLabel}
         actions={actions}
-        rowKey={rowKey}
-        rowLabel={rowLabel ?? rowKey}
+        rowKey={rowKey ?? defaultRowKey}
+        rowLabel={rowLabel ?? rowKey ?? defaultRowKey}
         onRowOpen={onRowOpen}
         onAction={requestAction}
         sort={sort}

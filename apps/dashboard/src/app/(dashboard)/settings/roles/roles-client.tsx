@@ -209,7 +209,6 @@ export function RolesClient({
       >
         <ConfigTableRenderer
           config={tableConfig}
-          rowKey={(row) => row.id}
           data={filteredRoles}
           userPermissions={userPermissions}
           className="border-0 rounded-none shadow-none flex-1 min-h-0 overflow-auto"
