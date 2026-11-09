@@ -48,6 +48,34 @@ pnpm --filter @suite/db db:seed:catalogs
 
 The approved launch content lives in `packages/db/src/reference-catalog-seed-data.ts`. Run the command as the owner/migration identity. It is not a `prisma db seed` reset and it does not touch tenant or platform data. Re-running it against a shared database requires explicit human approval (Human Seeding Gate).
 
+## Build and run the stack
+
+The container and proxy artifacts are in this directory:
+
+- `Dockerfile` — multi-stage build with `api` and `platform` targets. The build context is the repository root.
+- `Dockerfile.dockerignore` — keeps `.git`, worktrees, `node_modules`, `.next` and build output out of the context.
+- `docker-compose.yml` — PostgreSQL, Redis, API, Platform and Caddy.
+- `Caddyfile` — the canonical operator vhost and the separate break-glass vhost with client-certificate authentication.
+
+The deployment env is the union of the root app `.env.example` and this directory's `.env.example`. `NEXT_PUBLIC_API_URL` must be the canonical operator origin (for example `https://ops.example.com`) because it is baked into the Platform build.
+
+```bash
+cp .env.example .env          # deployment-only values
+cp ../../.env.example ../../.env
+docker compose -f deploy/platform/docker-compose.yml build
+docker compose -f deploy/platform/docker-compose.yml up -d
+```
+
+The break-glass CA bundle is mounted from `deploy/platform/break-glass-ca.pem`; create it from the offline CA, never from a private key committed to the repository. The origin network policy must allow only the Caddy service (FR-069).
+
+## Break-glass admission
+
+See [BREAK_GLASS.md](./BREAK_GLASS.md). The short version: the separate hostname requires a client certificate whose key is held offline; Caddy overwrites `X-Break-Glass-Verified`; the app page never accepts the key; the canonical host strips the header; the quarterly drill is mandatory.
+
+## Domain move
+
+See [DOMAIN_MOVE.md](./DOMAIN_MOVE.md). The operator domain and passkey relying-party identity are configuration, not code. A move revokes sessions, rotates `CONTROL_SESSION_SECRET`, forces every operator to re-enrol, and is rehearsed in staging before production.
+
 ## Re-seal the audit chain (break-glass)
 
 `reseal-audit-chain.sql` is the one-time repair for a chain damaged before `20261104130000_audit_chain_integrity`. It is owner-only, skips a healthy chain, refuses a second run, detects both hash and link breaks, recomputes `prevHash`/`recordHash` in place, records the database `session_user`, and appends an `AUDIT_CHAIN_RESEALED` audit row.

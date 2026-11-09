@@ -1,0 +1,59 @@
+# Platform edge vhosts. The origin network policy must allow only this proxy;
+# FR-069 requires the origin to reject direct inbound traffic.
+{
+	email {$ACME_EMAIL}
+}
+
+# Canonical operator domain. The break-glass header is stripped here so a
+# client cannot forge admission through the normal domain.
+{$OPERATOR_DOMAIN} {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+	}
+	handle /api/* {
+		reverse_proxy api:4000 {
+			header_up -X-Break-Glass-Verified
+		}
+	}
+	handle {
+		reverse_proxy platform:3002 {
+			header_up -X-Break-Glass-Verified
+		}
+	}
+}
+
+# Separate recovery hostname. Caddy terminates the client certificate and
+# overwrites the admission header before the request reaches the application.
+{$BREAK_GLASS_DOMAIN} {
+	tls {
+		client_auth {
+			mode require_and_verify
+			trust_pool file {$BREAK_GLASS_CA_CERT_PATH}
+		}
+	}
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		X-Robots-Tag "noindex, nofollow"
+		-Server
+	}
+	handle /api/* {
+		reverse_proxy api:4000 {
+			header_up X-Break-Glass-Verified "1"
+		}
+	}
+	handle {
+		reverse_proxy platform:3002 {
+			header_up X-Break-Glass-Verified "1"
+		}
+	}
+}
