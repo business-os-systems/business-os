@@ -9,7 +9,6 @@ import { formatDateTime } from "@/lib/format";
 import type { ConfigFormField } from "@/components/forms/config-form.types";
 import {
   DECIMAL_LIMIT_PATTERN,
-  quotaCurrentLabel,
   quotaResourceLabel,
   quotaUnitLabel,
   type QuotaItem,
@@ -43,10 +42,10 @@ export const QUOTA_TABLE_CONFIG: TableConfig<QuotaItem> = {
       ),
     },
     {
-      key: "currentValue",
-      header: "Current",
+      key: "isEnforced",
+      header: "Enforced",
       align: "right",
-      render: (_value, row) => quotaCurrentLabel(row),
+      render: (value) => (value === true ? "Yes" : "No"),
     },
     {
       key: "isOverLimit",
@@ -62,20 +61,8 @@ export const QUOTA_TABLE_CONFIG: TableConfig<QuotaItem> = {
       },
     },
     {
-      key: "isMeasurable",
-      header: "Measured",
-      align: "right",
-      render: (value) => (value === true ? "Yes" : "No"),
-    },
-    {
-      key: "isEnforced",
-      header: "Enforced",
-      align: "right",
-      render: (value) => (value === true ? "Yes" : "No"),
-    },
-    {
       key: "asOf",
-      header: "Measured at",
+      header: "Updated",
       align: "right",
       render: (value) =>
         typeof value === "string" ? formatDateTime(value) : "Not measured",

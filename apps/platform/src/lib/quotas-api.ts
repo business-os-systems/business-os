@@ -47,10 +47,6 @@ export function quotaUnitLabel(unit: QuotaUnit | null): string {
   return "unit";
 }
 
-export function quotaCurrentLabel(item: QuotaItem): string {
-  return item.currentValue ?? "Not measured";
-}
-
 function quotasPath(orgId: string): string {
   return `/api/v1/admin/tenants/${encodeURIComponent(orgId)}/quotas`;
 }

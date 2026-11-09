@@ -8,6 +8,7 @@ import security from "eslint-plugin-security";
 import globals from "globals";
 import {
   DANGEROUS_HTML_SELECTOR,
+  PAGE_LEVEL_TABLIST_SELECTOR,
   P1_SELECTORS,
   PROCESS_ENV_SELECTOR,
   RESTRICTED_CACHE_IMPORTS,
@@ -252,6 +253,21 @@ export default tseslint.config(
         ...P1_SELECTORS,
         PROCESS_ENV_SELECTOR,
         DANGEROUS_HTML_SELECTOR,
+      ],
+    },
+  },
+  {
+    // Hub Navigation Law ratchet: App Router route files are page-level
+    // surfaces. A tablist there is a second navigation system; H-2 tabs belong
+    // inside a panel component, never in a page or layout.
+    files: ["apps/*/src/app/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        ...P1_SELECTORS,
+        PROCESS_ENV_SELECTOR,
+        DANGEROUS_HTML_SELECTOR,
+        PAGE_LEVEL_TABLIST_SELECTOR,
       ],
     },
   },

@@ -3250,18 +3250,8 @@
       "count": 1
     }
   },
-  "apps/platform/src/app/(platform)/tenants/[orgId]/page.tsx": {
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
   "apps/platform/src/app/(platform)/tenants/[orgId]/tenant-pii-panel.tsx": {
     "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "apps/platform/src/app/(platform)/tenants/[orgId]/tenant-record-tablist.tsx": {
-    "no-param-reassign": {
       "count": 1
     }
   },
@@ -3323,7 +3313,7 @@
   },
   "apps/platform/src/components/layout/platform-shell.tsx": {
     "@typescript-eslint/no-unnecessary-condition": {
-      "count": 2
+      "count": 1
     },
     "max-lines-per-function": {
       "count": 1

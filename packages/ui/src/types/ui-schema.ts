@@ -273,15 +273,43 @@ export interface CategoryHierarchy {
   subTabs?: SettingsSubTabConfig[];
 }
 
+/**
+ * Hub configuration contract (DESIGN.md §4.7, AGENTS.md §5 Hub Navigation Law).
+ *
+ * A category is one routed destination in a secondary navigation panel. It
+ * declares its own href, icon key and capability; the hub renders it as a link
+ * and never as client state. An item without a permission is a platform anchor
+ * that every authenticated operator may see; a gated item fails closed when the
+ * permission context is missing or empty.
+ */
 export interface SettingsCategoryConfig
   extends CategoryIdentity,
     CategoryAuthorization,
     CategoryHierarchy {}
 
+/**
+ * A labelled group in the hub panel. Groups render as overlines in declaration
+ * order; reading groups first, the Risky/destructive group last. Components
+ * never partition groups at runtime or hardcode their labels (H-3.5, H-3.8).
+ */
 export interface SettingsGroupConfig {
   id: string;
   label?: string;
   items: SettingsCategoryConfig[];
+}
+
+/**
+ * Modular-app settings registration contract.
+ *
+ * Every modular app package exports `settingsCategories` with this shape from a
+ * pure TypeScript module (no "use client"). The tenant shell resolves the
+ * installed apps from `@suite/db` (`InstalledApp`) and mounts only those
+ * categories: an uninstalled app contributes no categories and no routes, and
+ * adding a category is a config edit inside the app package (H-3.13).
+ */
+export interface ModularAppSettingsCategories {
+  readonly appId: string;
+  readonly settingsCategories: readonly SettingsCategoryConfig[];
 }
 
 export interface SettingsHubConfig {

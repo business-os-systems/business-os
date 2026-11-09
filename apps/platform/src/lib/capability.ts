@@ -14,6 +14,15 @@ export function hasPlatformCapability(
   return capabilities.includes(required);
 }
 
+export function canReadTenants(
+  capabilities: readonly string[] | undefined | null,
+): boolean {
+  return hasPlatformCapability(
+    capabilities,
+    PLATFORM_CAPABILITIES.TENANTS_READ.code,
+  );
+}
+
 export function canManageEntitlements(
   capabilities: readonly string[] | undefined | null,
 ): boolean {

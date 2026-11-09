@@ -10,77 +10,84 @@ export type PlatformNavIconKey =
   | "operators"
   | "system";
 
-export const PLATFORM_NAV_GROUPS = [
-  { id: "operator", label: "Operator" },
-] as const;
-
 export interface PlatformNavItem {
   readonly id: string;
   readonly label: string;
   readonly href: string;
   readonly icon: PlatformNavIconKey;
-  readonly group: (typeof PLATFORM_NAV_GROUPS)[number]["id"];
   readonly capability: PlatformCapability;
 }
 
-export const PLATFORM_NAV_ITEMS: readonly PlatformNavItem[] = [
+export interface PlatformNavGroup {
+  readonly id: string;
+  readonly label: string;
+  readonly items: readonly PlatformNavItem[];
+}
+
+/**
+ * Groups are declared in config, not partitioned in the sidebar (H-3.5).
+ * Reading groups first; a destructive group, if ever added, is last (H-3.8).
+ */
+export const PLATFORM_NAV_GROUPS: readonly PlatformNavGroup[] = [
   {
-    id: "overview",
-    label: "Overview",
-    href: "/",
-    icon: "home",
-    group: "operator",
-    capability: PLATFORM_CAPABILITIES.TELEMETRY_READ.code,
-  },
-  {
-    id: "tenants",
-    label: "Tenants",
-    href: "/tenants",
-    icon: "tenants",
-    group: "operator",
-    capability: PLATFORM_CAPABILITIES.TENANTS_READ.code,
-  },
-  {
-    id: "apps",
-    label: "Applications",
-    href: "/apps",
-    icon: "apps",
-    group: "operator",
-    capability: PLATFORM_CAPABILITIES.ENTITLEMENTS_MANAGE.code,
-  },
-  {
-    id: "flags",
-    label: "Feature flags",
-    href: "/flags",
-    icon: "flags",
-    group: "operator",
-    capability: PLATFORM_CAPABILITIES.FLAGS_MANAGE.code,
-  },
-  {
-    id: "audit",
-    label: "Audit",
-    href: "/audit",
-    icon: "audit",
-    group: "operator",
-    capability: PLATFORM_CAPABILITIES.AUDIT_READ.code,
-  },
-  {
-    id: "operators",
-    label: "Operators",
-    href: "/operators",
-    icon: "operators",
-    group: "operator",
-    capability: PLATFORM_CAPABILITIES.OPERATORS_MANAGE.code,
-  },
-  {
-    id: "system",
-    label: "System",
-    href: "/system",
-    icon: "system",
-    group: "operator",
-    capability: PLATFORM_CAPABILITIES.TELEMETRY_READ.code,
+    id: "operator",
+    label: "Operator",
+    items: [
+      {
+        id: "overview",
+        label: "Overview",
+        href: "/",
+        icon: "home",
+        capability: PLATFORM_CAPABILITIES.TELEMETRY_READ.code,
+      },
+      {
+        id: "tenants",
+        label: "Tenants",
+        href: "/tenants",
+        icon: "tenants",
+        capability: PLATFORM_CAPABILITIES.TENANTS_READ.code,
+      },
+      {
+        id: "apps",
+        label: "Applications",
+        href: "/apps",
+        icon: "apps",
+        capability: PLATFORM_CAPABILITIES.ENTITLEMENTS_MANAGE.code,
+      },
+      {
+        id: "flags",
+        label: "Feature flags",
+        href: "/flags",
+        icon: "flags",
+        capability: PLATFORM_CAPABILITIES.FLAGS_MANAGE.code,
+      },
+      {
+        id: "audit",
+        label: "Audit",
+        href: "/audit",
+        icon: "audit",
+        capability: PLATFORM_CAPABILITIES.AUDIT_READ.code,
+      },
+      {
+        id: "operators",
+        label: "Operators",
+        href: "/operators",
+        icon: "operators",
+        capability: PLATFORM_CAPABILITIES.OPERATORS_MANAGE.code,
+      },
+      {
+        id: "system",
+        label: "System",
+        href: "/system",
+        icon: "system",
+        capability: PLATFORM_CAPABILITIES.TELEMETRY_READ.code,
+      },
+    ],
   },
 ];
+
+export const PLATFORM_NAV_ITEMS: readonly PlatformNavItem[] =
+  PLATFORM_NAV_GROUPS.flatMap((group) => group.items);
 
 export function isNavigationHrefActive(
   pathname: string,
@@ -113,9 +120,18 @@ export function canAccessPath(
   return required !== null && hasPlatformCapability(capabilities, required);
 }
 
+export function visibleNavigationGroups(
+  capabilities: readonly PlatformCapability[]
+): PlatformNavGroup[] {
+  const granted = new Set(capabilities);
+  return PLATFORM_NAV_GROUPS.map((group) => ({
+    ...group,
+    items: group.items.filter((item) => granted.has(item.capability)),
+  })).filter((group) => group.items.length > 0);
+}
+
 export function visibleNavigation(
   capabilities: readonly PlatformCapability[]
 ): PlatformNavItem[] {
-  const granted = new Set(capabilities);
-  return PLATFORM_NAV_ITEMS.filter((item) => granted.has(item.capability));
+  return visibleNavigationGroups(capabilities).flatMap((group) => group.items);
 }
