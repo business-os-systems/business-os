@@ -286,6 +286,19 @@ describe("Tenant support-session termination", () => {
     expect(result.endedBy).toBe("tenant:usr_workspace_admin");
   });
 
+  it("rejects an invalid termination payload", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(200, envelope({ endedAt: "not-a-date" }))
+    );
+
+    const error = await readClientError(endSupportSession(TICKET_ID));
+
+    expect(error.status).toBe(502);
+    expect(error.message).toBe(
+      "The API returned an invalid support-session termination payload."
+    );
+  });
+
   it("surfaces the RFC 7807 detail when the tenant cannot end the session", async () => {
     fetchMock.mockResolvedValueOnce(
       jsonResponse(403, {

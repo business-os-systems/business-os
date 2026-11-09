@@ -5,6 +5,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { PLATFORM_CAPABILITIES } from "@suite/core";
 import TenantSupportPage from "../src/app/(platform)/tenants/[orgId]/support/page";
+import { useActiveSupportSessions } from "../src/lib/use-active-support-sessions";
 
 const authState = vi.hoisted(() => ({ capabilities: [] as string[] }));
 
@@ -395,7 +396,62 @@ describe("Tenant support-session ticket copy", () => {
 
 });
 
+describe("Tenant support-session modal dismissal", () => {
+  it("closes the start modal with Escape without sending a request", async () => {
+    render(<TenantSupportPage />);
+    await settle();
+    clickButton(START_LABEL);
+    act(() => {
+      document.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+      );
+    });
+    await settle();
+
+    expect(document.body.textContent).not.toContain("Support ticket");
+    expect(requestCount("POST")).toBe(0);
+  });
+});
+
+describe("Tenant support-session hook guard", () => {
+  it("ignores a removal before the active read resolves", () => {
+    function Probe() {
+      const { remove } = useActiveSupportSessions({ enabled: false });
+      return (
+        <button type="button" onClick={() => remove("ticket-1")}>
+          remove
+        </button>
+      );
+    }
+    render(<Probe />);
+    clickButton("remove");
+  });
+});
+
 describe("Tenant support-session start conflict", () => {
+  it("includes the optional target user when provided", async () => {
+    activeResponses = [[], [SESSION]];
+    render(<TenantSupportPage />);
+    await settle();
+
+    clickButton(START_LABEL);
+    setField(REASON_FIELD, REASON);
+    setField(TICKET_FIELD, TICKET_REF);
+    setField("-targetUserId", "usr_42");
+    submitForm();
+    await settle();
+
+    const post = fetchMock.mock.calls.find(
+      ([, init]) => (init?.method ?? "GET").toUpperCase() === "POST",
+    );
+    expect(JSON.parse(requestBody(post?.[1]))).toEqual({
+      organizationId: "org_1",
+      reason: REASON,
+      ticketRef: TICKET_REF,
+      targetUserId: "usr_42",
+    });
+  });
+
   it("shows the real conflict detail when a session is already active", async () => {
     useFetchRoutes({ post: () => reply(409, ALREADY_ACTIVE) });
     render(<TenantSupportPage />);
