@@ -375,6 +375,23 @@ describe("shared ConfigTableRenderer row open", () => {
   });
 });
 
+describe("shared ConfigTableRenderer plain actions", () => {
+  it("runs an action that needs no confirmation", () => {
+    const { container, root } = mount(
+      <ConfigTableRenderer
+        config={config}
+        data={rows}
+        rowKey={(row) => row.id}
+        userPermissions={["core:branches:write"]}
+      />,
+    );
+    act(() => field(container, "Edit").click());
+    expect(onEdit).toHaveBeenCalledWith(rows[0]);
+    act(() => root.unmount());
+    container.remove();
+  });
+});
+
 describe("shared ConfigTableRenderer confirmation", () => {
   it("runs a simple confirmation and closes on cancel", () => {
     const simpleConfig: TableConfig<BranchRow> = {
@@ -397,6 +414,12 @@ describe("shared ConfigTableRenderer confirmation", () => {
     );
     act(() => field(container, "Archive").click());
     expect(dialog().textContent).toContain("This action cannot be undone.");
+    act(() => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    });
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+
+    act(() => field(container, "Archive").click());
     act(() => dialogButton("Cancel").click());
     expect(document.querySelector('[role="dialog"]')).toBeNull();
 
