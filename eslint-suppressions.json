@@ -2728,11 +2728,6 @@
       "count": 1
     }
   },
-  "apps/platform/src/components/tables/config-table.tsx": {
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
   "apps/platform/src/lib/api.ts": {
     "@typescript-eslint/no-unnecessary-condition": {
       "count": 1
