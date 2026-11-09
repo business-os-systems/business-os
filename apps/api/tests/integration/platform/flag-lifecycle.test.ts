@@ -31,6 +31,14 @@ loadPlatformTestEnv();
 
 const secret = process.env.CONTROL_SESSION_SECRET;
 const enabled = platformIntegrationTestsEnabled() && Boolean(secret);
+
+function controlPlaneOrigin(): string {
+  const value = process.env.CONTROL_PLANE_ORIGIN;
+  if (value === undefined || value.trim() === "") {
+    throw new Error("CONTROL_PLANE_ORIGIN must be set for flag tests");
+  }
+  return value;
+}
 const tenantUrl = process.env.TENANT_DATABASE_URL;
 
 type ProblemBody = { type: string; status: number; code: string };
@@ -133,6 +141,7 @@ describe.skipIf(!enabled)("Platform flag lifecycle", () => {
         headers: {
           "Content-Type": "application/json",
           Cookie: `${CONTROL_SESSION_COOKIE_NAME}=${token}`,
+          Origin: controlPlaneOrigin(),
           "X-Forwarded-For": "198.51.100.14",
           ...(key === null ? {} : { "Idempotency-Key": key }),
         },

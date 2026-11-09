@@ -116,12 +116,16 @@ interface DataSchema<T> {
   parse(data: unknown): T;
 }
 
+function hasSuccessData(body: unknown): body is { data: unknown } {
+  return typeof body === "object" && body !== null && "data" in body;
+}
+
 export async function readSuccessData<T>(
   response: Response,
   schema: DataSchema<T>,
 ): Promise<T> {
-  const body = (await response.json()) as { data?: unknown };
-  if (body === null || typeof body !== "object" || !("data" in body)) {
+  const body: unknown = await response.json();
+  if (!hasSuccessData(body)) {
     throw new InternalServerError(
       "The API returned an invalid success envelope",
     );

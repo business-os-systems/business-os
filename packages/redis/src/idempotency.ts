@@ -38,18 +38,25 @@ function parseStoredResponse(raw: string): IdempotentResponse | null {
       typeof parsed.status === "number" &&
       typeof parsed.body === "string"
     ) {
-      const headers =
-        "headers" in parsed &&
-        typeof parsed.headers === "object" &&
-        parsed.headers !== null
-          ? (parsed.headers as Record<string, string>)
-          : {};
-      return { status: parsed.status, body: parsed.body, headers };
+      return {
+        status: parsed.status,
+        body: parsed.body,
+        headers: "headers" in parsed ? parseStoredHeaders(parsed.headers) : {},
+      };
     }
     return null;
   } catch {
     return null;
   }
+}
+
+function parseStoredHeaders(value: unknown): Record<string, string> {
+  const headers: Record<string, string> = {};
+  if (typeof value !== "object" || value === null) return headers;
+  for (const [key, headerValue] of Object.entries(value)) {
+    if (typeof headerValue === "string") headers[key] = headerValue;
+  }
+  return headers;
 }
 
 export function createIdempotencyStore(

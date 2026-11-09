@@ -24,6 +24,7 @@ import {
   updateFlagBodySchema,
 } from "./flags.schema.js";
 import { envelope, errorResponses, platformValidationHook } from "./openapi-shared.js";
+import { controlPlaneOriginGuard } from "../../middleware/control-plane-origin.js";
 import {
   createLazyCapabilityGuard,
   readRequestId,
@@ -120,6 +121,8 @@ platformFlagsRouter.use(
     failureMode: "closed",
   })
 );
+
+platformFlagsRouter.use("*", controlPlaneOriginGuard);
 
 let runtime: AdminFlagsRuntime | null = null;
 

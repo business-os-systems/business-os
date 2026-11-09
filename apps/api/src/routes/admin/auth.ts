@@ -1,11 +1,13 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
-import type { MiddlewareHandler } from "hono";
+import type { Context, MiddlewareHandler } from "hono";
 import { UnauthorizedError } from "@suite/core/errors";
 import { createSuccessResponseBody } from "@suite/core";
 import { AUTH_ERROR_CODES } from "@suite/auth";
 import {
+  platformBootstrapOptionsSchema,
   platformSessionViewSchema,
+  platformSignInOptionsSchema,
   problemDetailsSchema,
 } from "@suite/core";
 import {
@@ -29,32 +31,19 @@ import {
 } from "../../services/admin/platform-webauthn-response.js";
 import { rateLimitMiddleware } from "../../middleware/rate-limit.js";
 import { controlPlaneOriginGuard } from "../../middleware/control-plane-origin.js";
+import { resolveClientIp } from "../../lib/client-ip.js";
+import { envelope } from "./openapi-shared.js";
+
+const MAXIMUM_USER_AGENT_LENGTH = 512;
 
 const SessionDataSchema = platformSessionViewSchema;
 
-const BootstrapOptionsDataSchema = z.object({
-  flowId: z.string(),
-  options: z.record(z.unknown()),
-  email: z.string(),
-});
-
-const SignInOptionsDataSchema = z.object({
-  flowId: z.string(),
-  options: z.record(z.unknown()),
-});
-
-const successSchema = <T extends z.ZodTypeAny>(data: T) =>
-  z.object({
-    success: z.literal(true),
-    data,
-    requestId: z.string(),
-    timestamp: z.string(),
-  });
-
-const SessionResponseSchema = successSchema(SessionDataSchema);
-const BootstrapOptionsResponseSchema = successSchema(BootstrapOptionsDataSchema);
-const SignInOptionsResponseSchema = successSchema(SignInOptionsDataSchema);
-const VerifyResponseSchema = successSchema(SessionDataSchema);
+const SessionResponseSchema = envelope(SessionDataSchema);
+const BootstrapOptionsResponseSchema = envelope(
+  platformBootstrapOptionsSchema,
+);
+const SignInOptionsResponseSchema = envelope(platformSignInOptionsSchema);
+const VerifyResponseSchema = envelope(SessionDataSchema);
 
 const BootstrapOptionsBody = z.object({ token: z.string().min(1) });
 const BootstrapVerifyBody = z.object({
@@ -82,26 +71,17 @@ const errorResponses = {
   },
 };
 
-function requestContext(c: {
-  get: (key: string) => unknown;
-  req: { header: (name: string) => string | undefined };
-}): {
+function requestContext(c: Context): {
   requestId: string;
   ip: string | null;
   userAgent: string | null;
 } {
-  const forwarded = c.req.header("x-forwarded-for")?.split(",")[0]?.trim();
+  const requestId = c.get("requestId");
   return {
-    requestId:
-      typeof c.get("requestId") === "string"
-        ? (c.get("requestId") as string)
-        : "unknown",
-    ip:
-      c.req.header("cf-connecting-ip")?.trim() ??
-      forwarded ??
-      c.req.header("x-real-ip")?.trim() ??
-      null,
-    userAgent: c.req.header("user-agent") ?? null,
+    requestId: typeof requestId === "string" ? requestId : "unknown",
+    ip: resolveClientIp(c),
+    userAgent:
+      c.req.header("user-agent")?.slice(0, MAXIMUM_USER_AGENT_LENGTH) ?? null,
   };
 }
 

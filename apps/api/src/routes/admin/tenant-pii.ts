@@ -12,6 +12,7 @@ import { getControlSessionSecret } from "../../lib/platform-env.js";
 import { getPlatformPrismaClient } from "../../lib/platform-db.js";
 import { readTenantPii } from "../../services/admin/tenant-pii.service.js";
 import { envelope, errorResponses } from "./openapi-shared.js";
+import { controlPlaneOriginGuard } from "../../middleware/control-plane-origin.js";
 import { createLazyDefaultCapabilityGuard } from "./platform-route-shared.js";
 
 const PLATFORM_PII_READ = PLATFORM_CAPABILITIES.PII_READ.code;
@@ -90,6 +91,8 @@ tenantPiiRouter.use(
     failureMode: "closed",
   }),
 );
+
+tenantPiiRouter.use("*", controlPlaneOriginGuard);
 
 const piiCapabilityGuard = createLazyDefaultCapabilityGuard(() => ({
   prisma: getPlatformPrismaClient(),

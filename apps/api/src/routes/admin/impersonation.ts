@@ -7,6 +7,7 @@ import {
   RATE_LIMITS,
 } from "@suite/core";
 import { controlPlaneOriginGuard } from "../../middleware/control-plane-origin.js";
+import { createMutationIdempotencyMiddleware } from "../../middleware/idempotency.js";
 import { rateLimitMiddleware } from "../../middleware/rate-limit.js";
 import { resolveClientIp } from "../../lib/client-ip.js";
 import { getControlSessionSecret } from "../../lib/platform-env.js";
@@ -166,10 +167,13 @@ const impersonationCapabilityGuard = createLazyDefaultCapabilityGuard(() => ({
   capability: PLATFORM_IMPERSONATE,
 }));
 
+const mutationIdempotency = createMutationIdempotencyMiddleware();
+
 const mutationMiddleware: MiddlewareHandler[] = [
   mutationLimiter,
   controlPlaneOriginGuard,
   impersonationCapabilityGuard,
+  mutationIdempotency,
 ];
 
 const readMiddleware: MiddlewareHandler[] = [

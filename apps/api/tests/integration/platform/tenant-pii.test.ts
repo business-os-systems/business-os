@@ -89,6 +89,14 @@ describe.skipIf(!enabled)("Platform tenant PII route", () => {
     });
   }
 
+  function controlPlaneOrigin(): string {
+    const value = process.env.CONTROL_PLANE_ORIGIN;
+    if (value === undefined || value.trim() === "") {
+      throw new Error("CONTROL_PLANE_ORIGIN must be set for PII tests");
+    }
+    return value;
+  }
+
   function authedGet(
     path: string,
     token: string,
@@ -99,6 +107,7 @@ describe.skipIf(!enabled)("Platform tenant PII route", () => {
         method: "GET",
         headers: {
           Cookie: `${CONTROL_SESSION_COOKIE_NAME}=${token}`,
+          Origin: controlPlaneOrigin(),
           ...(reason === undefined ? {} : { [PII_REASON_HEADER]: reason }),
         },
       }),

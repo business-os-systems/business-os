@@ -12,6 +12,7 @@ import { getPlatformPrismaClient } from "../../lib/platform-db.js";
 import { listTenants } from "../../services/admin/tenant.service.js";
 import { getTenantRecord } from "../../services/admin/tenant-record.service.js";
 import { envelope, errorResponses } from "./openapi-shared.js";
+import { controlPlaneOriginGuard } from "../../middleware/control-plane-origin.js";
 import { createLazyDefaultCapabilityGuard } from "./platform-route-shared.js";
 
 const PLATFORM_TENANTS_READ = PLATFORM_CAPABILITIES.TENANTS_READ.code;
@@ -156,6 +157,8 @@ tenantAdminRouter.use(
     failureMode: "closed",
   })
 );
+
+tenantAdminRouter.use("*", controlPlaneOriginGuard);
 
 const tenantCapabilityGuard = createLazyDefaultCapabilityGuard(() => ({
   prisma: getPlatformPrismaClient(),
