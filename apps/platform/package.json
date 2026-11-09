@@ -23,19 +23,20 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@suite/auth": "workspace:*",
+    "@suite/db": "workspace:*",
+    "@suite/logger": "workspace:*",
+    "@suite/redis": "workspace:*",
     "@suite/tsconfig": "workspace:*",
     "@types/node": "^20.17.19",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
     "autoprefixer": "^10.6.1",
+    "axe-core": "^4.14.0",
     "postcss": "^8.5.29",
     "tailwindcss": "^3.4.19",
     "tsx": "^4.23.15",
     "typescript": "^5.7.3",
-    "vitest": "^2.1.9",
-    "@suite/auth": "workspace:*",
-    "@suite/db": "workspace:*",
-    "@suite/logger": "workspace:*",
-    "@suite/redis": "workspace:*"
+    "vitest": "^2.1.9"
   }
 }

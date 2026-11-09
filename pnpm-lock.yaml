@@ -143,7 +143,7 @@ importers:
     dependencies:
       '@sentry/nextjs':
         specifier: ^11.8.0
-        version: 11.8.0(@babel/core@7.29.7(supports-color@8.1.1))(next@15.5.27(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@types/node@20.19.43)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)(vite@5.4.21(@types/node@20.19.43))
+        version: 11.8.0(@babel/core@7.29.7(supports-color@8.1.1))(next@15.5.27(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@types/node@20.19.43)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
       '@suite/auth':
         specifier: workspace:*
         version: link:../../packages/auth
@@ -263,6 +263,9 @@ importers:
       autoprefixer:
         specifier: ^10.6.1
         version: 10.6.1(postcss@8.5.29)
+      axe-core:
+        specifier: ^4.14.0
+        version: 4.14.0
       postcss:
         specifier: ^8.5.29
         version: 8.5.29
@@ -2764,6 +2767,10 @@ packages:
   available-typed-arrays@1.0.7:
     resolution: {integrity: sha512-wvUjBtSGN7+7SjNpq/9M2Tg350UZD3q62IFZLbRAR1bSMlCo1ZaeW+BJ+D090e4hIIZLBcTDWe4Mh4jvUDajzQ==}
     engines: {node: '>= 0.4'}
+
+  axe-core@4.14.0:
+    resolution: {integrity: sha512-9WTZxEjsZ7b13TH8JPmbV2z8CHbl80/2hm3XPEG4JgNdQLK81IBRXmSxHfMAOkSqQeRxT/0dwNDz2GOm3zzpcQ==}
+    engines: {node: '>=4'}
 
   balanced-match@1.0.2:
     resolution: {integrity: sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==}
@@ -6409,7 +6416,7 @@ snapshots:
       '@babel/core': 7.29.7(supports-color@8.1.1)
       rollup: 4.64.1
 
-  '@sentry/cloudflare@11.8.0(vite@5.4.21(@types/node@20.19.43))':
+  '@sentry/cloudflare@11.8.0':
     dependencies:
       '@opentelemetry/api': 1.9.1
       '@sentry/conventions': 0.27.0
@@ -6417,8 +6424,6 @@ snapshots:
       '@sentry/opentelemetry': 11.8.0(@opentelemetry/api@1.9.1)
       '@sentry/server-utils': 11.8.0
       magic-string: 0.30.21
-    optionalDependencies:
-      vite: 5.4.21(@types/node@20.19.43)
 
   '@sentry/conventions@0.27.0': {}
 
@@ -6430,13 +6435,13 @@ snapshots:
     dependencies:
       '@sentry/core': 11.8.0
 
-  '@sentry/nextjs@11.8.0(@babel/core@7.29.7(supports-color@8.1.1))(next@15.5.27(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@types/node@20.19.43)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)(vite@5.4.21(@types/node@20.19.43))':
+  '@sentry/nextjs@11.8.0(@babel/core@7.29.7(supports-color@8.1.1))(next@15.5.27(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@types/node@20.19.43)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@opentelemetry/api': 1.9.1
       '@rollup/plugin-commonjs': 28.0.1(rollup@4.64.1)
       '@sentry/browser-utils': 11.8.0
       '@sentry/bundler-plugins': 11.8.0(@babel/core@7.29.7(supports-color@8.1.1))(rollup@4.64.1)
-      '@sentry/cloudflare': 11.8.0(vite@5.4.21(@types/node@20.19.43))
+      '@sentry/cloudflare': 11.8.0
       '@sentry/conventions': 0.27.0
       '@sentry/core': 11.8.0
       '@sentry/node': 11.8.0(@babel/core@7.29.7(supports-color@8.1.1))(rollup@4.64.1)
@@ -6939,6 +6944,8 @@ snapshots:
   available-typed-arrays@1.0.7:
     dependencies:
       possible-typed-array-names: 1.1.0
+
+  axe-core@4.14.0: {}
 
   balanced-match@1.0.2: {}
 
