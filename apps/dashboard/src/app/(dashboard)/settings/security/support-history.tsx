@@ -2,8 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { Card } from "@suite/ui";
-import { ConfigTableRenderer } from "@/components/config-renderers/config-table-renderer";
+import { Card, ConfigTableRenderer } from "@suite/ui";
 import type { SupportSessionHistoryItem } from "@/lib/support-session-client";
 import {
   createSupportHistoryTableConfig,
@@ -44,6 +43,7 @@ export function SupportHistory({
         <ConfigTableRenderer
           config={config}
           data={items}
+          rowKey={(row) => row.ticketId}
           className="w-full overflow-auto border-0 rounded-none shadow-none"
         />
       </Card>

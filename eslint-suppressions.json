@@ -486,9 +486,6 @@
     }
   },
   "apps/dashboard/src/app/(dashboard)/settings/addresses/addresses-client.tsx": {
-    "@typescript-eslint/array-type": {
-      "count": 1
-    },
     "@typescript-eslint/no-unnecessary-condition": {
       "count": 1
     },
@@ -726,9 +723,6 @@
     }
   },
   "apps/dashboard/src/app/(dashboard)/settings/members/members-client.tsx": {
-    "@typescript-eslint/array-type": {
-      "count": 2
-    },
     "@typescript-eslint/no-redundant-type-constituents": {
       "count": 1
     },
@@ -1528,26 +1522,6 @@
       "count": 2
     }
   },
-  "apps/dashboard/src/components/config-renderers/config-table-renderer.tsx": {
-    "@typescript-eslint/no-base-to-string": {
-      "count": 3
-    },
-    "@typescript-eslint/prefer-nullish-coalescing": {
-      "count": 2
-    },
-    "complexity": {
-      "count": 1
-    },
-    "max-lines-per-function": {
-      "count": 2
-    },
-    "no-nested-ternary": {
-      "count": 2
-    },
-    "react/jsx-no-leaked-render": {
-      "count": 3
-    }
-  },
   "apps/dashboard/src/components/editor/studio-header.tsx": {
     "@typescript-eslint/no-unnecessary-condition": {
       "count": 1
@@ -2225,11 +2199,6 @@
   },
   "apps/dashboard/tests/config-form-renderer.test.tsx": {
     "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "apps/dashboard/tests/config-table-renderer.test.tsx": {
-    "sonarjs/no-duplicate-string": {
       "count": 1
     }
   },

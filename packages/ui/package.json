@@ -25,6 +25,7 @@
     "coverage": "vitest run --coverage --coverage.reporter=lcov"
   },
   "dependencies": {
+    "@suite/core": "workspace:*",
     "clsx": "^2.1.1",
     "sonner": "^2.0.8",
     "tailwind-merge": "^2.6.0"
