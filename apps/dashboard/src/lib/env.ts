@@ -23,7 +23,7 @@ export function getBetterAuthSecret(): string {
       "BETTER_AUTH_SECRET environment variable is required to sign and verify session tokens."
     );
   }
-  if (process.env.NODE_ENV === "production" && isTemplateSecret(secret)) {
+  if (getNodeEnv() === "production" && isTemplateSecret(secret)) {
     throw new Error(
       "BETTER_AUTH_SECRET still holds a published template value. Generate a real secret before starting in production."
     );
@@ -68,6 +68,19 @@ export function getGitCommitSha(): string {
     throw new Error("GIT_COMMIT_SHA environment variable must be pre-declared in .env");
   }
   return sha;
+}
+
+/**
+ * Server-side API origin for tenant-plane reads that must go through the API
+ * rather than a local Prisma client (for example the audited support-session
+ * read, which app_tenant cannot perform directly).
+ */
+export function getApiServerUrl(): string {
+  const value = process.env.API_URL;
+  if (!value) {
+    throw new Error("API_URL environment variable must be pre-declared in .env");
+  }
+  return value.replace(/\/+$/, "");
 }
 
 /**

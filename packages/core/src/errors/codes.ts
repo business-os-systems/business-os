@@ -137,6 +137,26 @@ export const PLATFORM_ERROR_CODES = {
     title: "Support Session Already Active",
     slug: "/errors/impersonation-already-active",
   },
+  SUPPORT_SESSION_NOT_FOUND: {
+    status: 404,
+    title: "Support Session Not Found",
+    slug: "/errors/support-session-not-found",
+  },
+  SUPPORT_SESSION_ALREADY_ENDED: {
+    status: 409,
+    title: "Support Session Already Ended",
+    slug: "/errors/support-session-already-ended",
+  },
+  SUPPORT_SESSION_READ_ONLY: {
+    status: 403,
+    title: "Support Session Is Read-Only",
+    slug: "/errors/support-session-read-only",
+  },
+  SUPPORT_SESSION_ENDED: {
+    status: 401,
+    title: "Support Session Ended",
+    slug: "/errors/support-session-ended",
+  },
   IDEMPOTENCY_CONFLICT: {
     status: 409,
     title: "Idempotency Conflict",

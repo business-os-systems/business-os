@@ -100,6 +100,15 @@ const PERMITTED_WRITES: readonly PermittedWrite[] = [
     path: "/operator-passkeys/enrolment/verify",
     reason: "invited-operator passkey enrolment",
   },
+  // A support session writes only Platform-owned session state and its audit
+  // row; the tenant plane stays read-only for the session lifetime
+  // (FR-045, FR-050, SC-017).
+  { method: "POST", path: "/impersonation", reason: "time-boxed support session" },
+  {
+    method: "DELETE",
+    path: "/impersonation/:ticketId",
+    reason: "support-session termination",
+  },
 ];
 
 interface ForbiddenWritePattern {

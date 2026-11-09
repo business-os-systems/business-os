@@ -22,10 +22,13 @@ env:
   CONTROL_SESSION_SECRET: platform-ci-session-secret-32-characters
   CONTROL_PLANE_ORIGIN: http://localhost:3002
   CONTROL_WEBAUTHN_RP_ID: localhost
+  # The Platform support-session service reads this at startup; without it the
+  # suite fails closed and every impersonation test errors.
+  IMPERSONATION_MAX_MINUTES: "30"
   REDIS_URL: redis://localhost:6379
-  # Type-aware ESLint over the whole monorepo needs more than the 2 GB
-  # default heap on a fresh CI runner.
-  NODE_OPTIONS: --max-old-space-size=4096
+  # Type-aware ESLint over the whole monorepo needs more than the 4 GB heap
+  # once the tree grows; 8 GB stays inside a standard runner's memory.
+  NODE_OPTIONS: --max-old-space-size=8192
 
 jobs:
   # Independent of every other job: no build outputs are needed, so it runs

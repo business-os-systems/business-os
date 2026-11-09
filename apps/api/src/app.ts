@@ -10,6 +10,8 @@ import {
   requireAuth,
   requireMetricsAuth,
   createTenantAccessGuard,
+  createImpersonationReadonlyGuard,
+  SUPPORT_SESSION_HEADER,
   globalErrorHandler,
 } from "./middleware/index.js";
 import { prisma } from "@suite/db";
@@ -24,6 +26,7 @@ import {
   adminRouter,
   platformAuthRouter,
   referenceRouter,
+  supportSessionsRouter,
 } from "./routes/index.js";
 import {
   assertProductionConfiguration,
@@ -44,6 +47,7 @@ const TENANT_DATA_PREFIXES = [
   "/api/v1/organizations",
   "/api/v1/branches",
   "/api/v1/audit-logs",
+  "/api/v1/support-sessions",
 ] as const;
 
 export interface AppOptions {
@@ -71,6 +75,13 @@ export function createApp(options: AppOptions = {}) {
   if (options.enableRateLimiting !== false) {
     app.use("*", rateLimitMiddleware());
   }
+
+  // A signed support-session ticket makes every tenant write read-only. It is
+  // registered before the routers so no tenant mutation can bypass it (SC-017).
+  app.use(
+    "/api/v1/*",
+    createImpersonationReadonlyGuard({ headerName: SUPPORT_SESSION_HEADER })
+  );
 
   // 2. Global RFC 7807 Error Handler
   app.onError(globalErrorHandler);
@@ -104,6 +115,7 @@ export function createApp(options: AppOptions = {}) {
   app.route("/api/v1/organizations", organizationsRouter);
   app.route("/api/v1/branches", branchesRouter);
   app.route("/api/v1/audit-logs", auditLogsRouter);
+  app.route("/api/v1/support-sessions", supportSessionsRouter);
   app.route(
     "/api/v1/cms",
     createWebsiteBuilderRoutes(

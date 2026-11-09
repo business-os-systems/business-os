@@ -7,3 +7,7 @@ export const PII_REASON_HEADER = "X-PII-Reason";
 /** Website Builder form ingestion uses this header; it is not an alias of the
  * control-plane Idempotency-Key. */
 export const FORM_IDEMPOTENCY_HEADER = "x-idempotency-key";
+/** Carries the signed support-session ticket that makes tenant writes read-only
+ * (FR-050). It must be on the CORS allow-list or a browser preflight rejects
+ * the very request the guard exists to inspect. */
+export const SUPPORT_SESSION_HEADER = "X-Support-Session";

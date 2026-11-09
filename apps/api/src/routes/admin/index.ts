@@ -11,6 +11,7 @@ import { platformQuotasRouter } from "./quotas.js";
 import { platformAppCatalogRouter } from "./app-catalog.js";
 import { platformAuditRouter } from "./audit.js";
 import { platformCatalogsRouter } from "./catalogs.js";
+import { platformImpersonationRouter } from "./impersonation.js";
 
 /**
  * Admin API mount point. Future Platform routes join this router; request id,
@@ -20,6 +21,7 @@ export const adminRouter = new OpenAPIHono();
 
 adminRouter.route("/system", platformSystemRouter);
 adminRouter.route("/", platformAuditRouter);
+adminRouter.route("/", platformImpersonationRouter);
 // Routers with a wildcard guard are mounted by path prefix so their
 // middleware cannot run for a sibling destination (the /flags leak).
 adminRouter.route("/flags", platformFlagsRouter);
