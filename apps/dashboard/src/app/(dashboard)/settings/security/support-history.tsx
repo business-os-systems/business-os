@@ -17,6 +17,8 @@ export interface SupportHistoryProps {
   readonly nextCursor: string | null;
   /** True when the reader is on an older page and can return to the newest. */
   readonly showNewest: boolean;
+  /** True when the session holds core:organization:update. */
+  readonly canEnd: boolean;
 }
 
 function buildOlderPageHref(cursor: string): string {
@@ -32,8 +34,9 @@ export function SupportHistory({
   items,
   nextCursor,
   showNewest,
+  canEnd,
 }: SupportHistoryProps) {
-  const config = createSupportHistoryTableConfig();
+  const config = createSupportHistoryTableConfig({ canEnd });
 
   return (
     <div className="space-y-3">

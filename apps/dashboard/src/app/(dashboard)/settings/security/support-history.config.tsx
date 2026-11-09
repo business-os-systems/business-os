@@ -1,7 +1,8 @@
 import React from "react";
 import { SUPPORT_SESSION_TENANT_ACTOR_PREFIX } from "@suite/core";
-import type { TableConfig } from "@suite/ui";
+import type { TableColumnConfig, TableConfig } from "@suite/ui";
 import type { SupportSessionHistoryItem } from "@/lib/support-session-client";
+import { EndSupportSessionButton } from "./end-support-session-button";
 
 /** One API page per request; older pages are reached through the returned cursor (CT-5). */
 export const SUPPORT_HISTORY_PAGE_SIZE = 20;
@@ -93,58 +94,92 @@ function renderStatus(item: SupportSessionHistoryItem): React.ReactNode {
   );
 }
 
-export function createSupportHistoryTableConfig(): TableConfig<SupportSessionHistoryItem> {
+function identityColumns(): TableColumnConfig<SupportSessionHistoryItem>[] {
+  return [
+    {
+      key: "operatorDisplayName",
+      header: "Operator",
+      sortable: true,
+      render: (_value, row) => (
+        <span className="font-medium text-text">{row.operatorDisplayName}</span>
+      ),
+    },
+    {
+      key: "reason",
+      header: "Reason",
+      render: (value) => (
+        <span className="text-text-secondary">{String(value)}</span>
+      ),
+    },
+    {
+      key: "ticketRef",
+      header: "Ticket",
+      render: (value) => (
+        <span className="font-mono text-[11px] text-text-secondary">
+          {String(value)}
+        </span>
+      ),
+    },
+  ];
+}
+
+function lifecycleColumns(
+  canEnd: boolean,
+): TableColumnConfig<SupportSessionHistoryItem>[] {
+  return [
+    {
+      key: "startedAt",
+      header: "Started",
+      sortable: true,
+      render: (value) => (
+        <span className="text-text-secondary">
+          {formatSupportHistoryTimestamp(String(value))}
+        </span>
+      ),
+    },
+    {
+      key: "expiresAt",
+      header: "Expires",
+      render: (value) => (
+        <span className="text-text-secondary">
+          {formatSupportHistoryTimestamp(String(value))}
+        </span>
+      ),
+    },
+    {
+      key: "endedBy",
+      header: "Ended by",
+      render: (_value, row) => (
+        <span className="text-text-secondary">
+          {formatSupportSessionActor(row.endedBy)}
+        </span>
+      ),
+    },
+    {
+      key: "endedAt",
+      header: "Status",
+      render: (_value, row) => (
+        <span className="flex items-center justify-end gap-2">
+          {renderStatus(row)}
+          {canEnd && deriveSupportHistoryState(row) === "active" ? (
+            <EndSupportSessionButton ticketId={row.ticketId} />
+          ) : null}
+        </span>
+      ),
+    },
+  ];
+}
+
+export interface SupportHistoryTableOptions {
+  readonly canEnd: boolean;
+}
+
+export function createSupportHistoryTableConfig({
+  canEnd,
+}: SupportHistoryTableOptions): TableConfig<SupportSessionHistoryItem> {
   return {
     id: "support-session-history-table",
-    columns: [
-      {
-        key: "operatorDisplayName",
-        header: "Operator",
-        sortable: true,
-        render: (_value, row) => (
-          <span className="font-medium text-text">{row.operatorDisplayName}</span>
-        ),
-      },
-      {
-        key: "reason",
-        header: "Reason",
-        render: (value) => <span className="text-text-secondary">{String(value)}</span>,
-      },
-      {
-        key: "ticketRef",
-        header: "Ticket",
-        render: (value) => (
-          <span className="font-mono text-[11px] text-text-secondary">{String(value)}</span>
-        ),
-      },
-      {
-        key: "startedAt",
-        header: "Started",
-        sortable: true,
-        render: (value) => (
-          <span className="text-text-secondary">{formatSupportHistoryTimestamp(String(value))}</span>
-        ),
-      },
-      {
-        key: "expiresAt",
-        header: "Expires",
-        render: (value) => (
-          <span className="text-text-secondary">{formatSupportHistoryTimestamp(String(value))}</span>
-        ),
-      },
-      {
-        key: "endedBy",
-        header: "Ended by",
-        render: (_value, row) => (
-          <span className="text-text-secondary">{formatSupportSessionActor(row.endedBy)}</span>
-        ),
-      },
-      {
-        key: "endedAt",
-        header: "Status",
-        render: (_value, row) => renderStatus(row),
-      },
-    ],
+    columns: [...identityColumns(), ...lifecycleColumns(canEnd)],
     emptyState: {
       title: "No support sessions recorded",
       description:

@@ -1,27 +1,18 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { Alert, Button, Spinner } from "@suite/ui";
 import { ShieldIcon } from "@suite/ui/icons";
 import { toMessage } from "@/lib/error-message";
 import {
   endSupportSession,
-  fetchActiveSupportSessions,
   type PlatformSupportSession,
 } from "@/lib/support-session-api";
+import { useActiveSupportSessions } from "@/lib/use-active-support-sessions";
 import {
   formatSupportSessionExpiry,
   SUPPORT_SESSION_MARKER_COPY,
 } from "./support-session-marker.config";
-
-type MarkerState =
-  | { readonly kind: "loading" }
-  | { readonly kind: "ready"; readonly sessions: readonly PlatformSupportSession[] }
-  | { readonly kind: "error"; readonly message: string };
-
-/** The marker only has sessions to filter once a read has produced them. */
-const sessionsOf = (state: MarkerState): readonly PlatformSupportSession[] =>
-  state.kind === "ready" ? state.sessions : [];
 
 interface SupportSessionRowProps {
   readonly session: PlatformSupportSession;
@@ -34,39 +25,6 @@ interface ActiveMarkerProps {
   readonly endingTicketId: string | null;
   readonly exitError: string | null;
   readonly onExit: (ticketId: string) => void;
-}
-
-function useActiveSupportSessions(): readonly [
-  MarkerState,
-  React.Dispatch<React.SetStateAction<MarkerState>>,
-] {
-  const [state, setState] = useState<MarkerState>({ kind: "loading" });
-
-  useEffect(() => {
-    const controller = new AbortController();
-    let active = true;
-
-    async function load(): Promise<void> {
-      try {
-        const sessions = await fetchActiveSupportSessions(controller.signal);
-        if (active) {
-          setState({ kind: "ready", sessions });
-        }
-      } catch (error) {
-        if (active && !controller.signal.aborted) {
-          setState({ kind: "error", message: toMessage(error) });
-        }
-      }
-    }
-
-    void load();
-    return () => {
-      active = false;
-      controller.abort();
-    };
-  }, []);
-
-  return [state, setState];
 }
 
 function MarkerLoading() {
@@ -175,7 +133,7 @@ function ActiveMarker({
  * session removes it, and the tenant-facing banner stays authoritative.
  */
 export function SupportSessionMarker() {
-  const [state, setState] = useActiveSupportSessions();
+  const { state, remove } = useActiveSupportSessions({ enabled: true });
   const [endingTicketId, setEndingTicketId] = useState<string | null>(null);
   const [exitError, setExitError] = useState<string | null>(null);
 
@@ -184,18 +142,13 @@ export function SupportSessionMarker() {
     setExitError(null);
     try {
       await endSupportSession(ticketId);
-      setState((previous) => ({
-        kind: "ready",
-        sessions: sessionsOf(previous).filter(
-          (session) => session.ticketId !== ticketId
-        ),
-      }));
+      remove(ticketId);
     } catch (error) {
       setExitError(toMessage(error));
     } finally {
       setEndingTicketId(null);
     }
-  }, [setState]);
+  }, [remove]);
 
   if (state.kind === "loading") {
     return <MarkerLoading />;

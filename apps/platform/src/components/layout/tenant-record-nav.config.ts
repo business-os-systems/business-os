@@ -17,6 +17,7 @@ export type TenantRecordNavItemId =
   | "apps"
   | "quotas"
   | "activity"
+  | "support"
   | "danger";
 
 export type TenantRecordIconKey = TenantRecordNavItemId;
@@ -81,6 +82,13 @@ export const TENANT_RECORD_NAV_GROUPS: readonly TenantRecordNavGroup[] = [
     id: "risky",
     label: "Risky",
     items: [
+      {
+        id: "support",
+        label: "Support session",
+        segment: "support",
+        icon: "support",
+        capability: PLATFORM_CAPABILITIES.IMPERSONATE.code,
+      },
       {
         id: "danger",
         label: "Danger zone",

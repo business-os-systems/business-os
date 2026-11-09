@@ -2,6 +2,7 @@ import type React from "react";
 import {
   AlertTriangleIcon,
   ClockIcon,
+  FingerprintIcon,
   HomeIcon,
   LayersIcon,
   PackageIcon,
@@ -22,5 +23,6 @@ export const TENANT_RECORD_ICONS: Readonly<
   apps: PackageIcon,
   quotas: LayersIcon,
   activity: ClockIcon,
+  support: FingerprintIcon,
   danger: AlertTriangleIcon,
 };
