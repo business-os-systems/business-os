@@ -241,6 +241,34 @@ describe("path exclusions", () => {
     assert.equal(isIgnoredPath("apps/api/src/feature.ts"), false);
     assert.equal(isIgnoredPath("packages/core/src/clock/index.ts"), false);
   });
+
+  it("ignores repo-root tooling configs and extensionless files", () => {
+    const ignored = [
+      ".dependency-cruiser.cjs",
+      "eslint.config.mjs",
+      "next.config.mjs",
+      "apps/x/next.config.mjs",
+      "apps/dashboard/next.config.mjs",
+      "apps/dashboard/tailwind.config.cjs",
+      "apps/platform/postcss.config.mjs",
+      "packages/ui/tailwind.preset.cjs",
+      "packages/auth/.eslintrc.cjs",
+      "apps/api/Dockerfile",
+      "deploy/platform/Caddyfile",
+      "deploy/platform/verify-migrations.sh",
+      ".husky/pre-commit",
+    ];
+
+    for (const filePath of ignored) {
+      assert.equal(isIgnoredPath(filePath), true, filePath + " should be ignored");
+    }
+  });
+
+  it("still measures genuine .mjs and .cjs source files", () => {
+    assert.equal(isIgnoredPath("apps/api/src/feature.mjs"), false);
+    assert.equal(isIgnoredPath("packages/core/src/util.mjs"), false);
+    assert.equal(isIgnoredPath("packages/redis/src/script.cjs"), false);
+  });
 });
 
 describe("base ref validation", () => {

@@ -413,12 +413,15 @@ Rules:
 - A changed source file with no lcov record fails as unverifiable. It is reported
   under `NO LCOV RECORD`, never treated as covered.
 - Added lines without a `DA` record are blank or comments and are skipped.
-- Excluded because line coverage is impossible or owned by another gate: tests
-  and fixtures, migrations, `dist`/build output, generated code, database
-  schema files (`*.prisma`), configuration files (`*.config.*`, `tsconfig*`,
-  `package.json`, lockfiles, YAML/JSON), docs, `.github/**`, and `tooling/**`.
-  CI tooling is proven by `node --test` and `pnpm test:rules`, not by Vitest;
-  adding a Vitest lcov record there would be a false signal.
+- Only script files are measurable: `.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`,
+  `.cjs`, `.mts`, `.cts`. Everything else is excluded by class, not by an
+  ever-growing list: tests and fixtures, migrations, `dist`/build output,
+  generated code, database schema files (`*.prisma`), configuration
+  (`*.config.*`, `*.preset.*`, `tsconfig*`, `package.json`, lockfiles,
+  YAML/JSON), dotfile configs such as `.dependency-cruiser.cjs`, docs,
+  Dockerfiles, shell scripts, `.github/**`, and `tooling/**`. CI tooling is
+  proven by `node --test` and `pnpm test:rules`, not by Vitest; adding a
+  Vitest lcov record there would be a false signal.
 - Deleting a file or renaming it does not add lines; the tool ignores both.
 - The script exits 1 on any uncovered line or missing record and 2 when the
   arguments are invalid or no lcov file exists (the coverage task did not run).

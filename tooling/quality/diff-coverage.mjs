@@ -22,13 +22,23 @@ import { pathToFileURL } from "node:url";
 
 export const DEFAULT_BASE = "origin/dev";
 
-const NON_CODE_EXTENSION =
-  /\.(md|mdx|json|ya?ml|lock|css|sql|snap|txt|svg|png|jpe?g|gif|webp|ico|prisma)$/i;
+// Only a script file can carry a Vitest line count. Everything else
+// (Dockerfile, Caddyfile, shell scripts, lockfiles, docs, images) is not
+// executable TypeScript, so it is excluded by class instead of an
+// ever-growing deny list. Real .mjs/.cjs source stays measurable.
+const MEASURABLE_EXTENSION = /\.(ts|tsx|js|jsx|mjs|cjs|mts|cts)$/i;
 const IGNORED_SEGMENT =
   /(^|\/)(node_modules|dist|build|out|\.next|\.turbo|coverage|generated|graphify-out|migrations?|tests?|__tests__|__snapshots__|fixtures?)\//;
 const TEST_FILE = /\.(test|spec)\.[cm]?[jt]sx?$/;
+// Configuration: the conventional *.config.* form (eslint.config.mjs,
+// next.config.mjs, tailwind.config.cjs), shared tool presets such as
+// packages/ui/tailwind.preset.cjs, and the JSON/YAML manifests.
 const CONFIG_FILE =
-  /(^|\/)([^/]+\.config\.[cm]?[jt]s|tsconfig[^/]*\.json|knip\.json|turbo\.json|package\.json|pnpm-workspace\.yaml|pnpm-lock\.yaml)$/;
+  /(^|\/)([^/]+\.(config|preset)\.[cm]?[jt]s|tsconfig[^/]*\.json|knip\.json|turbo\.json|package\.json|pnpm-workspace\.yaml|pnpm-lock\.yaml)$/;
+// Tooling config often has no ".config." infix: a dotfile basename
+// (.dependency-cruiser.cjs, .eslintrc.cjs, .prettierrc.cjs) is configuration
+// by convention and is never application source.
+const DOTFILE = /(^|\/)\.[^/]+$/;
 const DECLARATION_FILE = /\.d\.ts$/;
 const CI_TOOLING = /^tooling\//;
 
@@ -52,10 +62,11 @@ export function validateBaseRef(base) {
  */
 export function isIgnoredPath(filePath) {
   return (
-    NON_CODE_EXTENSION.test(filePath) ||
+    !MEASURABLE_EXTENSION.test(filePath) ||
     IGNORED_SEGMENT.test(filePath) ||
     TEST_FILE.test(filePath) ||
     CONFIG_FILE.test(filePath) ||
+    DOTFILE.test(filePath) ||
     DECLARATION_FILE.test(filePath) ||
     CI_TOOLING.test(filePath) ||
     filePath.startsWith(".github/")
