@@ -1,9 +1,13 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import {
   evaluateDiff,
   formatReport,
   isIgnoredPath,
+  loadBaseline,
   parseLcov,
   parseUnifiedDiff,
   selectRelevantFiles,
@@ -315,5 +319,161 @@ describe("lcov parsing and reporting", () => {
     assert.match(report, /apps\/api\/src\/feature\.ts:2/);
     assert.match(report, /NO LCOV RECORD/);
     assert.match(report, /result: FAIL/);
+  });
+});
+
+function baselineOf(entries, expired = []) {
+  return { entries: new Map(Object.entries(entries)), expired };
+}
+
+const BASELINE_ENTRY = {
+  lines: [2],
+  owner: "platform",
+  expires: "2099-12-31",
+  reason: "moved legacy code with no prior coverage",
+};
+
+describe("documented coverage baseline", () => {
+  const files = [{ path: "apps/api/src/feature.ts", addedLines: new Set([1, 2]) }];
+  const coverage = coverageFrom([
+    {
+      path: "apps/api/src/feature.ts",
+      lines: [
+        [1, 1],
+        [2, 0],
+      ],
+    },
+  ]);
+
+  it("counts a listed uncovered line as baselined and passes", () => {
+    const result = evaluateDiff(files, coverage, baselineOf({ "apps/api/src/feature.ts": BASELINE_ENTRY }));
+
+    assert.equal(result.ok, true);
+    assert.equal(result.baselined.length, 1);
+    assert.equal(result.uncovered.length, 0);
+    assert.equal(result.stale.length, 0);
+  });
+
+  it("still fails for an uncovered line that is not listed", () => {
+    const result = evaluateDiff(
+      files,
+      coverage,
+      baselineOf({ "apps/api/src/feature.ts": { ...BASELINE_ENTRY, lines: [99] } }),
+    );
+
+    assert.equal(result.ok, false);
+    assert.equal(result.uncovered.length, 1);
+    assert.equal(result.stale.length, 1);
+  });
+
+  it("fails when a baseline entry is no longer needed because the line is covered", () => {
+    const covered = coverageFrom([{ path: "apps/api/src/feature.ts", lines: [[1, 1], [2, 3]] }]);
+
+    const result = evaluateDiff(files, covered, baselineOf({ "apps/api/src/feature.ts": BASELINE_ENTRY }));
+
+    assert.equal(result.ok, false);
+    assert.equal(result.stale[0].reason, "line is now covered");
+  });
+
+  it("fails when a baseline line is no longer part of the diff", () => {
+    const result = evaluateDiff(
+      [{ path: "apps/api/src/feature.ts", addedLines: new Set([1]) }],
+      coverage,
+      baselineOf({ "apps/api/src/feature.ts": BASELINE_ENTRY }),
+    );
+
+    assert.equal(result.ok, false);
+    assert.equal(result.stale[0].reason, "line is not part of the diff");
+  });
+
+  it("fails when a baseline file is no longer part of the diff", () => {
+    const result = evaluateDiff([], new Map(), baselineOf({ "apps/api/src/gone.ts": BASELINE_ENTRY }));
+
+    assert.equal(result.ok, false);
+    assert.equal(result.stale[0].reason, "file is not part of the diff");
+  });
+
+  it("fails when a baseline entry has expired", () => {
+    const result = evaluateDiff(
+      files,
+      coverage,
+      baselineOf({ "apps/api/src/feature.ts": BASELINE_ENTRY }, [{ path: "apps/api/src/feature.ts", expires: "2020-01-01" }]),
+    );
+
+    assert.equal(result.ok, false);
+  });
+
+  it("reports the baselined and stale sections", () => {
+    const result = evaluateDiff(
+      files,
+      coverageFrom([{ path: "apps/api/src/feature.ts", lines: [[1, 1], [2, 0]] }]),
+      baselineOf({ "apps/api/src/other.ts": BASELINE_ENTRY }),
+    );
+
+    const report = formatReport(result, { label: "origin/dev...HEAD" });
+
+    assert.match(report, /STALE baseline entries/);
+    assert.match(report, /BASELINED|uncovered/);
+    assert.match(report, /result: FAIL/);
+  });
+});
+
+describe("baseline file loading", () => {
+  function repositoryWithBaseline(content) {
+    const root = mkdtempSync(path.join(tmpdir(), "diff-coverage-"));
+    mkdirSync(path.join(root, "tooling/quality"), { recursive: true });
+    if (content !== undefined) {
+      writeFileSync(path.join(root, "tooling/quality/diff-coverage-baseline.json"), content);
+    }
+    return root;
+  }
+
+  it("returns an empty baseline when the file is absent", () => {
+    const baseline = loadBaseline(repositoryWithBaseline(undefined));
+
+    assert.equal(baseline.entries.size, 0);
+    assert.equal(baseline.expired.length, 0);
+  });
+
+  it("rejects an entry without a rationale", () => {
+    const root = repositoryWithBaseline(
+      JSON.stringify({ "apps/api/src/feature.ts": { lines: [1], owner: "platform", expires: "2099-01-01" } }),
+    );
+
+    assert.throws(() => loadBaseline(root), /reason must be a non-empty string/);
+  });
+
+  it("rejects an entry with an invalid expiry date", () => {
+    const root = repositoryWithBaseline(
+      JSON.stringify({
+        "apps/api/src/feature.ts": { lines: [1], owner: "platform", expires: "soon", reason: "moved" },
+      }),
+    );
+
+    assert.throws(() => loadBaseline(root), /expires must be an ISO date/);
+  });
+
+  it("flags an expired entry", () => {
+    const root = repositoryWithBaseline(
+      JSON.stringify({
+        "apps/api/src/feature.ts": { lines: [1], owner: "platform", expires: "2020-01-01", reason: "moved" },
+      }),
+    );
+
+    const baseline = loadBaseline(root);
+
+    assert.equal(baseline.expired.length, 1);
+  });
+
+  it("loads a valid entry", () => {
+    const root = repositoryWithBaseline(
+      JSON.stringify({
+        "apps/api/src/feature.ts": { lines: [4, 5], owner: "platform", expires: "2099-12-31", reason: "moved" },
+      }),
+    );
+
+    const baseline = loadBaseline(root);
+
+    assert.deepEqual(baseline.entries.get("apps/api/src/feature.ts").lines, [4, 5]);
   });
 });

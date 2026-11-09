@@ -408,8 +408,9 @@ push and pull request.
 
 Rules:
 
-- Every newly added executable line needs a non-zero `DA` count. The baseline is
-  zero uncovered added lines; there is no per-file allowance.
+- Every newly added executable line needs a non-zero `DA` count unless it is
+  listed in `tooling/quality/diff-coverage-baseline.json` (see below). The
+  default stays zero uncovered added lines: an unlisted line fails.
 - A changed source file with no lcov record fails as unverifiable. It is reported
   under `NO LCOV RECORD`, never treated as covered.
 - Added lines without a `DA` record are blank or comments and are skipped.
@@ -423,8 +424,43 @@ Rules:
   proven by `node --test` and `pnpm test:rules`, not by Vitest; adding a
   Vitest lcov record there would be a false signal.
 - Deleting a file or renaming it does not add lines; the tool ignores both.
-- The script exits 1 on any uncovered line or missing record and 2 when the
-  arguments are invalid or no lcov file exists (the coverage task did not run).
+- The script exits 1 on any uncovered line, a stale baseline entry, an expired
+  baseline entry, or a missing record, and 2 when the arguments are invalid or no
+  lcov file exists (the coverage task did not run).
+
+#### Documented coverage baseline
+
+A pure refactor can move code that no test ever exercised: the service or
+component is byte-for-byte the legacy behaviour, yet every line of it is "new"
+in the diff. Writing throwaway assertions for it would be worse than the debt.
+`tooling/quality/diff-coverage-baseline.json` is the reviewable exception for
+exactly that case:
+
+```json
+{
+  "apps/dashboard/src/services/example.service.ts": {
+    "lines": [12, 13, 14],
+    "owner": "platform",
+    "expires": "2027-03-31",
+    "reason": "moved legacy code with no prior coverage"
+  }
+}
+```
+
+Every field is mandatory: `lines` (positive line numbers), `owner` (an
+accountable team), `expires` (ISO date; an expired entry fails) and `reason`.
+The gate reports those lines under `BASELINED` and does not fail for them.
+
+The baseline is a ratchet, not an allowance. The tool fails with `STALE` when:
+
+- a listed line is now covered by a test (`line is now covered`),
+- a listed line is no longer part of the diff (`line is not part of the diff`),
+- a listed file is no longer part of the diff (`file is not part of the diff`),
+- the entry's `expires` date has passed.
+
+New code never enters the baseline: it must be tested in the same pull request.
+Remove an entry in the commit that covers or deletes the code, exactly like a
+lint suppression.
 
 ### Knip (report-only)
 
@@ -536,9 +572,10 @@ Both directions are encoded in `custom-rules.test.mjs` and in the two
   yet.
 - The jscpd clusters recorded in `duplication-triage.md` need a dedicated
   extraction ticket before any application code is refactored.
-- Diff coverage is enforced on pull requests; the baseline is zero uncovered
-  added lines. Files excluded by path class are listed under the ratchet
-  workflow and in `diff-coverage.mjs`.
+- Diff coverage is enforced on pull requests; uncovered added lines pass only
+  through the documented, expiring baseline in
+  `tooling/quality/diff-coverage-baseline.json`. Files excluded by path class
+  are listed under the ratchet workflow and in `diff-coverage.mjs`.
 
 ## Review checklist
 

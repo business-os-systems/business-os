@@ -21,6 +21,8 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 export const DEFAULT_BASE = "origin/dev";
+export const DEFAULT_BASELINE_PATH = "tooling/quality/diff-coverage-baseline.json";
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 // Only a script file can carry a Vitest line count. Everything else
 // (Dockerfile, Caddyfile, shell scripts, lockfiles, docs, images) is not
@@ -278,17 +280,90 @@ export function loadCoverage(lcovFiles, repoRoot) {
 }
 
 /**
+ * Validates one baseline entry. A baseline is a reviewable exception, so every
+ * field is required: an unexplained or undated entry cannot be checked later.
+ * @param {string} filePath
+ * @param {unknown} entry
+ */
+function validateBaselineEntry(filePath, entry) {
+  const problems = [];
+  if (typeof entry !== "object" || entry === null || Array.isArray(entry)) {
+    throw new Error("Baseline entry for " + filePath + " must be an object.");
+  }
+  const record = /** @type {Record<string, unknown>} */ (entry);
+  if (!Array.isArray(record.lines) || record.lines.some((line) => !Number.isInteger(line) || line < 1)) {
+    problems.push("lines must be a non-empty array of positive integers");
+  }
+  if (typeof record.owner !== "string" || record.owner.length === 0) {
+    problems.push("owner must be a non-empty string");
+  }
+  if (typeof record.expires !== "string" || !ISO_DATE.test(record.expires)) {
+    problems.push("expires must be an ISO date (YYYY-MM-DD)");
+  }
+  if (typeof record.reason !== "string" || record.reason.length === 0) {
+    problems.push("reason must be a non-empty string");
+  }
+  if (problems.length > 0) {
+    throw new Error("Invalid baseline entry for " + filePath + ": " + problems.join("; ") + ".");
+  }
+  return {
+    path: filePath,
+    lines: /** @type {number[]} */ (record.lines),
+    owner: /** @type {string} */ (record.owner),
+    expires: /** @type {string} */ (record.expires),
+    reason: /** @type {string} */ (record.reason),
+  };
+}
+
+/**
+ * Reads the documented baseline of accepted uncovered lines.
+ * A missing file is an empty baseline, so the gate keeps failing by default.
+ * @param {string} repoRoot
+ */
+export function loadBaseline(repoRoot) {
+  const absolutePath = path.join(repoRoot, DEFAULT_BASELINE_PATH);
+  if (!existsSync(absolutePath)) {
+    return { entries: new Map(), expired: [] };
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(readFileSync(absolutePath, "utf8"));
+  } catch (error) {
+    throw new Error(
+      "Cannot parse " + DEFAULT_BASELINE_PATH + ": " + (error instanceof Error ? error.message : String(error)),
+    );
+  }
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    throw new Error(DEFAULT_BASELINE_PATH + " must contain an object keyed by repository path.");
+  }
+  const entries = new Map();
+  const expired = [];
+  const today = new Date().toISOString().slice(0, 10);
+  for (const [filePath, rawEntry] of Object.entries(parsed)) {
+    const entry = validateBaselineEntry(filePath, rawEntry);
+    if (entry.expires < today) {
+      expired.push({ path: entry.path, expires: entry.expires });
+    }
+    entries.set(filePath, entry);
+  }
+  return { entries, expired };
+}
+
+/**
  * Compares added lines with the coverage map.
  * Lines with no DA record are blank or comments, so they are skipped rather
  * than reported as uncovered.
  * @param {ReturnType<typeof selectRelevantFiles>} files
  * @param {Map<string, Map<number, number>>} coverage
  */
-export function evaluateDiff(files, coverage) {
+export function evaluateDiff(files, coverage, baseline = { entries: new Map(), expired: [] }) {
   const covered = [];
   const uncovered = [];
+  const baselined = [];
+  const stale = [];
   const skipped = [];
   const missing = [];
+  const changedPaths = new Set(files.map((file) => file.path));
 
   for (const file of files) {
     const record = coverage.get(file.path);
@@ -296,23 +371,56 @@ export function evaluateDiff(files, coverage) {
       missing.push({ path: file.path, addedLines: [...file.addedLines].sort((a, b) => a - b) });
       continue;
     }
+    const baselineEntry = baseline.entries.get(file.path);
+    const baselineLines = new Set(baselineEntry ? baselineEntry.lines : []);
+    const addedLines = new Set(file.addedLines);
+
     for (const lineNumber of [...file.addedLines].sort((a, b) => a - b)) {
       const count = record.get(lineNumber);
       if (count === undefined) {
         skipped.push({ path: file.path, line: lineNumber });
       } else if (count > 0) {
         covered.push({ path: file.path, line: lineNumber });
+      } else if (baselineLines.has(lineNumber)) {
+        baselined.push({ path: file.path, line: lineNumber });
       } else {
         uncovered.push({ path: file.path, line: lineNumber });
       }
     }
+
+    // A baselined line that is now covered, or that no longer appears in the
+    // diff, is a stale exception: the entry must be removed with the fix.
+    for (const baselineLine of baselineLines) {
+      const inDiff = addedLines.has(baselineLine);
+      const count = record.get(baselineLine);
+      if (!inDiff || count === undefined || count > 0) {
+        stale.push({
+          path: file.path,
+          line: baselineLine,
+          reason: inDiff ? "line is now covered" : "line is not part of the diff",
+        });
+      }
+    }
+  }
+
+  for (const baselinePath of baseline.entries.keys()) {
+    if (!changedPaths.has(baselinePath)) {
+      stale.push({ path: baselinePath, line: null, reason: "file is not part of the diff" });
+    }
   }
 
   return {
-    ok: uncovered.length === 0 && missing.length === 0,
+    ok:
+      uncovered.length === 0 &&
+      missing.length === 0 &&
+      stale.length === 0 &&
+      baseline.expired.length === 0,
     files: files.length,
     covered,
     uncovered,
+    baselined,
+    stale,
+    expired: baseline.expired,
     skipped,
     missing,
   };
@@ -327,9 +435,11 @@ export function formatReport(result, options = {}) {
   output.push("  changed source files: " + result.files);
   output.push(
     "  added executable lines: " +
-      (result.covered.length + result.uncovered.length) +
+      (result.covered.length + result.uncovered.length + (result.baselined?.length ?? 0)) +
       " (covered " +
       result.covered.length +
+      ", baselined " +
+      (result.baselined?.length ?? 0) +
       ", uncovered " +
       result.uncovered.length +
       ")",
@@ -341,6 +451,26 @@ export function formatReport(result, options = {}) {
     output.push("  UNCOVERED added lines:");
     for (const entry of result.uncovered) {
       output.push("    " + entry.path + ":" + entry.line);
+    }
+  }
+  if ((result.baselined?.length ?? 0) > 0) {
+    output.push("  BASELINED added lines (documented exception, see " + DEFAULT_BASELINE_PATH + "):");
+    for (const entry of result.baselined) {
+      output.push("    " + entry.path + ":" + entry.line);
+    }
+  }
+  if ((result.stale?.length ?? 0) > 0) {
+    output.push("  STALE baseline entries (remove them with the fix):");
+    for (const entry of result.stale) {
+      output.push(
+        "    " + entry.path + (entry.line === null ? "" : ":" + entry.line) + " — " + entry.reason,
+      );
+    }
+  }
+  if ((result.expired?.length ?? 0) > 0) {
+    output.push("  EXPIRED baseline entries:");
+    for (const entry of result.expired) {
+      output.push("    " + entry.path + " expired " + entry.expires);
     }
   }
   if (result.missing.length > 0) {
@@ -435,7 +565,8 @@ async function main(argv) {
     }
 
     const coverage = loadCoverage(lcovFiles, options.repoRoot);
-    const result = evaluateDiff(files, coverage);
+    const baseline = loadBaseline(options.repoRoot);
+    const result = evaluateDiff(files, coverage, baseline);
     const label = options.workingTree ? "working tree" : options.base + "...HEAD";
     console.log(formatReport(result, { label }));
     return result.ok ? 0 : 1;
