@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@suite/db";
-import {
-  resolveSsoProviderByEmail,
-  extractDomainFromEmail,
-  isPublicEmailDomain,
-} from "@suite/auth";
 import { z } from "zod";
 import { problemResponse, successResponse, zodProblemResponse } from "@/lib/api-response";
+import { discoverSsoProvider } from "@/services/sso.service";
 
 const ssoDiscoverSchema = z.object({
   email: z.string().trim().email("Invalid email format"),
@@ -24,37 +19,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       });
     }
 
-    const { email } = parseResult.data;
-    const domain = extractDomainFromEmail(email);
-
-    if (isPublicEmailDomain(domain)) {
-      return successResponse({
-        domain,
-        isEnterprise: false,
-        providerType: null,
-        organizationName: null,
-        ssoLoginUrl: null,
-      });
-    }
-
-    const result = await resolveSsoProviderByEmail(email, prisma);
-
-    if (!result || result.providerType === "internal_suite") {
-      return successResponse({
-        domain,
-        isEnterprise: false,
-        providerType: null,
-        organizationName: null,
-        ssoLoginUrl: null,
-      });
-    }
-
+    const discovery = await discoverSsoProvider(parseResult.data.email);
     return successResponse({
-      domain: result.domain,
-      isEnterprise: true,
-      providerType: result.providerType,
-      organizationName: result.organizationName,
-      ssoLoginUrl: result.authUrl,
+      domain: discovery.domain,
+      isEnterprise: discovery.isEnterprise,
+      providerType: discovery.providerType,
+      organizationName: discovery.organizationName,
+      ssoLoginUrl: discovery.ssoLoginUrl,
     });
   } catch (error) {
     console.error("Error discovering SSO provider:", error);

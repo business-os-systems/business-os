@@ -65,6 +65,10 @@ const PRESENTATION_FOLDERS = [
   "apps/platform/src/**/*.{ts,tsx}",
 ];
 
+// P2 keeps the ORM out of transport and presentation code; a service layer is
+// the one place allowed to own the query (§5.4 P2, tooling/quality/code-quality-rules.md).
+const DASHBOARD_DATA_ACCESS_FOLDERS = ["apps/dashboard/src/services/**/*.{ts,tsx}"];
+
 export default tseslint.config(
   {
     ignores: [
@@ -204,6 +208,7 @@ export default tseslint.config(
   },
   {
     files: PRESENTATION_FOLDERS,
+    ignores: DASHBOARD_DATA_ACCESS_FOLDERS,
     rules: {
       "no-restricted-imports": [
         "error",

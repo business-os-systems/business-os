@@ -14,6 +14,13 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        {/*
+          Accepted static theme-script exception (P17): this inline script runs before
+          hydration to prevent a light/dark flash, and its body is a fixed literal with
+          no interpolated request or user data. It must not be replaced by a dynamic
+          value; if a Content-Security-Policy is introduced, give this script a nonce
+          instead of loosening script-src.
+        */}
         <script
           dangerouslySetInnerHTML={{
             __html: `

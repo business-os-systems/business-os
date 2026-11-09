@@ -1,7 +1,24 @@
 import { NextResponse } from "next/server";
-import { prisma, type InstalledApp } from "@suite/db";
 import { resolveTenantContext } from "@/lib/tenant-context";
 import { problemResponse } from "@/lib/problem-response";
+import { listInstalledApps, type InstalledAppDto } from "@/services/installed-apps.service";
+
+function toInstalledAppResponse(app: InstalledAppDto) {
+  return {
+    id: app.id,
+    appId: app.appId,
+    name: app.name,
+    title: app.title,
+    code: app.code,
+    description: app.description,
+    href: app.href,
+    iconName: app.iconName,
+    permission: app.permission,
+    version: app.version,
+    isEnabled: app.isEnabled,
+    installedAt: app.installedAt,
+  };
+}
 
 export async function GET(request: Request) {
   try {
@@ -10,42 +27,14 @@ export async function GET(request: Request) {
       return tenantContext.response;
     }
 
-    const orgId = tenantContext.organizationId;
+    const apps = (await listInstalledApps(tenantContext.organizationId)).map(
+      toInstalledAppResponse
+    );
 
-    const dbRecords = await prisma.installedApp.findMany({
-      where: {
-        organizationId: orgId,
-        isEnabled: true,
-      },
-      orderBy: {
-        installedAt: "asc",
-      },
-    });
-
-    const apps = dbRecords.map((record: InstalledApp) => {
-      const settings = (record.settings as Record<string, unknown>) || {};
-      const title =
-        (settings.title as string) ||
-        (settings.name as string) ||
-        record.appId;
-      return {
-        id: record.id,
-        appId: record.appId,
-        name: (settings.name as string) || title,
-        title,
-        code: (settings.code as string) || record.appId,
-        description: (settings.description as string) || "",
-        href: (settings.href as string) || `/${record.appId}`,
-        iconName: (settings.iconName as string) || record.appId,
-        permission: (settings.permission as string) || `${record.appId}:read`,
-        version: record.version,
-        isEnabled: record.isEnabled,
-        installedAt: record.installedAt.toISOString(),
-      };
-    });
-
-
-    return NextResponse.json({ organizationId: orgId, apps, installedApps: apps }, { status: 200 });
+    return NextResponse.json(
+      { organizationId: tenantContext.organizationId, apps, installedApps: apps },
+      { status: 200 }
+    );
   } catch (error) {
     console.error("Error retrieving installed apps:", error);
     return problemResponse({

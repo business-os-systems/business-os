@@ -248,15 +248,13 @@ export type PlatformErrorCode = keyof typeof PLATFORM_ERROR_CODES;
 
 /**
  * Canonical code strings. Call sites reference these instead of literals so a
- * registry rename cannot drift from its consumers (CT-6 / XVI.6).
+ * registry rename cannot drift from its consumers (CT-6 / XVI.6). The lookup is
+ * built as one immutable projection of the registry keys, never by mutating an
+ * accumulator.
  */
 export const PLATFORM_ERROR_CODE = Object.freeze(
-  Object.keys(PLATFORM_ERROR_CODES).reduce<Record<string, string>>(
-    (codes, code) => {
-      codes[code] = code;
-      return codes;
-    },
-    {}
+  Object.fromEntries(
+    Object.keys(PLATFORM_ERROR_CODES).map((code) => [code, code] as const)
   )
 ) as Readonly<Record<PlatformErrorCode, PlatformErrorCode>>;
 

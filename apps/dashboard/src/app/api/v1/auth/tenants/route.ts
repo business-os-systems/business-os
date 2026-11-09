@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@suite/db";
-import { listUserTenants } from "@suite/auth";
 import { getAuthenticatedSession } from "@/lib/session-helper";
+import { listUserWorkspaces } from "@/services/session-context.service";
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
@@ -9,10 +8,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     if (!sessionResult.ok) {
       return sessionResult.response;
     }
-    const payload = sessionResult.session;
 
-    const tenants = await listUserTenants(payload.userId, prisma);
-
+    const tenants = await listUserWorkspaces(sessionResult.session.userId);
     return NextResponse.json({ tenants });
   } catch (error) {
     console.error("Error listing user tenants:", error);

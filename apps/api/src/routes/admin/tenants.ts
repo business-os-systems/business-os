@@ -4,20 +4,19 @@ import {
   createSuccessResponseBody,
   PLATFORM_CAPABILITIES,
   RATE_LIMITS,
+  TENANT_STATUSES,
 } from "@suite/core";
-import { OrgStatus } from "@suite/db";
-import { redis } from "@suite/redis";
-import { createPlatformCapabilityGuard } from "../../middleware/platform-capability.js";
 import { rateLimitMiddleware } from "../../middleware/rate-limit.js";
 import { getControlSessionSecret } from "../../lib/platform-env.js";
 import { getPlatformPrismaClient } from "../../lib/platform-db.js";
 import { listTenants } from "../../services/admin/tenant.service.js";
 import { getTenantRecord } from "../../services/admin/tenant-record.service.js";
 import { envelope, errorResponses } from "./openapi-shared.js";
+import { createLazyDefaultCapabilityGuard } from "./platform-route-shared.js";
 
 const PLATFORM_TENANTS_READ = PLATFORM_CAPABILITIES.TENANTS_READ.code;
 
-const orgStatusSchema = z.nativeEnum(OrgStatus);
+const orgStatusSchema = z.enum(TENANT_STATUSES);
 
 const tenantSummarySchema = z.object({
   id: z.string(),
@@ -86,7 +85,7 @@ const tenantRecordSchema = z.object({
 
 const listQuerySchema = z.object({
   q: z.string().trim().min(1).max(100).optional(),
-  status: z.nativeEnum(OrgStatus).optional(),
+  status: z.enum(TENANT_STATUSES).optional(),
   appId: z.string().trim().min(1).max(64).optional(),
   cursor: z.string().trim().min(1).max(256).optional(),
   limit: z.coerce.number().int().min(1).max(100).default(25),
@@ -158,15 +157,13 @@ tenantAdminRouter.use(
   })
 );
 
-tenantAdminRouter.use("*", async (c, next) => {
-  const guard = createPlatformCapabilityGuard({
-    prisma: getPlatformPrismaClient(),
-    redis,
-    secret: getControlSessionSecret(),
-    capability: PLATFORM_TENANTS_READ,
-  });
-  await guard(c, next);
-});
+const tenantCapabilityGuard = createLazyDefaultCapabilityGuard(() => ({
+  prisma: getPlatformPrismaClient(),
+  secret: getControlSessionSecret(),
+  capability: PLATFORM_TENANTS_READ,
+}));
+
+tenantAdminRouter.use("*", tenantCapabilityGuard);
 
 tenantAdminRouter.openapi(listTenantsRoute, async (c) => {
   const query = c.req.valid("query");

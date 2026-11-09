@@ -2,9 +2,14 @@ import { describe, expect, it } from "vitest";
 import { isTemplateSecret } from "@suite/core";
 import {
   assertProductionConfiguration,
+  getBetterAuthSecret,
   getControlPlaneOrigin,
   getCorsAllowedOrigins,
+  getDashboardUrl,
+  getMetricsAuthToken,
   getPublicApiUrl,
+  getSentryDsn,
+  getServerPort,
   getTrustedProxyIps,
   isInternalDocsEnabled,
 } from "../src/lib/env.js";
@@ -109,5 +114,55 @@ describe("typed runtime configuration", () => {
       "https://api.example.com"
     );
     expect(getPublicApiUrl({})).toBe("/");
+  });
+});
+function withEnv<T>(key: string, value: string | undefined, run: () => T): T {
+  const previous = process.env[key];
+  if (value === undefined) {
+    delete process.env[key];
+  } else {
+    process.env[key] = value;
+  }
+  try {
+    return run();
+  } finally {
+    if (previous === undefined) {
+      delete process.env[key];
+    } else {
+      process.env[key] = previous;
+    }
+  }
+}
+
+describe("typed runtime getters", () => {
+  it("fails loudly when a mandatory variable is absent", () => {
+    expect(() => withEnv("BETTER_AUTH_SECRET", undefined, getBetterAuthSecret)).toThrow(
+      /BETTER_AUTH_SECRET/
+    );
+    expect(() => withEnv("METRICS_AUTH_TOKEN", undefined, getMetricsAuthToken)).toThrow(
+      /METRICS_AUTH_TOKEN/
+    );
+    expect(() => withEnv("DASHBOARD_URL", undefined, getDashboardUrl)).toThrow(
+      /DASHBOARD_URL/
+    );
+  });
+
+  it("normalises the dashboard origin without a trailing slash", () => {
+    expect(
+      withEnv("DASHBOARD_URL", "https://app.example.com/", getDashboardUrl)
+    ).toBe("https://app.example.com");
+  });
+
+  it("validates PORT as a real TCP port", () => {
+    expect(withEnv("PORT", "4000", getServerPort)).toBe(4000);
+    expect(() => withEnv("PORT", "not-a-port", getServerPort)).toThrow(/PORT/);
+    expect(() => withEnv("PORT", "70000", getServerPort)).toThrow(/PORT/);
+  });
+
+  it("reads an absent Sentry DSN as deliberately disabled", () => {
+    expect(withEnv("SENTRY_DSN", "", getSentryDsn)).toBeNull();
+    expect(withEnv("SENTRY_DSN", "https://key@sentry.example/1", getSentryDsn)).toBe(
+      "https://key@sentry.example/1"
+    );
   });
 });

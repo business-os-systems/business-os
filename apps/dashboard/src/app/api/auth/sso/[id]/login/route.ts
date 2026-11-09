@@ -1,7 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@suite/db";
 import { problemResponse } from "@/lib/api-response";
 import { resolveRequestOrigin } from "@/lib/origin";
+import { getSsoConnection } from "@/services/sso.service";
+
+function wantsHtml(request: NextRequest): boolean {
+  const acceptHeader = request.headers.get("accept") ?? "";
+  return acceptHeader.includes("text/html");
+}
+
+function redirectToLogin(
+  origin: string,
+  errorCode: string,
+  extraParams?: { readonly domain?: string; readonly organization?: string }
+): NextResponse {
+  const loginUrl = new URL("/login", origin);
+  loginUrl.searchParams.set("error", errorCode);
+  if (extraParams?.domain) {
+    loginUrl.searchParams.set("domain", extraParams.domain);
+  }
+  if (extraParams?.organization) {
+    loginUrl.searchParams.set("org", extraParams.organization);
+  }
+  return NextResponse.redirect(loginUrl);
+}
 
 export async function GET(
   request: NextRequest,
@@ -10,20 +31,12 @@ export async function GET(
   try {
     const { id } = await params;
     const origin = resolveRequestOrigin(request);
+    const connection = await getSsoConnection(id);
 
-    const ssoRecord = await prisma.ssoConnection.findUnique({
-      where: { id },
-      include: { organization: true },
-    });
-
-    if (!ssoRecord) {
-      const acceptHeader = request.headers.get("accept") || "";
-      if (acceptHeader.includes("text/html")) {
-        const loginUrl = new URL("/login", origin);
-        loginUrl.searchParams.set("error", "sso_not_found");
-        return NextResponse.redirect(loginUrl);
+    if (!connection) {
+      if (wantsHtml(request)) {
+        return redirectToLogin(origin, "sso_not_found");
       }
-
       return problemResponse({
         type: "/errors/not-found",
         title: "Not Found",
@@ -33,36 +46,24 @@ export async function GET(
       });
     }
 
-    // If an external IdP authorization URL is configured, validate and redirect to it (SEC-03)
-    const ssoConfig = ssoRecord.config as Record<string, unknown> | null;
-    if (ssoConfig?.authUrl && typeof ssoConfig.authUrl === "string") {
-      try {
-        const targetUrl = new URL(ssoConfig.authUrl);
-        if (targetUrl.protocol === "https:" && !targetUrl.username && !targetUrl.password) {
-          return NextResponse.redirect(targetUrl);
-        }
-      } catch {
-        // Malformed URL falls through to unconfigured error handling
-      }
+    // An external IdP authorization URL is validated as credential-free HTTPS
+    // by the service before it is used as a redirect target (SEC-03).
+    if (connection.authUrl) {
+      return NextResponse.redirect(new URL(connection.authUrl));
     }
 
-
-    // Browser navigation fallback: redirect back to /login with friendly error message
-    const acceptHeader = request.headers.get("accept") || "";
-    if (acceptHeader.includes("text/html")) {
-      const loginUrl = new URL("/login", origin);
-      loginUrl.searchParams.set("error", "sso_unconfigured");
-      loginUrl.searchParams.set("domain", ssoRecord.domain);
-      loginUrl.searchParams.set("org", ssoRecord.organization.name);
-      return NextResponse.redirect(loginUrl);
+    if (wantsHtml(request)) {
+      return redirectToLogin(origin, "sso_unconfigured", {
+        domain: connection.domain,
+        organization: connection.organizationName,
+      });
     }
 
-    // Enterprise IdP must be configured to execute authentication (RFC 7807 for API callers)
     return problemResponse({
       type: "/errors/sso-unconfigured",
       title: "SSO Configuration Pending",
       status: 501,
-      detail: `Enterprise Identity Provider for ${ssoRecord.organization.name} (${ssoRecord.domain}) is not yet configured with an active SAML 2.0 / OIDC endpoint. Please contact your workspace administrator or use standard password login.`,
+      detail: `Enterprise Identity Provider for ${connection.organizationName} (${connection.domain}) is not yet configured with an active SAML 2.0 / OIDC endpoint. Please contact your workspace administrator or use standard password login.`,
       code: "SSO_IDP_NOT_CONFIGURED",
     });
   } catch (error) {

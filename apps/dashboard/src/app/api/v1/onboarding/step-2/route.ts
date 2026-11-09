@@ -1,16 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma, Prisma } from "@suite/db";
 import {
   encodeSessionPayload,
   signSessionToken,
   createSessionCookieOptions,
-  mergeUserOnboardingState,
-  ONBOARDING_STATUS,
 } from "@suite/auth";
+import { z } from "zod";
 import { isProduction } from "@/lib/env";
 import { getAuthenticatedSession } from "@/lib/session-helper";
 import { problemResponse, successResponse } from "@/lib/api-response";
-import { z } from "zod";
+import { saveOnboardingSelection } from "@/services/onboarding.service";
 
 const step2Schema = z.object({
   selectedApps: z
@@ -26,7 +24,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
     const session = sessionResult.session;
 
-
     const body = await request.json().catch(() => null);
     const parseResult = step2Schema.safeParse(body);
     if (!parseResult.success) {
@@ -38,39 +35,22 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       });
     }
 
-    const { selectedApps } = parseResult.data;
-
-    // Update user metadata with selected applications and step 3
-    const dbUser = await prisma.user.findUnique({
-      where: { id: session.userId },
-      select: { metadata: true, email: true, name: true },
+    const selected = await saveOnboardingSelection({
+      userId: session.userId,
+      selectedApps: parseResult.data.selectedApps,
     });
 
-    const updatedMetadata = mergeUserOnboardingState(dbUser?.metadata, {
-      selectedApps,
-      currentOnboardingStep: 3,
-      onboardingStatus: ONBOARDING_STATUS.IN_PROGRESS,
-    });
-
-    await prisma.user.update({
-      where: { id: session.userId },
-      data: {
-        metadata: updatedMetadata as Prisma.InputJsonValue,
-      },
-    });
-
-    // Re-issue updated session token with step 3
     const updatedPayload = encodeSessionPayload({
       userId: session.userId,
-      email: dbUser?.email || session.email,
-      userName: dbUser?.name || session.userName,
+      email: selected.userEmail || session.email,
+      userName: selected.userName || session.userName,
       organizationId: session.organizationId,
       organizationName: session.organizationName,
       activeBranchId: session.activeBranchId,
       activeBranchName: session.activeBranchName,
-      role: session.role || "owner",
+      role: session.role ?? "owner",
       permissions: session.permissions,
-      themePreference: session.themePreference || "system",
+      themePreference: session.themePreference ?? "system",
       timestamp: Date.now(),
       onboardingStatus: "IN_PROGRESS",
       currentOnboardingStep: 3,
@@ -78,13 +58,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const token = await signSessionToken(updatedPayload);
     const cookieOptions = createSessionCookieOptions(isProduction, true);
-
     const response = successResponse({
       success: true,
       nextStep: 3,
       redirectUrl: "/onboarding/step-3",
     });
-
     response.cookies.set({
       name: cookieOptions.name,
       value: token,
@@ -94,7 +72,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       path: cookieOptions.path,
       maxAge: cookieOptions.maxAge,
     });
-
     return response;
   } catch (error) {
     console.error("Error in onboarding step 2:", error);

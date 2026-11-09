@@ -1,7 +1,10 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
-import { prisma } from "@suite/db";
 import { NotFoundError, ValidationError } from "@suite/core/errors";
 import { requireAuth } from "../middleware/auth.js";
+import {
+  findBranchById,
+  listOrganizationBranches,
+} from "../services/branches.service.js";
 
 export const branchesRouter = new OpenAPIHono();
 
@@ -109,11 +112,28 @@ export const getBranchRoute = createRoute({
   },
 });
 
+/** Prefers a non-empty query value, then the organisation header. */
+function resolveOrganizationId(
+  queryOrganizationId: string | undefined,
+  headerOrganizationId: string | undefined
+): string | undefined {
+  if (queryOrganizationId !== undefined && queryOrganizationId.length > 0) {
+    return queryOrganizationId;
+  }
+  if (headerOrganizationId !== undefined && headerOrganizationId.length > 0) {
+    return headerOrganizationId;
+  }
+  return undefined;
+}
+
 branchesRouter.openapi(listBranchesRoute, async (c) => {
   const { organizationId } = c.req.valid("query");
-  const orgId = organizationId || c.req.header("x-organization-id");
+  const orgId = resolveOrganizationId(
+    organizationId,
+    c.req.header("x-organization-id")
+  );
 
-  if (!orgId) {
+  if (orgId === undefined) {
     throw new ValidationError("Tenant context is required to query branches", [
       {
         name: "organizationId",
@@ -122,13 +142,7 @@ branchesRouter.openapi(listBranchesRoute, async (c) => {
     ]);
   }
 
-  const branches = await prisma.branch.findMany({
-    where: { organizationId: orgId },
-    orderBy: { createdAt: "desc" },
-    include: {
-      organization: { select: { id: true, name: true, slug: true } },
-    },
-  });
+  const branches = await listOrganizationBranches(orgId);
 
   return c.json(
     {
@@ -143,15 +157,9 @@ branchesRouter.openapi(listBranchesRoute, async (c) => {
 
 branchesRouter.openapi(getBranchRoute, async (c) => {
   const { id } = c.req.valid("param");
-  const orgId = c.req.header("x-organization-id");
-
-  const branch = await prisma.branch.findFirst({
-    where: orgId ? { id, organizationId: orgId } : { id },
-    include: {
-      organization: true,
-      subBranches: true,
-      address: true,
-    },
+  const branch = await findBranchById({
+    id,
+    organizationId: c.req.header("x-organization-id"),
   });
 
   if (!branch) {

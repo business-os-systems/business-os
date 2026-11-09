@@ -33,6 +33,12 @@ interface ErrorResponse {
 
 type ErrorMapper = (error: Error, context: ErrorContext) => ErrorResponse | null;
 
+interface ScrubbedError {
+  readonly name: string;
+  readonly message: string;
+  readonly stack?: string;
+}
+
 const HTTP_EXCEPTION_PRESENTATION = {
   client: {
     type: "/errors/http-exception",
@@ -65,10 +71,65 @@ function createErrorContext(c: Context): ErrorContext {
   };
 }
 
-function mapAppError(
-  error: Error,
-  context: ErrorContext
-): ErrorResponse | null {
+function scrubError(error: Error): ScrubbedError {
+  const message = scrubStringValues(error.message);
+  if (error.stack === undefined) {
+    return { name: error.name, message };
+  }
+  return { name: error.name, message, stack: scrubStringValues(error.stack) };
+}
+
+interface ServerExceptionCapture {
+  readonly message: string;
+  readonly extra: Record<string, unknown>;
+}
+
+function captureServerException(
+  context: ErrorContext,
+  capture: ServerExceptionCapture
+): void {
+  Sentry.captureException(new Error(capture.message), {
+    extra: {
+      requestId: context.requestId,
+      path: context.instance,
+      ...capture.extra,
+    },
+  });
+}
+
+interface AppErrorLog {
+  readonly error: AppError;
+  readonly problem: ProblemDetails;
+  readonly context: ErrorContext;
+}
+
+function logServerAppError(input: AppErrorLog): void {
+  const { error, problem, context } = input;
+  const details = scrubError(error);
+  logger.error(
+    {
+      error: details,
+      problem: { ...problem, detail: scrubStringValues(problem.detail) },
+      requestId: context.requestId,
+      path: context.instance,
+    },
+    `Application error [${error.code}]: ${details.message}`
+  );
+  captureServerException(context, {
+    message: details.message,
+    extra: { code: error.code, stack: details.stack },
+  });
+}
+
+function logClientAppError(input: AppErrorLog): void {
+  const { error, problem, context } = input;
+  logger.warn(
+    { problem, requestId: context.requestId, path: context.instance },
+    `Client error [${error.code}]: ${error.message}`
+  );
+}
+
+function mapAppError(error: Error, context: ErrorContext): ErrorResponse | null {
   if (!(error instanceof AppError)) {
     return null;
   }
@@ -79,39 +140,37 @@ function mapAppError(
   };
 
   if (error.status >= 500) {
-    const safeMessage = scrubStringValues(error.message);
-    logger.error(
-      {
-        error: {
-          name: error.name,
-          message: safeMessage,
-          stack: error.stack ? scrubStringValues(error.stack) : undefined,
-        },
-        problem: {
-          ...problem,
-          detail: scrubStringValues(problem.detail),
-        },
-        requestId: context.requestId,
-        path: context.instance,
-      },
-      `Application error [${error.code}]: ${safeMessage}`
-    );
-    Sentry.captureException(new Error(safeMessage), {
-      extra: {
-        requestId: context.requestId,
-        path: context.instance,
-        code: error.code,
-        stack: error.stack ? scrubStringValues(error.stack) : undefined,
-      },
-    });
+    logServerAppError({ error, problem, context });
   } else {
-    logger.warn(
-      { problem, requestId: context.requestId, path: context.instance },
-      `Client error [${error.code}]: ${error.message}`
-    );
+    logClientAppError({ error, problem, context });
   }
 
   return { status: error.status, problem };
+}
+
+function httpExceptionPresentation(status: number) {
+  return status >= 500
+    ? HTTP_EXCEPTION_PRESENTATION.server
+    : HTTP_EXCEPTION_PRESENTATION.client;
+}
+
+interface HttpExceptionLog {
+  readonly error: HTTPException;
+  readonly problem: ProblemDetails;
+  readonly context: ErrorContext;
+}
+
+function logHttpException(input: HttpExceptionLog): void {
+  const { error, problem, context } = input;
+  const details = scrubError(error);
+  logger.warn(
+    {
+      error: details,
+      problem: { ...problem, detail: scrubStringValues(problem.detail) },
+      requestId: context.requestId,
+    },
+    `HTTP exception: ${details.message}`
+  );
 }
 
 function mapHttpException(
@@ -122,10 +181,7 @@ function mapHttpException(
     return null;
   }
 
-  const presentation =
-    error.status >= 500
-      ? HTTP_EXCEPTION_PRESENTATION.server
-      : HTTP_EXCEPTION_PRESENTATION.client;
+  const presentation = httpExceptionPresentation(error.status);
   const problem: ProblemDetails = {
     type: presentation.type,
     title: presentation.title,
@@ -137,23 +193,7 @@ function mapHttpException(
     timestamp: context.timestamp,
   };
 
-  const safeMessage = scrubStringValues(error.message);
-  logger.warn(
-    {
-      error: {
-        name: error.name,
-        message: safeMessage,
-        stack: error.stack ? scrubStringValues(error.stack) : undefined,
-      },
-      problem: {
-        ...problem,
-        detail: scrubStringValues(problem.detail),
-      },
-      requestId: context.requestId,
-    },
-    `HTTP exception: ${safeMessage}`
-  );
-
+  logHttpException({ error, problem, context });
   return { status: error.status, problem };
 }
 
@@ -161,22 +201,18 @@ function mapUnexpectedError(
   error: Error,
   context: ErrorContext
 ): ErrorResponse {
-  const safeMessage = scrubStringValues(error.message);
-  const safeStack = error.stack ? scrubStringValues(error.stack) : undefined;
+  const details = scrubError(error);
   logger.error(
     {
-      error: { name: error.name, message: safeMessage, stack: safeStack },
+      error: details,
       requestId: context.requestId,
       path: context.instance,
     },
-    `Unhandled exception: ${safeMessage}`
+    `Unhandled exception: ${details.message}`
   );
-  Sentry.captureException(new Error(safeMessage), {
-    extra: {
-      requestId: context.requestId,
-      path: context.instance,
-      stack: safeStack,
-    },
+  captureServerException(context, {
+    message: details.message,
+    extra: { stack: details.stack },
   });
 
   const internalError = new InternalServerError(

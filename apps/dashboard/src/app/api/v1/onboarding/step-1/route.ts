@@ -1,16 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import { assertTenantWriteQuotaAvailable, prisma, type Prisma } from "@suite/db";
-import { QUOTA_KEYS } from "@suite/core";
+import { z } from "zod";
 import {
   encodeSessionPayload,
   signSessionToken,
   createSessionCookieOptions,
+  type SessionPayload,
 } from "@suite/auth/session";
 import { isProduction } from "@/lib/env";
 import { getAuthenticatedSession } from "@/lib/session-helper";
 import { problemResponse, successResponse } from "@/lib/api-response";
 import { quotaProblemResponse } from "@/lib/quota-problem";
-import { z } from "zod";
+import {
+  bootstrapOrganization,
+  getOnboardingOrganization,
+} from "@/services/onboarding.service";
 
 const step1Schema = z.object({
   organizationName: z
@@ -37,52 +40,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     }
     const session = sessionResult.session;
 
-
-    const dbUser = await prisma.user.findUnique({
-      where: { id: session.userId },
-      include: {
-        organizations: {
-          include: { organization: true },
-        },
-      },
+    const data = await getOnboardingOrganization({
+      userId: session.userId,
+      sessionOrganizationId: session.organizationId,
     });
-
-    const userMeta = (dbUser?.metadata || {}) as Record<string, unknown>;
-    const targetOrgId =
-      session.organizationId ||
-      (userMeta.active_organization_id as string | undefined) ||
-      dbUser?.organizations[0]?.organizationId;
-
-    if (!targetOrgId) {
-      return NextResponse.json({
-        organizationName: "",
-        organizationSlug: "",
-        industries: [],
-      });
-    }
-
-    const org = await prisma.organization.findUnique({
-      where: { id: targetOrgId },
-    });
-
-    if (!org) {
-      return NextResponse.json({
-        organizationName: "",
-        organizationSlug: "",
-        industries: [],
-      });
-    }
-
-    const orgMeta = (org.metadata || {}) as Record<string, unknown>;
-    const industries = Array.isArray(orgMeta.industries)
-      ? (orgMeta.industries as string[])
-      : [];
-
-    return successResponse({
-      organizationName: org.name,
-      organizationSlug: org.slug,
-      industries,
-    });
+    return successResponse(data);
   } catch (error) {
     console.error("Error fetching onboarding step 1 data:", error);
     return problemResponse({
@@ -92,6 +54,47 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       detail: "Failed to retrieve existing organization data.",
     });
   }
+}
+
+async function buildBootstrapResponse(
+  result: Extract<Awaited<ReturnType<typeof bootstrapOrganization>>, { status: "bootstrapped" }>,
+  session: SessionPayload
+): Promise<NextResponse> {
+  const token = await signSessionToken(
+    encodeSessionPayload({
+      userId: session.userId,
+      email: result.userEmail || session.email,
+      userName: result.userName || session.userName,
+      organizationId: result.organizationId,
+      organizationName: result.organizationName,
+      activeBranchId: result.branchId,
+      activeBranchName: result.branchName,
+      role: result.roleName,
+      permissions: result.permissions,
+      themePreference: session.themePreference ?? "system",
+      timestamp: Date.now(),
+      onboardingStatus: "IN_PROGRESS",
+      currentOnboardingStep: 2,
+    })
+  );
+
+  const cookieOptions = createSessionCookieOptions(isProduction, true);
+  const response = successResponse({
+    success: true,
+    organizationId: result.organizationId,
+    nextStep: 2,
+    redirectUrl: "/onboarding/step-2",
+  });
+  response.cookies.set({
+    name: cookieOptions.name,
+    value: token,
+    httpOnly: cookieOptions.httpOnly,
+    secure: cookieOptions.secure,
+    sameSite: cookieOptions.sameSite,
+    path: cookieOptions.path,
+    maxAge: cookieOptions.maxAge,
+  });
+  return response;
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -113,282 +116,32 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       });
     }
 
-    const { organizationName, organizationSlug, industries } = parseResult.data;
-
-    // Load user's already owned organizations
-    const userOrgs = await prisma.userOrganization.findMany({
-      where: { userId: session.userId },
-      select: { organizationId: true },
-    });
-    const userOrgIds = new Set(userOrgs.map((uo: { organizationId: string }) => uo.organizationId));
-    if (session.organizationId) {
-      userOrgIds.add(session.organizationId);
-    }
-
-    // Check slug collision against other tenants
-    const existingOrgWithSlug = await prisma.organization.findUnique({
-      where: { slug: organizationSlug },
-      select: { id: true },
+    const result = await bootstrapOrganization({
+      userId: session.userId,
+      sessionOrganizationId: session.organizationId,
+      organizationName: parseResult.data.organizationName,
+      organizationSlug: parseResult.data.organizationSlug,
+      industries: parseResult.data.industries,
     });
 
-    if (existingOrgWithSlug && !userOrgIds.has(existingOrgWithSlug.id)) {
+    if (result.status === "domain_taken") {
       return problemResponse({
         status: 409,
         code: "DOMAIN_TAKEN",
         title: "Conflict",
-        detail: "Workspace domain is already taken. Please choose another domain.",
+        detail: result.race
+          ? "This workspace domain was just claimed by another organization. Please choose a different domain."
+          : "Workspace domain is already taken. Please choose another domain.",
       });
     }
 
-    // Determine if updating an existing user org or creating fresh
-    const targetExistingOrgId =
-      (existingOrgWithSlug && userOrgIds.has(existingOrgWithSlug.id))
-        ? existingOrgWithSlug.id
-        : session.organizationId && userOrgIds.has(session.organizationId)
-        ? session.organizationId
-        : null;
-
-    // Atomic tenant bootstrapping transaction
-    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      // 1. Create or Update Organization
-      let org;
-      if (targetExistingOrgId) {
-        org = await tx.organization.update({
-          where: { id: targetExistingOrgId },
-          data: {
-            name: organizationName,
-            slug: organizationSlug,
-            metadata: { industries },
-          },
-        });
-      } else {
-        org = await tx.organization.create({
-          data: {
-            name: organizationName,
-            slug: organizationSlug,
-            metadata: { industries },
-          },
-        });
-      }
-
-      // 2. Auto-create or ensure default root branch (Minimalist Input Law)
-      let branch = await tx.branch.findFirst({
-        where: { organizationId: org.id, code: "MAIN" },
-      });
-      if (!branch) {
-        // The onboarding branch is a branch write point too. A brand-new org
-        // has no quota row, so this allows; a re-onboarded org is enforced.
-        await assertTenantWriteQuotaAvailable(tx, {
-          organizationId: org.id,
-          resourceKey: QUOTA_KEYS.BRANCHES,
-        });
-        branch = await tx.branch.create({
-          data: {
-            organizationId: org.id,
-            name: "Main Location",
-            code: "MAIN",
-            type: "main",
-          },
-        });
-      }
-
-      // 3. Link user membership as ACTIVE Owner
-      const existingOwnership = await tx.userOrganization.findUnique({
-        where: {
-          userId_organizationId: {
-            userId: session.userId,
-            organizationId: org.id,
-          },
-        },
-      });
-      // A REVOKED membership does not occupy a seat; reactivating it is a
-      // member creation write and must pass the gate (FR-025).
-      const occupiesSeat =
-        existingOwnership !== null &&
-        existingOwnership.status !== "REVOKED";
-      if (!occupiesSeat) {
-        await assertTenantWriteQuotaAvailable(tx, {
-          organizationId: org.id,
-          resourceKey: QUOTA_KEYS.MEMBERS,
-        });
-      }
-
-      await tx.userOrganization.upsert({
-        where: {
-          userId_organizationId: {
-            userId: session.userId,
-            organizationId: org.id,
-          },
-        },
-        create: {
-          userId: session.userId,
-          organizationId: org.id,
-          status: "ACTIVE",
-        },
-        update: {
-          status: "ACTIVE",
-        },
-      });
-
-      // 4. Provision system "owner" role and seed canonical capabilities
-      let ownerRole = await tx.role.findFirst({
-        where: { organizationId: org.id, slug: "owner" },
-      });
-      if (!ownerRole) {
-        ownerRole = await tx.role.create({
-          data: {
-            organizationId: org.id,
-            name: "Organization Owner",
-            slug: "owner",
-            isSystem: true,
-          },
-        });
-      }
-
-      if (tx.permission && tx.rolePermission) {
-        // Ensure wildcard (*) permission exists in PostgreSQL
-        let wildcardPerm: { id: string } | null = null;
-        if (typeof tx.permission.findUnique === "function") {
-          wildcardPerm = await tx.permission.findUnique({ where: { action: "*" } });
-        } else if (typeof tx.permission.findFirst === "function") {
-          wildcardPerm = await tx.permission.findFirst({ where: { action: "*" } });
-        }
-
-        if (!wildcardPerm && typeof tx.permission.create === "function") {
-          wildcardPerm = await tx.permission.create({
-            data: {
-              appId: "core",
-              action: "*",
-              description: "Universal platform administrator access across all domains and modular apps",
-            },
-          });
-        }
-
-        if (typeof tx.permission.findMany === "function" && typeof tx.rolePermission.createMany === "function") {
-          const allPermissions = await tx.permission.findMany({ select: { id: true } });
-          if (allPermissions.length > 0) {
-            await tx.rolePermission.createMany({
-              data: allPermissions.map((p: { id: string }) => ({
-                roleId: ownerRole.id,
-                permissionId: p.id,
-              })),
-              skipDuplicates: true,
-            });
-          }
-        }
-      }
-
-
-
-      // 5. Grant organization-wide master owner role (branchId: null)
-      const existingBranchRole = await tx.userBranchRole.findFirst({
-        where: {
-          userId: session.userId,
-          organizationId: org.id,
-          branchId: null,
-          roleId: ownerRole.id,
-        },
-      });
-      if (!existingBranchRole) {
-        await tx.userBranchRole.create({
-          data: {
-            userId: session.userId,
-            organizationId: org.id,
-            branchId: null,
-            roleId: ownerRole.id,
-          },
-        });
-      }
-
-      // 6. Query effective capabilities dynamically from DB relations
-      let userPermissions: string[] = [];
-      if (tx.rolePermission) {
-        const rolePerms = await tx.rolePermission.findMany({
-          where: { roleId: ownerRole.id },
-          include: { permission: true },
-        });
-        userPermissions = rolePerms
-          .map((rp: { permission?: { action?: string } }) => rp.permission?.action)
-          .filter((action: string | undefined): action is string => typeof action === "string");
-      }
-
-      // 7. Advance onboarding state in user metadata
-      const dbUser = await tx.user.findUnique({
-        where: { id: session.userId },
-        select: { metadata: true, email: true, name: true },
-      });
-      const currentMeta = (dbUser?.metadata || {}) as Record<string, unknown>;
-
-      await tx.user.update({
-        where: { id: session.userId },
-        data: {
-          metadata: {
-            ...currentMeta,
-            current_onboarding_step: 2,
-            onboarding_status: "IN_PROGRESS",
-            active_organization_id: org.id,
-          },
-        },
-      });
-
-      return { org, branch, dbUser, ownerRole, userPermissions };
-    });
-
-    // Re-issue updated session token with new organization context
-    const updatedPayload = encodeSessionPayload({
-      userId: session.userId,
-      email: result.dbUser?.email || session.email,
-      userName: result.dbUser?.name || session.userName,
-      organizationId: result.org.id,
-      organizationName: result.org.name,
-      activeBranchId: result.branch.id,
-      activeBranchName: result.branch.name,
-      role: result.ownerRole.name,
-      permissions: result.userPermissions,
-      themePreference: session.themePreference || "system",
-      timestamp: Date.now(),
-      onboardingStatus: "IN_PROGRESS",
-      currentOnboardingStep: 2,
-    });
-
-    const token = await signSessionToken(updatedPayload);
-    const cookieOptions = createSessionCookieOptions(isProduction, true);
-
-    const response = successResponse({
-      success: true,
-      organizationId: result.org.id,
-      nextStep: 2,
-      redirectUrl: "/onboarding/step-2",
-    });
-
-    response.cookies.set({
-      name: cookieOptions.name,
-      value: token,
-      httpOnly: cookieOptions.httpOnly,
-      secure: cookieOptions.secure,
-      sameSite: cookieOptions.sameSite,
-      path: cookieOptions.path,
-      maxAge: cookieOptions.maxAge,
-    });
-
-    return response;
-  } catch (error: unknown) {
+    return await buildBootstrapResponse(result, session);
+  } catch (error) {
     const quotaProblem = quotaProblemResponse(error);
     if (quotaProblem) {
       return quotaProblem;
     }
-
     console.error("Error in onboarding step 1:", error);
-    const err = error as { code?: string; message?: string };
-    if (err?.code === "P2002" || err?.message?.includes("Unique constraint failed")) {
-      return problemResponse({
-        status: 409,
-        code: "DOMAIN_TAKEN",
-        title: "Conflict",
-        detail: "This workspace domain was just claimed by another organization. Please choose a different domain.",
-      });
-    }
-
     return problemResponse({
       status: 500,
       code: "INTERNAL_SERVER_ERROR",

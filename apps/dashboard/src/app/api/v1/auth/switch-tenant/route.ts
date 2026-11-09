@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@suite/db";
 import {
-  switchActiveTenant,
   signSessionToken,
   encodeSessionPayload,
   createSessionCookieOptions,
@@ -12,10 +10,24 @@ import { isProduction } from "@/lib/env";
 import { resolvePostLoginRoute } from "@/lib/route-dispatcher";
 import { getAuthenticatedSession } from "@/lib/session-helper";
 import { problemResponse, successResponse, zodProblemResponse } from "@/lib/api-response";
+import { switchTenantSession } from "@/services/session-context.service";
 
 const switchTenantSchema = z.object({
   organizationId: z.string().min(1, "Organization ID is required"),
 });
+
+function isForbiddenError(error: unknown): boolean {
+  if (error instanceof ForbiddenError) {
+    return true;
+  }
+  if (typeof error !== "object" || error === null) {
+    return false;
+  }
+  if ("status" in error && error.status === 403) {
+    return true;
+  }
+  return "statusCode" in error && error.statusCode === 403;
+}
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
@@ -25,7 +37,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
     const payload = sessionResult.session;
 
-
     const body = await request.json().catch(() => null);
     const parseResult = switchTenantSchema.safeParse(body);
     if (!parseResult.success) {
@@ -34,15 +45,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       });
     }
 
-    const { organizationId } = parseResult.data;
-
-    // Switch tenant context through verified database membership
-    const tenantContext = await switchActiveTenant({
+    const tenantContext = await switchTenantSession({
       userId: payload.userId,
-      targetOrganizationId: organizationId,
-      prisma,
+      organizationId: parseResult.data.organizationId,
     });
-
     const redirectUrl = resolvePostLoginRoute({
       permissions: tenantContext.permissions,
       roleSlug: tenantContext.roleSlug,
@@ -54,39 +60,37 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       ? Math.max(0, Math.floor((payload.expiresAt - Date.now()) / 1000))
       : undefined;
 
-    // Mint updated session token with new active workspace claims while preserving lifecycle bounds
-    const updatedPayload = encodeSessionPayload({
-      userId: payload.userId,
-      email: payload.email,
-      userName: payload.userName,
-      organizationId: tenantContext.organizationId,
-      organizationName: tenantContext.organizationName,
-      activeBranchId: tenantContext.activeBranchId || undefined,
-      activeBranchName: tenantContext.activeBranchName || undefined,
-      role: tenantContext.role,
-      permissions: tenantContext.permissions,
-      themePreference: payload.themePreference,
-      timestamp: Date.now(),
-      expiresAt: payload.expiresAt,
-      isEphemeral,
-      tokenVersion: payload.tokenVersion,
-      sessionTimeoutSeconds: payload.sessionTimeoutSeconds,
-      onboardingStatus: "COMPLETED",
-      currentOnboardingStep: null,
-    });
+    const tokenJwt = await signSessionToken(
+      encodeSessionPayload({
+        userId: payload.userId,
+        email: payload.email,
+        userName: payload.userName,
+        organizationId: tenantContext.organizationId,
+        organizationName: tenantContext.organizationName,
+        activeBranchId: tenantContext.activeBranchId ?? undefined,
+        activeBranchName: tenantContext.activeBranchName ?? undefined,
+        role: tenantContext.role,
+        permissions: tenantContext.permissions,
+        themePreference: payload.themePreference,
+        timestamp: Date.now(),
+        expiresAt: payload.expiresAt,
+        isEphemeral,
+        tokenVersion: payload.tokenVersion,
+        sessionTimeoutSeconds: payload.sessionTimeoutSeconds,
+        onboardingStatus: "COMPLETED",
+        currentOnboardingStep: null,
+      })
+    );
 
-    const tokenJwt = await signSessionToken(updatedPayload);
     const cookieOptions = createSessionCookieOptions(
       isProduction,
       !isEphemeral,
       remainingSeconds
     );
-
     const response = successResponse({
       success: true,
-      redirectUrl: redirectUrl || "/dashboard",
+      redirectUrl,
     });
-
     response.cookies.set({
       name: cookieOptions.name,
       value: tokenJwt,
@@ -96,21 +100,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       path: cookieOptions.path,
       maxAge: cookieOptions.maxAge,
     });
-
     return response;
   } catch (error) {
-    if (
-      error instanceof ForbiddenError ||
-      (error && typeof error === "object" && ("status" in error && error.status === 403 || "statusCode" in error && error.statusCode === 403))
-    ) {
+    if (isForbiddenError(error)) {
       return problemResponse({
         status: 403,
         code: "FORBIDDEN",
         title: "Forbidden",
-        detail: (error as Error).message || "You do not have access to this organization.",
+        detail: error instanceof Error ? error.message : "You do not have access to this organization.",
       });
     }
-
     console.error("Error switching workspace context:", error);
     return problemResponse({
       status: 500,

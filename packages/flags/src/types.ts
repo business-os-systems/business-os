@@ -91,5 +91,5 @@ export interface IFeatureFlagClient {
   /**
    * Invalidates Redis cache for a specific flag across environments.
    */
-  invalidateCache(flagKey: string, environment?: string): Promise<void>;
+  invalidateCache(flagKey: string, environment?: FlagEnvironment): Promise<void>;
 }
