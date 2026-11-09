@@ -22,6 +22,20 @@ export {
 } from "./cache.js";
 
 export {
+  CATALOG_CACHE_KEY_PREFIX,
+  CATALOG_CACHE_DEFAULT_TTL_SECONDS,
+  CATALOG_CACHE_INVALIDATION_TRIGGER,
+  CATALOG_CACHE_POLICY,
+  catalogCacheKey,
+  createCatalogCache,
+  type CatalogCache,
+  type CatalogCacheClient,
+  type CatalogCacheKey,
+  type ReadCatalogCacheOptions,
+  type WriteCatalogCacheOptions,
+} from "./catalog-cache.js";
+
+export {
   createQueue,
   createWorker,
   DEFAULT_DLQ_JOB_OPTIONS,

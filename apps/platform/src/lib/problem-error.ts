@@ -64,6 +64,19 @@ export function isConflictError(cause: unknown): boolean {
 }
 
 /**
+ * Catalog writes can return two different 409s: a stale version, which a
+ * reload resolves, and a duplicate code, which only a different code resolves.
+ * The UI offers "Reload catalog" for the first and never for the second.
+ */
+export function isCatalogVersionConflict(cause: unknown): boolean {
+  return (
+    cause instanceof AppError &&
+    cause.status === 409 &&
+    cause.code === PLATFORM_ERROR_CODE.CATALOG_VERSION_CONFLICT
+  );
+}
+
+/**
  * Maps an HTTP response onto a typed error that keeps the RFC 7807 detail, so a
  * screen shows the real reason instead of a generic failure message. A 4xx
  * detail is written for the operator; a 5xx detail may be infrastructure text,
