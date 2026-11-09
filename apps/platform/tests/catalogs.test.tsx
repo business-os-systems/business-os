@@ -519,6 +519,21 @@ describe("Catalog modal dismissal", () => {
   });
 });
 
+describe("Catalog status modal dismissal", () => {
+  it("closes the retire modal with Escape without sending a request", async () => {
+    await renderLoaded();
+    clickButton("Retire");
+    act(() => {
+      document.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+      );
+    });
+    await settle();
+    expect(document.body.textContent).not.toContain("Retire INR");
+    expect(requestCount("PATCH")).toBe(0);
+  });
+});
+
 describe("Catalog edit conflict", () => {
   it("reloads the catalog from an edit version conflict", async () => {
     fetchMock.mockImplementation((_input, init) => {
