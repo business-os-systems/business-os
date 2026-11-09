@@ -68,8 +68,26 @@ const problemSchema = z
   })
   .passthrough();
 
+const endEnvelopeSchema = z
+  .object({
+    success: z.literal(true),
+    data: z
+      .object({
+        endedAt: z.string().datetime(),
+        endedBy: z.string().min(1),
+      })
+      .strict(),
+    requestId: z.string(),
+    timestamp: z.string(),
+  })
+  .strict();
+
 export type SupportSessionView = z.infer<typeof supportSessionSchema>;
 export type SupportSessionHistoryItem = z.infer<typeof historyItemSchema>;
+export interface EndSupportSessionResult {
+  readonly endedAt: string;
+  readonly endedBy: string;
+}
 
 export interface SupportSessionHistoryPage {
   readonly items: SupportSessionHistoryItem[];
@@ -140,12 +158,17 @@ async function readJson(response: Response): Promise<unknown> {
   }
 }
 
-async function requestSupportSession(path: string): Promise<unknown> {
+async function requestSupportSession(
+  path: string,
+  init: RequestInit = {},
+): Promise<unknown> {
   const sessionCookie = await readSessionCookie();
   const response = await fetch(`${getApiServerUrl()}${path}`, {
+    ...init,
     headers: {
       Accept: "application/json",
       Cookie: `${SESSION_COOKIE_NAME}=${sessionCookie}`,
+      ...(init.headers ?? {}),
     },
     cache: "no-store",
     // A control-plane stall must never hold a tenant page open (FR-053).
@@ -172,6 +195,23 @@ export async function fetchActiveSupportSession(): Promise<SupportSessionView | 
     );
   }
   return parsed.data.data.session;
+}
+
+export async function endSupportSession(
+  ticketId: string,
+): Promise<EndSupportSessionResult> {
+  const body = await requestSupportSession(
+    `/api/v1/support-sessions/${encodeURIComponent(ticketId)}`,
+    { method: "DELETE" },
+  );
+  const parsed = endEnvelopeSchema.safeParse(body);
+  if (!parsed.success) {
+    throw new SupportSessionClientError(
+      "The API returned an invalid support-session termination payload.",
+      { status: 502, code: null },
+    );
+  }
+  return parsed.data.data;
 }
 
 export async function fetchSupportSessionHistory(
