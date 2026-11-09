@@ -63,6 +63,14 @@ export const settingsGroupsConfig: SettingsGroupConfig[] = [
         icon: "shield",
         permission: PERMISSIONS.SETTINGS.ROLES_VIEW,
       },
+      {
+        id: "security",
+        label: "Security",
+        description: "Support-session history and read-only operator access to this workspace",
+        href: "/settings/security",
+        icon: "shield",
+        permission: PERMISSIONS.SETTINGS.ORGANIZATION_VIEW,
+      },
     ],
   },
 ];

@@ -1,8 +1,7 @@
-import type { MiddlewareHandler, Context } from "hono";
+import type { MiddlewareHandler } from "hono";
 import { RateLimitError, ServiceUnavailableError } from "@suite/core/errors";
 import { redis } from "@suite/redis";
-import { getConnInfo } from "@hono/node-server/conninfo";
-import { getTrustedProxyIps } from "../lib/env.js";
+import { resolveClientIp } from "../lib/client-ip.js";
 
 export interface RateLimitOptions {
   limit?: number; // Maximum requests allowed within window
@@ -36,38 +35,6 @@ end
 local ttl = redis.call('TTL', KEYS[1])
 return {current, ttl}
 `;
-
-function socketAddress(c: Context): string | undefined {
-  try {
-    return getConnInfo(c).remote.address;
-  } catch {
-    return undefined;
-  }
-}
-
-function resolveClientIp(c: Context): string {
-  const socketIp = socketAddress(c);
-  const trustedProxies = new Set(getTrustedProxyIps());
-  const trustForwardedHeaders =
-    process.env.NODE_ENV === "test" ||
-    (socketIp !== undefined && trustedProxies.has(socketIp));
-
-  if (trustForwardedHeaders) {
-    const cfConnectingIp = c.req.header("cf-connecting-ip");
-    if (cfConnectingIp) return cfConnectingIp.trim();
-
-    const forwardedFor = c.req.header("x-forwarded-for");
-    if (forwardedFor) {
-      const firstIp = forwardedFor.split(",")[0]?.trim();
-      if (firstIp) return firstIp;
-    }
-
-    const realIp = c.req.header("x-real-ip");
-    if (realIp) return realIp.trim();
-  }
-
-  return socketIp ?? "127.0.0.1";
-}
 
 async function executeAtomicRateLimit(
   key: string,

@@ -11,6 +11,7 @@ import {
 } from "./navigation.config";
 import { isTenantRecordHubRoute } from "./tenant-record-nav.config";
 import { PlatformSidebar } from "./platform-sidebar";
+import { SupportSessionMarker } from "./support-session-marker";
 
 export function PlatformShell({ children }: { children: ReactNode }) {
   const { session, loading, error, signOutFailed, refresh, signOut, forceSignOut } =
@@ -96,6 +97,7 @@ export function PlatformShell({ children }: { children: ReactNode }) {
             </Button>
           </div>
         </header>
+        <SupportSessionMarker />
         <main className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4 md:p-6">
           {allowed ? (
             children

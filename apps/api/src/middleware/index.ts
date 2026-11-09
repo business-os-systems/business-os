@@ -31,6 +31,12 @@ export {
   type PlatformCapabilityGuardOptions,
 } from "./platform-capability.js";
 export {
+  createImpersonationReadonlyGuard,
+  SUPPORT_SESSION_HEADER,
+  type ImpersonationReadonlyGuardOptions,
+  type SupportSessionContext,
+} from "./impersonation-readonly.js";
+export {
   createIdempotencyMiddleware,
   type IdempotencyMiddlewareOptions,
 } from "./idempotency.js";

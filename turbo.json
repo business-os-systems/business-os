@@ -3,6 +3,7 @@
   "ui": "tui",
   "globalEnv": [
     "DATABASE_URL",
+    "DIRECT_URL",
     "REDIS_URL",
     "NODE_ENV",
     "CONTROL_PLANE_ORIGIN",
