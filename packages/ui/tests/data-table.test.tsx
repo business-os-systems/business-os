@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-/* global document, HTMLElement, HTMLButtonElement, KeyboardEvent */
+/* global document, HTMLElement, HTMLButtonElement, HTMLInputElement, KeyboardEvent */
 import React, { act } from "react";
 import { describe, it, expect, vi } from "vitest";
 import { createRoot } from "react-dom/client";
@@ -159,6 +159,114 @@ describe("shared ConfigTableRenderer", () => {
     expect(html).not.toContain("Deactivate");
   });
 
+});
+
+describe("shared ConfigTableRenderer actions", () => {
+  it("runs an action that needs no confirmation", () => {
+    const { container, root } = render(
+      <ConfigTableRenderer
+        config={config}
+        data={rows}
+        rowKey={(row) => row.id}
+        userPermissions={["core:branches:write"]}
+      />,
+    );
+    const edit = Array.from(container.querySelectorAll("button")).find(
+      (candidate) => candidate.textContent?.trim() === "Edit",
+    );
+    if (edit === undefined) throw new Error("No Edit action");
+    act(() => edit.click());
+    expect(onEdit).toHaveBeenCalledWith(rows[0]);
+
+    act(() => root.unmount());
+    container.remove();
+  });
+
+});
+
+describe("shared ConfigTableRenderer destructive confirmation", () => {
+  it("opens a typed confirmation and keeps the action disabled", () => {
+    const { container, root } = render(
+      <ConfigTableRenderer
+        config={config}
+        data={rows}
+        rowKey={(row) => row.id}
+        userPermissions={["core:branches:write", "core:branches:manage"]}
+      />,
+    );
+    const deactivate = Array.from(container.querySelectorAll("button")).find(
+      (candidate) => candidate.textContent?.trim() === "Deactivate",
+    );
+    if (deactivate === undefined) throw new Error("No Deactivate action");
+    act(() => deactivate.click());
+    expect(document.body.textContent).toContain("Type RIVER-01 to confirm");
+
+    const dialog = document.querySelector('[role="dialog"]');
+    if (dialog === null) throw new Error("No confirmation dialog");
+    const confirm = Array.from(dialog.querySelectorAll("button")).find(
+      (candidate) => candidate.textContent?.trim() === "Deactivate",
+    );
+    expect(confirm?.hasAttribute("disabled")).toBe(true);
+
+    act(() => root.unmount());
+    container.remove();
+  });
+
+});
+
+describe("shared ConfigTableRenderer typed confirmation", () => {
+  it("runs the destructive action once the typed slug matches", () => {
+    const { container, root } = render(
+      <ConfigTableRenderer
+        config={config}
+        data={rows}
+        rowKey={(row) => row.id}
+        userPermissions={["core:branches:write", "core:branches:manage"]}
+      />,
+    );
+    const deactivate = Array.from(container.querySelectorAll("button")).find(
+      (candidate) => candidate.textContent?.trim() === "Deactivate",
+    );
+    if (deactivate === undefined) throw new Error("No Deactivate action");
+    act(() => deactivate.click());
+
+    const dialog = document.querySelector('[role="dialog"]');
+    if (dialog === null) throw new Error("No confirmation dialog");
+    const input = dialog.querySelector("input");
+    if (!(input instanceof HTMLInputElement)) throw new Error("No input");
+    act(() => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(
+        input,
+        "RIVER-01",
+      );
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    const enabled = Array.from(dialog.querySelectorAll("button")).find(
+      (candidate) => candidate.textContent?.trim() === "Deactivate",
+    );
+    act(() => enabled?.click());
+    expect(onDelete).toHaveBeenCalled();
+
+    act(() => root.unmount());
+    container.remove();
+  });
+
+  it("renders a caller-supplied empty state", () => {
+    const html = renderToString(
+      <ConfigTableRenderer
+        config={config}
+        data={[]}
+        rowKey={(row) => row.id}
+        emptyState={{
+          title: "No branches match this filter",
+          description: "Clear the search to see every branch.",
+        }}
+      />,
+    );
+
+    expect(html).toContain("No branches match this filter");
+    expect(html).toContain("Clear the search to see every branch.");
+  });
 });
 
 describe("shared ConfigTableRenderer interaction", () => {

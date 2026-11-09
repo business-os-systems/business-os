@@ -8,6 +8,7 @@ import type {
   TableActionConfig,
   TableColumnConfig,
   TableConfig,
+  TableEmptyStateConfig,
 } from "../../types/ui-schema.js";
 import { Alert } from "../alert.js";
 import { Button } from "../button.js";
@@ -33,6 +34,8 @@ export interface ConfigTableRendererProps<T extends object> {
   readonly className?: string;
   readonly toolbar?: React.ReactNode;
   readonly footer?: React.ReactNode;
+  /** Overrides the configured empty state, e.g. after a filter returns nothing. */
+  readonly emptyState?: TableEmptyStateConfig;
   readonly onRowOpen?: (row: T) => void;
   readonly rowLabel?: (row: T) => string;
 }
@@ -99,6 +102,19 @@ function ariaSortFor(
 ): "ascending" | "descending" | "none" | undefined {
   if (!active) return sortable ? "none" : undefined;
   return direction === "asc" ? "ascending" : "descending";
+}
+
+function useAuthorizedActions<T extends object>(
+  actions: readonly TableActionConfig<T>[] | undefined,
+  userPermissions: readonly string[] | undefined,
+) {
+  return useMemo(
+    () =>
+      (actions ?? []).filter((action) =>
+        isActionAuthorized(action.permission, userPermissions),
+      ),
+    [actions, userPermissions],
+  );
 }
 
 function useTableSort<T extends object>(data: readonly T[]) {
@@ -322,29 +338,27 @@ function TableRow<T extends object>({
   );
 }
 
-function EmptyState<T extends object>({
-  config,
+function EmptyState({
+  emptyState,
 }: {
-  readonly config: TableConfig<T>;
+  readonly emptyState: TableEmptyStateConfig;
 }) {
   return (
     <Card className="flex flex-col items-center justify-center border-border bg-surface p-8 text-center">
-      <h3 className="text-sm font-semibold text-text">
-        {config.emptyState.title}
-      </h3>
+      <h3 className="text-sm font-semibold text-text">{emptyState.title}</h3>
       <p className="mt-1 max-w-sm text-xs text-text-muted">
-        {config.emptyState.description}
+        {emptyState.description}
       </p>
-      {config.emptyState.actionLabel === undefined ||
-      config.emptyState.onAction === undefined ? null : (
+      {emptyState.actionLabel === undefined ||
+      emptyState.onAction === undefined ? null : (
         <Button
           type="button"
           variant="default"
           size="sm"
-          onClick={config.emptyState.onAction}
+          onClick={emptyState.onAction}
           className="mt-4 text-xs font-medium"
         >
-          {config.emptyState.actionLabel}
+          {emptyState.actionLabel}
         </Button>
       )}
     </Card>
@@ -405,6 +419,7 @@ function TableGrid<T extends object>({
 function TableSurface<T extends object>({
   config,
   rows,
+  emptyState,
   isLoading,
   error,
   actions,
@@ -417,6 +432,7 @@ function TableSurface<T extends object>({
 }: {
   readonly config: TableConfig<T>;
   readonly rows: readonly T[];
+  readonly emptyState: TableEmptyStateConfig;
   readonly isLoading: boolean;
   readonly error: string | null;
   readonly actions: readonly TableActionConfig<T>[];
@@ -440,7 +456,7 @@ function TableSurface<T extends object>({
     );
   }
   if (rows.length === 0) {
-    return <EmptyState config={config} />;
+    return <EmptyState emptyState={emptyState} />;
   }
   return (
     <TableGrid
@@ -512,19 +528,14 @@ export function ConfigTableRenderer<T extends object>({
   className,
   toolbar,
   footer,
+  emptyState,
   onRowOpen,
   rowLabel,
 }: ConfigTableRendererProps<T>) {
   const { sorted, sort, toggle } = useTableSort(data);
   const [pending, setPending] = useState<PendingAction<T> | null>(null);
 
-  const actions = useMemo(
-    () =>
-      (config.actions ?? []).filter((action) =>
-        isActionAuthorized(action.permission, userPermissions),
-      ),
-    [config.actions, userPermissions],
-  );
+  const actions = useAuthorizedActions(config.actions, userPermissions);
 
   function requestAction(row: T, action: TableActionConfig<T>): void {
     const expectedPhrase = action.dangerVerificationSlug?.(row);
@@ -541,6 +552,7 @@ export function ConfigTableRenderer<T extends object>({
       <TableSurface
         config={config}
         rows={sorted}
+        emptyState={emptyState ?? config.emptyState}
         isLoading={isLoading}
         error={error}
         actions={actions}
