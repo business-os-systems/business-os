@@ -54,8 +54,16 @@ export interface ReferenceReadResult<TPayload> {
   readonly etag: string;
 }
 
+/**
+ * The narrow read seam the service needs. Keeping Prisma behind this interface
+ * lets the missing-row path be unit-tested without a database (P2).
+ */
+export interface CatalogReadStore {
+  loadRows(catalogKey?: CatalogKey): Promise<readonly CatalogRow[]>;
+}
+
 export interface ReferenceReadContext {
-  readonly prisma: PrismaClient;
+  readonly store: CatalogReadStore;
   readonly cache: CatalogCache;
 }
 
@@ -118,6 +126,12 @@ async function loadCatalogRows(
   });
 }
 
+export function createPrismaCatalogStore(
+  prisma: PrismaClient,
+): CatalogReadStore {
+  return { loadRows: (catalogKey) => loadCatalogRows(prisma, catalogKey) };
+}
+
 function parseCatalogList(value: unknown): readonly ReferenceCatalog[] {
   return referenceCatalogSchema.array().parse(value);
 }
@@ -159,17 +173,17 @@ async function readThroughCatalogCache<T>(
 }
 
 async function loadCatalogList(
-  prisma: PrismaClient,
+  store: CatalogReadStore,
 ): Promise<readonly ReferenceCatalog[]> {
-  const rows = await loadCatalogRows(prisma);
+  const rows = await store.loadRows();
   return rows.map(toReferenceCatalog);
 }
 
 async function loadCatalog(
-  prisma: PrismaClient,
+  store: CatalogReadStore,
   key: CatalogKey,
 ): Promise<ReferenceCatalog> {
-  const rows = await loadCatalogRows(prisma, key);
+  const rows = await store.loadRows(key);
   const [row] = rows;
   if (row === undefined) {
     throw new NotFoundError(`Unknown reference catalog: ${key}.`, {
@@ -186,7 +200,7 @@ export async function readReferenceCatalogList(
     cache: context.cache,
     catalogKey: null,
     parse: parseCatalogList,
-    load: () => loadCatalogList(context.prisma),
+    load: () => loadCatalogList(context.store),
   });
   const payload: ReferenceCatalogList = {
     catalogs: [...catalogs],
@@ -205,7 +219,7 @@ export async function readReferenceCatalog(
     cache: options.cache,
     catalogKey: key,
     parse: parseCatalog,
-    load: () => loadCatalog(options.prisma, key),
+    load: () => loadCatalog(options.store, key),
   });
   const payload: ReferenceCatalogResponse = {
     catalog,

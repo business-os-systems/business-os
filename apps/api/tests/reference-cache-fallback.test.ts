@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { createCatalogCache } from "@suite/redis";
 import { getPlatformPrismaClient } from "../src/lib/platform-db.js";
-import { readReferenceCatalogList } from "../src/services/reference/reference-read.service.js";
+import {
+  createPrismaCatalogStore,
+  readReferenceCatalogList,
+} from "../src/services/reference/reference-read.service.js";
 import { loadPlatformTestEnv } from "./helpers/platform-env.js";
 import { platformOperatorTestsEnabled } from "./helpers/platform-operators.js";
 
@@ -20,7 +23,7 @@ describe("reference catalog cache fallback", () => {
     "serves the database when the cache read and write both fail",
     async () => {
       const result = await readReferenceCatalogList({
-        prisma: getPlatformPrismaClient(),
+        store: createPrismaCatalogStore(getPlatformPrismaClient()),
         cache: createCatalogCache(failingCacheClient),
       });
 

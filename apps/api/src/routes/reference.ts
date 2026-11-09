@@ -9,6 +9,7 @@ import { getControlSessionSecret } from "../lib/platform-env.js";
 import { getPlatformPrismaClient } from "../lib/platform-db.js";
 import { platformCatalogCache } from "../services/catalog-cache.js";
 import {
+  createPrismaCatalogStore,
   readReferenceCatalog,
   readReferenceCatalogList,
 } from "../services/reference/reference-read.service.js";
@@ -152,7 +153,7 @@ const readMiddleware: MiddlewareHandler[] = [referenceReadLimiter, referenceRead
 
 referenceRouter.openapi({ ...listCatalogsRoute, middleware: readMiddleware }, async (c) => {
   const result = await readReferenceCatalogList({
-    prisma: getPlatformPrismaClient(),
+    store: createPrismaCatalogStore(getPlatformPrismaClient()),
     cache: platformCatalogCache,
   });
   return writeCatalogResponse(c, result);
@@ -161,7 +162,7 @@ referenceRouter.openapi({ ...listCatalogsRoute, middleware: readMiddleware }, as
 referenceRouter.openapi({ ...readCatalogRoute, middleware: readMiddleware }, async (c) => {
   const { key } = c.req.valid("param");
   const result = await readReferenceCatalog({
-    prisma: getPlatformPrismaClient(),
+    store: createPrismaCatalogStore(getPlatformPrismaClient()),
     cache: platformCatalogCache,
     catalogKey: key,
   });

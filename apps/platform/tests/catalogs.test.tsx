@@ -5,7 +5,10 @@ import { createRoot, type Root } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { PLATFORM_CAPABILITIES } from "@suite/core";
 import CatalogsLayout from "../src/app/(platform)/catalogs/layout";
+import CatalogsIndexPage from "../src/app/(platform)/catalogs/page";
 import CatalogPage from "../src/app/(platform)/catalogs/[category]/page";
+import { useCatalogsContext } from "../src/app/(platform)/catalogs/catalogs-context";
+import { useCatalogs } from "../src/app/(platform)/catalogs/use-catalogs";
 import {
   CATALOGS_NAV_ITEMS,
   isCatalogsHubRoute,
@@ -16,6 +19,7 @@ import {
   requiredCapabilityForPath,
 } from "../src/components/layout/navigation.config";
 import {
+  createCatalogValueTableConfig,
   sortCatalogValues,
   withCatalogValue,
 } from "../src/components/catalogs/catalogs.config";
@@ -43,6 +47,7 @@ const CURRENCIES_HREF = "/catalogs/currency";
 const SORT_ORDER_INPUT = "-sortOrder";
 const SORT_ORDER_TEN = "10";
 const EDITED_LABEL = "Indian Rupee (updated)";
+const RELOAD_CATALOG = "Reload catalog";
 
 vi.mock("../src/components/auth/auth-provider", () => ({
   usePlatformAuth: () => ({
@@ -84,6 +89,14 @@ const CATALOG: Catalog = {
     value({ code: "INR", label: "Indian Rupee", sortOrder: 10 }),
     value({ code: "USD", label: "US Dollar", sortOrder: 20, isActive: false, version: 3 }),
   ],
+};
+
+const COUNTRY: Catalog = {
+  key: "country",
+  label: "Countries",
+  description: "ISO 3166-1 alpha-2 country codes.",
+  isSystem: true,
+  values: [],
 };
 
 const READ_PROBLEM = {
@@ -312,7 +325,7 @@ describe("Catalog value validation", () => {
     await settle();
 
     expect(document.body.textContent).toContain(DUPLICATE_PROBLEM.detail);
-    expect(document.body.textContent).not.toContain("Reload catalog");
+    expect(document.body.textContent).not.toContain(RELOAD_CATALOG);
   });
 });
 
@@ -333,7 +346,12 @@ describe("Catalog value conflicts", () => {
     await settle();
 
     expect(document.body.textContent).toContain(VERSION_CONFLICT.detail);
-    expect(document.body.textContent).toContain("Reload catalog");
+    expect(document.body.textContent).toContain(RELOAD_CATALOG);
+
+    const getsBeforeReload = requestCount("GET");
+    clickButton(RELOAD_CATALOG);
+    await settle();
+    expect(requestCount("GET")).toBeGreaterThan(getsBeforeReload);
   });
 });
 
@@ -344,7 +362,7 @@ describe("Catalog create", () => {
       if ((init?.method ?? "GET").toUpperCase() === "POST") {
         return Promise.resolve(reply(200, { data: created }));
       }
-      return Promise.resolve(reply(200, { data: { catalogs: [CATALOG] } }));
+      return Promise.resolve(reply(200, { data: { catalogs: [CATALOG, COUNTRY] } }));
     });
 
     await renderLoaded();
@@ -421,6 +439,127 @@ describe("Catalog reactivate", () => {
       expectedVersion: 3,
     });
     expect(document.body.textContent).not.toContain("Reactivate");
+  });
+});
+
+describe("Catalogs hub index", () => {
+  it("redirects to the first catalog route", async () => {
+    navState.replace.mockClear();
+    render(
+      <CatalogsLayout>
+        <CatalogsIndexPage />
+      </CatalogsLayout>,
+    );
+    await settle();
+    expect(navState.replace).toHaveBeenCalledWith(CURRENCIES_HREF);
+  });
+
+  it("renders the empty state when no catalog is seeded", async () => {
+    fetchMock.mockResolvedValueOnce(reply(200, { data: { catalogs: [] } }));
+    render(
+      <CatalogsLayout>
+        <CatalogsIndexPage />
+      </CatalogsLayout>,
+    );
+    await settle();
+    expect(document.body.textContent).toContain("No reference catalogs");
+  });
+});
+
+describe("Catalogs panel not-found states", () => {
+  it("renders not found for an unregistered category", async () => {
+    navState.params = { category: "not_a_catalog" };
+    await renderLoaded();
+    expect(document.body.textContent).toContain("Catalog not found");
+  });
+
+  it("renders not found for a registered key with no payload", async () => {
+    navState.params = { category: "country" };
+    await renderLoaded();
+    expect(document.body.textContent).toContain("Catalog not found");
+  });
+});
+
+describe("Catalog panel fallbacks", () => {
+  it("uses the generic description when the catalog has none", async () => {
+    fetchMock.mockResolvedValueOnce(
+      reply(200, { data: { catalogs: [{ ...CATALOG, description: null }] } }),
+    );
+    await renderLoaded();
+    expect(document.body.textContent).toContain(
+      "Database-owned reference values",
+    );
+  });
+
+  it("renders a dash when the update timestamp is unavailable", () => {
+    const config = createCatalogValueTableConfig({
+      onEdit: () => undefined,
+      onToggleStatus: () => undefined,
+    });
+    const column = config.columns.find(
+      (candidate) => candidate.key === "updatedAt",
+    );
+    const node = column?.render?.(undefined, value({ code: "X" }));
+    expect(renderToString(<>{node}</>)).toContain("-");
+  });
+});
+
+describe("Catalog modal dismissal", () => {
+  it("closes the add modal with Escape before sending a request", async () => {
+    await renderLoaded();
+    clickButton("Add value");
+    act(() => {
+      document.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+      );
+    });
+    await settle();
+    expect(document.body.textContent).not.toContain("Add Currencies value");
+    expect(requestCount("POST")).toBe(0);
+  });
+});
+
+describe("Catalog edit conflict", () => {
+  it("reloads the catalog from an edit version conflict", async () => {
+    fetchMock.mockImplementation((_input, init) => {
+      if ((init?.method ?? "GET").toUpperCase() === "PATCH") {
+        return Promise.resolve(reply(409, VERSION_CONFLICT));
+      }
+      return Promise.resolve(reply(200, { data: { catalogs: [CATALOG] } }));
+    });
+    await renderLoaded();
+    clickFirstRow();
+    setInput("-label", "Changed label");
+    submitForm();
+    await settle();
+    expect(document.body.textContent).toContain(VERSION_CONFLICT.detail);
+    const getsBeforeReload = requestCount("GET");
+    clickButton(RELOAD_CATALOG);
+    await settle();
+    expect(requestCount("GET")).toBeGreaterThan(getsBeforeReload);
+  });
+});
+
+describe("Catalogs hub provider guard", () => {
+  it("fails loudly when a panel renders outside the provider", () => {
+    function Probe() {
+      useCatalogsContext();
+      return null;
+    }
+    expect(() => renderToString(<Probe />)).toThrow("inside CatalogsProvider");
+  });
+
+  it("ignores a local update before the catalog list arrives", () => {
+    let applyValue:
+      | ((catalogKey: string, next: CatalogValue) => void)
+      | null = null;
+    function Probe() {
+      const resource = useCatalogs({ enabled: false });
+      applyValue = resource.applyValue;
+      return null;
+    }
+    render(<Probe />);
+    act(() => applyValue?.("currency", value({ code: "X" })));
   });
 });
 
