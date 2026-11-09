@@ -55,15 +55,13 @@
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "coverage": "vitest run --coverage --coverage.reporter=lcov"
   },
   "dependencies": {
     "@hono/zod-openapi": "^0.18.4",
-    "@suite/auth": "workspace:*",
     "@suite/core": "workspace:*",
     "@suite/db": "workspace:*",
-    "@suite/logger": "workspace:*",
-    "@suite/redis": "workspace:*",
     "@suite/ui": "workspace:*",
     "hono": "^4.7.0",
     "isomorphic-dompurify": "^4.5.0",

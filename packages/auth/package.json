@@ -45,7 +45,8 @@
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "coverage": "vitest run --coverage --coverage.reporter=lcov"
   },
   "dependencies": {
     "@node-rs/argon2": "^2.0.2",

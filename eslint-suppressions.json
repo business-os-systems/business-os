@@ -3283,11 +3283,6 @@
       "count": 1
     }
   },
-  "apps/platform/src/components/flags/flag-rule.config.ts": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
   "apps/platform/src/components/flags/flag-rules-modal.tsx": {
     "max-lines-per-function": {
       "count": 1

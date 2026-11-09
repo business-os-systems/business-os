@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start -p 3001",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "coverage": "vitest run --coverage --coverage.reporter=lcov"
   },
   "dependencies": {
     "@sentry/nextjs": "^11.8.0",
@@ -19,11 +20,9 @@
     "@suite/redis": "workspace:*",
     "@suite/ui": "workspace:*",
     "@suite/website-builder": "workspace:*",
-    "clsx": "^2.1.1",
     "next": "^15.3.9",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "tailwind-merge": "^2.6.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {

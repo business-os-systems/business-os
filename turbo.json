@@ -48,6 +48,10 @@
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", "src/**", "tests/**", "test/**"]
     },
+    "coverage": {
+      "dependsOn": ["^build"],
+      "cache": false
+    },
     "clean": {
       "cache": false
     }

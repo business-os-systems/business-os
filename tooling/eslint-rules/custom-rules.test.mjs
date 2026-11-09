@@ -50,6 +50,32 @@ tsRuleTester.run("P1: if/else presentation props", noRestrictedSyntax, {
       code: `function count(flag) { if (flag) return { total: 1 }; return { total: 0 }; }`,
       options: [...P1_SELECTORS],
     },
+    {
+      // Mirrors tooling/eslint-rules/fixtures/flag-rule-config.good.ts.
+      name: "a form-field config whose label names an input",
+      code: `
+        function targetField(ruleType) {
+          if (ruleType === "environment") {
+            return { name: "targetId", label: "Target environment", type: "select", required: true };
+          }
+          return { name: "targetId", label: "Target tenant", type: "text", required: true };
+        }
+      `,
+      options: [...P1_SELECTORS],
+    },
+    {
+      // Mirrors tooling/eslint-rules/fixtures/dashboard-app-dto.good.ts.
+      name: "a dashboard app DTO whose icon is boundary data",
+      code: `
+        function toAppNav(record, settings) {
+          if (settings.iconName) {
+            return { id: record.appId, name: record.appId, href: "/" + record.appId, icon: settings.iconName, permission: "read" };
+          }
+          return { id: record.appId, name: record.appId, href: "/" + record.appId, icon: record.appId, permission: "read" };
+        }
+      `,
+      options: [...P1_SELECTORS],
+    },
   ],
   invalid: [
     {
@@ -62,6 +88,17 @@ tsRuleTester.run("P1: if/else presentation props", noRestrictedSyntax, {
       `,
       options: [...P1_SELECTORS],
       errors: 2,
+    },
+    {
+      name: "a presentation object mixed with unrelated data",
+      code: `
+        function stateText(flag) {
+          if (flag.enabled) return { label: "On", className: "text-success", value: 1 };
+          return "off";
+        }
+      `,
+      options: [...P1_SELECTORS],
+      errors: 1,
     },
   ],
 });
