@@ -30,6 +30,8 @@ export interface ConfigTableRendererProps<T extends object> {
   readonly rowKey: (row: T) => string;
   readonly isLoading?: boolean;
   readonly error?: string | null;
+  readonly errorTitle?: string;
+  readonly nullLabel?: string;
   readonly userPermissions?: readonly string[];
   readonly className?: string;
   readonly toolbar?: React.ReactNode;
@@ -227,19 +229,38 @@ function TableHeader<T extends object>({
   );
 }
 
+function renderCell<T extends object>(
+  row: T,
+  column: TableColumnConfig<T>,
+  nullLabel: string,
+): React.ReactNode {
+  const value = row[column.key];
+  if (column.render !== undefined) return column.render(value, row);
+  if (value === null || value === undefined) {
+    return nullLabel === "" ? "" : (
+      <span className="text-text-muted">{nullLabel}</span>
+    );
+  }
+  if (typeof value === "string" || typeof value === "number") {
+    return String(value);
+  }
+  return String(value);
+}
+
 function RowOpenCell<T extends object>({
   row,
   column,
   onRowOpen,
   label,
+  nullLabel,
 }: {
   readonly row: T;
   readonly column: TableColumnConfig<T>;
   readonly onRowOpen: (row: T) => void;
   readonly label: string;
+  readonly nullLabel: string;
 }) {
-  const content =
-    column.render?.(row[column.key], row) ?? String(row[column.key] ?? "");
+  const content = renderCell(row, column, nullLabel);
   return (
     <button
       type="button"
@@ -293,6 +314,7 @@ function TableRow<T extends object>({
   columns,
   actions,
   rowLabel,
+  nullLabel,
   onRowOpen,
   onAction,
 }: {
@@ -300,6 +322,7 @@ function TableRow<T extends object>({
   readonly columns: readonly TableColumnConfig<T>[];
   readonly actions: readonly TableActionConfig<T>[];
   readonly rowLabel: string;
+  readonly nullLabel: string;
   readonly onRowOpen: ((row: T) => void) | undefined;
   readonly onAction: (row: T, action: TableActionConfig<T>) => void;
 }) {
@@ -324,10 +347,10 @@ function TableRow<T extends object>({
               column={column}
               onRowOpen={onRowOpen}
               label={rowLabel}
+              nullLabel={nullLabel}
             />
           ) : (
-            (column.render?.(row[column.key], row) ??
-            String(row[column.key] ?? ""))
+            renderCell(row, column, nullLabel)
           )}
         </td>
       ))}
@@ -371,6 +394,7 @@ function TableGrid<T extends object>({
   actions,
   rowKey,
   rowLabel,
+  nullLabel,
   onRowOpen,
   onAction,
   sort,
@@ -381,6 +405,7 @@ function TableGrid<T extends object>({
   readonly actions: readonly TableActionConfig<T>[];
   readonly rowKey: (row: T) => string;
   readonly rowLabel: (row: T) => string;
+  readonly nullLabel: string;
   readonly onRowOpen: ((row: T) => void) | undefined;
   readonly onAction: (row: T, action: TableActionConfig<T>) => void;
   readonly sort: SortState<T> | null;
@@ -405,6 +430,7 @@ function TableGrid<T extends object>({
                 columns={config.columns}
                 actions={actions}
                 rowLabel={rowLabel(row)}
+                nullLabel={nullLabel}
                 onRowOpen={onRowOpen}
                 onAction={onAction}
               />
@@ -422,6 +448,8 @@ function TableSurface<T extends object>({
   emptyState,
   isLoading,
   error,
+  errorTitle,
+  nullLabel,
   actions,
   rowKey,
   rowLabel,
@@ -435,6 +463,8 @@ function TableSurface<T extends object>({
   readonly emptyState: TableEmptyStateConfig;
   readonly isLoading: boolean;
   readonly error: string | null;
+  readonly errorTitle: string;
+  readonly nullLabel: string;
   readonly actions: readonly TableActionConfig<T>[];
   readonly rowKey: (row: T) => string;
   readonly rowLabel: (row: T) => string;
@@ -451,9 +481,7 @@ function TableSurface<T extends object>({
     );
   }
   if (error !== null) {
-    return (
-      <Alert variant="error" title="Could not load this table" message={error} />
-    );
+    return <Alert variant="error" title={errorTitle} message={error} />;
   }
   if (rows.length === 0) {
     return <EmptyState emptyState={emptyState} />;
@@ -465,6 +493,7 @@ function TableSurface<T extends object>({
       actions={actions}
       rowKey={rowKey}
       rowLabel={rowLabel}
+      nullLabel={nullLabel}
       onRowOpen={onRowOpen}
       onAction={onAction}
       sort={sort}
@@ -524,6 +553,8 @@ export function ConfigTableRenderer<T extends object>({
   rowKey,
   isLoading = false,
   error = null,
+  errorTitle = "Could not load this table",
+  nullLabel = "",
   userPermissions,
   className,
   toolbar,
@@ -555,6 +586,8 @@ export function ConfigTableRenderer<T extends object>({
         emptyState={emptyState ?? config.emptyState}
         isLoading={isLoading}
         error={error}
+        errorTitle={errorTitle}
+        nullLabel={nullLabel}
         actions={actions}
         rowKey={rowKey}
         rowLabel={rowLabel ?? rowKey}

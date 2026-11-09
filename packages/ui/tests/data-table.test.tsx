@@ -161,6 +161,37 @@ describe("shared ConfigTableRenderer", () => {
 
 });
 
+describe("shared ConfigTableRenderer presentation overrides", () => {
+  it("uses the caller's error title and null label", () => {
+    const nullableConfig: TableConfig<{ id: string; note: string | null }> = {
+      id: "nullable-table",
+      columns: [{ key: "note", header: "Note" }],
+      emptyState: { title: "No notes", description: "Nothing to show." },
+    };
+    const html = renderToString(
+      <ConfigTableRenderer
+        config={nullableConfig}
+        data={[{ id: "n1", note: null }]}
+        rowKey={(row) => row.id}
+        nullLabel="Not set"
+      />,
+    );
+    expect(html).toContain("Not set");
+
+    const failed = renderToString(
+      <ConfigTableRenderer
+        config={config}
+        data={rows}
+        rowKey={(row) => row.id}
+        error="Capability denied."
+        errorTitle="Tenant list unavailable"
+      />,
+    );
+    expect(failed).toContain("Tenant list unavailable");
+    expect(failed).toContain("Capability denied.");
+  });
+});
+
 describe("shared ConfigTableRenderer actions", () => {
   it("runs an action that needs no confirmation", () => {
     const { container, root } = render(
