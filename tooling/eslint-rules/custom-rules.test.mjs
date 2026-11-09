@@ -5,6 +5,7 @@ import { builtinRules } from "eslint/use-at-your-own-risk";
 import { parser as tsParser } from "typescript-eslint";
 import {
   DANGEROUS_HTML_SELECTOR,
+  PAGE_LEVEL_TABLIST_SELECTOR,
   P1_SELECTORS,
   PROCESS_ENV_SELECTOR,
   RESTRICTED_ORM_IMPORTS,
@@ -172,6 +173,24 @@ jsxRuleTester.run("P17: raw HTML injection", noRestrictedSyntax, {
       name: "dangerouslySetInnerHTML",
       code: `const view = <div dangerouslySetInnerHTML={{ __html: html }} />;`,
       options: [DANGEROUS_HTML_SELECTOR],
+      errors: 1,
+    },
+  ],
+});
+
+jsxRuleTester.run("Hub law: page-level tablist", noRestrictedSyntax, {
+  valid: [
+    {
+      name: "an in-panel tabpanel is not a page-level tablist",
+      code: `const view = <div role="tabpanel">{text}</div>;`,
+      options: [PAGE_LEVEL_TABLIST_SELECTOR],
+    },
+  ],
+  invalid: [
+    {
+      name: "a page-level tablist is a second navigation system",
+      code: `const view = <div role="tablist"><button role="tab">Overview</button></div>;`,
+      options: [PAGE_LEVEL_TABLIST_SELECTOR],
       errors: 1,
     },
   ],

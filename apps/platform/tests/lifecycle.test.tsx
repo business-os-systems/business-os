@@ -17,7 +17,7 @@ import {
   validateLifecycleForm,
   type LifecycleTenant,
 } from "../src/components/forms/lifecycle-form.config";
-import { TenantLifecycleActions } from "../src/components/forms/tenant-lifecycle-actions";
+import { TenantDangerPanel } from "../src/app/(platform)/tenants/[orgId]/danger/tenant-danger-panel";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 const TENANT: LifecycleTenant = { id: "org_1", name: "River View", slug: "river-view", status: "ACTIVE" };
@@ -47,7 +47,7 @@ function reply(status: number, body: unknown): Response {
   });
 }
 function mount(overrides: Record<string, unknown> = {}): void {
-  render(<TenantLifecycleActions tenant={TENANT} canManage onApplied={vi.fn()} onReload={vi.fn()} {...overrides} />);
+  render(<TenantDangerPanel tenant={TENANT} onApplied={vi.fn()} onReload={vi.fn()} {...overrides} />);
 }
 function open(action: string): void {
   act(() => button(LIFECYCLE_ACTION_CONFIG[action as keyof typeof LIFECYCLE_ACTION_CONFIG].label).click());
@@ -74,7 +74,23 @@ describe("Lifecycle config", () => {
     expect(availableLifecycleActions("ACTIVE")).toEqual([TENANT_LIFECYCLE_ACTION.SUSPEND, TENANT_LIFECYCLE_ACTION.ARCHIVE]);
     expect(availableLifecycleActions("SUSPENDED")).toEqual([TENANT_LIFECYCLE_ACTION.RESTORE, TENANT_LIFECYCLE_ACTION.ARCHIVE]);
     expect(availableLifecycleActions("ARCHIVED")).toEqual([]);
-    expect(renderToString(<TenantLifecycleActions tenant={TENANT} canManage={false} onApplied={vi.fn()} onReload={vi.fn()} />)).toBe("");
+  });
+
+  it("renders one card per action and disables unavailable transitions", () => {
+    const active = renderToString(
+      <TenantDangerPanel tenant={TENANT} onApplied={vi.fn()} onReload={vi.fn()} />
+    );
+    expect(active).toContain("Suspend");
+    expect(active).toContain("Restore");
+    expect(active).toContain("Archive");
+    const archived = renderToString(
+      <TenantDangerPanel
+        tenant={{ ...TENANT, status: "ARCHIVED" }}
+        onApplied={vi.fn()}
+        onReload={vi.fn()}
+      />
+    );
+    expect((archived.match(/disabled=""/g) ?? []).length).toBe(3);
   });
 
   it("validates the reason and slug through the shared schema", () => {

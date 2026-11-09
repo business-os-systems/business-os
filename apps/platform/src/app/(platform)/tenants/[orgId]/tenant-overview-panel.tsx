@@ -38,7 +38,10 @@ export function TenantOverviewPanel({
           <dl>
             <DefinitionRow label="Name" value={record.profile.name} />
             <DefinitionRow label="Slug" value={record.profile.slug} />
-            <DefinitionRow label="Tenant id" value={record.profile.id} />
+            <DefinitionRow
+              label="Tenant id"
+              value={<span className="font-mono">{record.profile.id}</span>}
+            />
             <DefinitionRow label="Status" value={record.profile.status} />
             <DefinitionRow
               label="Created"

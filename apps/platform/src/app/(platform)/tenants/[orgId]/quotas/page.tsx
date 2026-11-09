@@ -6,7 +6,6 @@ import { usePlatformAuth } from "@/components/auth/auth-provider";
 import { CapabilityDeniedView } from "@/components/states/view-state";
 import { canManageQuotas } from "@/lib/capability";
 import { QuotasBody } from "./quotas-body";
-import { QuotasHeader } from "./quotas-header";
 import { useQuotas, type QuotaEditorState } from "./use-quotas";
 
 export default function TenantQuotasPage() {
@@ -25,7 +24,11 @@ export default function TenantQuotasPage() {
 
   return (
     <div className="max-w-full space-y-4">
-      <QuotasHeader orgId={orgId} />
+      <p className="text-sm text-text-secondary">
+        Limits are decimal strings with a unit and measured consumption. A lowered
+        limit keeps existing content and marks the tenant over-limit; it never
+        deletes rows.
+      </p>
       <QuotasBody
         orgId={orgId}
         items={quotas.items}

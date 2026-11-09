@@ -24,7 +24,7 @@ export const LIFECYCLE_ACTION_CONFIG = {
   readonly description: string; readonly successMessage: string;
   readonly variant: "secondary" | "default" | "destructive";
 }>;
-const ACTION_ORDER = [TENANT_LIFECYCLE_ACTION.SUSPEND, TENANT_LIFECYCLE_ACTION.RESTORE, TENANT_LIFECYCLE_ACTION.ARCHIVE] as const;
+export const ACTION_ORDER = [TENANT_LIFECYCLE_ACTION.SUSPEND, TENANT_LIFECYCLE_ACTION.RESTORE, TENANT_LIFECYCLE_ACTION.ARCHIVE] as const;
 
 /** Missing or empty capability context denies, never widens access. */
 export function canManageLifecycle(capabilities: readonly string[] | undefined | null): boolean {

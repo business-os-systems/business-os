@@ -4,12 +4,11 @@ import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { PLATFORM_CAPABILITIES } from "@suite/core";
-import TenantSettingsPage from "../src/app/(platform)/tenants/[orgId]/settings/page";
-import { AppSettingsEditor } from "../src/app/(platform)/tenants/[orgId]/settings/app-settings-editor";
+import TenantAppsPage from "../src/app/(platform)/tenants/[orgId]/apps/page";
+import { AppSettingsEditor } from "../src/app/(platform)/tenants/[orgId]/apps/app-settings-editor";
 import TenantQuotasPage from "../src/app/(platform)/tenants/[orgId]/quotas/page";
 import { QuotaEditorModal } from "../src/app/(platform)/tenants/[orgId]/quotas/quota-editor-modal";
-import { TenantRecordHeader } from "../src/app/(platform)/tenants/[orgId]/tenant-record-header";
-import { TenantEntitlementToggles } from "../src/app/(platform)/tenants/[orgId]/settings/tenant-entitlement-toggles";
+import { TenantRecordProvider } from "../src/app/(platform)/tenants/[orgId]/tenant-record-context";
 import { PlatformShell } from "../src/components/layout/platform-shell";
 import { ConfigTable } from "../src/components/tables/config-table";
 import {
@@ -25,13 +24,12 @@ import {
 import { mapInvalidParams } from "../src/components/forms/invalid-params";
 import { IDEMPOTENCY_HEADER } from "../src/lib/api";
 import type { AppSettingsView } from "../src/lib/app-settings-api";
-import type { TenantEntitlement } from "../src/lib/apps-api";
 import type { QuotaItem } from "../src/lib/quotas-api";
 import type { TenantRecord } from "../src/lib/tenant-api";
 
 const authState = vi.hoisted(() => ({ capabilities: [] as string[] }));
 const navState = vi.hoisted(() => ({
-  pathname: "/tenants/org_1/settings",
+  pathname: "/tenants/org_1/apps",
   params: { orgId: "org_1" },
   push: vi.fn(),
 }));
@@ -63,6 +61,10 @@ vi.mock("../src/components/auth/auth-provider", () => ({
 }));
 
 const ORG_ID = "org_1";
+const APPS_CAPABILITIES = [
+  PLATFORM_CAPABILITIES.TENANTS_READ.code,
+  PLATFORM_CAPABILITIES.ENTITLEMENTS_MANAGE.code,
+];
 const APP_ID = "website-builder";
 const ORG_PATH = `http://api.test/api/v1/admin/tenants/${ORG_ID}`;
 const TEXT_INPUT = 'input[type="text"]';
@@ -130,6 +132,17 @@ const RECORD: TenantRecord = {
   recentAudit: [],
 };
 
+function withRecord(
+  ui: React.ReactElement,
+  record: TenantRecord = RECORD
+): React.ReactElement {
+  return (
+    <TenantRecordProvider value={{ record, reload: () => undefined }}>
+      {ui}
+    </TenantRecordProvider>
+  );
+}
+
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT =
   true;
 const roots: Root[] = [];
@@ -193,70 +206,56 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("Tenant configuration capability gates", () => {
-  it("hides the links and denies both direct visits", () => {
-    const hidden = renderToString(
-      <TenantRecordHeader
-        record={RECORD}
-        onBack={() => undefined}
-        canManageSettings={false}
-        canManageQuotas={false}
-        onOpenSettings={() => undefined}
-        onOpenQuotas={() => undefined}
-      />
+describe("Tenant record hub capability gates", () => {
+  it("denies both panel routes without their capability", () => {
+    expect(renderToString(withRecord(<TenantAppsPage />))).toContain(
+      CAPABILITY_DENIED_TEXT
     );
-    expect(hidden).not.toContain("App settings");
-    expect(hidden).not.toContain("Quotas</button>");
-
-    const visible = renderToString(
-      <TenantRecordHeader
-        record={RECORD}
-        onBack={() => undefined}
-        canManageSettings
-        canManageQuotas
-        onOpenSettings={() => undefined}
-        onOpenQuotas={() => undefined}
-      />
+    expect(renderToString(withRecord(<TenantQuotasPage />))).toContain(
+      CAPABILITY_DENIED_TEXT
     );
-    expect(visible).toContain("App settings");
-    expect(visible).toContain("Quotas</button>");
+  });
 
-    expect(renderToString(<TenantSettingsPage />)).toContain(CAPABILITY_DENIED_TEXT);
-    expect(renderToString(<TenantQuotasPage />)).toContain(CAPABILITY_DENIED_TEXT);
-
-    // The shell inherits platform:tenants:read for /tenants/*; the page guard
-    // must still deny an operator who only has the tenant read capability.
+  it("keeps management panels gated beyond the tenant read gate", () => {
+    // The shell inherits platform:tenants:read for /tenants/*; a read-only
+    // operator sees the record and its read-only apps panel, while quota
+    // management stays denied.
     authState.capabilities = [PLATFORM_CAPABILITIES.TENANTS_READ.code];
     expect(
       renderToString(
         <PlatformShell>
-          <h1>Tenant settings</h1>
+          <h1>Tenant hub</h1>
         </PlatformShell>
       )
-    ).toContain("Tenant settings");
-    expect(renderToString(<TenantSettingsPage />)).toContain(CAPABILITY_DENIED_TEXT);
-    expect(renderToString(<TenantQuotasPage />)).toContain(CAPABILITY_DENIED_TEXT);
+    ).toContain("Tenant hub");
+    expect(renderToString(withRecord(<TenantAppsPage />))).toContain(
+      "Installed apps"
+    );
+    expect(renderToString(withRecord(<TenantQuotasPage />))).toContain(
+      CAPABILITY_DENIED_TEXT
+    );
   });
 });
 
-describe("Tenant settings states", () => {
-  it("renders the loading state before entitlements arrive", () => {
-    authState.capabilities = [PLATFORM_CAPABILITIES.ENTITLEMENTS_MANAGE.code];
-    expect(renderToString(<TenantSettingsPage />)).toContain(
-      "Loading installed applications"
+describe("Tenant apps panel states", () => {
+  it("renders the application-settings loading state", () => {
+    authState.capabilities = APPS_CAPABILITIES;
+    expect(renderToString(withRecord(<TenantAppsPage />))).toContain(
+      "Loading application settings"
     );
   });
 
-  it("renders the empty state without an installed app", async () => {
-    authState.capabilities = [PLATFORM_CAPABILITIES.ENTITLEMENTS_MANAGE.code];
-    fetchMock.mockResolvedValueOnce(reply(200, { data: { apps: [] } }));
-    render(<TenantSettingsPage />);
-    await settle();
-    expect(document.body.textContent).toContain("No configured application");
+  it("renders genuine empty states without installed apps", () => {
+    authState.capabilities = APPS_CAPABILITIES;
+    const html = renderToString(
+      withRecord(<TenantAppsPage />, { ...RECORD, apps: [] })
+    );
+    expect(html).toContain("No installed apps");
+    expect(html).toContain("No configurable application");
   });
 
   it("renders the RFC 7807 error detail", async () => {
-    authState.capabilities = [PLATFORM_CAPABILITIES.ENTITLEMENTS_MANAGE.code];
+    authState.capabilities = APPS_CAPABILITIES;
     fetchMock.mockResolvedValueOnce(
       reply(403, {
         type: "/errors/capability-denied",
@@ -266,7 +265,7 @@ describe("Tenant settings states", () => {
         code: "CAPABILITY_DENIED",
       })
     );
-    render(<TenantSettingsPage />);
+    render(withRecord(<TenantAppsPage />));
     await settle();
     expect(document.body.textContent).toContain("Capability denied.");
     expect(document.body.textContent).toContain("CAPABILITY_DENIED");
@@ -275,16 +274,8 @@ describe("Tenant settings states", () => {
 
 describe("Tenant settings version reconciliation", () => {
   it("uses the newly written version for a second save", async () => {
-    authState.capabilities = [PLATFORM_CAPABILITIES.ENTITLEMENTS_MANAGE.code];
-    const entitlement: TenantEntitlement = {
-      appId: APP_ID,
-      isEnabled: true,
-      installedAt: "2026-01-01T00:00:00.000Z",
-      version: "entitlement-v1",
-      branchOverrides: [],
-    };
+    authState.capabilities = APPS_CAPABILITIES;
     fetchMock
-      .mockResolvedValueOnce(reply(200, { data: { apps: [entitlement] } }))
       .mockResolvedValueOnce(reply(200, { data: SETTINGS }))
       .mockResolvedValueOnce(
         reply(200, {
@@ -308,7 +299,7 @@ describe("Tenant settings version reconciliation", () => {
           },
         })
       );
-    render(<TenantSettingsPage />);
+    render(withRecord(<TenantAppsPage />));
     await settle();
     await settle();
 
@@ -334,54 +325,6 @@ describe("Tenant settings version reconciliation", () => {
     expect(requestJsonBody(puts[1]?.[1])).toMatchObject({
       expectedVersion: "settings-v2",
     });
-  });
-});
-
-describe("Tenant entitlement toggle", () => {
-  it("sends the observed entitlement version with an idempotency key", async () => {
-    const entitlement: TenantEntitlement = {
-      appId: APP_ID,
-      isEnabled: true,
-      installedAt: "2026-01-01T00:00:00.000Z",
-      version: "2026-11-07T10:00:00.000000Z",
-      branchOverrides: [],
-    };
-    const updated: TenantEntitlement = {
-      ...entitlement,
-      isEnabled: false,
-      version: "2026-11-07T11:00:00.000000Z",
-    };
-    fetchMock.mockResolvedValueOnce(reply(200, { data: { apps: [updated] } }));
-    const onUpdated = vi.fn();
-    render(
-      <TenantEntitlementToggles
-        orgId={ORG_ID}
-        apps={[entitlement]}
-        onUpdated={onUpdated}
-      />
-    );
-    const checkbox = document.querySelector('input[type="checkbox"]');
-    if (!(checkbox instanceof HTMLInputElement)) {
-      throw new Error("Entitlement checkbox missing");
-    }
-    await act(async () => {
-      checkbox.click();
-      await Promise.resolve();
-    });
-
-    const call = fetchMock.mock.calls[0];
-    if (call === undefined) throw new Error("The API was not called");
-    expect(requestUrl(call[0])).toBe(`${ORG_PATH}/entitlements`);
-    expect(call[1]?.method).toBe("PUT");
-    expect(new Headers(call[1]?.headers).get(IDEMPOTENCY_HEADER)).toMatch(
-      /^[0-9a-f-]{36}$/
-    );
-    expect(requestJsonBody(call[1])).toEqual({
-      appId: APP_ID,
-      enabled: false,
-      expectedVersion: entitlement.version,
-    });
-    expect(onUpdated).toHaveBeenCalledWith([updated]);
   });
 });
 
@@ -641,7 +584,10 @@ describe("Tenant quotas states", () => {
     expect(document.body.textContent).toContain("RATE_LIMITED");
   });
 
-  it("renders the over-limit and unmeasured rows as plain text", () => {
+});
+
+describe("Quota table presentation", () => {
+  it("renders the contracted columns with plain-text status", () => {
     const html = renderToString(
       <ConfigTable
         config={QUOTA_TABLE_CONFIG}
@@ -661,11 +607,16 @@ describe("Tenant quotas states", () => {
         rowLabel={(row) => row.resourceKey}
       />
     );
+    expect(html).toContain("Resource");
+    expect(html).toContain("Limit");
+    expect(html).toContain("Enforced");
+    expect(html).toContain("Status");
+    expect(html).toContain("Updated");
     expect(html).toContain("Over limit");
     expect(html).toContain("text-danger");
-    expect(html).toContain("Measured");
-    expect(html).toContain("Not measured");
     expect(html).toContain("bytes");
+    expect(html).not.toContain("Current");
+    expect(html).not.toContain("Measured");
   });
 });
 

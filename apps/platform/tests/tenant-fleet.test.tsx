@@ -13,10 +13,6 @@ import {
 import { TenantAuditPanel } from "../src/app/(platform)/tenants/[orgId]/tenant-audit-panel";
 import { TenantPiiPanel } from "../src/app/(platform)/tenants/[orgId]/tenant-pii-panel";
 import {
-  TENANT_TABS,
-  nextTabId,
-} from "../src/app/(platform)/tenants/[orgId]/tenant-record-tabs";
-import {
   canReadPersonalData,
   TENANT_STATUSES,
   type TenantSummary,
@@ -179,23 +175,6 @@ describe("Tenant personal-data gate", () => {
       <TenantAuditPanel lifecycle={lifecycle} audit={[]} lifecycleHasMore={false} canReadReason />,
     );
     expect(allowed).toContain("Member email");
-  });
-});
-
-describe("Tenant record tabs", () => {
-  it("declares the four record tabs", () => {
-    expect(TENANT_TABS.map((tab) => tab.id)).toEqual([
-      "overview",
-      "entitlements",
-      "quotas",
-      "audit",
-    ]);
-  });
-
-  it("wraps forward and backward", () => {
-    expect(nextTabId("overview", "previous")).toBe("audit");
-    expect(nextTabId("audit", "next")).toBe("overview");
-    expect(nextTabId("overview", "next")).toBe("entitlements");
   });
 });
 

@@ -61,3 +61,8 @@ export const RESTRICTED_UI_IMPORTS = {
   message:
     "Domain code must stay free of UI framework imports. See docs/engineering-standards.md#p2.",
 };
+export const PAGE_LEVEL_TABLIST_SELECTOR = {
+  selector: "JSXAttribute[name.name='role'][value.value='tablist']",
+  message:
+    "Page-level role=\"tablist\" is forbidden by the Hub Navigation Law (H-3.1, H-2): a surface with 4+ destinations, extensible destinations or configuration uses a routed hub; only in-panel tabs (modal, drawer, inspector) may use a tablist. See DESIGN.md §4.7 and AGENTS.md §5.",
+};
