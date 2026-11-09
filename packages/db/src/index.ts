@@ -40,6 +40,21 @@ export {
   type PlatformCatalogSeedResult,
 } from "./seed-platform-catalogs.js";
 export { backfillAppMetadata } from "./backfill-app-metadata.js";
+export {
+  SCHEMA_OWNERSHIP,
+  assertTableOwnership,
+  registeredSchemas,
+  SchemaOwnershipViolation,
+  type SchemaOwner,
+  type TableOwnershipInput,
+} from "./schema-registry.js";
+export {
+  PLATFORM_RETENTION,
+  getPlatformRetentionPolicy,
+  UnknownRetentionPolicyError,
+  type PlatformRetentionPolicy,
+  type RetentionDisposition,
+} from "./platform-retention.js";
 
 export {
   Prisma,
