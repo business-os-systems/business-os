@@ -53,6 +53,10 @@ describe("Global RFC 7807 Error Handler", () => {
       throw new HTTPException(418, { message: "The request cannot be processed." });
     });
 
+    testApp.get("/test-http-server-exception", () => {
+      throw new HTTPException(503, { message: "Upstream dependency is unavailable." });
+    });
+
     testApp.get("/test-unhandled", () => {
       throw new Error("Sensitive database connection password leaked in stack trace!");
     });
@@ -130,6 +134,17 @@ describe("Global RFC 7807 Error Handler", () => {
     expect(body.type).toBe("/errors/http-exception");
     expect(body.title).toBe("Bad Request");
     expect(body.instance).toBe("/test-http-exception");
+  });
+
+  it("maps a server-side HTTPException to the internal error presentation", async () => {
+    const res = await app.request("/test-http-server-exception");
+
+    expect(res.status).toBe(503);
+    const body = (await res.json()) as ExtendedProblemDetails;
+    expect(body.code).toBe("INTERNAL_SERVER_ERROR");
+    expect(body.type).toBe("/errors/internal-server-error");
+    expect(body.title).toBe("Internal Server Error");
+    expect(body.detail).toBe("Upstream dependency is unavailable.");
   });
 
   it("attaches the CORS headers to an error response for an allowed origin", async () => {

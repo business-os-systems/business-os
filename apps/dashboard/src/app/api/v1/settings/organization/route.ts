@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@suite/db";
 import { PERMISSIONS, hasPermission } from "@suite/core";
-import { getAuthenticatedSession } from "@/lib/session-helper";
-import { problemResponse, successResponse } from "@/lib/api-response";
 import {
   signSessionToken,
   encodeSessionPayload,
@@ -11,6 +8,15 @@ import {
   type SessionPayload,
 } from "@suite/auth";
 import { isProduction } from "@/lib/env";
+import { getAuthenticatedSession } from "@/lib/session-helper";
+import { problemResponse, successResponse } from "@/lib/api-response";
+import {
+  getOrganizationDetail,
+  getOrganizationStatus,
+  isCustomDomainClaimed,
+  updateOrganizationRecord,
+  type UpdateOrganizationInput,
+} from "@/services/organization-settings.service";
 
 const updateOrganizationSchema = z.object({
   name: z
@@ -57,19 +63,110 @@ const updateOrganizationSchema = z.object({
     .optional(),
 });
 
+type UpdateOrganizationDto = z.infer<typeof updateOrganizationSchema>;
+
+async function parseAndValidateUpdateBody(
+  request: NextRequest,
+): Promise<{ ok: true; data: UpdateOrganizationDto } | { ok: false; response: NextResponse }> {
+  let bodyJson: unknown;
+  try {
+    bodyJson = await request.json();
+  } catch {
+    return {
+      ok: false,
+      response: problemResponse({
+        type: "/errors/bad-request",
+        title: "Invalid JSON",
+        status: 400,
+        detail: "Malformed JSON payload in request body.",
+        code: "INVALID_JSON",
+      }),
+    };
+  }
+
+  const parseResult = updateOrganizationSchema.safeParse(bodyJson);
+  if (!parseResult.success) {
+    return {
+      ok: false,
+      response: problemResponse({
+        type: "/errors/validation-error",
+        title: "Validation Error",
+        status: 400,
+        detail: "One or more organization fields failed validation.",
+        code: "VALIDATION_ERROR",
+        invalidParams: parseResult.error.issues.map((issue) => ({
+          name: issue.path.join("."),
+          reason: issue.message,
+        })),
+      }),
+    };
+  }
+
+  return { ok: true, data: parseResult.data };
+}
+
+async function ensureDomainAvailable(
+  data: UpdateOrganizationDto,
+  organizationId: string
+): Promise<NextResponse | null> {
+  if (!data.customDomain) {
+    return null;
+  }
+  if (await isCustomDomainClaimed(data.customDomain, organizationId)) {
+    return problemResponse({
+      type: "/errors/conflict",
+      title: "Domain Conflict",
+      status: 409,
+      detail: `The custom domain '${data.customDomain}' is already claimed by another organization.`,
+      code: "DOMAIN_ALREADY_EXISTS",
+    });
+  }
+  return null;
+}
+
+async function applySessionCookie(
+  response: NextResponse,
+  session: SessionPayload,
+  data: UpdateOrganizationDto
+): Promise<void> {
+  if (data.status === "ARCHIVED") {
+    const cookieOptions = createSessionCookieOptions(isProduction, true);
+    response.cookies.delete(cookieOptions.name);
+    return;
+  }
+  if (!data.name || data.name === session.organizationName) {
+    return;
+  }
+
+  const updatedPayload = encodeSessionPayload({
+    ...session,
+    organizationName: data.name,
+    timestamp: Date.now(),
+  });
+  const tokenJwt = await signSessionToken(updatedPayload);
+  const cookieOptions = createSessionCookieOptions(isProduction, true);
+  response.cookies.set({
+    name: cookieOptions.name,
+    value: tokenJwt,
+    httpOnly: cookieOptions.httpOnly,
+    secure: cookieOptions.secure,
+    sameSite: cookieOptions.sameSite,
+    path: cookieOptions.path,
+    maxAge: cookieOptions.maxAge,
+  });
+}
+
 export async function GET(request: NextRequest) {
   try {
     const authResult = await getAuthenticatedSession(request, {
       requireOrganization: true,
     });
-
     if (!authResult.ok) {
       return authResult.response;
     }
 
     const { session } = authResult;
     const userPermissions = session.permissions ?? [];
-
     if (!hasPermission(userPermissions, PERMISSIONS.CORE.ORGANIZATION_READ)) {
       return problemResponse({
         type: "/errors/forbidden",
@@ -80,14 +177,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const organization = await prisma.organization.findUnique({
-      where: { id: session.organizationId },
-      include: {
-        registeredAddress: true,
-        taxProfile: true,
-      },
-    });
-
+    const organization = await getOrganizationDetail(session.organizationId);
     if (!organization) {
       return problemResponse({
         type: "/errors/not-found",
@@ -97,7 +187,6 @@ export async function GET(request: NextRequest) {
         code: "ORGANIZATION_NOT_FOUND",
       });
     }
-
     if (organization.status === "ARCHIVED") {
       return problemResponse({
         type: "/errors/forbidden",
@@ -120,146 +209,17 @@ export async function GET(request: NextRequest) {
   }
 }
 
-type UpdateOrganizationDto = z.infer<typeof updateOrganizationSchema>;
-
-async function parseAndValidateUpdateBody(
-  request: NextRequest,
-): Promise<
-  | { ok: true; data: UpdateOrganizationDto }
-  | { ok: false; response: NextResponse }
-> {
-  let bodyJson: unknown;
-  try {
-    bodyJson = await request.json();
-  } catch {
-    return {
-      ok: false,
-      response: problemResponse({
-        type: "/errors/bad-request",
-        title: "Invalid JSON",
-        status: 400,
-        detail: "Malformed JSON payload in request body.",
-        code: "INVALID_JSON",
-      }),
-    };
-  }
-
-  const parseResult = updateOrganizationSchema.safeParse(bodyJson);
-  if (!parseResult.success) {
-    const invalidParams = parseResult.error.issues.map((issue) => ({
-      name: issue.path.join("."),
-      reason: issue.message,
-    }));
-
-    return {
-      ok: false,
-      response: problemResponse({
-        type: "/errors/validation-error",
-        title: "Validation Error",
-        status: 400,
-        detail: "One or more organization fields failed validation.",
-        code: "VALIDATION_ERROR",
-        invalidParams,
-      }),
-    };
-  }
-
-  return { ok: true, data: parseResult.data };
-}
-
-async function validateDomainConflict(
-  customDomain: string | null | undefined,
-  currentOrgId: string,
-): Promise<NextResponse | null> {
-  if (!customDomain) return null;
-
-  const existingDomain = await prisma.organization.findFirst({
-    where: {
-      customDomain,
-      id: { not: currentOrgId },
-    },
-  });
-
-  if (existingDomain) {
-    return problemResponse({
-      type: "/errors/conflict",
-      title: "Domain Conflict",
-      status: 409,
-      detail: `The custom domain '${customDomain}' is already claimed by another organization.`,
-      code: "DOMAIN_ALREADY_EXISTS",
-    });
-  }
-
-  return null;
-}
-
-function buildPrismaUpdatePayload(data: UpdateOrganizationDto) {
-  const updatePayload: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(data)) {
-    if (value !== undefined) {
-      if ((key === "customDomain" || key === "registeredAddressId") && !value) {
-        updatePayload[key] = null;
-      } else {
-        updatePayload[key] = value;
-      }
-    }
-  }
-  return updatePayload;
-}
-
-async function updateOrganizationRecord(
-  organizationId: string,
-  data: UpdateOrganizationDto,
-) {
-  return prisma.organization.update({
-    where: { id: organizationId },
-    data: buildPrismaUpdatePayload(data),
-    include: {
-      registeredAddress: true,
-      taxProfile: true,
-    },
-  });
-}
-
-async function syncSessionCookieOnNameChange(
-  response: NextResponse,
-  session: SessionPayload,
-  newName?: string,
-) {
-  if (newName && newName !== session.organizationName) {
-    const updatedPayload = encodeSessionPayload({
-      ...session,
-      organizationName: newName,
-      timestamp: Date.now(),
-    });
-    const tokenJwt = await signSessionToken(updatedPayload);
-    const cookieOptions = createSessionCookieOptions(isProduction, true);
-    response.cookies.set({
-      name: cookieOptions.name,
-      value: tokenJwt,
-      httpOnly: cookieOptions.httpOnly,
-      secure: cookieOptions.secure,
-      sameSite: cookieOptions.sameSite,
-      path: cookieOptions.path,
-      maxAge: cookieOptions.maxAge,
-    });
-  }
-}
-
 export async function PATCH(request: NextRequest) {
   try {
     const authResult = await getAuthenticatedSession(request, {
       requireOrganization: true,
     });
-
     if (!authResult.ok) {
       return authResult.response;
     }
 
     const { session } = authResult;
-    const userPermissions = session.permissions ?? [];
-
-    if (!hasPermission(userPermissions, PERMISSIONS.CORE.ORGANIZATION_UPDATE)) {
+    if (!hasPermission(session.permissions ?? [], PERMISSIONS.CORE.ORGANIZATION_UPDATE)) {
       return problemResponse({
         type: "/errors/forbidden",
         title: "Access Denied",
@@ -269,12 +229,8 @@ export async function PATCH(request: NextRequest) {
       });
     }
 
-    const currentOrg = await prisma.organization.findUnique({
-      where: { id: session.organizationId },
-      select: { status: true },
-    });
-
-    if (!currentOrg || currentOrg.status === "ARCHIVED") {
+    const currentOrganization = await getOrganizationStatus(session.organizationId);
+    if (!currentOrganization || currentOrganization.status === "ARCHIVED") {
       return problemResponse({
         type: "/errors/forbidden",
         title: "Organization Archived",
@@ -289,32 +245,18 @@ export async function PATCH(request: NextRequest) {
       return payloadResult.response;
     }
 
-    const conflictResponse = await validateDomainConflict(
-      payloadResult.data.customDomain,
+    const conflictResponse = await ensureDomainAvailable(
+      payloadResult.data,
       session.organizationId
     );
     if (conflictResponse) {
       return conflictResponse;
     }
 
-    const updated = await updateOrganizationRecord(
-      session.organizationId,
-      payloadResult.data
-    );
-
+    const updateInput: UpdateOrganizationInput = payloadResult.data;
+    const updated = await updateOrganizationRecord(session.organizationId, updateInput);
     const response = successResponse(updated);
-
-    if (payloadResult.data.status === "ARCHIVED") {
-      const cookieOptions = createSessionCookieOptions(isProduction, true);
-      response.cookies.delete(cookieOptions.name);
-    } else {
-      await syncSessionCookieOnNameChange(
-        response,
-        session,
-        payloadResult.data.name
-      );
-    }
-
+    await applySessionCookie(response, session, payloadResult.data);
     return response;
   } catch (error) {
     return problemResponse({
@@ -326,4 +268,3 @@ export async function PATCH(request: NextRequest) {
     });
   }
 }
-

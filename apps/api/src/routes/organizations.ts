@@ -1,7 +1,11 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
-import { prisma } from "@suite/db";
 import { NotFoundError, ValidationError } from "@suite/core/errors";
 import { requireAuth } from "../middleware/auth.js";
+import {
+  createOrganization,
+  findOrganizationById,
+  listOrganizations,
+} from "../services/organizations.service.js";
 
 export const organizationsRouter = new OpenAPIHono({
   defaultHook: (result, _c) => {
@@ -163,14 +167,7 @@ export const getOrganizationRoute = createRoute({
 });
 
 organizationsRouter.openapi(listOrganizationsRoute, async (c) => {
-  const orgs = await prisma.organization.findMany({
-    orderBy: { createdAt: "desc" },
-    include: {
-      branches: {
-        select: { id: true, name: true, code: true, type: true, status: true },
-      },
-    },
-  });
+  const orgs = await listOrganizations();
 
   return c.json(
     {
@@ -184,19 +181,7 @@ organizationsRouter.openapi(listOrganizationsRoute, async (c) => {
 });
 
 organizationsRouter.openapi(createOrganizationRoute, async (c) => {
-  const body = c.req.valid("json");
-
-  const org = await prisma.organization.create({
-    data: {
-      name: body.name,
-      slug: body.slug,
-      currency: body.currency,
-      country: body.country,
-      defaultLocale: body.defaultLocale,
-      jurisdiction: body.jurisdiction,
-      customDomain: body.customDomain,
-    },
-  });
+  const org = await createOrganization(c.req.valid("json"));
 
   return c.json(
     {
@@ -211,14 +196,7 @@ organizationsRouter.openapi(createOrganizationRoute, async (c) => {
 
 organizationsRouter.openapi(getOrganizationRoute, async (c) => {
   const { id } = c.req.valid("param");
-
-  const org = await prisma.organization.findUnique({
-    where: { id },
-    include: {
-      branches: true,
-      taxProfile: true,
-    },
-  });
+  const org = await findOrganizationById(id);
 
   if (!org) {
     throw new NotFoundError(`Organization [${id}] not found`, {

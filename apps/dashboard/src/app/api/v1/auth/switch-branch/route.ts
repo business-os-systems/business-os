@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { prisma } from "@suite/db";
 import {
-  switchActiveBranch,
   signSessionToken,
   encodeSessionPayload,
   createSessionCookieOptions,
@@ -12,10 +10,24 @@ import {
 import { isProduction } from "@/lib/env";
 import { getAuthenticatedSession } from "@/lib/session-helper";
 import { problemResponse, successResponse, zodProblemResponse } from "@/lib/api-response";
+import { switchBranchSession } from "@/services/session-context.service";
 
 const switchBranchSchema = z.object({
   branchId: z.string().min(1, "Branch ID is required"),
 });
+
+function isForbiddenError(error: unknown): boolean {
+  if (error instanceof ForbiddenError) {
+    return true;
+  }
+  if (typeof error !== "object" || error === null) {
+    return false;
+  }
+  if ("status" in error && error.status === 403) {
+    return true;
+  }
+  return "statusCode" in error && error.statusCode === 403;
+}
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
@@ -35,48 +47,41 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       });
     }
 
-    const { branchId } = parseResult.data;
     const sessionCookie = request.cookies.get(SESSION_COOKIE_NAME)?.value || "";
-
-    // Switch branch context through verified membership/entitlement
-    const branchResult = await switchActiveBranch({
+    const branchContext = await switchBranchSession({
       sessionToken: sessionCookie,
-      branchId,
-      prisma,
+      branchId: parseResult.data.branchId,
     });
-    const branchContext = branchResult.data;
 
     const isEphemeral = payload.isEphemeral ?? false;
     const remainingSeconds = payload.expiresAt
       ? Math.max(0, Math.floor((payload.expiresAt - Date.now()) / 1000))
       : undefined;
 
-    // Mint updated session token with new active branch claims while preserving lifecycle bounds
-    const updatedPayload = encodeSessionPayload({
-      ...payload,
-      organizationId: branchContext.activeOrganizationId,
-      activeBranchId: branchContext.activeBranchId,
-      activeBranchName: branchContext.branch.name,
-      permissions: branchContext.permissions,
-      role: branchContext.effectiveRoles[0] || payload.role,
-      timestamp: Date.now(),
-      expiresAt: payload.expiresAt,
-      isEphemeral,
-    });
+    const tokenJwt = await signSessionToken(
+      encodeSessionPayload({
+        ...payload,
+        organizationId: branchContext.activeOrganizationId,
+        activeBranchId: branchContext.activeBranchId,
+        activeBranchName: branchContext.branch.name,
+        permissions: branchContext.permissions,
+        role: branchContext.effectiveRoles[0] ?? payload.role,
+        timestamp: Date.now(),
+        expiresAt: payload.expiresAt,
+        isEphemeral,
+      })
+    );
 
-    const tokenJwt = await signSessionToken(updatedPayload);
     const cookieOptions = createSessionCookieOptions(
       isProduction,
       !isEphemeral,
       remainingSeconds
     );
-
     const response = successResponse({
       success: true,
       activeBranchId: branchContext.activeBranchId,
       activeBranchName: branchContext.branch.name,
     });
-
     response.cookies.set({
       name: cookieOptions.name,
       value: tokenJwt,
@@ -86,16 +91,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       path: cookieOptions.path,
       maxAge: cookieOptions.maxAge,
     });
-
     return response;
   } catch (error) {
-    if (
-      error instanceof ForbiddenError ||
-      (error &&
-        typeof error === "object" &&
-        (("status" in error && error.status === 403) ||
-          ("statusCode" in error && error.statusCode === 403)))
-    ) {
+    if (isForbiddenError(error)) {
       return problemResponse({
         status: 403,
         code: "FORBIDDEN",
@@ -103,7 +101,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         detail: error instanceof Error ? error.message : "Access denied to branch.",
       });
     }
-
     console.error("Error switching branch:", error);
     return problemResponse({
       status: 500,

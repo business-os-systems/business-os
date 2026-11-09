@@ -9,36 +9,65 @@ export const isProduction = process.env.NODE_ENV === "production";
 export const isDevelopment = process.env.NODE_ENV === "development";
 export const isTest = process.env.NODE_ENV === "test";
 
-export function getNodeEnv(): string {
-  const env = process.env.NODE_ENV;
-  if (!env) {
-    throw new Error("NODE_ENV environment variable must be pre-declared in .env");
+/** Reads a required variable or fails before the feature can serve a request. */
+function requireEnvValue(name: string): string {
+  const value = process.env[name];
+  if (value === undefined || value.length === 0) {
+    throw new Error(`${name} environment variable must be pre-declared in .env`);
   }
-  return env;
+  return value;
+}
+
+export function getNodeEnv(): string {
+  return requireEnvValue("NODE_ENV");
 }
 
 export function getAppVersion(): string {
-  const version = process.env.APP_VERSION;
-  if (!version) {
-    throw new Error("APP_VERSION environment variable must be pre-declared in .env");
-  }
-  return version;
+  return requireEnvValue("APP_VERSION");
 }
 
 export function getGitCommitSha(): string {
-  const sha = process.env.GIT_COMMIT_SHA;
-  if (!sha) {
-    throw new Error("GIT_COMMIT_SHA environment variable must be pre-declared in .env");
-  }
-  return sha;
+  return requireEnvValue("GIT_COMMIT_SHA");
 }
 
 export function getBuildTimestamp(): string {
-  const ts = process.env.BUILD_TIMESTAMP;
-  if (!ts) {
-    throw new Error("BUILD_TIMESTAMP environment variable must be pre-declared in .env");
+  return requireEnvValue("BUILD_TIMESTAMP");
+}
+
+/** Session and manager-override HMAC key; the API cannot sign without it. */
+export function getBetterAuthSecret(): string {
+  return requireEnvValue("BETTER_AUTH_SECRET");
+}
+
+/** Absolute dashboard origin used for login and verification redirects. */
+export function getDashboardUrl(): string {
+  return requireEnvValue("DASHBOARD_URL").replace(/\/$/, "");
+}
+
+/** Static bearer token accepted by the telemetry guard alongside a session. */
+export function getMetricsAuthToken(): string {
+  return requireEnvValue("METRICS_AUTH_TOKEN");
+}
+
+/** The API port; validated as a real TCP port instead of NaN at bind time. */
+export function getServerPort(): number {
+  const raw = requireEnvValue("PORT");
+  const port = Number(raw);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error(
+      `PORT must be an integer between 1 and 65535; received "${raw}".`
+    );
   }
-  return ts;
+  return port;
+}
+
+/** Empty means crash reporting is deliberately disabled (see .env.example). */
+export function getSentryDsn(): string | null {
+  const value = process.env.SENTRY_DSN;
+  if (value === undefined || value.trim().length === 0) {
+    return null;
+  }
+  return value;
 }
 
 const PRODUCTION_SECRET_NAMES = [

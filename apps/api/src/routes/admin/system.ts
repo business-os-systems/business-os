@@ -4,19 +4,17 @@ import {
   RATE_LIMITS,
   createSuccessResponseBody,
 } from "@suite/core";
-import { getEmailQueue, redis } from "@suite/redis";
 import { rateLimitMiddleware } from "../../middleware/rate-limit.js";
-import {
-  getControlSessionSecret,
-  readPlatformRuntimeConfig,
-} from "../../lib/platform-env.js";
+import { getControlSessionSecret } from "../../lib/platform-env.js";
 import { getPlatformPrismaClient } from "../../lib/platform-db.js";
-import { readPlatformHealth } from "../../services/admin/health.service.js";
-import { readQueueMetrics } from "../../services/admin/queue-metrics.service.js";
+import {
+  readPlatformHealthView,
+  readPlatformQueueView,
+} from "../../services/admin/system-telemetry.service.js";
 import { envelope, errorResponses, platformValidationHook } from "./openapi-shared.js";
 import { platformHealthSchema, queueMetricsSchema } from "./system.schema.js";
 import {
-  createLazyCapabilityGuard,
+  createLazyDefaultCapabilityGuard,
   readRequestId,
 } from "./platform-route-shared.js";
 
@@ -71,29 +69,20 @@ platformSystemRouter.use(
   })
 );
 
-const systemCapabilityGuard = createLazyCapabilityGuard(() => ({
+const systemCapabilityGuard = createLazyDefaultCapabilityGuard(() => ({
   prisma: getPlatformPrismaClient(),
-  redis,
   secret: getControlSessionSecret(),
   capability: PLATFORM_TELEMETRY,
 }));
 
-platformSystemRouter.use("*", (c, next) => systemCapabilityGuard()(c, next));
+platformSystemRouter.use("*", systemCapabilityGuard);
 
 platformSystemRouter.openapi(healthRoute, async (c) => {
-  const data = await readPlatformHealth({
-    platformPrisma: getPlatformPrismaClient(),
-    emailQueue: getEmailQueue(),
-    config: readPlatformRuntimeConfig(),
-  });
+  const data = await readPlatformHealthView();
   return c.json(createSuccessResponseBody({ data, requestId: readRequestId(c) }), 200);
 });
 
 platformSystemRouter.openapi(queuesRoute, async (c) => {
-  const data = await readQueueMetrics({
-    prisma: getPlatformPrismaClient(),
-    now: new Date(),
-    emailQueue: getEmailQueue(),
-  });
+  const data = await readPlatformQueueView();
   return c.json(createSuccessResponseBody({ data, requestId: readRequestId(c) }), 200);
 });

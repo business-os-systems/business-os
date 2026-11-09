@@ -7,6 +7,7 @@ import {
   decodeSessionPayload,
   isSessionPayloadExpired,
 } from "@suite/auth";
+import { getMetricsAuthToken } from "../lib/env.js";
 
 export interface RequireAuthOptions {
   allowApiKey?: boolean;
@@ -41,7 +42,7 @@ export function requireAuth(_options: RequireAuthOptions = {}): MiddlewareHandle
     }
 
     const payload = decodeSessionPayload(token);
-    if (!payload || !payload.userId) {
+    if (!payload?.userId) {
       throw new UnauthorizedError("Malformed session payload.", {
         code: "AUTH_PAYLOAD_INVALID",
       });
@@ -66,13 +67,17 @@ export function requireAuth(_options: RequireAuthOptions = {}): MiddlewareHandle
   };
 }
 
+function providerTokenMatches(providedToken: string, configuredToken: string): boolean {
+  return configuredToken.length > 0 && providedToken === configuredToken;
+}
+
 /**
  * Telemetry Metrics Authentication Guard Middleware.
  * Protects Prometheus /metrics from anonymous public internet exposure.
  */
 export function requireMetricsAuth(): MiddlewareHandler {
   return async (c, next) => {
-    const configuredToken = process.env.METRICS_AUTH_TOKEN;
+    const configuredToken = getMetricsAuthToken();
     const authHeader = c.req.header("Authorization");
     const metricsKeyHeader = c.req.header("x-metrics-key");
 
@@ -80,13 +85,12 @@ export function requireMetricsAuth(): MiddlewareHandler {
     const providedToken = bearerToken ?? metricsKeyHeader;
 
     if (!providedToken) {
-      throw new UnauthorizedError(
-        "Authentication required to access telemetry metrics.",
-        { code: "METRICS_AUTH_REQUIRED" }
-      );
+      throw new UnauthorizedError("Authentication required to access telemetry metrics.", {
+        code: "METRICS_AUTH_REQUIRED",
+      });
     }
 
-    if (configuredToken && providedToken === configuredToken) {
+    if (providerTokenMatches(providedToken, configuredToken)) {
       return await next();
     }
 
@@ -98,9 +102,8 @@ export function requireMetricsAuth(): MiddlewareHandler {
       }
     }
 
-    throw new UnauthorizedError(
-      "Invalid telemetry authentication credentials.",
-      { code: "METRICS_AUTH_INVALID" }
-    );
+    throw new UnauthorizedError("Invalid telemetry authentication credentials.", {
+      code: "METRICS_AUTH_INVALID",
+    });
   };
 }

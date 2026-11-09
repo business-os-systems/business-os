@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma, type InstalledApp } from "@suite/db";
 import { z } from "zod";
 import { getAuthenticatedSession } from "@/lib/session-helper";
 import { problemResponse, successResponse, zodProblemResponse } from "@/lib/api-response";
+import { listInstalledApps, type InstalledAppDto } from "@/services/installed-apps.service";
 
 const ParamsSchema = z.object({
   orgId: z.string().trim().min(1),
@@ -27,20 +27,19 @@ function internalProblem(error: unknown): NextResponse {
   });
 }
 
-function toInstalledAppPayload(record: InstalledApp) {
-  const settings = (record.settings as Record<string, unknown>) || {};
+function toOrganizationAppResponse(app: InstalledAppDto) {
   return {
-    id: record.id,
-    appId: record.appId,
-    name: (settings.name as string) || record.appId,
-    title: (settings.title as string) || (settings.name as string) || record.appId,
-    code: (settings.code as string) || record.appId,
-    description: (settings.description as string) || "",
-    href: (settings.href as string) || `/${record.appId}`,
-    iconName: (settings.iconName as string) || record.appId,
-    version: record.version,
-    isEnabled: record.isEnabled,
-    installedAt: record.installedAt.toISOString(),
+    id: app.id,
+    appId: app.appId,
+    name: app.name,
+    title: app.title,
+    code: app.code,
+    description: app.description,
+    href: app.href,
+    iconName: app.iconName,
+    version: app.version,
+    isEnabled: app.isEnabled,
+    installedAt: app.installedAt,
   };
 }
 
@@ -77,17 +76,7 @@ export async function GET(
   }
 
   try {
-    const dbRecords = await prisma.installedApp.findMany({
-      where: {
-        organizationId,
-        isEnabled: true,
-      },
-      orderBy: {
-        installedAt: "asc",
-      },
-    });
-
-    const apps = dbRecords.map(toInstalledAppPayload);
+    const apps = (await listInstalledApps(organizationId)).map(toOrganizationAppResponse);
     return successResponse({ organizationId, apps, installedApps: apps });
   } catch (error) {
     return internalProblem(error);

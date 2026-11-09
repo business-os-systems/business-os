@@ -290,6 +290,9 @@ importers:
       '@suite/db':
         specifier: workspace:*
         version: link:../db
+      '@suite/logger':
+        specifier: workspace:*
+        version: link:../logger
       '@suite/redis':
         specifier: workspace:*
         version: link:../redis

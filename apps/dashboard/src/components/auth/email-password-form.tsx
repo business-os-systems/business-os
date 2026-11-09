@@ -10,16 +10,9 @@ import { SSORedirectCard } from "./sso-redirect-card";
 import { Turnstile } from "./turnstile";
 import { isBrowser, isProduction } from "@/lib/env";
 import { useTurnstileConfig } from "@/lib/turnstile-client";
+import type { AuthCredentialsData } from "./shared/credentials";
 
-/**
- * User credentials payload for authentication submission (ISP).
- */
-export interface AuthCredentialsData {
-  email: string;
-  password: string;
-  keepSignedIn?: boolean;
-  turnstileToken?: string | null;
-}
+export type { AuthCredentialsData } from "./shared/credentials";
 
 /**
  * Primary form mode & dispatch handler (ISP).
@@ -49,9 +42,7 @@ export interface AuthFormActionProps {
  * Composite EmailPasswordForm properties.
  */
 export interface EmailPasswordFormProps
-  extends AuthFormSubmissionProps,
-    AuthFormStateProps,
-    AuthFormActionProps {}
+  extends AuthFormSubmissionProps, AuthFormStateProps, AuthFormActionProps {}
 
 export interface SsoDiscoveryPayload {
   domain: string;
@@ -113,7 +104,7 @@ export function EmailPasswordForm({
 
     const trimmed = email.trim().toLowerCase();
     const parts = trimmed.split("@");
-    if (parts.length !== 2 || !parts[1] || !parts[1].includes(".")) {
+    if (parts.length !== 2 || !parts[1]?.includes(".")) {
       setSsoData(null);
       setPreferPassword(false);
       return;
@@ -192,7 +183,7 @@ export function EmailPasswordForm({
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4 text-text" noValidate>
       {/* Global Error Banner */}
-      {errorMessage && (
+      {errorMessage ? (
         <div
           id="auth-error-alert"
           role="alert"
@@ -201,8 +192,7 @@ export function EmailPasswordForm({
           <AlertTriangleIcon size={16} className="shrink-0 mt-0.5" aria-hidden="true" />
           <span className="leading-tight">{errorMessage}</span>
         </div>
-
-      )}
+      ) : null}
 
       {/* Email */}
       <div className="flex flex-col gap-1.5">
@@ -210,16 +200,16 @@ export function EmailPasswordForm({
           <Label htmlFor={emailId} required>
             Email Address
           </Label>
-          {isDiscoveringSso && (
+          {isDiscoveringSso ? (
             <span className="text-[10px] text-text-muted flex items-center gap-1 animate-pulse">
               Checking SSO...
             </span>
-          )}
-          {ssoData?.isEnterprise && !isDiscoveringSso && (
+          ) : null}
+          {ssoData?.isEnterprise && !isDiscoveringSso ? (
             <span className="text-[10px] font-medium text-action flex items-center gap-1">
               ✓ SSO Enabled
             </span>
-          )}
+          ) : null}
         </div>
         <Input
           ref={emailInputRef}
@@ -262,8 +252,8 @@ export function EmailPasswordForm({
               <Label htmlFor={passwordId} required>
                 Password
               </Label>
-              {mode === "login" && (
-                onForgotPassword ? (
+              {mode === "login" &&
+                (onForgotPassword ? (
                   <Button
                     type="button"
                     variant="link"
@@ -280,8 +270,7 @@ export function EmailPasswordForm({
                   >
                     Forgot password?
                   </Link>
-                )
-              )}
+                ))}
             </div>
             <Input
               id={passwordId}
@@ -289,7 +278,10 @@ export function EmailPasswordForm({
               type={showPassword ? "text" : "password"}
               required
               autoComplete={mode === "signup" ? "new-password" : "current-password"}
-              hasError={Boolean(errorMessage || (mode === "signup" && hasInteractedWithPassword && !complexity.isValid))}
+              hasError={Boolean(
+                errorMessage ||
+                (mode === "signup" && hasInteractedWithPassword && !complexity.isValid),
+              )}
               aria-describedby={errorMessage ? "auth-error-alert" : undefined}
               value={password}
               onChange={(e) => {
@@ -309,13 +301,12 @@ export function EmailPasswordForm({
                   className="w-8 h-8 p-0 flex items-center justify-center text-text-muted hover:text-text hover:bg-transparent"
                 >
                   {showPassword ? <EyeOffIcon size={16} /> : <EyeIcon size={16} />}
-
                 </Button>
               }
             />
 
             {/* Real-Time Password Complexity Indicator (Signup mode) */}
-            {mode === "signup" && hasInteractedWithPassword && (
+            {mode === "signup" && hasInteractedWithPassword ? (
               <div className="mt-1 p-2.5 rounded-lg bg-surface-muted border border-border text-xs flex flex-col gap-1.5">
                 <span className="font-semibold text-text-secondary">Password Requirements:</span>
                 <div className="grid grid-cols-2 gap-1 text-[11px]">
@@ -349,7 +340,7 @@ export function EmailPasswordForm({
                   </span>
                 </div>
               </div>
-            )}
+            ) : null}
           </div>
 
           {/* Keep me signed in (Login mode) */}

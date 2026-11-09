@@ -7,6 +7,7 @@ import {
 } from "@suite/core";
 import {
   getUserRolePermissions,
+  listUserTenants,
   type SessionPayload,
 } from "@suite/auth";
 import type { TenantContext } from "@/components/layout/types";
@@ -37,6 +38,15 @@ function resolveBlockedStatus(
 ): BlockingTenantStatus | null {
   const effective = status ?? TENANT_STATUS.ARCHIVED;
   return isBlockingTenantStatus(effective) ? effective : null;
+}
+
+/**
+ * True when the user can still reach another workspace after this one was
+ * archived. The dashboard shell redirects such members to the chooser.
+ */
+export async function hasAccessibleWorkspace(userId: string): Promise<boolean> {
+  const tenants = await listUserTenants(userId, prisma);
+  return tenants.length > 0;
 }
 
 /**

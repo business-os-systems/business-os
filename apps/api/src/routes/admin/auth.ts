@@ -8,29 +8,21 @@ import {
   platformSessionViewSchema,
   problemDetailsSchema,
 } from "@suite/core";
-import { redis } from "@suite/redis";
 import {
   CONTROL_SESSION_COOKIE_NAME,
   createControlSessionCookieOptions,
   type IssuedControlSession,
 } from "@suite/auth/platform";
 import {
-  getControlPlaneOrigin,
-  getControlSessionSecret,
-  getControlWebauthnRpId,
-} from "../../lib/platform-env.js";
-import { getPlatformPrismaClient } from "../../lib/platform-db.js";
-import {
-  PLATFORM_WEBAUTHN_RP_NAME,
   finishBootstrap,
   finishSignIn,
   getSession,
   logout,
   startBootstrap,
   startSignIn,
-  type PlatformAuthDependencies,
   type PlatformSession,
 } from "../../services/admin/platform-auth.service.js";
+import { platformAuthDependencies } from "../../services/admin/platform-auth-dependencies.service.js";
 import {
   parseAuthenticationResponse,
   parseRegistrationResponse,
@@ -110,19 +102,6 @@ function requestContext(c: {
       c.req.header("x-real-ip")?.trim() ??
       null,
     userAgent: c.req.header("user-agent") ?? null,
-  };
-}
-
-function dependencies(): PlatformAuthDependencies {
-  return {
-    prisma: getPlatformPrismaClient(),
-    redis,
-    secret: getControlSessionSecret(),
-    config: {
-      rpID: getControlWebauthnRpId(),
-      rpName: PLATFORM_WEBAUTHN_RP_NAME,
-      origin: getControlPlaneOrigin(),
-    },
   };
 }
 
@@ -287,7 +266,7 @@ platformAuthRouter.use("*", controlPlaneOriginGuard);
 
 platformAuthRouter.openapi(bootstrapOptionsRoute, async (c) => {
   const { token } = c.req.valid("json");
-  const result = await startBootstrap(dependencies(), token);
+  const result = await startBootstrap(platformAuthDependencies(), token);
   return success(c, {
     flowId: result.flowId,
     options: z.record(z.string(), z.unknown()).parse(result.options),
@@ -297,7 +276,7 @@ platformAuthRouter.openapi(bootstrapOptionsRoute, async (c) => {
 
 platformAuthRouter.openapi(bootstrapVerifyRoute, async (c) => {
   const body = c.req.valid("json");
-  const session = await finishBootstrap(dependencies(), {
+  const session = await finishBootstrap(platformAuthDependencies(), {
     token: body.token,
     flowId: body.flowId,
     response: parseRegistrationResponse(body.response),
@@ -308,7 +287,7 @@ platformAuthRouter.openapi(bootstrapVerifyRoute, async (c) => {
 });
 
 platformAuthRouter.openapi(signInOptionsRoute, async (c) => {
-  const result = await startSignIn(dependencies());
+  const result = await startSignIn(platformAuthDependencies());
   return success(c, {
     flowId: result.flowId,
     options: z.record(z.string(), z.unknown()).parse(result.options),
@@ -317,7 +296,7 @@ platformAuthRouter.openapi(signInOptionsRoute, async (c) => {
 
 platformAuthRouter.openapi(signInVerifyRoute, async (c) => {
   const body = c.req.valid("json");
-  const session = await finishSignIn(dependencies(), {
+  const session = await finishSignIn(platformAuthDependencies(), {
     flowId: body.flowId,
     response: parseAuthenticationResponse(body.response),
     ...requestContext(c),
@@ -333,13 +312,13 @@ platformAuthRouter.openapi(meRoute, async (c) => {
       code: AUTH_ERROR_CODES.AUTH_REQUIRED,
     });
   }
-  const session = await getSession(dependencies(), token);
+  const session = await getSession(platformAuthDependencies(), token);
   return success(c, sessionView(session.operator, session.capabilities));
 });
 
 platformAuthRouter.openapi(logoutRoute, async (c) => {
   const token = getCookie(c, CONTROL_SESSION_COOKIE_NAME) ?? null;
-  await logout(dependencies(), {
+  await logout(platformAuthDependencies(), {
     token,
     requestId: requestContext(c).requestId,
   });

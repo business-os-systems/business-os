@@ -4,16 +4,17 @@ import * as Sentry from "@sentry/node";
 import { logger, sanitizePii } from "@suite/logger";
 import { redis } from "@suite/redis";
 import { createApp } from "./app.js";
+import { getNodeEnv, getSentryDsn, getServerPort } from "./lib/env.js";
 import { getPlatformPrismaClient } from "./lib/platform-db.js";
 import { isPlatformPlaneConfigured } from "./lib/platform-env.js";
 import { createPlatformOutboxHandlers } from "./workers/platform-outbox.handlers.js";
 import { startPlatformOutboxWorker } from "./workers/platform-outbox.worker.js";
 
-const sentryDsn = process.env.SENTRY_DSN;
-if (sentryDsn) {
+const sentryDsn = getSentryDsn();
+if (sentryDsn !== null) {
   Sentry.init({
     dsn: sentryDsn,
-    environment: process.env.NODE_ENV,
+    environment: getNodeEnv(),
     beforeSend(event) {
       if (event.request) {
         event.request.cookies = undefined;
@@ -24,11 +25,7 @@ if (sentryDsn) {
   });
 }
 
-const rawPort = process.env.PORT;
-if (!rawPort) {
-  throw new Error("PORT environment variable must be pre-declared in .env");
-}
-const port = Number(rawPort);
+const port = getServerPort();
 const app = createApp();
 
 // The lifecycle events commit with their state change, so a dispatcher must be

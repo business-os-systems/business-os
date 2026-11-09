@@ -13,18 +13,20 @@ import {
   type TenantStatus,
 } from "@suite/core";
 import { UnauthorizedError } from "@suite/core/errors";
-import { redis } from "@suite/redis";
 import { createIdempotencyMiddleware } from "../../middleware/idempotency.js";
-import { createPlatformCapabilityGuard } from "../../middleware/platform-capability.js";
 import { rateLimitMiddleware } from "../../middleware/rate-limit.js";
 import { getControlSessionSecret } from "../../lib/platform-env.js";
-import { getPlatformPrismaClient } from "../../lib/platform-db.js";
+import {
+  getPlatformPrismaClient,
+  getPlatformRedis,
+} from "../../lib/platform-db.js";
 import {
   changeTenantStatus,
   type TenantLifecycleResult,
 } from "../../services/admin/lifecycle.service.js";
 import { problemDetailsSchema } from "@suite/core";
 import { envelope, errorResponses } from "./openapi-shared.js";
+import { createLazyDefaultCapabilityGuard } from "./platform-route-shared.js";
 
 const PLATFORM_LIFECYCLE = PLATFORM_CAPABILITIES.TENANTS_LIFECYCLE.code;
 
@@ -197,24 +199,18 @@ tenantLifecycleRouter.use(
   })
 );
 
-let capabilityGuard: ReturnType<typeof createPlatformCapabilityGuard> | null =
-  null;
+const lifecycleCapabilityGuard = createLazyDefaultCapabilityGuard(() => ({
+  prisma: getPlatformPrismaClient(),
+  secret: getControlSessionSecret(),
+  capability: PLATFORM_LIFECYCLE,
+}));
 
-function lifecycleCapabilityGuard() {
-  capabilityGuard ??= createPlatformCapabilityGuard({
-    prisma: getPlatformPrismaClient(),
-    redis,
-    secret: getControlSessionSecret(),
-    capability: PLATFORM_LIFECYCLE,
-  });
-  return capabilityGuard;
-}
+tenantLifecycleRouter.use("*", lifecycleCapabilityGuard);
 
-tenantLifecycleRouter.use("*", (c, next) =>
-  lifecycleCapabilityGuard()(c, next)
+tenantLifecycleRouter.use(
+  "*",
+  createIdempotencyMiddleware({ redis: getPlatformRedis() })
 );
-
-tenantLifecycleRouter.use("*", createIdempotencyMiddleware({ redis }));
 
 tenantLifecycleRouter.openapi(suspendRoute, async (c) => {
   const { orgId } = c.req.valid("param");

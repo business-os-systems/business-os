@@ -1,6 +1,6 @@
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
-import { prisma } from "@suite/db";
 import { requireAuth } from "../middleware/auth.js";
+import { queryAuditLogs } from "../services/audit-logs.service.js";
 
 export const auditLogsRouter = new OpenAPIHono();
 
@@ -69,26 +69,8 @@ export const listAuditLogsRoute = createRoute({
 });
 
 auditLogsRouter.openapi(listAuditLogsRoute, async (c) => {
-  const { organizationId, appId, action, entityType, entityId, page, limit } = c.req.valid("query");
-  const skip = (page - 1) * limit;
-
-  const where = {
-    organizationId,
-    ...(appId ? { appId } : {}),
-    ...(action ? { action } : {}),
-    ...(entityType ? { entityType } : {}),
-    ...(entityId ? { entityId } : {}),
-  };
-
-  const [total, items] = await Promise.all([
-    prisma.auditLog.count({ where }),
-    prisma.auditLog.findMany({
-      where,
-      skip,
-      take: limit,
-      orderBy: { timestamp: "desc" },
-    }),
-  ]);
+  const query = c.req.valid("query");
+  const { items, total } = await queryAuditLogs(query);
 
   return c.json(
     {
@@ -96,9 +78,9 @@ auditLogsRouter.openapi(listAuditLogsRoute, async (c) => {
       data: items,
       meta: {
         total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
+        page: query.page,
+        limit: query.limit,
+        totalPages: Math.ceil(total / query.limit),
       },
       requestId: c.get("requestId"),
       timestamp: new Date().toISOString(),

@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { logger, type Logger } from "@suite/logger";
 
 export interface SendEmailOptions {
   to: string;
@@ -24,25 +25,46 @@ export interface EmailTransporter {
 }
 
 /**
+ * Minimal logging contract used by the transporters. Narrowing to a single
+ * method keeps the email path free to log operational metadata while making
+ * the zero-PII contract directly testable (OP-11).
+ */
+export type EmailDispatchLogger = Pick<Logger, "info">;
+
+const CONSOLE_DISPATCH_EVENT = "email.dispatch.console";
+
+/**
  * Default zero-config transporter for local development and deterministic CI tests.
- * Safely prints the dispatch log and verification link to standard out.
+ *
+ * Logging contract: only the provider id, tenant scope, message id and payload
+ * shape are logged. The recipient address, subject and body are never emitted,
+ * because verification and reset emails carry single-use secrets (OP-11).
  */
 export class ConsoleEmailTransporter implements EmailTransporter {
   readonly id = "console";
+  private readonly log: EmailDispatchLogger;
+
+  constructor(log: EmailDispatchLogger = logger) {
+    this.log = log;
+  }
 
   async sendEmail(options: SendEmailOptions): Promise<EmailSendResult> {
-    const messageId = `console_${Date.now()}_${createHash("sha256").update(options.to).digest("hex").slice(0, 8)}`;
-    if (process.env.NODE_ENV !== "test") {
-      console.log(`\n📧 [EMAIL DISPATCH via ${this.id}]`);
-      console.log(`   To: ${options.to}`);
-      console.log(`   Subject: ${options.subject}`);
-      console.log(`   Organization ID: ${options.organizationId || "Platform Master"}`);
-      console.log(`   Message ID: ${messageId}`);
-      if (options.text) {
-        console.log(`   Content: ${options.text}`);
-      }
-      console.log("");
-    }
+    const messageId = `console_${Date.now()}_${createHash("sha256")
+      .update(options.to)
+      .digest("hex")
+      .slice(0, 8)}`;
+
+    this.log.info(
+      {
+        transporter: this.id,
+        organizationId: options.organizationId ?? null,
+        messageId,
+        hasPlainText: options.text !== undefined,
+        htmlLength: options.html.length,
+      },
+      CONSOLE_DISPATCH_EVENT
+    );
+
     return { success: true, messageId };
   }
 }

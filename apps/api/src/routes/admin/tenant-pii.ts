@@ -7,13 +7,12 @@ import {
   RATE_LIMITS,
 } from "@suite/core";
 import { UnauthorizedError } from "@suite/core/errors";
-import { redis } from "@suite/redis";
-import { createPlatformCapabilityGuard } from "../../middleware/platform-capability.js";
 import { rateLimitMiddleware } from "../../middleware/rate-limit.js";
 import { getControlSessionSecret } from "../../lib/platform-env.js";
 import { getPlatformPrismaClient } from "../../lib/platform-db.js";
 import { readTenantPii } from "../../services/admin/tenant-pii.service.js";
 import { envelope, errorResponses } from "./openapi-shared.js";
+import { createLazyDefaultCapabilityGuard } from "./platform-route-shared.js";
 
 const PLATFORM_PII_READ = PLATFORM_CAPABILITIES.PII_READ.code;
 
@@ -92,15 +91,13 @@ tenantPiiRouter.use(
   }),
 );
 
-tenantPiiRouter.use("*", async (c, next) => {
-  const guard = createPlatformCapabilityGuard({
-    prisma: getPlatformPrismaClient(),
-    redis,
-    secret: getControlSessionSecret(),
-    capability: PLATFORM_PII_READ,
-  });
-  await guard(c, next);
-});
+const piiCapabilityGuard = createLazyDefaultCapabilityGuard(() => ({
+  prisma: getPlatformPrismaClient(),
+  secret: getControlSessionSecret(),
+  capability: PLATFORM_PII_READ,
+}));
+
+tenantPiiRouter.use("*", piiCapabilityGuard);
 
 tenantPiiRouter.openapi(readTenantPiiRoute, async (c) => {
   const { orgId } = c.req.valid("param");
