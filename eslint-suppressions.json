@@ -763,12 +763,6 @@
     }
   },
   "apps/dashboard/src/app/(dashboard)/settings/branches/branches-client.tsx": {
-    "@typescript-eslint/array-type": {
-      "count": 1
-    },
-    "@typescript-eslint/no-unnecessary-condition": {
-      "count": 2
-    },
     "@typescript-eslint/no-unused-vars": {
       "count": 1
     },
@@ -776,7 +770,7 @@
       "count": 7
     },
     "@typescript-eslint/prefer-optional-chain": {
-      "count": 2
+      "count": 1
     },
     "complexity": {
       "count": 1
@@ -802,7 +796,7 @@
       "count": 1
     },
     "max-lines-per-function": {
-      "count": 2
+      "count": 1
     },
     "react/jsx-no-leaked-render": {
       "count": 1
@@ -2370,7 +2364,7 @@
       "count": 1
     },
     "no-restricted-syntax": {
-      "count": 10
+      "count": 9
     }
   },
   "apps/dashboard/src/lib/http-client.ts": {

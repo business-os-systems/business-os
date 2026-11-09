@@ -6,3 +6,4 @@ export { branchesRouter } from "./branches.js";
 export { auditLogsRouter } from "./audit-logs.js";
 export { adminRouter } from "./admin/index.js";
 export { platformAuthRouter } from "./admin/auth.js";
+export { referenceRouter } from "./reference.js";
