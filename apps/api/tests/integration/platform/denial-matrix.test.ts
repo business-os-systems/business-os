@@ -151,7 +151,7 @@ const PROTECTED_ROUTES: readonly ProtectedRoute[] = [
     path: "/tenants",
     router: "admin-tenants",
     anonymous: { status: 401, code: PLATFORM_ERROR_CODE.AUTH_REQUIRED },
-    originGuarded: false,
+    originGuarded: true,
   },
   {
     id: "admin-tenants/record",
@@ -159,7 +159,7 @@ const PROTECTED_ROUTES: readonly ProtectedRoute[] = [
     path: "/tenants/tenant_denial_probe",
     router: "admin-tenants",
     anonymous: { status: 401, code: PLATFORM_ERROR_CODE.AUTH_REQUIRED },
-    originGuarded: false,
+    originGuarded: true,
   },
   {
     id: "admin-entitlements/list",
@@ -199,7 +199,7 @@ const PROTECTED_ROUTES: readonly ProtectedRoute[] = [
     path: "/tenants/tenant_denial_probe/pii",
     router: "admin-tenant-pii",
     anonymous: { status: 401, code: PLATFORM_ERROR_CODE.AUTH_REQUIRED },
-    originGuarded: false,
+    originGuarded: true,
   },
   {
     id: "admin-tenants/suspend",
@@ -207,7 +207,7 @@ const PROTECTED_ROUTES: readonly ProtectedRoute[] = [
     path: "/tenants/tenant_denial_probe/suspend",
     router: "admin-tenant-lifecycle",
     anonymous: { status: 401, code: PLATFORM_ERROR_CODE.AUTH_REQUIRED },
-    originGuarded: false,
+    originGuarded: true,
   },
   {
     id: "admin-tenants/restore",
@@ -215,7 +215,7 @@ const PROTECTED_ROUTES: readonly ProtectedRoute[] = [
     path: "/tenants/tenant_denial_probe/restore",
     router: "admin-tenant-lifecycle",
     anonymous: { status: 401, code: PLATFORM_ERROR_CODE.AUTH_REQUIRED },
-    originGuarded: false,
+    originGuarded: true,
   },
   {
     id: "admin-tenants/archive",
@@ -223,7 +223,7 @@ const PROTECTED_ROUTES: readonly ProtectedRoute[] = [
     path: "/tenants/tenant_denial_probe/archive",
     router: "admin-tenant-lifecycle",
     anonymous: { status: 401, code: PLATFORM_ERROR_CODE.AUTH_REQUIRED },
-    originGuarded: false,
+    originGuarded: true,
   },
   {
     id: "admin-system/health",
@@ -295,7 +295,7 @@ const PROTECTED_ROUTES: readonly ProtectedRoute[] = [
     path: "/",
     router: "admin-flags",
     anonymous: { status: 401, code: PLATFORM_ERROR_CODE.AUTH_REQUIRED },
-    originGuarded: false,
+    originGuarded: true,
   },
   {
     id: "admin-flags/create",
@@ -303,7 +303,7 @@ const PROTECTED_ROUTES: readonly ProtectedRoute[] = [
     path: "/",
     router: "admin-flags",
     anonymous: { status: 401, code: PLATFORM_ERROR_CODE.AUTH_REQUIRED },
-    originGuarded: false,
+    originGuarded: true,
   },
   {
     id: "admin-flags/update",
@@ -311,7 +311,7 @@ const PROTECTED_ROUTES: readonly ProtectedRoute[] = [
     path: "/platform.denial",
     router: "admin-flags",
     anonymous: { status: 401, code: PLATFORM_ERROR_CODE.AUTH_REQUIRED },
-    originGuarded: false,
+    originGuarded: true,
   },
 ];
 

@@ -50,6 +50,14 @@ describe.skipIf(!enabled)("Platform tenant lifecycle contract", () => {
     return { id: organization.id, slug };
   }
 
+  function controlPlaneOrigin(): string {
+    const value = process.env.CONTROL_PLANE_ORIGIN;
+    if (value === undefined || value.trim() === "") {
+      throw new Error("CONTROL_PLANE_ORIGIN must be set for lifecycle contract tests");
+    }
+    return value;
+  }
+
   function post(
     path: string,
     token: string,
@@ -63,6 +71,7 @@ describe.skipIf(!enabled)("Platform tenant lifecycle contract", () => {
           "Content-Type": "application/json",
           Cookie: `${CONTROL_SESSION_COOKIE_NAME}=${token}`,
           [IDEMPOTENCY_HEADER]: idempotencyKey,
+          Origin: controlPlaneOrigin(),
           "X-Forwarded-For": "198.51.100.12",
         },
         body: JSON.stringify(body),

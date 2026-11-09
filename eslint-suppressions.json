@@ -154,6 +154,9 @@
     },
     "max-lines-per-function": {
       "count": 1
+    },
+    "no-await-in-loop": {
+      "count": 2
     }
   },
   "apps/api/tests/contract/platform/tenants.test.ts": {
@@ -247,6 +250,9 @@
     },
     "max-params": {
       "count": 1
+    },
+    "no-await-in-loop": {
+      "count": 2
     }
   },
   "apps/api/tests/integration/platform/isolation.test.ts": {
@@ -260,6 +266,9 @@
     },
     "max-lines-per-function": {
       "count": 1
+    },
+    "no-await-in-loop": {
+      "count": 2
     }
   },
   "apps/api/tests/integration/platform/tenant-pii.test.ts": {
@@ -268,6 +277,9 @@
     },
     "max-lines-per-function": {
       "count": 1
+    },
+    "no-await-in-loop": {
+      "count": 1
     }
   },
   "apps/api/tests/integration/platform/tenant-read.test.ts": {
@@ -275,6 +287,9 @@
       "count": 4
     },
     "max-lines-per-function": {
+      "count": 1
+    },
+    "no-await-in-loop": {
       "count": 1
     }
   },

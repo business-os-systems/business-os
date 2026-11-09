@@ -106,6 +106,14 @@ describe.skipIf(!enabled)("Platform tenant lifecycle routes", () => {
     return { app, ttlSeconds, clear: () => store.clear() };
   }
 
+  function requireLifecycleOrigin(): string {
+    const origin = process.env.CONTROL_PLANE_ORIGIN;
+    if (origin === undefined || origin.trim() === "") {
+      throw new Error("CONTROL_PLANE_ORIGIN must be set for lifecycle tests");
+    }
+    return origin;
+  }
+
   function post(
     path: string,
     token: string,
@@ -119,6 +127,7 @@ describe.skipIf(!enabled)("Platform tenant lifecycle routes", () => {
           "Content-Type": "application/json",
           Cookie: `${CONTROL_SESSION_COOKIE_NAME}=${token}`,
           "Idempotency-Key": idempotencyKey,
+          Origin: requireLifecycleOrigin(),
           "X-Forwarded-For": "198.51.100.11",
         },
         body: JSON.stringify(body),
@@ -275,6 +284,7 @@ describe.skipIf(!enabled)("Platform tenant lifecycle routes", () => {
         headers: {
           "Content-Type": "application/json",
           Cookie: `${CONTROL_SESSION_COOKIE_NAME}=${operatorToken}`,
+          Origin: requireLifecycleOrigin(),
         },
         body: JSON.stringify({
           reason: "Missing idempotency key",

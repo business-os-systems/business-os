@@ -1,5 +1,8 @@
 import { z } from "zod";
-import type { PlatformCapability } from "../constants/platform-capabilities.js";
+import {
+  isPlatformCapability,
+  type PlatformCapability,
+} from "../constants/platform-capabilities.js";
 
 export const platformOperatorSchema = z.object({
   id: z.string(),
@@ -9,7 +12,11 @@ export const platformOperatorSchema = z.object({
 
 export const platformSessionViewSchema = z.object({
   operator: platformOperatorSchema,
-  capabilities: z.array(z.custom<PlatformCapability>()),
+  capabilities: z.array(
+    z.custom<PlatformCapability>(
+      (value) => typeof value === "string" && isPlatformCapability(value),
+    ),
+  ),
 });
 
 export const platformBootstrapOptionsSchema = z.object({

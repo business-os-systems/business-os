@@ -289,7 +289,7 @@ it.skipIf(!enabled)("rejects forbidden metadata keys and oversized metadata", as
   expect(problem.invalidParams?.some((param) => param.name.startsWith("metadata"))).toBe(true);
 });
 
-it.skipIf(!enabled)("does not require an Idempotency-Key for catalog mutations", async () => {
+it.skipIf(!enabled)("requires an Idempotency-Key for catalog mutations", async () => {
   const response = await platformCatalogsRouter.request(TEST_VALUES_PATH, {
     method: "POST",
     headers: {
@@ -303,7 +303,7 @@ it.skipIf(!enabled)("does not require an Idempotency-Key for catalog mutations",
     }),
   });
 
-  expect(response.status).toBe(200);
-  const parsed = envelopeSchema(valueSchema).parse(await response.json());
-  createdValues.push({ catalogKey: TEST_CATALOG, code: parsed.data.code });
+  expect(response.status).toBe(422);
+  const problem = (await response.json()) as { code?: string };
+  expect(problem.code).toBe("IDEMPOTENCY_KEY_REQUIRED");
 });

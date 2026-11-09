@@ -43,7 +43,7 @@ export function SupportHistory({
         <ConfigTableRenderer
           config={config}
           data={items}
-          rowKey={(row) => row.ticketId}
+          rowKey={(row: SupportSessionHistoryItem) => row.ticketId}
           className="w-full overflow-auto border-0 rounded-none shadow-none"
         />
       </Card>

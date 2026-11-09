@@ -195,6 +195,35 @@ describe("shared ConfigTableRenderer states", () => {
 
 });
 
+describe("shared ConfigTableRenderer visibility", () => {
+  it("hides an action whose isVisible predicate returns false", () => {
+    const hidden: TableConfig<BranchRow> = {
+      ...config,
+      actions: [
+        {
+          id: "edit",
+          label: "Edit",
+          permission: "core:branches:write",
+          isVisible: (row) => row.code !== "RIVER-01",
+          onClick: onEdit,
+        },
+      ],
+    };
+    const html = renderToString(
+      <ConfigTableRenderer
+        config={hidden}
+        data={rows}
+        rowKey={(row) => row.id}
+        userPermissions={["core:branches:write"]}
+      />,
+    );
+    const firstRow = html.indexOf("Flagship Riverside Cafe");
+    const secondRow = html.indexOf("Mountain View Cottages");
+    expect(html.slice(firstRow, secondRow)).not.toContain(">Edit<");
+    expect(html.slice(secondRow)).toContain(">Edit<");
+  });
+});
+
 describe("shared ConfigTableRenderer permissions", () => {
   it("fails closed when a permissioned action has no permission context", () => {
     const html = renderToString(

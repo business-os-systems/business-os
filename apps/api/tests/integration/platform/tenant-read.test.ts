@@ -60,11 +60,22 @@ describe.skipIf(!enabled)("Platform tenant read routes", () => {
     return { id: organization.id, name };
   }
 
+  function controlPlaneOrigin(): string {
+    const value = process.env.CONTROL_PLANE_ORIGIN;
+    if (value === undefined || value.trim() === "") {
+      throw new Error("CONTROL_PLANE_ORIGIN must be set for tenant read tests");
+    }
+    return value;
+  }
+
   function authedGet(path: string, token: string): Promise<Response> {
     return Promise.resolve(
       tenantAdminRouter.request(path, {
         method: "GET",
-        headers: { Cookie: `${CONTROL_SESSION_COOKIE_NAME}=${token}` },
+        headers: {
+          Cookie: `${CONTROL_SESSION_COOKIE_NAME}=${token}`,
+          Origin: controlPlaneOrigin(),
+        },
       })
     );
   }

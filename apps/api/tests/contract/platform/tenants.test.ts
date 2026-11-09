@@ -146,10 +146,17 @@ describe.skipIf(!enabled)("Platform tenant contract", () => {
   }
 
   function authedGet(path: string): Promise<Response> {
+    const origin = process.env.CONTROL_PLANE_ORIGIN;
+    if (origin === undefined || origin.trim() === "") {
+      throw new Error("CONTROL_PLANE_ORIGIN must be set for tenant contract tests");
+    }
     return Promise.resolve(
       tenantAdminRouter.request(path, {
         method: "GET",
-        headers: { Cookie: `${CONTROL_SESSION_COOKIE_NAME}=${readerToken}` },
+        headers: {
+          Cookie: `${CONTROL_SESSION_COOKIE_NAME}=${readerToken}`,
+          Origin: origin,
+        },
       }),
     );
   }

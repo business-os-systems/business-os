@@ -246,9 +246,6 @@ function renderCell<T extends object>(
       <span className="text-text-muted">{nullLabel}</span>
     );
   }
-  if (typeof value === "string" || typeof value === "number") {
-    return String(value);
-  }
   return String(value);
 }
 
@@ -296,10 +293,13 @@ function ActionCell<T extends object>({
   readonly actions: readonly TableActionConfig<T>[];
   readonly onAction: (row: T, action: TableActionConfig<T>) => void;
 }) {
+  const visible = actions.filter(
+    (action) => action.isVisible === undefined || action.isVisible(row),
+  );
   return (
     <td className="px-4 py-3 text-right">
       <span className="inline-flex items-center gap-1.5">
-        {actions.map((action) => (
+        {visible.map((action) => (
           <Button
             key={action.id}
             variant={action.variant === "destructive" ? "destructive" : "ghost"}

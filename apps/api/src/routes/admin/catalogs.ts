@@ -7,6 +7,7 @@ import {
   problemDetailsSchema,
 } from "@suite/core";
 import { controlPlaneOriginGuard } from "../../middleware/control-plane-origin.js";
+import { createMutationIdempotencyMiddleware } from "../../middleware/idempotency.js";
 import { rateLimitMiddleware } from "../../middleware/rate-limit.js";
 import { getControlSessionSecret } from "../../lib/platform-env.js";
 import { getPlatformPrismaClient } from "../../lib/platform-db.js";
@@ -143,10 +144,13 @@ const readMiddleware: MiddlewareHandler[] = [
   catalogCapabilityGuard,
 ];
 
+const mutationIdempotency = createMutationIdempotencyMiddleware();
+
 const writeMiddleware: MiddlewareHandler[] = [
   catalogMutationLimiter,
   controlPlaneOriginGuard,
   catalogCapabilityGuard,
+  mutationIdempotency,
 ];
 
 platformCatalogsRouter.openapi({ ...listCatalogsRoute, middleware: readMiddleware }, async (c) => {

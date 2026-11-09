@@ -26,6 +26,7 @@ import {
 } from "../../services/admin/lifecycle.service.js";
 import { problemDetailsSchema } from "@suite/core";
 import { envelope, errorResponses } from "./openapi-shared.js";
+import { controlPlaneOriginGuard } from "../../middleware/control-plane-origin.js";
 import { createLazyDefaultCapabilityGuard } from "./platform-route-shared.js";
 
 const PLATFORM_LIFECYCLE = PLATFORM_CAPABILITIES.TENANTS_LIFECYCLE.code;
@@ -198,6 +199,8 @@ tenantLifecycleRouter.use(
     failureMode: "closed",
   })
 );
+
+tenantLifecycleRouter.use("*", controlPlaneOriginGuard);
 
 const lifecycleCapabilityGuard = createLazyDefaultCapabilityGuard(() => ({
   prisma: getPlatformPrismaClient(),
