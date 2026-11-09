@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Button, Spinner } from "@suite/ui";
 import { ChevronDownIcon, CheckIcon } from "@suite/ui/icons";
 import { isBrowser } from "@/lib/env";
+import { requestTenantSwitch } from "@/lib/tenant-switch";
 
 interface TenantItem {
   organizationId: string;
@@ -26,6 +27,7 @@ export function WorkspaceSwitcher({
   const [tenants, setTenants] = useState<TenantItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [switchingId, setSwitchingId] = useState<string | null>(null);
+  const [switchError, setSwitchError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -41,14 +43,14 @@ export function WorkspaceSwitcher({
             setTenants(data.tenants);
           }
         }
-      } catch {
-        // Fallback silently if offline or unauthenticated
+      } catch (error) {
+        console.error("[WorkspaceSwitcher] Failed to load workspaces:", error);
       } finally {
         if (isMounted) setIsLoading(false);
       }
     }
 
-    fetchTenants();
+    void fetchTenants();
 
     return () => {
       isMounted = false;
@@ -81,26 +83,25 @@ export function WorkspaceSwitcher({
     }
 
     setSwitchingId(targetOrgId);
+    setSwitchError(null);
     try {
-      const res = await fetch("/api/v1/auth/switch-tenant", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ organizationId: targetOrgId }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        setIsOpen(false);
-        if (isBrowser) {
-          window.location.assign(data.redirectUrl || "/dashboard");
-        }
+      const outcome = await requestTenantSwitch(targetOrgId);
+      if (!outcome.ok) {
+        setSwitchError(outcome.errorMessage);
+        return;
       }
-    } catch {
-      // Network error during switch
+      setIsOpen(false);
+      if (isBrowser) {
+        window.location.assign(outcome.redirectUrl);
+      }
+    } catch (error) {
+      console.error("[WorkspaceSwitcher] Workspace switch request failed:", error);
+      setSwitchError(
+        error instanceof Error ? error.message : "Unable to switch workspace."
+      );
     } finally {
       setSwitchingId(null);
     }
-    return;
   };
 
   const hasMultipleTenants = tenants.length > 1;
@@ -144,6 +145,12 @@ export function WorkspaceSwitcher({
               </span>
             </div>
 
+            {switchError !== null && (
+              <p role="alert" className="px-2.5 py-2 text-xs text-danger">
+                {switchError}
+              </p>
+            )}
+
             <div className="flex flex-col gap-1 max-h-60 overflow-y-auto">
               {isLoading && tenants.length === 0 ? (
                 <div className="py-4 text-center text-xs text-text-muted">
@@ -163,7 +170,9 @@ export function WorkspaceSwitcher({
                       type="button"
                       variant="ghost"
                       disabled={isSwitchingThis || switchingId !== null}
-                      onClick={() => handleSwitchTenant(t.organizationId)}
+                      onClick={() => {
+                        void handleSwitchTenant(t.organizationId);
+                      }}
                       className={`w-full h-auto flex items-center justify-between p-2 rounded-lg text-left transition-colors font-normal ${
                         isActive
                           ? "bg-action/10 text-action font-semibold hover:bg-action/15"

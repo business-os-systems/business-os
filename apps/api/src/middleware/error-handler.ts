@@ -1,6 +1,7 @@
-import type { ErrorHandler } from "hono";
+import type { Context, ErrorHandler } from "hono";
 import { HTTPException } from "hono/http-exception";
 import * as Sentry from "@sentry/node";
+import type { ProblemDetails } from "@suite/core";
 import { AppError, InternalServerError } from "@suite/core/errors";
 import { logger, scrubStringValues } from "@suite/logger";
 import {
@@ -13,133 +14,208 @@ import {
 /**
  * Global RFC 7807 Problem Details Error Handler for Hono API.
  * Guarantees zero sensitive internal stack trace leakage on unhandled exceptions.
+ *
+ * Errors are mapped through a table of single-responsibility responders, so a
+ * new error family is a new mapper rather than another branch in one function.
  */
-export const globalErrorHandler: ErrorHandler = (err, c) => {
-  const requestId = c.get("requestId");
-  const instance = c.req.path;
-  const timestamp = new Date().toISOString();
+
+interface ErrorContext {
+  readonly requestId: string;
+  readonly instance: string;
+  readonly timestamp: string;
+  readonly corsHeaders: Record<string, string>;
+}
+
+interface ErrorResponse {
+  readonly status: number;
+  readonly problem: ProblemDetails;
+}
+
+type ErrorMapper = (error: Error, context: ErrorContext) => ErrorResponse | null;
+
+const HTTP_EXCEPTION_PRESENTATION = {
+  client: {
+    type: "/errors/http-exception",
+    title: "Bad Request",
+    code: "HTTP_EXCEPTION",
+  },
+  server: {
+    type: "/errors/internal-server-error",
+    title: "Internal Server Error",
+    code: "INTERNAL_SERVER_ERROR",
+  },
+} as const;
+
+function createErrorContext(c: Context): ErrorContext {
   const allowedOrigins =
     (c.get(CORS_ALLOWED_ORIGINS_CONTEXT_KEY) as string[] | undefined) ??
     resolvePlatformCorsOrigins();
   const allowCredentials =
     (c.get(CORS_ALLOW_CREDENTIALS_CONTEXT_KEY) as boolean | undefined) ?? true;
-  const corsHeaders = buildCorsResponseHeaders(
-    c.req.header("origin"),
-    allowedOrigins,
-    allowCredentials
-  );
 
-  // 1. Domain AppError hierarchy (@suite/core)
-  if (err instanceof AppError) {
-    const problem = { ...err.toProblemDetails(requestId), instance };
+  return {
+    requestId: c.get("requestId"),
+    instance: c.req.path,
+    timestamp: new Date().toISOString(),
+    corsHeaders: buildCorsResponseHeaders(
+      c.req.header("origin"),
+      allowedOrigins,
+      allowCredentials
+    ),
+  };
+}
 
-    // If client error (4xx), log at warn level; if server error (5xx), log at error level
-    if (err.status >= 500) {
-      const safeMessage = scrubStringValues(err.message);
-      logger.error(
-        {
-          error: {
-            name: err.name,
-            message: safeMessage,
-            stack: err.stack ? scrubStringValues(err.stack) : undefined,
-          },
-          problem: {
-            ...problem,
-            detail: scrubStringValues(problem.detail),
-          },
-          requestId,
-          path: instance,
-        },
-        `Application error [${err.code}]: ${safeMessage}`
-      );
-      Sentry.captureException(new Error(safeMessage), {
-        extra: {
-          requestId,
-          path: instance,
-          code: err.code,
-          stack: err.stack ? scrubStringValues(err.stack) : undefined,
-        },
-      });
-    } else {
-      logger.warn(
-        { problem, requestId, path: instance },
-        `Client error [${err.code}]: ${err.message}`
-      );
-    }
-
-    return new Response(JSON.stringify(problem), {
-      status: err.status,
-      headers: {
-        "Content-Type": "application/problem+json; charset=utf-8",
-        ...corsHeaders,
-      },
-    });
+function mapAppError(
+  error: Error,
+  context: ErrorContext
+): ErrorResponse | null {
+  if (!(error instanceof AppError)) {
+    return null;
   }
 
-  // 2. Hono Native HTTPException
-  if (err instanceof HTTPException) {
-    const status = err.status;
-    const problem = {
-      type: status >= 500 ? "/errors/internal-server-error" : "/errors/http-exception",
-      title: status >= 500 ? "Internal Server Error" : "Bad Request",
-      status,
-      detail: err.message,
-      code: status >= 500 ? "INTERNAL_SERVER_ERROR" : "HTTP_EXCEPTION",
-      instance,
-      requestId,
-      timestamp,
-    };
+  const problem = {
+    ...error.toProblemDetails(context.requestId),
+    instance: context.instance,
+  };
 
-    const safeMessage = scrubStringValues(err.message);
-    logger.warn(
+  if (error.status >= 500) {
+    const safeMessage = scrubStringValues(error.message);
+    logger.error(
       {
         error: {
-          name: err.name,
+          name: error.name,
           message: safeMessage,
-          stack: err.stack ? scrubStringValues(err.stack) : undefined,
+          stack: error.stack ? scrubStringValues(error.stack) : undefined,
         },
         problem: {
           ...problem,
           detail: scrubStringValues(problem.detail),
         },
-        requestId,
+        requestId: context.requestId,
+        path: context.instance,
       },
-      `HTTP exception: ${safeMessage}`
+      `Application error [${error.code}]: ${safeMessage}`
     );
-    return new Response(JSON.stringify(problem), {
-      status,
-      headers: {
-        "Content-Type": "application/problem+json; charset=utf-8",
-        ...corsHeaders,
+    Sentry.captureException(new Error(safeMessage), {
+      extra: {
+        requestId: context.requestId,
+        path: context.instance,
+        code: error.code,
+        stack: error.stack ? scrubStringValues(error.stack) : undefined,
       },
     });
+  } else {
+    logger.warn(
+      { problem, requestId: context.requestId, path: context.instance },
+      `Client error [${error.code}]: ${error.message}`
+    );
   }
 
-  // 3. Unhandled runtime exceptions (Zero internal stack trace leakage)
-  const safeMessage = scrubStringValues(err.message);
-  const safeStack = err.stack ? scrubStringValues(err.stack) : undefined;
+  return { status: error.status, problem };
+}
+
+function mapHttpException(
+  error: Error,
+  context: ErrorContext
+): ErrorResponse | null {
+  if (!(error instanceof HTTPException)) {
+    return null;
+  }
+
+  const presentation =
+    error.status >= 500
+      ? HTTP_EXCEPTION_PRESENTATION.server
+      : HTTP_EXCEPTION_PRESENTATION.client;
+  const problem: ProblemDetails = {
+    type: presentation.type,
+    title: presentation.title,
+    status: error.status,
+    detail: error.message,
+    code: presentation.code,
+    instance: context.instance,
+    requestId: context.requestId,
+    timestamp: context.timestamp,
+  };
+
+  const safeMessage = scrubStringValues(error.message);
+  logger.warn(
+    {
+      error: {
+        name: error.name,
+        message: safeMessage,
+        stack: error.stack ? scrubStringValues(error.stack) : undefined,
+      },
+      problem: {
+        ...problem,
+        detail: scrubStringValues(problem.detail),
+      },
+      requestId: context.requestId,
+    },
+    `HTTP exception: ${safeMessage}`
+  );
+
+  return { status: error.status, problem };
+}
+
+function mapUnexpectedError(
+  error: Error,
+  context: ErrorContext
+): ErrorResponse {
+  const safeMessage = scrubStringValues(error.message);
+  const safeStack = error.stack ? scrubStringValues(error.stack) : undefined;
   logger.error(
     {
-      error: { name: err.name, message: safeMessage, stack: safeStack },
-      requestId,
-      path: instance,
+      error: { name: error.name, message: safeMessage, stack: safeStack },
+      requestId: context.requestId,
+      path: context.instance,
     },
     `Unhandled exception: ${safeMessage}`
   );
   Sentry.captureException(new Error(safeMessage), {
-    extra: { requestId, path: instance, stack: safeStack },
+    extra: {
+      requestId: context.requestId,
+      path: context.instance,
+      stack: safeStack,
+    },
   });
 
   const internalError = new InternalServerError(
     "An unexpected internal server error occurred. Please contact support with the requestId."
   );
-  const safeProblem = { ...internalError.toProblemDetails(requestId), instance };
-
-  return new Response(JSON.stringify(safeProblem), {
+  return {
     status: 500,
+    problem: {
+      ...internalError.toProblemDetails(context.requestId),
+      instance: context.instance,
+    },
+  };
+}
+
+const ERROR_MAPPERS: readonly ErrorMapper[] = [mapAppError, mapHttpException];
+
+function writeProblemResponse(
+  response: ErrorResponse,
+  corsHeaders: Record<string, string>
+): Response {
+  return new Response(JSON.stringify(response.problem), {
+    status: response.status,
     headers: {
       "Content-Type": "application/problem+json; charset=utf-8",
       ...corsHeaders,
     },
   });
+}
+
+export const globalErrorHandler: ErrorHandler = (err, c) => {
+  const context = createErrorContext(c);
+  for (const mapper of ERROR_MAPPERS) {
+    const mapped = mapper(err, context);
+    if (mapped !== null) {
+      return writeProblemResponse(mapped, context.corsHeaders);
+    }
+  }
+  return writeProblemResponse(
+    mapUnexpectedError(err, context),
+    context.corsHeaders
+  );
 };

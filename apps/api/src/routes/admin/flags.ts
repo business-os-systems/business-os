@@ -1,19 +1,19 @@
 import { createRoute, OpenAPIHono } from "@hono/zod-openapi";
 import type { Context } from "hono";
 import {
-  PLATFORM_CAPABILITIES,
   PLATFORM_ERROR_CODE,
   RATE_LIMITS,
   createSuccessResponseBody,
   problemDetailsSchema,
 } from "@suite/core";
 import { UnauthorizedError } from "@suite/core/errors";
-import { redis } from "@suite/redis";
 import { createIdempotencyMiddleware } from "../../middleware/idempotency.js";
 import { rateLimitMiddleware } from "../../middleware/rate-limit.js";
-import { getControlSessionSecret } from "../../lib/platform-env.js";
-import { getPlatformPrismaClient } from "../../lib/platform-db.js";
-import { createAdminFlagsService } from "../../services/admin/flags.service.js";
+import {
+  composeAdminFlagsRuntime,
+  type AdminFlagsRuntime,
+} from "../../services/admin/flags.composition.js";
+import type { AdminFlagsService } from "../../services/admin/flags.service.js";
 import {
   createFlagBodySchema,
   flagEnvironmentQuerySchema,
@@ -28,8 +28,6 @@ import {
   createLazyCapabilityGuard,
   readRequestId,
 } from "./platform-route-shared.js";
-
-const PLATFORM_FLAGS = PLATFORM_CAPABILITIES.FLAGS_MANAGE.code;
 
 const conflictResponse = {
   description: "Flag conflict",
@@ -123,30 +121,40 @@ platformFlagsRouter.use(
   })
 );
 
-const flagsCapabilityGuard = createLazyCapabilityGuard(() => ({
-  prisma: getPlatformPrismaClient(),
-  redis,
-  secret: getControlSessionSecret(),
-  capability: PLATFORM_FLAGS,
-}));
+let runtime: AdminFlagsRuntime | null = null;
+
+function flagsRuntime(): AdminFlagsRuntime {
+  runtime ??= composeAdminFlagsRuntime();
+  return runtime;
+}
+
+const flagsCapabilityGuard = createLazyCapabilityGuard(() => {
+  const current = flagsRuntime();
+  return {
+    prisma: current.platformClient,
+    redis: current.redisClient,
+    secret: current.controlSessionSecret,
+    capability: current.capability,
+  };
+});
 
 platformFlagsRouter.use("*", (c, next) => flagsCapabilityGuard()(c, next));
 
 // The capability guard runs first so the idempotency scope is bound to the
 // authenticated operator. GET is a read and must not require a key (CT-4).
-const idempotency = createIdempotencyMiddleware({ redis });
+let idempotency: ReturnType<typeof createIdempotencyMiddleware> | null = null;
 platformFlagsRouter.use("*", async (c, next) => {
   if (c.req.method === "GET") {
     return next();
   }
+  idempotency ??= createIdempotencyMiddleware({
+    redis: flagsRuntime().redisClient,
+  });
   return idempotency(c, next);
 });
 
-let flagsService: ReturnType<typeof createAdminFlagsService> | null = null;
-
-function adminFlags(): ReturnType<typeof createAdminFlagsService> {
-  flagsService ??= createAdminFlagsService(getPlatformPrismaClient());
-  return flagsService;
+function adminFlags(): AdminFlagsService {
+  return flagsRuntime().service;
 }
 
 function operatorId(c: Context): string {

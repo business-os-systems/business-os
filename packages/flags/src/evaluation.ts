@@ -1,4 +1,9 @@
-import type { FeatureFlagDefinition, FeatureFlagRuleDefinition, FlagEvaluationContext } from "./types.js";
+import type {
+  FeatureFlagDefinition,
+  FeatureFlagRuleDefinition,
+  FlagEvaluationContext,
+  FlagRuleType,
+} from "./types.js";
 import { isFlagExpired, RULE_TYPES } from "./types.js";
 
 /**
@@ -48,7 +53,7 @@ export function evaluateFeatureFlag(
 
 function findHighestPriorityRule(
   rules: FeatureFlagRuleDefinition[],
-  ruleType: string,
+  ruleType: FlagRuleType,
   targetId: string
 ): FeatureFlagRuleDefinition | undefined {
   const matches = rules

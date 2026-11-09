@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const statusParam = searchParams.get("status") || undefined;
 
-    const branches = await listOrganizationBranches(session.organizationId!, {
+    const branches = await listOrganizationBranches(session.organizationId, {
       status: statusParam,
     });
 
@@ -153,7 +153,7 @@ export async function POST(request: NextRequest) {
 
     // Check unique code collision in this tenant
     const hasConflict = await checkBranchCodeConflict(
-      session.organizationId!,
+      session.organizationId,
       data.code
     );
 
@@ -170,7 +170,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const created = await createBranchRecord(session.organizationId!, data);
+    const created = await createBranchRecord(session.organizationId, data);
 
     return NextResponse.json(created, { status: 201 });
   } catch (error) {

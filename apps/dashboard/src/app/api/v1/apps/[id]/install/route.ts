@@ -14,7 +14,7 @@ export async function POST(
       return sessionResult.response;
     }
     const sessionPayload = sessionResult.session;
-    const organizationId = sessionPayload.organizationId!;
+    const organizationId = sessionPayload.organizationId;
 
     // 1. Check user verification status from PostgreSQL (Zero Static Data law)
 

@@ -85,7 +85,7 @@ export async function GET(
 
     const { id: addressId } = await context.params;
 
-    const address = await getAddressById(session.organizationId!, addressId);
+    const address = await getAddressById(session.organizationId, addressId);
     if (!address) {
       return NextResponse.json(
         {
@@ -151,7 +151,7 @@ export async function PATCH(
     const { id: addressId } = await context.params;
 
     const existingAddress = await getAddressById(
-      session.organizationId!,
+      session.organizationId,
       addressId
     );
 
@@ -198,7 +198,7 @@ export async function PATCH(
     }
 
     const updated = await updateAddressRecord(
-      session.organizationId!,
+      session.organizationId,
       addressId,
       parseResult.data
     );
@@ -255,7 +255,7 @@ export async function DELETE(
     const { id: addressId } = await context.params;
 
     const result = await deleteAddressRecord(
-      session.organizationId!,
+      session.organizationId,
       addressId
     );
 

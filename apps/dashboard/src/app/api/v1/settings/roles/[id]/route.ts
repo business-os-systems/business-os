@@ -75,7 +75,7 @@ export async function PATCH(
     }
 
     const role = await updateOrganizationRole(
-      session.organizationId!,
+      session.organizationId,
       id,
       parseResult.data
     );
@@ -169,7 +169,7 @@ export async function DELETE(
       );
     }
 
-    await deleteOrganizationRole(session.organizationId!, id);
+    await deleteOrganizationRole(session.organizationId, id);
 
     return NextResponse.json(
       { success: true, message: "Role deleted successfully." },

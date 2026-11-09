@@ -68,7 +68,7 @@ export async function PATCH(
     const { id: branchId } = await context.params;
 
     const existingBranch = await getBranchById(
-      session.organizationId!,
+      session.organizationId,
       branchId
     );
 
@@ -139,7 +139,7 @@ export async function PATCH(
     const { code: _, ...updatePayload } = data;
 
     const updated = await updateBranchRecord(
-      session.organizationId!,
+      session.organizationId,
       branchId,
       updatePayload
     );

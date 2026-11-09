@@ -62,7 +62,7 @@ export async function PATCH(
     }
 
     const updated = await updateMemberStatus(
-      session.organizationId!,
+      session.organizationId,
       id,
       parseResult.data
     );

@@ -56,6 +56,36 @@ const MANDATORY_PRODUCTION_SECRETS = [
   "GDPR_HMAC_SALT_KEY",
 ] as const;
 
+/** The explicit cross-origin whitelist; empty means no browser origin is allowed. */
+export function getCorsAllowedOrigins(
+  env: NodeJS.ProcessEnv = process.env
+): readonly string[] {
+  return (env.CORS_ALLOWED_ORIGINS ?? "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+}
+
+/** The Platform console origin, or null when the console is not deployed. */
+export function getControlPlaneOrigin(
+  env: NodeJS.ProcessEnv = process.env
+): string | null {
+  const value = env.CONTROL_PLANE_ORIGIN?.trim();
+  return value === undefined || value.length === 0 ? null : value;
+}
+
+export function isInternalDocsEnabled(
+  env: NodeJS.ProcessEnv = process.env
+): boolean {
+  return env.ENABLE_INTERNAL_DOCS === "true";
+}
+
+/** Absolute API URL for the OpenAPI server list, or the mounted relative root. */
+export function getPublicApiUrl(env: NodeJS.ProcessEnv = process.env): string {
+  const value = env.API_URL?.trim();
+  return value === undefined || value.length === 0 ? "/" : value;
+}
+
 export function getTrustedProxyIps(
   env: NodeJS.ProcessEnv = process.env
 ): readonly string[] {

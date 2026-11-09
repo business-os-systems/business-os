@@ -291,14 +291,14 @@ export async function PATCH(request: NextRequest) {
 
     const conflictResponse = await validateDomainConflict(
       payloadResult.data.customDomain,
-      session.organizationId!
+      session.organizationId
     );
     if (conflictResponse) {
       return conflictResponse;
     }
 
     const updated = await updateOrganizationRecord(
-      session.organizationId!,
+      session.organizationId,
       payloadResult.data
     );
 

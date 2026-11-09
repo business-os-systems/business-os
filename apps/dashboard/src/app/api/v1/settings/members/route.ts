@@ -119,7 +119,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       });
     }
 
-    const members = await listOrganizationMembers(session.organizationId!);
+    const members = await listOrganizationMembers(session.organizationId);
     return successResponse({ members });
   } catch (error) {
     return problemResponse({
@@ -178,7 +178,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
       const origin = resolveRequestOrigin(request);
       const { member, inviteUrl } = await createDirectMember(
-        session.organizationId!,
+        session.organizationId,
         parseResult.data,
         session.userId,
         origin
@@ -207,7 +207,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const origin = resolveRequestOrigin(request);
     const result = await inviteOrganizationMember(
-      session.organizationId!,
+      session.organizationId,
       session.userId,
       parseResult.data,
       origin

@@ -36,13 +36,36 @@ export type AuthenticatedSessionResult =
   | { ok: false; response: NextResponse };
 
 /**
+ * A session that has passed the `requireOrganization` gate. The runtime check
+ * and this type carry the same guarantee, so callers never need a non-null
+ * assertion on the organization id.
+ */
+export type SessionPayloadWithOrganization = SessionPayload & {
+  readonly organizationId: string;
+};
+
+export type AuthenticatedOrganizationSessionResult =
+  | { ok: true; session: SessionPayloadWithOrganization }
+  | { ok: false; response: NextResponse };
+
+/**
  * Standardized session authentication and claim extraction helper for route handlers.
  * Eliminates duplicated cookie inspection, HMAC signature verification, and RFC 7807 error responses.
  */
+export function getAuthenticatedSession(
+  request: NextRequest,
+  options: { readonly requireOrganization: true }
+): Promise<AuthenticatedOrganizationSessionResult>;
+export function getAuthenticatedSession(
+  request: NextRequest,
+  options?: SessionVerificationOptions
+): Promise<AuthenticatedSessionResult>;
 export async function getAuthenticatedSession(
   request: NextRequest,
   options: SessionVerificationOptions = {}
-): Promise<AuthenticatedSessionResult> {
+): Promise<
+  AuthenticatedSessionResult | AuthenticatedOrganizationSessionResult
+> {
   const sessionCookie = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   if (!sessionCookie) {
     return {
@@ -160,19 +183,25 @@ export async function getAuthenticatedSession(
     }
   }
 
-  if (options.requireOrganization && !session.organizationId) {
+  if (options.requireOrganization) {
+    if (!session.organizationId) {
+      return {
+        ok: false,
+        response: NextResponse.json(
+          {
+            type: "/errors/invalid-payload",
+            title: "Bad Request",
+            status: 400,
+            detail: "Active organization context is required.",
+            code: "ORGANIZATION_REQUIRED",
+          },
+          { status: 400, headers: { "Content-Type": "application/problem+json" } }
+        ),
+      };
+    }
     return {
-      ok: false,
-      response: NextResponse.json(
-        {
-          type: "/errors/invalid-payload",
-          title: "Bad Request",
-          status: 400,
-          detail: "Active organization context is required.",
-          code: "ORGANIZATION_REQUIRED",
-        },
-        { status: 400, headers: { "Content-Type": "application/problem+json" } }
-      ),
+      ok: true,
+      session: { ...session, organizationId: session.organizationId },
     };
   }
 

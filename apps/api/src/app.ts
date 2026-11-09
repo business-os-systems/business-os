@@ -24,7 +24,12 @@ import {
   adminRouter,
   platformAuthRouter,
 } from "./routes/index.js";
-import { assertProductionConfiguration, isProduction } from "./lib/env.js";
+import {
+  assertProductionConfiguration,
+  getPublicApiUrl,
+  isInternalDocsEnabled,
+  isProduction,
+} from "./lib/env.js";
 import { createWebsiteBuilderRoutes } from "@suite/website-builder/routes";
 import {
   PageService,
@@ -114,7 +119,7 @@ export function createApp(options: AppOptions = {}) {
 
   // 5. Environment Guarded OpenAPI 3.1 Documentation & Interactive Scalar UI
   // In production, internal documentation is locked or restricted to authorized internal access.
-  if (isProduction && !process.env.ENABLE_INTERNAL_DOCS) {
+  if (isProduction && !isInternalDocsEnabled()) {
     app.get("/doc", (c) => {
       return c.text("Forbidden: API documentation is disabled in production.", 403);
     });
@@ -132,7 +137,7 @@ export function createApp(options: AppOptions = {}) {
       },
       servers: [
         {
-          url: process.env.API_URL ?? "/",
+          url: getPublicApiUrl(),
           description: "API Gateway Server",
         },
       ],

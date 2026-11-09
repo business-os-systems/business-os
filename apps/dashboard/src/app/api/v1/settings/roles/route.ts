@@ -47,7 +47,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     }
 
     const [roles, permissions] = await Promise.all([
-      listOrganizationRolesWithPermissions(session.organizationId!),
+      listOrganizationRolesWithPermissions(session.organizationId),
       listSystemPermissions(),
     ]);
 
@@ -115,7 +115,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     const role = await createOrganizationRole(
-      session.organizationId!,
+      session.organizationId,
       parseResult.data
     );
 
