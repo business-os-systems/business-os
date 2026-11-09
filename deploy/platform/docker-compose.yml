@@ -1,0 +1,91 @@
+# Deployment stack for the Platform control plane.
+# Copy the root .env.example to ../../.env, fill the app values, then copy
+# .env.example to .env here and fill the proxy values.
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      POSTGRES_USER: businessos_admin
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      POSTGRES_DB: business_os_dev
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U businessos_admin -d business_os_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ../..
+      dockerfile: deploy/platform/Dockerfile
+      target: api
+    restart: unless-stopped
+    env_file:
+      - ../../.env
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: "4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    expose:
+      - "4000"
+
+  platform:
+    build:
+      context: ../..
+      dockerfile: deploy/platform/Dockerfile
+      target: platform
+      args:
+        NEXT_PUBLIC_API_URL: https://${OPERATOR_DOMAIN}
+    restart: unless-stopped
+    env_file:
+      - ../../.env
+      - .env
+    environment:
+      NODE_ENV: production
+    depends_on:
+      - api
+    expose:
+      - "3002"
+
+  caddy:
+    image: caddy:2.8-alpine
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./break-glass-ca.pem:/etc/caddy/break-glass-ca.pem:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - api
+      - platform
+
+volumes:
+  postgres-data:
+  redis-data:
+  caddy-data:
+  caddy-config:
