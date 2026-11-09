@@ -9,6 +9,7 @@ import { platformOperatorPasskeysRouter } from "./operator-passkeys.js";
 import { platformEntitlementsRouter } from "./entitlements.js";
 import { platformQuotasRouter } from "./quotas.js";
 import { platformAppCatalogRouter } from "./app-catalog.js";
+import { platformAuditRouter } from "./audit.js";
 import { platformCatalogsRouter } from "./catalogs.js";
 
 /**
@@ -18,6 +19,7 @@ import { platformCatalogsRouter } from "./catalogs.js";
 export const adminRouter = new OpenAPIHono();
 
 adminRouter.route("/system", platformSystemRouter);
+adminRouter.route("/", platformAuditRouter);
 // Routers with a wildcard guard are mounted by path prefix so their
 // middleware cannot run for a sibling destination (the /flags leak).
 adminRouter.route("/flags", platformFlagsRouter);
