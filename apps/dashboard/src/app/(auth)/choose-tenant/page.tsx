@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Button, Spinner } from "@suite/ui";
 import { AlertTriangleIcon, ChevronRightIcon } from "@suite/ui/icons";
 import { AuthCard } from "@/components/auth/auth-card";
+import { requestTenantSwitch } from "@/lib/tenant-switch";
 
 interface TenantCardItem {
   organizationId: string;
@@ -48,7 +49,7 @@ export default function ChooseTenantPage() {
   };
 
   useEffect(() => {
-    fetchTenants();
+    void fetchTenants();
   }, []);
 
   const handleSelectTenant = async (organizationId: string) => {
@@ -56,23 +57,18 @@ export default function ChooseTenantPage() {
     setErrorMessage(null);
 
     try {
-      const res = await fetch("/api/v1/auth/switch-tenant", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ organizationId }),
-      });
-
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(data.detail || data.error || "Failed to switch workspace.");
+      const outcome = await requestTenantSwitch(organizationId);
+      if (!outcome.ok) {
+        setErrorMessage(outcome.errorMessage);
+        setSwitchingId(null);
+        return;
       }
-
-      const destination = data.redirectUrl || "/dashboard";
-      router.push(destination);
+      router.push(outcome.redirectUrl);
       router.refresh();
-    } catch (err) {
+    } catch (error) {
+      console.error("[ChooseTenant] Workspace switch request failed:", error);
       setErrorMessage(
-        err instanceof Error ? err.message : "Failed to select workspace."
+        error instanceof Error ? error.message : "Failed to select workspace."
       );
       setSwitchingId(null);
     }
@@ -108,7 +104,9 @@ export default function ChooseTenantPage() {
               type="button"
               variant="ghost"
               size="sm"
-              onClick={fetchTenants}
+              onClick={() => {
+                void fetchTenants();
+              }}
               className="ml-2 h-auto p-0 font-semibold underline hover:no-underline text-danger hover:text-danger hover:bg-transparent"
             >
               Retry
@@ -148,7 +146,9 @@ export default function ChooseTenantPage() {
                 key={t.organizationId}
                 type="button"
                 variant="outline"
-                onClick={() => handleSelectTenant(t.organizationId)}
+                onClick={() => {
+                  void handleSelectTenant(t.organizationId);
+                }}
                 disabled={switchingId !== null}
                 className="w-full h-auto text-left p-3.5 rounded-xl border border-border bg-surface hover:border-action/60 hover:bg-surface-hover active:scale-[0.99] transition-all flex items-center justify-between group disabled:opacity-50 disabled:cursor-not-allowed shadow-2xs font-normal"
               >

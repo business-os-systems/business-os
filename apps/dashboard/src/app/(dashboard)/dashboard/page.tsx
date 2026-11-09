@@ -5,24 +5,17 @@ import Link from "next/link";
 import { Badge } from "@suite/ui";
 import { ArrowRightIcon } from "@suite/ui/icons";
 import { hasPermission } from "@suite/core";
-import { resolveAppIcon } from "@/lib/app-registry";
-
 import {
   defaultDashboardOverviewConfig,
   type DashboardOverviewConfig,
 } from "./dashboard.config";
+import {
+  loadInstalledApps,
+  toAppLauncherCards,
+  type AppLauncherCard,
+} from "./overview-apps";
 
-export interface AppLauncherCard {
-  title: string;
-  code: string;
-  desc: string;
-  href: string;
-  icon: React.ComponentType<{ className?: string }>;
-  status: "Available" | "Coming Soon";
-  isAvailable: boolean;
-  permission?: string;
-  accent?: "primary" | "secondary" | "tertiary";
-}
+export type { AppLauncherCard } from "./overview-apps";
 
 export interface OverviewPageProps {
   initialApps?: AppLauncherCard[];
@@ -34,6 +27,16 @@ export interface OverviewPageProps {
 
 const DEFAULT_APPS: AppLauncherCard[] = [];
 
+function installedAppsEndpoint(organizationId?: string): string {
+  return organizationId
+    ? `/api/v1/organizations/${organizationId}/installed-apps`
+    : "/api/v1/installed-apps";
+}
+
+function readInstalledAppIds(installedIdsKey: string): readonly string[] | undefined {
+  return installedIdsKey === "" ? undefined : installedIdsKey.split(",");
+}
+
 export default function OverviewPage({
   initialApps = DEFAULT_APPS,
   installedAppIds,
@@ -43,6 +46,7 @@ export default function OverviewPage({
 }: OverviewPageProps = {}) {
   const [apps, setApps] = useState<AppLauncherCard[]>(initialApps);
   const [loading, setLoading] = useState(initialApps.length === 0);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [resolvedPermissions, setResolvedPermissions] = useState<
     readonly string[] | undefined
   >(userPermissions);
@@ -65,65 +69,48 @@ export default function OverviewPage({
     let isMounted = true;
     async function loadInstalled() {
       try {
-        const endpoint = organizationId
-          ? `/api/v1/organizations/${organizationId}/installed-apps`
-          : "/api/v1/installed-apps";
-        const res = await fetch(endpoint);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.userPermissions && !userPermissions) {
-            setResolvedPermissions(data.userPermissions);
+        const result = await loadInstalledApps(
+          installedAppsEndpoint(organizationId)
+        );
+        if (result.kind === "error") {
+          if (isMounted) {
+            setLoadError(result.message);
           }
-          const list = Array.isArray(data.apps)
-            ? data.apps
-            : data.installedApps || [];
-          if (isMounted && Array.isArray(list)) {
-            const installedSet = installedIdsKey
-              ? new Set(installedIdsKey.split(","))
-              : null;
-            setApps(
-              list.map(
-                (a: {
-                  appId: string;
-                  title?: string;
-                  name?: string;
-                  code?: string;
-                  description?: string;
-                  href?: string;
-                  iconName?: string;
-                  permission?: string;
-                  isEnabled?: boolean;
-                }) => {
-                  const appId = a.appId || a.code || "";
-                  const isAvailable = installedSet
-                    ? installedSet.has(appId)
-                    : a.isEnabled !== false;
-                  const title = a.title || a.name || appId;
-                  return {
-                    title,
-                    code: a.code || appId,
-                    desc: a.description || "",
-                    href: a.href || `/${appId}`,
-                    icon: resolveAppIcon(a.iconName || appId),
-                    status: isAvailable
-                      ? ("Available" as const)
-                      : ("Coming Soon" as const),
-                    isAvailable,
-                    permission: a.permission || `${appId}:read`,
-                  };
-                }
-              )
-            );
-          }
+          return;
         }
-      } catch {
-        // Fallback silently if offline
+        if (
+          result.payload.userPermissions !== undefined &&
+          !userPermissions
+        ) {
+          setResolvedPermissions(result.payload.userPermissions);
+        }
+        if (isMounted) {
+          setApps(
+            toAppLauncherCards(
+              result.payload.apps,
+              readInstalledAppIds(installedIdsKey)
+            )
+          );
+          setLoadError(null);
+        }
+      } catch (error) {
+        if (isMounted) {
+          setLoadError(
+            error instanceof Error
+              ? error.message
+              : "Unable to load installed applications."
+          );
+          console.error(
+            "[OverviewDashboard] Failed to load installed applications:",
+            error
+          );
+        }
       } finally {
         if (isMounted) setLoading(false);
       }
     }
 
-    loadInstalled();
+    void loadInstalled();
     return () => {
       isMounted = false;
     };
@@ -139,9 +126,8 @@ export default function OverviewPage({
     return hasPermission(effectivePermissions, requiredPermission);
   });
 
-
-  const title = config?.title || defaultDashboardOverviewConfig.title;
-  const subtitle = config?.subtitle || defaultDashboardOverviewConfig.subtitle;
+  const title = config?.title ?? defaultDashboardOverviewConfig.title;
+  const subtitle = config?.subtitle ?? defaultDashboardOverviewConfig.subtitle;
 
   return (
     <div className="space-y-6">
@@ -156,11 +142,17 @@ export default function OverviewPage({
 
       {authorizedApps.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border p-8 text-center bg-surface">
-          <p className="text-xs sm:text-sm text-text-secondary">
-            {loading
-              ? "Loading installed applications..."
-              : "No applications installed for this workspace."}
-          </p>
+          {loadError === null ? (
+            <p className="text-xs sm:text-sm text-text-secondary">
+              {loading
+                ? "Loading installed applications..."
+                : "No applications installed for this workspace."}
+            </p>
+          ) : (
+            <p role="alert" className="text-xs sm:text-sm text-danger">
+              {loadError}
+            </p>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

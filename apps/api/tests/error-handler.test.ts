@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { HTTPException } from "hono/http-exception";
 import { OpenAPIHono } from "@hono/zod-openapi";
 import type { ProblemDetails } from "@suite/core";
 import {
@@ -14,13 +15,16 @@ interface ExtendedProblemDetails extends ProblemDetails {
   stack?: unknown;
 }
 
+const PROBLEM_CONTENT_TYPE = "application/problem+json";
+const NOT_FOUND_PATH = "/test-not-found";
+
 describe("Global RFC 7807 Error Handler", () => {
   const setupErrorApp = () => {
     const testApp = new OpenAPIHono();
     testApp.use("*", requestIdMiddleware());
     testApp.onError(globalErrorHandler);
 
-    testApp.get("/test-not-found", () => {
+    testApp.get(NOT_FOUND_PATH, () => {
       throw new NotFoundError("Resource with id 123 not found", {
         code: "RESOURCE_NOT_FOUND",
       });
@@ -45,6 +49,10 @@ describe("Global RFC 7807 Error Handler", () => {
       });
     });
 
+    testApp.get("/test-http-exception", () => {
+      throw new HTTPException(418, { message: "The request cannot be processed." });
+    });
+
     testApp.get("/test-unhandled", () => {
       throw new Error("Sensitive database connection password leaked in stack trace!");
     });
@@ -55,19 +63,19 @@ describe("Global RFC 7807 Error Handler", () => {
   const app = setupErrorApp();
 
   it("handles NotFoundError with RFC 7807 problem details format and status 404", async () => {
-    const res = await app.request("/test-not-found", {
+    const res = await app.request(NOT_FOUND_PATH, {
       headers: { "x-request-id": "req_custom_id_123" },
     });
 
     expect(res.status).toBe(404);
-    expect(res.headers.get("content-type")).toContain("application/problem+json");
+    expect(res.headers.get("content-type")).toContain(PROBLEM_CONTENT_TYPE);
 
     const body = (await res.json()) as ExtendedProblemDetails;
     expect(body.status).toBe(404);
     expect(body.title).toBe("Resource Not Found");
     expect(body.code).toBe("RESOURCE_NOT_FOUND");
     expect(body.detail).toBe("Resource with id 123 not found");
-    expect(body.instance).toBe("/test-not-found");
+    expect(body.instance).toBe(NOT_FOUND_PATH);
     expect(body.requestId).toBe("req_custom_id_123");
     expect(typeof body.timestamp).toBe("string");
   });
@@ -76,7 +84,7 @@ describe("Global RFC 7807 Error Handler", () => {
     const res = await app.request("/test-validation");
 
     expect(res.status).toBe(422);
-    expect(res.headers.get("content-type")).toContain("application/problem+json");
+    expect(res.headers.get("content-type")).toContain(PROBLEM_CONTENT_TYPE);
 
     const body = (await res.json()) as ExtendedProblemDetails;
     expect(body.status).toBe(422);
@@ -94,7 +102,7 @@ describe("Global RFC 7807 Error Handler", () => {
     const res = await app.request("/test-rate-limit");
 
     expect(res.status).toBe(429);
-    expect(res.headers.get("content-type")).toContain("application/problem+json");
+    expect(res.headers.get("content-type")).toContain(PROBLEM_CONTENT_TYPE);
 
     const body = (await res.json()) as ExtendedProblemDetails;
     expect(body.status).toBe(429);
@@ -111,11 +119,45 @@ describe("Global RFC 7807 Error Handler", () => {
     expect(body.title).toBe("Forbidden Tenant Access");
   });
 
+  it("maps a Hono HTTPException through the shared problem envelope", async () => {
+    const res = await app.request("/test-http-exception");
+
+    expect(res.status).toBe(418);
+    expect(res.headers.get("content-type")).toContain(PROBLEM_CONTENT_TYPE);
+    const body = (await res.json()) as ExtendedProblemDetails;
+    expect(body.status).toBe(418);
+    expect(body.code).toBe("HTTP_EXCEPTION");
+    expect(body.type).toBe("/errors/http-exception");
+    expect(body.title).toBe("Bad Request");
+    expect(body.instance).toBe("/test-http-exception");
+  });
+
+  it("attaches the CORS headers to an error response for an allowed origin", async () => {
+    const previousOrigins = process.env.CORS_ALLOWED_ORIGINS;
+    process.env.CORS_ALLOWED_ORIGINS = "https://app.example.com";
+    try {
+      const res = await app.request(NOT_FOUND_PATH, {
+        headers: { origin: "https://app.example.com" },
+      });
+      expect(res.status).toBe(404);
+      expect(res.headers.get("access-control-allow-origin")).toBe(
+        "https://app.example.com"
+      );
+      expect(res.headers.get("vary")).toBe("Origin");
+    } finally {
+      if (previousOrigins === undefined) {
+        delete process.env.CORS_ALLOWED_ORIGINS;
+      } else {
+        process.env.CORS_ALLOWED_ORIGINS = previousOrigins;
+      }
+    }
+  });
+
   it("masks unhandled exceptions with safe generic 500 error and NO stack trace leakage", async () => {
     const res = await app.request("/test-unhandled");
 
     expect(res.status).toBe(500);
-    expect(res.headers.get("content-type")).toContain("application/problem+json");
+    expect(res.headers.get("content-type")).toContain(PROBLEM_CONTENT_TYPE);
 
     const body = (await res.json()) as ExtendedProblemDetails;
     expect(body.status).toBe(500);

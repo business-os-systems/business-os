@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 import React from "react";
 import { renderToString } from "react-dom/server";
 import { ConfigTable } from "../src/components/tables/config-table";
-import { createFlagsTableConfig } from "../src/components/flags/flags-table.config";
+import {
+  createFlagsTableConfig,
+  deriveFlagState,
+  flagStatePresentation,
+} from "../src/components/flags/flags-table.config";
 import {
   EMPTY_FLAG_FORM,
   FLAG_FORM_FIELDS,
@@ -300,6 +304,63 @@ describe("Flags table", () => {
       />
     );
     expect(html).toContain("No feature flags yet");
+  });
+});
+
+describe("Flag state derivation", () => {
+  const cases: readonly {
+    readonly state: string;
+    readonly flag: FlagRecord;
+    readonly label: string;
+    readonly className: string;
+  }[] = [
+    {
+      state: "expired",
+      flag: { ...FLAG, isExpired: true, isEnabled: true, defaultEnabled: true },
+      label: "Expired",
+      className: "text-danger",
+    },
+    {
+      state: "on",
+      flag: { ...FLAG, isEnabled: true, defaultEnabled: true },
+      label: "On",
+      className: "text-success",
+    },
+    {
+      state: "targeted",
+      flag: { ...FLAG, isEnabled: true, defaultEnabled: false },
+      label: "Targeted",
+      className: "text-brand",
+    },
+    {
+      state: "master-on",
+      flag: { ...FLAG, isEnabled: true, defaultEnabled: false, rules: [] },
+      label: "Master on",
+      className: "text-warning",
+    },
+    {
+      state: "off",
+      flag: { ...FLAG, isEnabled: false, defaultEnabled: true },
+      label: "Off",
+      className: "text-text-secondary",
+    },
+  ];
+
+  it.each(cases)(
+    "derives $state with its presentation",
+    ({ state, flag, label, className }) => {
+      expect(deriveFlagState(flag)).toBe(state);
+      expect(flagStatePresentation(deriveFlagState(flag))).toEqual({
+        label,
+        className,
+      });
+    }
+  );
+
+  it("prefers expiry over every other flag field", () => {
+    expect(
+      deriveFlagState({ ...FLAG, isExpired: true, isEnabled: false })
+    ).toBe("expired");
   });
 });
 

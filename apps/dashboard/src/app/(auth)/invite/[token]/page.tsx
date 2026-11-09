@@ -6,18 +6,10 @@ import { useParams, useRouter } from "next/navigation";
 import { Button, Input, Label, Spinner } from "@suite/ui";
 import { EyeIcon, EyeOffIcon, AlertTriangleIcon, CheckIcon } from "@suite/ui/icons";
 import { AuthCard } from "@/components/auth/auth-card";
-
-interface InvitationDetails {
-  isValid: boolean;
-  token: string;
-  email: string;
-  name: string | null;
-  organizationName: string;
-  roleName: string;
-  branchName: string;
-  hasPassword: boolean;
-  expiresAt: string;
-}
+import {
+  loadInvitationDetails,
+  type InvitationDetails,
+} from "@/lib/invitation-client";
 
 export default function AcceptInvitationPage() {
   const params = useParams();
@@ -46,34 +38,33 @@ export default function AcceptInvitationPage() {
     let isMounted = true;
     async function loadInvitation() {
       try {
-        const res = await fetch(`/api/v1/auth/invitation/accept?token=${encodeURIComponent(token)}`);
-        const data = await res.json().catch(() => null);
-
+        const result = await loadInvitationDetails(token);
         if (!isMounted) return;
 
-        if (!res.ok) {
-          if (data?.code === "INVITATION_ACCEPTED") {
-            setIsAlreadyAccepted(true);
+        if (result.kind === "loaded") {
+          setDetails(result.details);
+          if (result.details.name !== null) {
+            setName(result.details.name);
           }
-          setFetchError(data?.detail || "This invitation link is invalid or has expired.");
-          setIsLoadingDetails(false);
-          return;
-        }
-
-        setDetails(data);
-        if (data.name) {
-          setName(data.name);
+        } else if (result.kind === "already-accepted") {
+          setIsAlreadyAccepted(true);
+          setFetchError(result.message);
+        } else {
+          setFetchError(result.message);
         }
         setIsLoadingDetails(false);
-      } catch {
+      } catch (error) {
         if (isMounted) {
-          setFetchError("Unable to verify invitation details. Please check your connection.");
+          console.error("[InvitationAccept] Failed to verify invitation:", error);
+          setFetchError(
+            "Unable to verify invitation details. Please check your connection."
+          );
           setIsLoadingDetails(false);
         }
       }
     }
 
-    loadInvitation();
+    void loadInvitation();
 
     return () => {
       isMounted = false;

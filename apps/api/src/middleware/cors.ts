@@ -2,6 +2,10 @@ import type { MiddlewareHandler, Context } from "hono";
 import { AUTH_ERROR_CODES } from "@suite/auth";
 import { FORM_IDEMPOTENCY_HEADER, PII_REASON_HEADER } from "@suite/core";
 import { IDEMPOTENCY_HEADER } from "@suite/redis";
+import {
+  getControlPlaneOrigin,
+  getCorsAllowedOrigins,
+} from "../lib/env.js";
 
 export interface CorsOptions {
   allowedOrigins?: string[];
@@ -24,18 +28,14 @@ export function resolveAllowedOrigins(optionsOrigins?: string[]): string[] {
   if (optionsOrigins && optionsOrigins.length > 0) {
     return optionsOrigins;
   }
-  const rawEnv = process.env.CORS_ALLOWED_ORIGINS;
-  if (!rawEnv) {
-    return [];
-  }
-  return rawEnv.split(",").map((o) => o.trim()).filter(Boolean);
+  return [...getCorsAllowedOrigins()];
 }
 
 export function resolvePlatformCorsOrigins(
   optionsOrigins?: string[]
 ): string[] {
   const origins = resolveAllowedOrigins(optionsOrigins);
-  const platformOrigin = process.env.CONTROL_PLANE_ORIGIN?.trim();
+  const platformOrigin = getControlPlaneOrigin();
   return platformOrigin ? [...new Set([...origins, platformOrigin])] : origins;
 }
 
@@ -48,7 +48,7 @@ export function resolvePlatformCorsOrigins(
  * @returns True if origin is permitted; false otherwise
  */
 export function isOriginPermitted(origin: string, allowedOrigins: string[]): boolean {
-  if (!origin || !allowedOrigins || allowedOrigins.length === 0) return false;
+  if (!origin || allowedOrigins.length === 0) return false;
 
   return allowedOrigins.some((pattern) => {
     if (pattern === origin) return true;

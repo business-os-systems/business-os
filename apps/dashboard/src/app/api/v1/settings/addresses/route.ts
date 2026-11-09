@@ -115,7 +115,7 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get("search") || undefined;
 
     const addresses = await listOrganizationAddresses(
-      session.organizationId!,
+      session.organizationId,
       search
     );
 
@@ -200,7 +200,7 @@ export async function POST(request: NextRequest) {
     }
 
     const createdAddress = await createAddressRecord(
-      session.organizationId!,
+      session.organizationId,
       parseResult.data
     );
 

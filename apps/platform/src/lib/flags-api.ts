@@ -47,7 +47,7 @@ const timestampSchema = z.string().datetime();
 
 export const flagRuleSchema = z.object({
   id: z.string(),
-  ruleType: z.string(),
+  ruleType: z.enum(FLAG_RULE_TYPES),
   targetId: z.string(),
   enabled: z.boolean(),
   priority: z.number().int(),
@@ -58,7 +58,7 @@ export const flagSchema = z.object({
   key: z.string(),
   name: z.string(),
   description: z.string().nullable(),
-  environment: z.string(),
+  environment: z.enum(FLAG_ENVIRONMENTS),
   isEnabled: z.boolean(),
   defaultEnabled: z.boolean(),
   version: z.number().int(),

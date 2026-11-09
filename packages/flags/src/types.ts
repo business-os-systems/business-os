@@ -20,6 +20,14 @@ export const FLAG_RULE_TYPES = [RULE_TYPES.ORGANIZATION, RULE_TYPES.ENVIRONMENT]
 
 export type FlagRuleType = (typeof FLAG_RULE_TYPES)[number];
 
+export function isFlagEnvironment(value: string): value is FlagEnvironment {
+  return (FLAG_ENVIRONMENTS as readonly string[]).includes(value);
+}
+
+export function isFlagRuleType(value: string): value is FlagRuleType {
+  return (FLAG_RULE_TYPES as readonly string[]).includes(value);
+}
+
 /**
  * The one expiry decision for API, evaluation and UI validation. An invalid
  * timestamp fails closed.
@@ -37,14 +45,14 @@ export function isFlagExpired(
 }
 
 export interface FlagEvaluationContext {
-  environment?: string;
+  environment?: FlagEnvironment;
   organizationId?: string;
   userId?: string;
 }
 
 export interface FeatureFlagRuleDefinition {
   id: string;
-  ruleType: RuleType | string;
+  ruleType: FlagRuleType;
   targetId: string;
   enabled: boolean;
   priority: number;
@@ -54,7 +62,7 @@ export interface FeatureFlagDefinition {
   key: string;
   name: string;
   description?: string | null;
-  environment: string;
+  environment: FlagEnvironment;
   isEnabled: boolean; // Global kill switch
   defaultEnabled: boolean; // Default fallback
   version: number;
@@ -75,7 +83,10 @@ export interface IFeatureFlagClient {
   /**
    * Retrieves full flag definition including active rules and metadata.
    */
-  getFlag(flagKey: string, environment?: string): Promise<FeatureFlagDefinition | null>;
+  getFlag(
+    flagKey: string,
+    environment?: FlagEnvironment
+  ): Promise<FeatureFlagDefinition | null>;
 
   /**
    * Invalidates Redis cache for a specific flag across environments.

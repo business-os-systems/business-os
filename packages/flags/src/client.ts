@@ -2,11 +2,18 @@ import type { PrismaClient } from "@suite/db";
 import { prisma as defaultPrisma } from "@suite/db";
 import type { Redis } from "ioredis";
 import { redis as defaultRedis } from "@suite/redis";
+import { logger } from "@suite/logger";
 import type {
   FeatureFlagDefinition,
+  FeatureFlagRuleDefinition,
+  FlagEnvironment,
   FlagEvaluationContext,
   IFeatureFlagClient,
-  RuleType,
+} from "./types.js";
+import {
+  FLAG_ENVIRONMENTS,
+  isFlagEnvironment,
+  isFlagRuleType,
 } from "./types.js";
 import { evaluateFeatureFlag } from "./evaluation.js";
 import {
@@ -20,19 +27,54 @@ import {
 export interface FeatureFlagClientOptions {
   prisma?: PrismaClient;
   redis?: Redis;
-  defaultEnvironment?: string;
+  defaultEnvironment?: FlagEnvironment;
+}
+
+interface StoredFlagRule {
+  readonly id: string;
+  readonly ruleType: string;
+  readonly targetId: string;
+  readonly enabled: boolean;
+  readonly priority: number;
+}
+
+function isJsonObject(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function toRuleDefinition(
+  rule: StoredFlagRule
+): FeatureFlagRuleDefinition | null {
+  if (!isFlagRuleType(rule.ruleType)) {
+    logger.warn(
+      { ruleId: rule.id, ruleType: rule.ruleType },
+      "Ignoring feature flag rule with an unknown rule type"
+    );
+    return null;
+  }
+  return {
+    id: rule.id,
+    ruleType: rule.ruleType,
+    targetId: rule.targetId,
+    enabled: rule.enabled,
+    priority: rule.priority,
+  };
 }
 
 export class FeatureFlagClient implements IFeatureFlagClient {
   private readonly prisma: PrismaClient;
   private readonly redis: Redis;
-  private readonly defaultEnvironment: string;
+  private readonly defaultEnvironment: FlagEnvironment;
 
   constructor(options: FeatureFlagClientOptions = {}) {
     this.prisma = options.prisma ?? defaultPrisma;
     this.redis = options.redis ?? defaultRedis;
+    const nodeEnvironment = process.env.NODE_ENV;
     this.defaultEnvironment =
-      options.defaultEnvironment ?? process.env.NODE_ENV ?? "development";
+      options.defaultEnvironment ??
+      (nodeEnvironment !== undefined && isFlagEnvironment(nodeEnvironment)
+        ? nodeEnvironment
+        : FLAG_ENVIRONMENTS[0]);
   }
 
   /**
@@ -85,7 +127,10 @@ export class FeatureFlagClient implements IFeatureFlagClient {
    * Retrieves full flag definition including active rules and metadata.
    * Checks Redis first, falling back to PostgreSQL if cache misses or Redis is down.
    */
-  async getFlag(flagKey: string, environment?: string): Promise<FeatureFlagDefinition | null> {
+  async getFlag(
+    flagKey: string,
+    environment?: FlagEnvironment
+  ): Promise<FeatureFlagDefinition | null> {
     const targetEnv = environment ?? this.defaultEnvironment;
 
     try {
@@ -116,6 +161,14 @@ export class FeatureFlagClient implements IFeatureFlagClient {
         return null;
       }
 
+      if (!isFlagEnvironment(record.environment)) {
+        logger.warn(
+          { flagKey: record.key, environment: record.environment },
+          "Feature flag row has an unknown environment; treating it as missing"
+        );
+        return null;
+      }
+
       const definition: FeatureFlagDefinition = {
         key: record.key,
         name: record.name,
@@ -124,15 +177,13 @@ export class FeatureFlagClient implements IFeatureFlagClient {
         isEnabled: record.isEnabled,
         defaultEnabled: record.defaultEnabled,
         version: record.version,
-        metadata: (record.metadata as Record<string, unknown>) ?? null,
+        metadata: isJsonObject(record.metadata) ? record.metadata : null,
         expiresAt: record.expiresAt?.toISOString() ?? null,
-        rules: record.rules.map((r) => ({
-          id: r.id,
-          ruleType: r.ruleType as RuleType,
-          targetId: r.targetId,
-          enabled: r.enabled,
-          priority: r.priority,
-        })),
+        rules: record.rules
+          .map(toRuleDefinition)
+          .filter(
+            (rule): rule is FeatureFlagRuleDefinition => rule !== null
+          ),
       };
 
       // 3. Cache flag definition in Redis (best-effort)

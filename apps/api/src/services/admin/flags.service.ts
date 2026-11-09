@@ -13,13 +13,19 @@ import {
 import {
   PLATFORM_AUDIT_ACTIONS,
   appendPlatformAuditEvent,
+  toJsonInput,
 } from "@suite/auth/platform";
 import {
   FLAG_ENVIRONMENTS,
   RULE_TYPES,
+  isFlagEnvironment,
   isFlagExpired,
+  isFlagRuleType,
+  type FlagEnvironment,
+  type FlagRuleType,
 } from "@suite/flags/contracts";
 import { invalidateFlagCache } from "@suite/flags";
+import { logger } from "@suite/logger";
 import { redis } from "@suite/redis";
 import type {
   CreateFlagInput,
@@ -40,7 +46,7 @@ type FlagWithRules = FeatureFlag & { rules: FeatureFlagRule[] };
 
 export interface FlagRuleRecord {
   readonly id: string;
-  readonly ruleType: string;
+  readonly ruleType: FlagRuleType;
   readonly targetId: string;
   readonly enabled: boolean;
   readonly priority: number;
@@ -51,7 +57,7 @@ export interface FlagRecord {
   readonly key: string;
   readonly name: string;
   readonly description: string | null;
-  readonly environment: string;
+  readonly environment: FlagEnvironment;
   readonly isEnabled: boolean;
   readonly defaultEnabled: boolean;
   readonly version: number;
@@ -76,14 +82,14 @@ export interface FlagActor {
 }
 
 export interface ListFlagsInput {
-  readonly environment?: string;
+  readonly environment?: FlagEnvironment;
   readonly cursor?: string;
   readonly limit: number;
 }
 
 export interface UpdateFlagRequest {
   readonly key: string;
-  readonly environment: string;
+  readonly environment: FlagEnvironment;
   readonly patch: UpdateFlagInput;
   readonly actor: FlagActor;
 }
@@ -94,6 +100,8 @@ interface FlagCursor {
 }
 
 const FLAG_ENTITY_TYPE = "feature_flag";
+const FLAG_CACHE_INVALIDATION_FAILURE =
+  "Flag cache invalidation failed after the mutation committed";
 
 const RULE_ORDER: Prisma.FeatureFlagRuleOrderByWithRelationInput[] = [
   { priority: "desc" },
@@ -101,6 +109,11 @@ const RULE_ORDER: Prisma.FeatureFlagRuleOrderByWithRelationInput[] = [
 ];
 
 function serializeRule(rule: FeatureFlagRule): FlagRuleRecord {
+  if (!isFlagRuleType(rule.ruleType)) {
+    throw new Error(
+      `Feature flag rule '${rule.id}' has an unknown rule type '${rule.ruleType}'.`
+    );
+  }
   return {
     id: rule.id,
     ruleType: rule.ruleType,
@@ -111,6 +124,11 @@ function serializeRule(rule: FeatureFlagRule): FlagRuleRecord {
 }
 
 export function serializeFlag(flag: FlagWithRules): FlagRecord {
+  if (!isFlagEnvironment(flag.environment)) {
+    throw new Error(
+      `Feature flag '${flag.key}' has an unknown environment '${flag.environment}'.`
+    );
+  }
   return {
     id: flag.id,
     key: flag.key,
@@ -172,10 +190,16 @@ function decodeCursor(value: string): FlagCursor {
   }
 }
 
+function auditState(
+  value: FlagRecord | null
+): Prisma.InputJsonValue | typeof Prisma.JsonNull {
+  return value === null ? Prisma.JsonNull : (toJsonInput(value) ?? Prisma.JsonNull);
+}
+
 interface AuditWrite {
   readonly flag: FlagWithRules;
-  readonly before: unknown;
-  readonly after: unknown;
+  readonly before: FlagRecord | null;
+  readonly after: FlagRecord;
   readonly reason: string;
   readonly actor: FlagActor;
 }
@@ -184,8 +208,6 @@ async function writeAuditPair(
   tx: Prisma.TransactionClient,
   write: AuditWrite
 ): Promise<void> {
-  const previousState = write.before as Prisma.InputJsonValue;
-  const newState = write.after as Prisma.InputJsonValue;
   await tx.featureFlagAuditLog.create({
     data: {
       flagId: write.flag.id,
@@ -194,8 +216,8 @@ async function writeAuditPair(
       actorUserId: write.actor.operatorId,
       actorEmail: null,
       source: "API",
-      previousState,
-      newState,
+      previousState: auditState(write.before),
+      newState: auditState(write.after),
       reason: write.reason,
     },
   });
@@ -215,8 +237,26 @@ async function writeAuditPair(
   });
 }
 
-function flagSnapshot(flag: FlagWithRules): Prisma.InputJsonValue {
-  return serializeFlag(flag) as unknown as Prisma.InputJsonValue;
+/**
+ * The flag mutation is already committed when the cache is invalidated. Redis
+ * is a supporting dependency: its failure must not turn a committed write into
+ * a 500, and the 300-second definition TTL bounds the staleness window.
+ */
+async function invalidateFlagCacheAfterCommit(
+  flag: Pick<FeatureFlag, "environment" | "key">
+): Promise<void> {
+  try {
+    await invalidateFlagCache(redis, flag.environment, flag.key);
+  } catch (error) {
+    logger.error(
+      {
+        error,
+        flagKey: flag.key,
+        environment: flag.environment,
+      },
+      FLAG_CACHE_INVALIDATION_FAILURE
+    );
+  }
 }
 
 function mapWriteError(error: unknown): unknown {
@@ -386,14 +426,14 @@ export class AdminFlagsService {
         await writeAuditPair(tx, {
           flag: created,
           before: null,
-          after: flagSnapshot(created),
+          after: serializeFlag(created),
           reason: "Flag created via Platform API",
           actor,
         });
         return created;
       });
 
-      await invalidateFlagCache(redis, flag.environment, flag.key);
+      await invalidateFlagCacheAfterCommit(flag);
       return serializeFlag(flag);
     } catch (error) {
       throw mapWriteError(error);
@@ -414,13 +454,13 @@ export class AdminFlagsService {
       request.patch,
       request.actor
     );
-    await invalidateFlagCache(redis, updated.environment, updated.key);
+    await invalidateFlagCacheAfterCommit(updated);
     return serializeFlag(updated);
   }
 
   private async findFlagForUpdate(
     key: string,
-    environment: string
+    environment: FlagEnvironment
   ): Promise<FlagWithRules> {
     const existing = await this.prisma.featureFlag.findUnique({
       where: { environment_key: { environment, key } },
@@ -529,8 +569,8 @@ export class AdminFlagsService {
       });
       await writeAuditPair(tx, {
         flag: current,
-        before: flagSnapshot(existing),
-        after: flagSnapshot(current),
+        before: serializeFlag(existing),
+        after: serializeFlag(current),
         reason: patch.reason ?? "Flag updated via Platform API",
         actor,
       });

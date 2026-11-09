@@ -35,7 +35,7 @@ export async function DELETE(
 
     const { id } = await context.params;
 
-    await cancelOrganizationInvitation(session.organizationId!, id);
+    await cancelOrganizationInvitation(session.organizationId, id);
 
     return successResponse({ success: true }, { status: 200 });
   } catch (error) {

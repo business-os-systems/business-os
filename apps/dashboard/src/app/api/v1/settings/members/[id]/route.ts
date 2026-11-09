@@ -75,7 +75,7 @@ export async function PATCH(
     }
 
     const updated = await updateMemberDetails(
-      session.organizationId!,
+      session.organizationId,
       id,
       parseResult.data
     );
@@ -140,7 +140,7 @@ export async function DELETE(
 
     const { id } = await context.params;
 
-    const result = await removeMember(session.organizationId!, id);
+    const result = await removeMember(session.organizationId, id);
 
     return successResponse(result, { status: 200 });
   } catch (error) {

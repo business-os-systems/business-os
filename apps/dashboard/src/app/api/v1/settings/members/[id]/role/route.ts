@@ -61,7 +61,7 @@ export async function PATCH(
     }
 
     const updated = await updateMemberRole(
-      session.organizationId!,
+      session.organizationId,
       id,
       parseResult.data
     );

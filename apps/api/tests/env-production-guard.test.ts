@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 import { isTemplateSecret } from "@suite/core";
 import {
   assertProductionConfiguration,
+  getControlPlaneOrigin,
+  getCorsAllowedOrigins,
+  getPublicApiUrl,
   getTrustedProxyIps,
+  isInternalDocsEnabled,
 } from "../src/lib/env.js";
 
 const REAL_SECRET = "9f".repeat(24);
@@ -78,5 +82,32 @@ describe("production configuration guard", () => {
     expect(isTemplateSecret("CHANGE_ME_SECRET")).toBe(true);
     expect(isTemplateSecret("metrics-secure-telemetry-token-dev")).toBe(true);
     expect(isTemplateSecret(REAL_SECRET)).toBe(false);
+  });
+});
+
+describe("typed runtime configuration", () => {
+  it("parses the CORS whitelist", () => {
+    expect(
+      getCorsAllowedOrigins({
+        CORS_ALLOWED_ORIGINS: " https://a.example.com , https://b.example.com , ",
+      })
+    ).toEqual(["https://a.example.com", "https://b.example.com"]);
+    expect(getCorsAllowedOrigins({})).toEqual([]);
+  });
+
+  it("reads the optional control-plane origin as null when absent", () => {
+    expect(
+      getControlPlaneOrigin({ CONTROL_PLANE_ORIGIN: " https://ops.example.com " })
+    ).toBe("https://ops.example.com");
+    expect(getControlPlaneOrigin({})).toBeNull();
+  });
+
+  it("reads the docs guard and public API URL without inline defaults", () => {
+    expect(isInternalDocsEnabled({ ENABLE_INTERNAL_DOCS: "true" })).toBe(true);
+    expect(isInternalDocsEnabled({ ENABLE_INTERNAL_DOCS: "false" })).toBe(false);
+    expect(getPublicApiUrl({ API_URL: "https://api.example.com" })).toBe(
+      "https://api.example.com"
+    );
+    expect(getPublicApiUrl({})).toBe("/");
   });
 });

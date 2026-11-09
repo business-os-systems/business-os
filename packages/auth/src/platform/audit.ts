@@ -18,7 +18,11 @@ export interface PlatformAuditEventInput {
   readonly occurredAt?: Date;
 }
 
-function toJsonInput(
+/**
+ * Converts a serializable snapshot for the JSON audit columns. The caller owns
+ * the shape; null is stored as JSON null, never as a SQL null.
+ */
+export function toJsonInput(
   value: unknown
 ): Prisma.InputJsonValue | typeof Prisma.JsonNull | undefined {
   if (value === undefined) {
