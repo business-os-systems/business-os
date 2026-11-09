@@ -2,6 +2,7 @@ import type React from "react";
 import {
   BuildingIcon,
   HomeIcon,
+  LayersIcon,
   MonitorIcon,
   PackageIcon,
   SettingsIcon,
@@ -19,6 +20,7 @@ export const PLATFORM_NAV_ICONS: Readonly<
   home: HomeIcon,
   tenants: BuildingIcon,
   apps: PackageIcon,
+  catalogs: LayersIcon,
   flags: SettingsIcon,
   audit: ShieldIcon,
   operators: UsersIcon,

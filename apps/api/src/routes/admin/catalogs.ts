@@ -10,6 +10,7 @@ import { controlPlaneOriginGuard } from "../../middleware/control-plane-origin.j
 import { rateLimitMiddleware } from "../../middleware/rate-limit.js";
 import { getControlSessionSecret } from "../../lib/platform-env.js";
 import { getPlatformPrismaClient } from "../../lib/platform-db.js";
+import { platformCatalogCache } from "../../services/catalog-cache.js";
 import {
   createCatalogValue,
   listReferenceCatalogs,
@@ -135,6 +136,7 @@ const catalogCapabilityGuard = createLazyDefaultCapabilityGuard(() => ({
   capability: PLATFORM_CATALOGS,
 }));
 
+
 const readMiddleware: MiddlewareHandler[] = [
   catalogReadLimiter,
   controlPlaneOriginGuard,
@@ -156,12 +158,15 @@ platformCatalogsRouter.openapi({ ...createValueRoute, middleware: writeMiddlewar
   const { category } = c.req.valid("param");
   const body = c.req.valid("json");
   const actor = readActor(c);
-  const data = await createCatalogValue(getPlatformPrismaClient(), {
-    category,
-    body,
-    operatorId: actor.operatorId,
-    requestId: actor.requestId,
-  });
+  const data = await createCatalogValue(
+    { prisma: getPlatformPrismaClient(), cache: platformCatalogCache },
+    {
+      category,
+      body,
+      operatorId: actor.operatorId,
+      requestId: actor.requestId,
+    },
+  );
   return c.json(createSuccessResponseBody({ data, requestId: readRequestId(c) }), 200);
 });
 
@@ -169,12 +174,15 @@ platformCatalogsRouter.openapi({ ...updateValueRoute, middleware: writeMiddlewar
   const { category, code } = c.req.valid("param");
   const body = c.req.valid("json");
   const actor = readActor(c);
-  const data = await updateCatalogValue(getPlatformPrismaClient(), {
-    category,
-    code,
-    body,
-    operatorId: actor.operatorId,
-    requestId: actor.requestId,
-  });
+  const data = await updateCatalogValue(
+    { prisma: getPlatformPrismaClient(), cache: platformCatalogCache },
+    {
+      category,
+      code,
+      body,
+      operatorId: actor.operatorId,
+      requestId: actor.requestId,
+    },
+  );
   return c.json(createSuccessResponseBody({ data, requestId: readRequestId(c) }), 200);
 });

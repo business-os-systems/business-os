@@ -13,6 +13,8 @@ import {
 } from "@suite/core/errors";
 import { appendPlatformAuditEvent, PLATFORM_AUDIT_ACTIONS } from "@suite/auth/platform";
 import type { CatalogValue as CatalogValueRow } from "@suite/db";
+import { logger } from "@suite/logger";
+import { catalogCacheKey, type CatalogCache } from "@suite/redis";
 import {
   catalogMetadataSchema,
   type CatalogList,
@@ -101,6 +103,29 @@ async function assertCatalogExists(tx: Prisma.TransactionClient, key: CatalogKey
 }
 
 /**
+ * Invalidation runs after the transaction commits because Redis is not part of
+ * the database transaction. A failed invalidation is logged and left to the
+ * 60-second TTL: the write already succeeded and must not be reported as failed.
+ */
+export async function invalidateCatalogCacheAfterCommit(
+  cache: CatalogCache,
+  catalogKey: CatalogKey,
+): Promise<void> {
+  try {
+    await cache.invalidate(catalogKey);
+  } catch (error) {
+    logger.warn(
+      {
+        err: error,
+        cacheKey: catalogCacheKey(catalogKey),
+        invalidationTrigger: "catalog value mutation",
+      },
+      "Reference catalog cache invalidation failed; the TTL bounds staleness",
+    );
+  }
+}
+
+/**
  * Lists every catalog and every value, including retired values. The Platform
  * editor needs both active and retired rows so it can reactivate a value.
  */
@@ -130,19 +155,24 @@ export async function listReferenceCatalogs(prisma: PrismaClient): Promise<Catal
  * constraint and the audit row are one transaction; a duplicate code never
  * leaves a partial write (CT-7, invariant 4).
  */
+export interface CatalogAdminContext {
+  readonly prisma: PrismaClient;
+  readonly cache: CatalogCache;
+}
+
 export async function createCatalogValue(
-  prisma: PrismaClient,
+  context: CatalogAdminContext,
   input: CreateCatalogValueInput,
 ): Promise<CatalogValue> {
   const key = assertCatalogKey(input.category);
   const code = normalizeCode(key, input.body.code);
 
-  return prisma.$transaction(async (tx) => {
+  const created = await context.prisma.$transaction(async (tx) => {
     await assertCatalogExists(tx, key);
 
-    let created: CatalogValueRow;
+    let createdRow: CatalogValueRow;
     try {
-      created = await tx.catalogValue.create({
+      createdRow = await tx.catalogValue.create({
         data: {
           catalogKey: key,
           code,
@@ -169,12 +199,14 @@ export async function createCatalogValue(
       entityType: "catalog_value",
       entityId: `${key}:${code}`,
       before: null,
-      after: toSnapshot(created),
+      after: toSnapshot(createdRow),
       requestId: input.requestId,
     });
 
-    return toCatalogValue(created);
+    return toCatalogValue(createdRow);
   });
+  await invalidateCatalogCacheAfterCommit(context.cache, key);
+  return created;
 }
 
 const VERSION_CONFLICT_DETAIL =
@@ -229,13 +261,13 @@ async function appendUpdateAudit(context: UpdateAuditInput): Promise<void> {
  * two concurrent editors cannot overwrite each other (CT-3).
  */
 export async function updateCatalogValue(
-  prisma: PrismaClient,
+  context: CatalogAdminContext,
   input: UpdateCatalogValueInput,
 ): Promise<CatalogValue> {
   const key = assertCatalogKey(input.category);
   const code = normalizeCode(key, input.code);
 
-  return prisma.$transaction(async (tx) => {
+  const updated = await context.prisma.$transaction(async (tx) => {
     const current = await tx.catalogValue.findUnique({
       where: { catalogKey_code: { catalogKey: key, code } },
     });
@@ -276,4 +308,6 @@ export async function updateCatalogValue(
     });
     return toCatalogValue(next);
   });
+  await invalidateCatalogCacheAfterCommit(context.cache, key);
+  return updated;
 }

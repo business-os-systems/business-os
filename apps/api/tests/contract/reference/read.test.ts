@@ -3,6 +3,7 @@ import { afterAll, beforeAll, beforeEach, expect, it } from "vitest";
 import { z } from "zod";
 import { CATALOG_KEYS } from "@suite/core";
 import { SESSION_COOKIE_NAME } from "@suite/auth/session";
+import { createCatalogCache, redis } from "@suite/redis";
 import {
   referenceRouter,
   REFERENCE_CACHE_CONTROL,
@@ -105,9 +106,18 @@ beforeAll(async () => {
   });
 });
 
+const catalogCache = createCatalogCache(redis);
+
+/** The cache is process-wide, so every case starts from a cold catalog. */
+async function clearReferenceCatalogCache(): Promise<void> {
+  await Promise.all(CATALOG_KEYS.map((key) => catalogCache.invalidate(key)));
+  await catalogCache.invalidate(null);
+}
+
 beforeEach(async () => {
   if (!enabled) return;
   await clearRateLimitStore(REFERENCE_READ_RATE_LIMIT_KEY);
+  await clearReferenceCatalogCache();
 });
 
 afterAll(async () => {

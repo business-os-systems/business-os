@@ -7,6 +7,7 @@ import { requireAuth } from "../middleware/auth.js";
 import { rateLimitMiddleware } from "../middleware/rate-limit.js";
 import { getControlSessionSecret } from "../lib/platform-env.js";
 import { getPlatformPrismaClient } from "../lib/platform-db.js";
+import { platformCatalogCache } from "../services/catalog-cache.js";
 import {
   readReferenceCatalog,
   readReferenceCatalogList,
@@ -136,6 +137,7 @@ export const referenceRouter = new OpenAPIHono({
   defaultHook: platformValidationHook,
 });
 
+
 const referenceReadLimiter = rateLimitMiddleware({
   limit: RATE_LIMITS.MAX_CATALOG_READS_PER_MINUTE,
   windowSeconds: RATE_LIMITS.WINDOW_1_MIN_SECONDS,
@@ -149,12 +151,19 @@ const referenceReadAuth = createReferenceReadAuth();
 const readMiddleware: MiddlewareHandler[] = [referenceReadLimiter, referenceReadAuth];
 
 referenceRouter.openapi({ ...listCatalogsRoute, middleware: readMiddleware }, async (c) => {
-  const result = await readReferenceCatalogList(getPlatformPrismaClient());
+  const result = await readReferenceCatalogList({
+    prisma: getPlatformPrismaClient(),
+    cache: platformCatalogCache,
+  });
   return writeCatalogResponse(c, result);
 });
 
 referenceRouter.openapi({ ...readCatalogRoute, middleware: readMiddleware }, async (c) => {
   const { key } = c.req.valid("param");
-  const result = await readReferenceCatalog(getPlatformPrismaClient(), key);
+  const result = await readReferenceCatalog({
+    prisma: getPlatformPrismaClient(),
+    cache: platformCatalogCache,
+    catalogKey: key,
+  });
   return writeCatalogResponse(c, result);
 });
