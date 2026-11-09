@@ -24,7 +24,8 @@
     "db:seed:catalogs": "tsx src/seed-platform-catalogs.ts",
     "db:studio": "prisma studio --schema=prisma/schema",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "coverage": "vitest run --coverage --coverage.reporter=lcov"
   },
   "dependencies": {
     "@prisma/client": "^6.4.1",

@@ -81,11 +81,17 @@ jobs:
       - name: Custom Lint Rule Tests
         run: pnpm test:rules
 
+      - name: Diff Coverage Tool Tests
+        run: node --test tooling/quality/diff-coverage.test.mjs
+
       - name: Dead Code & Dependency Report
         run: pnpm knip:report
 
       - name: Architecture & Cycle Report
         run: pnpm depcruise:report
+
+      - name: Duplication Report
+        run: pnpm dup:report
 
   build:
     name: Build
@@ -207,6 +213,94 @@ jobs:
 
       - name: Turborepo Typecheck & Test
         run: pnpm turbo run typecheck test
+
+  # Pull-request only: every added source line must be exercised by the
+  # Vitest suites. The database and Redis fixtures mirror the test job because
+  # the suites connect when DATABASE_URL is present instead of skipping.
+  diff-coverage:
+    name: Diff Coverage
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: businessos_admin
+          POSTGRES_PASSWORD: businessos_password
+          POSTGRES_DB: business_os_dev
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+        with:
+          # The gate diffs against the pull request base, which needs history.
+          fetch-depth: 0
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+          run_install: false
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "pnpm"
+
+      - name: Restore Turborepo Cache
+        uses: actions/cache@v4
+        with:
+          path: .turbo/cache
+          key: turbo-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            turbo-${{ runner.os }}-
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm --filter @suite/db run prisma:generate
+
+      - name: Apply Database Migrations
+        run: pnpm --filter @suite/db run db:migrate:deploy
+
+      - name: Provision Platform Runtime Role
+        run: |
+          printf "ALTER ROLE app_platform WITH LOGIN PASSWORD 'platform_test_password';" | pnpm --filter @suite/db exec prisma db execute --url "$DATABASE_URL" --stdin
+
+      - name: Provision Tenant Runtime Role
+        run: |
+          printf "ALTER ROLE app_tenant WITH LOGIN PASSWORD 'tenant_test_password';" | pnpm --filter @suite/db exec prisma db execute --url "$DATABASE_URL" --stdin
+
+      # Writes <package>/coverage/lcov.info for every package with a test suite.
+      - name: Coverage (lcov per package)
+        run: pnpm test:coverage
+
+      - name: Diff coverage gate
+        env:
+          # Passed through the environment so the ref is never interpolated
+          # into the shell command line.
+          BASE_REF: ${{ github.base_ref }}
+        run: node tooling/quality/diff-coverage.mjs --base "origin/$BASE_REF"
 
   # Keeps the check name branch protection and reviewers already know. The real
   # signal is the three jobs above; this one only reports their result.

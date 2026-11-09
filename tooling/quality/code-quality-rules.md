@@ -14,7 +14,9 @@ Never weaken a test or a lint rule to make a change pass.
 
 **Rule.** Do not return UI props (`variant`, `label`, `color`, `severity`, `icon`,
 `className`) from an `if`/`else` chain or a `switch`. Derive a typed state first,
-then map it once.
+then map it once. The lint detector exempts a returned object whose own keys
+identify a configuration/DTO payload (`name`, `id`, `href`, `appId`, `permission`,
+`description`), so a form-field schema or a boundary DTO is not a false positive.
 
 **BAD** (`apps/platform/src/components/flags/flags-table.config.tsx`):
 
@@ -200,7 +202,9 @@ available during startup.
 ## P16
 
 **Rule.** Add a regression test for every bug fix and table-driven tests for pure
-logic. Test behavior, not implementation details; cover the denial path.
+logic. Test behavior, not implementation details; cover the denial path. Every
+added source line needs a test: the pull-request Diff Coverage gate fails on an
+uncovered added line, and an untested new file is unverifiable, not exempt.
 
 **BAD**: one test that asserts a private helper was called.
 **GOOD**: a table of `(input, expected)` rows and a route-level denial test.

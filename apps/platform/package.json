@@ -9,7 +9,8 @@
     "start": "next start -p 3002",
     "typecheck": "tsc --noEmit",
     "bootstrap-operator": "tsx scripts/bootstrap-operator.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "coverage": "vitest run --coverage --coverage.reporter=lcov"
   },
   "dependencies": {
     "@simplewebauthn/browser": "14.0.0",

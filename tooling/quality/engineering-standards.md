@@ -126,8 +126,21 @@ tooling/eslint-rules/fixtures/flag-status.bad.ts
   20:12  error  Do not return UI props from if/else...
 ```
 
-The real file is still in the legacy baseline, so `pnpm lint` stays green until the
-approved Phase 4 refactor removes the suppression entries.
+The detector flags any returned object that carries a presentation prop
+(`variant`, `label`, `color`, `severity`, `icon`, `className`) **unless** the
+object's own keys identify it as a configuration/DTO payload: `name`, `id`,
+`href`, `appId`, `permission`, or `description`. That keeps two shapes valid —
+a form-field schema (`label` next to `name`, `type`, `required`) and a dashboard
+app DTO (`icon` next to `id`/`href`/`permission`) — while a mixed presentation
+object such as `{ label, className, value }` is still flagged. Both valid shapes
+are fixtures under `tooling/eslint-rules/fixtures/*.good.ts` and RuleTester cases
+in `custom-rules.test.mjs`; the original flag-status code remains the invalid
+fixture.
+
+The production derivation (`apps/platform/src/components/flags/flags-table.config.tsx`)
+no longer carries a P1 suppression entry, so a regression there fails `pnpm lint`
+directly. Only the fixture is exempt from the suppression baseline, because it is
+the proof that the rule fires.
 
 ### Adding a new state
 
@@ -357,20 +370,155 @@ reviewed boundary and test the dangerous input.
 - The P1 fixture and the RuleTester suite are exempt from suppressions because they
   are the proof that the rules work.
 
+## Ratchet workflow
+
+The quality gates are ratchets: the baseline may shrink, never grow. The lint,
+typecheck, build, and test jobs stay blocking; the reports below are triaged
+registries instead of failing on day one.
+
+### Diff coverage
+
+`pnpm test:coverage` runs the `coverage` Turbo task in every package and writes
+`<package>/coverage/lcov.info`. `tooling/quality/diff-coverage.mjs` maps the
+added lines of a git diff onto those records.
+
+```bash
+# Local feature branch, with origin/dev fetched
+pnpm test:coverage
+node tooling/quality/diff-coverage.mjs --base origin/dev
+
+# Uncommitted work, including untracked files
+node tooling/quality/diff-coverage.mjs --working-tree
+
+# The gate's own unit proof (also a step in the Lint, rules & reports job)
+node --test tooling/quality/diff-coverage.test.mjs
+```
+
+The root `test:coverage` script passes `--concurrency=1`. The logger throughput
+benchmark is timing-sensitive: under parallel Turbo load its measured per-call
+cost climbed from ~2.4 s to ~10.8 s against a 10 s ceiling, which made the gate
+flaky. Serial execution keeps the coverage signal deterministic and costs only
+wall-clock time.
+
+CI jobs: the **Diff Coverage** job runs the gate on pull requests only, with
+`fetch-depth: 0`, after `pnpm test:coverage` and `--base origin/<base_ref>`.
+Its unit proof (`diff-coverage.test.mjs`) runs in **Lint, rules & reports** so
+the parser, the base-ref validation and the report format are tested on every
+push and pull request.
+
+Rules:
+
+- Every newly added executable line needs a non-zero `DA` count. The baseline is
+  zero uncovered added lines; there is no per-file allowance.
+- A changed source file with no lcov record fails as unverifiable. It is reported
+  under `NO LCOV RECORD`, never treated as covered.
+- Added lines without a `DA` record are blank or comments and are skipped.
+- Only script files are measurable: `.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`,
+  `.cjs`, `.mts`, `.cts`. Everything else is excluded by class, not by an
+  ever-growing list: tests and fixtures, migrations, `dist`/build output,
+  generated code, database schema files (`*.prisma`), configuration
+  (`*.config.*`, `*.preset.*`, `tsconfig*`, `package.json`, lockfiles,
+  YAML/JSON), dotfile configs such as `.dependency-cruiser.cjs`, docs,
+  Dockerfiles, shell scripts, `.github/**`, and `tooling/**`. CI tooling is
+  proven by `node --test` and `pnpm test:rules`, not by Vitest; adding a
+  Vitest lcov record there would be a false signal.
+- Deleting a file or renaming it does not add lines; the tool ignores both.
+- The script exits 1 on any uncovered line or missing record and 2 when the
+  arguments are invalid or no lcov file exists (the coverage task did not run).
+
+### Knip (report-only)
+
+`pnpm knip:report` runs Knip with `--no-exit-code` in the **Lint, rules &
+reports** job. It answers "what is unused?" and never fails CI. Every remaining
+finding is triaged in [knip-baseline.md](./knip-baseline.md) with what it is, why
+it is kept, an owner, and an expiry. Deleting an accepted item before its expiry
+needs an issue; adding a new unused file, export, or dependency is not accepted
+because the baseline is full.
+
+This issue removed the genuinely dead items: four files (three unused barrels
+and a re-export shim) and five unused dependencies. The one remaining unused file
+is referenced from a workflow YAML, which Knip does not parse, so it is recorded
+rather than deleted. Unused exports and exported types are not mass-edited:
+removing a public package export is an API change, not a cleanup.
+
+### jscpd (report-only)
+
+`pnpm dup:report` runs jscpd with the repository config and prints the clone
+report; the **Lint, rules & reports** job runs it, and the npm script ends in
+`|| true`, so it is report-only on every push and pull request. The triage and
+the decision for every cluster live in
+[duplication-triage.md](./duplication-triage.md).
+
+The extraction rule is narrow: extract one small shared helper only when the same
+_rule_ appears at least three times. Similar-looking JSX, two-copy pairs, and
+route scaffolding that would need a cross-cutting refactor stay as they are and
+are recorded for a dedicated ticket. This issue did not change application code
+under the triage.
+
+### Exception registries
+
+| Registry                                       | Scope                                 | Rule                                                                                      |
+| ---------------------------------------------- | ------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `eslint-suppressions.json`                     | Legacy lint violations                | `pnpm lint` passes on the baseline and fails on a new violation. Never hand-add an entry. |
+| `tooling/quality/knip-baseline.md`             | Dead code, unused deps, unlisted deps | Report-only; each entry has an owner and expiry.                                          |
+| `tooling/quality/duplication-triage.md`        | jscpd clones                          | Report-only; each cluster has a decision.                                                 |
+| `tooling/quality/diff-coverage.mjs` exclusions | Unmeasurable added lines              | Narrow path classes only; no per-file bypass.                                             |
+
+### `pnpm lint:prune`
+
+When a fix removes a legacy violation, run `pnpm lint:prune` and commit the
+smaller `eslint-suppressions.json`. Pruning only drops entries that no longer
+match; the count can only go down. Do not edit the file by hand to silence a new
+violation.
+
+### P1 fixture proof
+
+```bash
+pnpm lint:p1                     # must print exactly four errors and exit 1
+pnpm test:rules                  # RuleTester proof for every selector
+pnpm exec eslint --no-config-lookup \
+  --config tooling/eslint-rules/p1-proof.config.mjs \
+  tooling/eslint-rules/fixtures/flag-rule-config.good.ts \
+  tooling/eslint-rules/fixtures/dashboard-app-dto.good.ts   # zero errors
+```
+
+The detector flags a returned object with a presentation prop unless its own keys
+identify a configuration/DTO payload (`name`, `id`, `href`, `appId`, `permission`,
+`description`). A form-field schema (`label` next to `name`/`type`) and a dashboard
+app DTO (`icon` next to identity fields) are therefore valid, while the original
+flag-status shape and a mixed `{ label, className, value }` object still fail.
+Both directions are encoded in `custom-rules.test.mjs` and in the two
+`.good.ts` fixtures.
+
+### CI job names
+
+| Job                    | Trigger       | Purpose                                                                                |
+| ---------------------- | ------------- | -------------------------------------------------------------------------------------- |
+| Lint, rules & reports  | every push/PR | `pnpm lint`, `pnpm test:rules`, gate unit tests, knip/dependency-cruiser/jscpd reports |
+| Build                  | every push/PR | `pnpm turbo run build`                                                                 |
+| Typecheck & Test       | every push/PR | `pnpm turbo run typecheck test`                                                        |
+| Diff Coverage          | pull requests | `pnpm test:coverage` then `diff-coverage.mjs --base origin/<base_ref>`                 |
+| Lint, Typecheck & Test | every push/PR | aggregate check for the three blocking jobs                                            |
+
 ## Tooling map
 
-| File                                               | Purpose                                          |
-| -------------------------------------------------- | ------------------------------------------------ |
-| `eslint.config.mjs`                                | Single flat config, type-aware, folder overrides |
-| `tooling/eslint-rules/selectors.mjs`               | Shared custom selectors and messages             |
-| `tooling/eslint-rules/custom-rules.test.mjs`       | RuleTester proof for each custom rule            |
-| `tooling/eslint-rules/fixtures/flag-status.bad.ts` | The original P1 code, expected to fail           |
-| `eslint-suppressions.json`                         | Legacy ratchet baseline                          |
-| `tooling/tsconfig/base.json`                       | Strict compiler flags for every package          |
-| `knip.json`                                        | Dead code and dependency report                  |
-| `.dependency-cruiser.cjs`                          | Layer and cycle rules                            |
-| `.husky/pre-commit` + `lint-staged`                | Staged files are linted, fixed, and typechecked  |
-| `.github/workflows/ci.yml`                         | Lint, typecheck, test, knip on every PR          |
+| File                                               | Purpose                                             |
+| -------------------------------------------------- | --------------------------------------------------- |
+| `eslint.config.mjs`                                | Single flat config, type-aware, folder overrides    |
+| `tooling/eslint-rules/selectors.mjs`               | Shared custom selectors and messages                |
+| `tooling/eslint-rules/custom-rules.test.mjs`       | RuleTester proof for each custom rule               |
+| `tooling/eslint-rules/fixtures/flag-status.bad.ts` | The original P1 code, expected to fail              |
+| `tooling/eslint-rules/fixtures/*.good.ts`          | Valid shapes the P1 detector must not flag          |
+| `eslint-suppressions.json`                         | Legacy ratchet baseline                             |
+| `tooling/tsconfig/base.json`                       | Strict compiler flags for every package             |
+| `knip.json`                                        | Dead code and dependency report                     |
+| `tooling/quality/knip-baseline.md`                 | Accepted Knip findings with owner and expiry        |
+| `tooling/quality/duplication-triage.md`            | Accepted jscpd clusters and extraction decisions    |
+| `tooling/quality/diff-coverage.mjs`                | Added lines vs lcov; pull-request gate              |
+| `tooling/quality/diff-coverage.test.mjs`           | `node --test` proof for the coverage gate           |
+| `.dependency-cruiser.cjs`                          | Layer and cycle rules                               |
+| `.husky/pre-commit` + `lint-staged`                | Staged files are linted, fixed, and typechecked     |
+| `.github/workflows/ci.yml`                         | Lint, build, typecheck/test, reports, diff coverage |
 
 ## Known follow-ups
 
@@ -381,9 +529,16 @@ reviewed boundary and test the dangerous input.
 - `packages/ui/tests` is linted without type information because the package
   tsconfig only includes `src`. Add a lint-only tsconfig before adding type-aware
   rules there.
-- `knip` and `dependency-cruiser` run in report mode until their current findings
-  are triaged.
-- Diff coverage is documented in the audit but not yet enforced in CI.
+- `knip` stays report-only by design: the 145 unused exports and 88 unused
+  exported types need a separate API-surface pass. Each accepted finding has an
+  owner and expiry in `knip-baseline.md`.
+- `dependency-cruiser` still runs in report mode; its findings have no registry
+  yet.
+- The jscpd clusters recorded in `duplication-triage.md` need a dedicated
+  extraction ticket before any application code is refactored.
+- Diff coverage is enforced on pull requests; the baseline is zero uncovered
+  added lines. Files excluded by path class are listed under the ratchet
+  workflow and in `diff-coverage.mjs`.
 
 ## Review checklist
 

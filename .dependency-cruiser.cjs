@@ -13,7 +13,7 @@ module.exports = {
       name: "no-domain-to-ui",
       severity: "error",
       comment:
-        "Domain packages must not depend on apps or the UI kit. See docs/engineering-standards.md#p2.",
+        "Domain packages must not depend on apps or the UI kit. See tooling/quality/engineering-standards.md#p2.",
       from: { path: "^packages/(core|flags|auth|db|redis|logger)/" },
       to: { path: "^(packages/ui|apps)/" },
     },
@@ -21,7 +21,7 @@ module.exports = {
       name: "no-ui-to-data",
       severity: "error",
       comment:
-        "UI packages must not read the database or cache. See docs/engineering-standards.md#p2.",
+        "UI packages must not read the database or cache. See tooling/quality/engineering-standards.md#p2.",
       from: { path: "^packages/ui/" },
       to: { path: "^packages/(db|redis)/" },
     },
@@ -29,7 +29,7 @@ module.exports = {
       name: "no-route-to-orm",
       severity: "error",
       comment:
-        "Routes validate, call a service and map the result; they do not query Prisma. See docs/engineering-standards.md#p2.",
+        "Routes validate, call a service and map the result; they do not query Prisma. See tooling/quality/engineering-standards.md#p2.",
       from: { path: "^apps/api/src/routes/" },
       to: { path: "^packages/db/" },
     },
@@ -37,7 +37,7 @@ module.exports = {
       name: "no-next-app-to-orm",
       severity: "error",
       comment:
-        "Next.js presentation code must call an API, not the database. See docs/engineering-standards.md#p2.",
+        "Next.js presentation code must call an API, not the database. See tooling/quality/engineering-standards.md#p2.",
       from: {
         path: "^apps/(dashboard|platform)/src/",
         pathNot: "^apps/(dashboard|platform)/src/app/api/",
