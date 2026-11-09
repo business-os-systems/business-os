@@ -95,6 +95,7 @@ describe("Hub navigation config", () => {
       "apps",
       "quotas",
       "activity",
+      "support",
       "danger",
     ]);
   });

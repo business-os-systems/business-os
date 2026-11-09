@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PLATFORM_ERROR_CODE } from "@suite/core";
 import { SESSION_COOKIE_NAME } from "../src/lib/auth-constants";
 import {
+  endSupportSession,
   fetchActiveSupportSession,
   fetchSupportSessionHistory,
   SupportSessionClientError,
@@ -256,5 +257,64 @@ describe("Tenant support-session client error mapping", () => {
     fetchMock.mockResolvedValueOnce(broken);
 
     await expect(fetchActiveSupportSession()).rejects.toThrow("socket hang up");
+  });
+
+});
+
+describe("Tenant support-session termination", () => {
+  it("ends the session with a DELETE scoped to the tenant cookie", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(
+        200,
+        envelope({
+          endedAt: "2026-11-09T13:20:00.000Z",
+          endedBy: "tenant:usr_workspace_admin",
+        })
+      )
+    );
+
+    const result = await endSupportSession(TICKET_ID);
+    const [url, init] = firstCall();
+
+    expect(requestUrl(url)).toBe(
+      `${API_URL}/api/v1/support-sessions/${TICKET_ID}`
+    );
+    expect(init?.method).toBe("DELETE");
+    expect(headerOf(init, "Cookie")).toBe(
+      `${SESSION_COOKIE_NAME}=session-token`
+    );
+    expect(result.endedBy).toBe("tenant:usr_workspace_admin");
+  });
+
+  it("rejects an invalid termination payload", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(200, envelope({ endedAt: "not-a-date" }))
+    );
+
+    const error = await readClientError(endSupportSession(TICKET_ID));
+
+    expect(error.status).toBe(502);
+    expect(error.message).toBe(
+      "The API returned an invalid support-session termination payload."
+    );
+  });
+
+  it("surfaces the RFC 7807 detail when the tenant cannot end the session", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(403, {
+        type: "/errors/capability-denied",
+        title: "Forbidden",
+        status: 403,
+        detail:
+          "Ending a support session requires the organization update permission.",
+        code: "CAPABILITY_DENIED",
+      })
+    );
+
+    const error = await readClientError(endSupportSession(TICKET_ID));
+
+    expect(error.status).toBe(403);
+    expect(error.code).toBe("CAPABILITY_DENIED");
+    expect(error.message).toContain("organization update permission");
   });
 });

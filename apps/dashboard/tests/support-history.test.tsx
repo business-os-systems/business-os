@@ -1,6 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import React from "react";
 import { renderToString } from "react-dom/server";
+
+vi.mock(
+  "../src/app/(dashboard)/settings/security/end-support-session-button",
+  () => ({
+    EndSupportSessionButton: ({ ticketId }: { ticketId: string }) => (
+      <button type="button">End session {ticketId}</button>
+    ),
+  }),
+);
 import { SupportHistory } from "../src/app/(dashboard)/settings/security/support-history";
 import {
   deriveSupportHistoryState,
@@ -49,13 +58,14 @@ const OPERATOR_ENDED: SupportSessionHistoryItem = {
   endedBy: "op_duty_operator",
 };
 
-describe("Tenant support-session history (FR-049, CT-5)", () => {
+describe("Tenant support-session history table (FR-049, CT-5)", () => {
   it("renders the recorded sessions with a plain-text status", () => {
     const html = renderToString(
       <SupportHistory
         items={[RUNNING, TENANT_ENDED, OPERATOR_ENDED]}
         nextCursor={null}
         showNewest={false}
+        canEnd={false}
       />
     );
 
@@ -70,7 +80,12 @@ describe("Tenant support-session history (FR-049, CT-5)", () => {
 
   it("shows the empty state instead of a fabricated row", () => {
     const html = renderToString(
-      <SupportHistory items={[]} nextCursor={null} showNewest={false} />
+      <SupportHistory
+        items={[]}
+        nextCursor={null}
+        showNewest={false}
+        canEnd={false}
+      />
     );
 
     expect(html).toContain("No support sessions recorded");
@@ -88,9 +103,17 @@ describe("Tenant support-session history (FR-049, CT-5)", () => {
     expect(formatSupportHistoryTimestamp(FIXED_ENDED_AT)).toContain("UTC");
   });
 
+});
+
+describe("Tenant support-session history pagination and actions", () => {
   it("offers only the older-page link when the reader is already past the newest page", () => {
     const html = renderToString(
-      <SupportHistory items={[RUNNING]} nextCursor="older" showNewest={false} />
+      <SupportHistory
+        items={[RUNNING]}
+        nextCursor="older"
+        showNewest={false}
+        canEnd={false}
+      />
     );
 
     expect(html).toContain("Older sessions");
@@ -99,7 +122,12 @@ describe("Tenant support-session history (FR-049, CT-5)", () => {
 
   it("offers no older-page link when the cursor is exhausted", () => {
     const html = renderToString(
-      <SupportHistory items={[RUNNING]} nextCursor={null} showNewest={false} />
+      <SupportHistory
+        items={[RUNNING]}
+        nextCursor={null}
+        showNewest={false}
+        canEnd={false}
+      />
     );
 
     expect(html).not.toContain("Older sessions");
@@ -108,11 +136,52 @@ describe("Tenant support-session history (FR-049, CT-5)", () => {
 
   it("links to the older page with the encoded cursor and back to the newest", () => {
     const html = renderToString(
-      <SupportHistory items={[RUNNING]} nextCursor="cur/+==" showNewest />
+      <SupportHistory
+        items={[RUNNING]}
+        nextCursor="cur/+=="
+        showNewest
+        canEnd={false}
+      />
     );
 
     expect(html).toContain("Older sessions");
     expect(html).toContain("/settings/security?cursor=cur%2F%2B%3D%3D");
     expect(html).toContain("Newest sessions");
   });
+});
+
+describe("Tenant support-session history actions", () => {
+  it("offers the terminate control only for an active session and a permitted reader", () => {
+    const permitted = renderToString(
+      <SupportHistory
+        items={[RUNNING, TENANT_ENDED]}
+        nextCursor={null}
+        showNewest={false}
+        canEnd
+      />
+    );
+    expect(permitted).toContain("End session");
+    expect(permitted.match(/End session/g)).toHaveLength(1);
+
+    const denied = renderToString(
+      <SupportHistory
+        items={[RUNNING]}
+        nextCursor={null}
+        showNewest={false}
+        canEnd={false}
+      />
+    );
+    expect(denied).not.toContain("End session");
+
+    const ended = renderToString(
+      <SupportHistory
+        items={[TENANT_ENDED]}
+        nextCursor={null}
+        showNewest={false}
+        canEnd
+      />
+    );
+    expect(ended).not.toContain("End session");
+  });
+
 });

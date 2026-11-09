@@ -1,5 +1,6 @@
 import React from "react";
 import { Alert } from "@suite/ui";
+import { PERMISSIONS, hasPermission } from "@suite/core";
 import { requireAuth } from "@/lib/auth-guard";
 import {
   fetchSupportSessionHistory,
@@ -64,7 +65,11 @@ function readCursor(value: string | string[] | undefined): string | undefined {
 export default async function SecuritySettingsPage({
   searchParams,
 }: SecuritySettingsPageProps) {
-  await requireAuth();
+  const session = await requireAuth();
+  const canEnd = hasPermission(
+    session.permissions ?? [],
+    PERMISSIONS.CORE.ORGANIZATION_UPDATE,
+  );
   const cursor = readCursor((await searchParams)?.cursor);
   const result = await readSupportHistory(cursor);
 
@@ -90,6 +95,7 @@ export default async function SecuritySettingsPage({
           items={result.page.items}
           nextCursor={result.page.nextCursor}
           showNewest={cursor !== undefined}
+          canEnd={canEnd}
         />
       )}
     </div>
