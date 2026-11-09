@@ -27,7 +27,20 @@ interface AuditSearchRow {
   readonly recordHash: string;
 }
 
-function toAuditItem(row: AuditSearchRow): AuditItem {
+/**
+ * Payload disclosure is a policy, not a transport detail: the redacted variant
+ * still returns the chain metadata, only before/after are withheld (FR-043).
+ */
+export const AUDIT_PAYLOAD_DISCLOSURE = {
+  full: "full",
+  redacted: "redacted",
+} as const;
+
+export type AuditPayloadDisclosure =
+  (typeof AUDIT_PAYLOAD_DISCLOSURE)[keyof typeof AUDIT_PAYLOAD_DISCLOSURE];
+
+function toAuditItem(row: AuditSearchRow, disclosure: AuditPayloadDisclosure): AuditItem {
+  const disclosePayload = disclosure === AUDIT_PAYLOAD_DISCLOSURE.full;
   return {
     id: row.id,
     occurredAt: row.occurredAt.toISOString(),
@@ -37,8 +50,8 @@ function toAuditItem(row: AuditSearchRow): AuditItem {
     entityId: row.entityId,
     organizationId: row.organizationId,
     requestId: row.requestId,
-    before: auditItemSchema.shape.before.parse(row.before),
-    after: auditItemSchema.shape.after.parse(row.after),
+    before: disclosePayload ? auditItemSchema.shape.before.parse(row.before) : null,
+    after: disclosePayload ? auditItemSchema.shape.after.parse(row.after) : null,
     recordHash: row.recordHash,
   };
 }
@@ -103,6 +116,14 @@ export function buildAuditSearchWhere(
   return Prisma.sql`WHERE ${Prisma.join(conditions, " AND ")}`;
 }
 
+export interface AuditSearchInput extends AuditQuery {
+  /**
+   * The route resolves this from the verified control session. A caller that
+   * cannot prove platform:pii:read must pass the redacted policy (fail closed).
+   */
+  readonly disclosure: AuditPayloadDisclosure;
+}
+
 /**
  * Cursor-paginated audit search. The cursor preserves the database timestamp
  * with microsecond precision, so rows that share a millisecond never repeat or
@@ -111,10 +132,10 @@ export function buildAuditSearchWhere(
  */
 export async function searchAuditEvents(
   prisma: PrismaClient,
-  query: AuditQuery,
+  input: AuditSearchInput,
 ): Promise<AuditPage> {
-  const cursor = query.cursor === undefined ? undefined : decodeAuditCursor(query.cursor);
-  const where = buildAuditSearchWhere(query, cursor);
+  const cursor = input.cursor === undefined ? undefined : decodeAuditCursor(input.cursor);
+  const where = buildAuditSearchWhere(input, cursor);
 
   const rows = await prisma.$queryRaw<AuditSearchRow[]>(Prisma.sql`
     SELECT
@@ -136,15 +157,17 @@ export async function searchAuditEvents(
     FROM platform."audit_events"
     ${where}
     ORDER BY "occurredAt" DESC, "id" DESC
-    LIMIT ${query.limit + 1}
+    LIMIT ${input.limit + 1}
   `);
 
-  const items = rows.slice(0, query.limit).map(toAuditItem);
+  const items = rows
+    .slice(0, input.limit)
+    .map((row) => toAuditItem(row, input.disclosure));
   const last = rows[items.length - 1];
   return {
     items,
     nextCursor:
-      rows.length > query.limit && last !== undefined
+      rows.length > input.limit && last !== undefined
         ? encodeAuditCursor({
             occurredAt: last.occurredAtCursor,
             id: last.id,

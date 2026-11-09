@@ -6,7 +6,12 @@ import { controlPlaneOriginGuard } from "../../middleware/control-plane-origin.j
 import { rateLimitMiddleware } from "../../middleware/rate-limit.js";
 import { getControlSessionSecret } from "../../lib/platform-env.js";
 import { getPlatformPrismaClient } from "../../lib/platform-db.js";
-import { searchAuditEvents, verifyAuditChain } from "../../services/admin/audit-query.service.js";
+import {
+  AUDIT_PAYLOAD_DISCLOSURE,
+  searchAuditEvents,
+  verifyAuditChain,
+  type AuditPayloadDisclosure,
+} from "../../services/admin/audit-query.service.js";
 import { exportAuditCsv } from "../../services/admin/audit-export.service.js";
 import {
   auditExportQuerySchema,
@@ -41,7 +46,7 @@ const searchRoute = createRoute({
   tags: [AUDIT_TAG],
   summary: "Search the tamper-evident audit chain",
   description:
-    "Cursor-paginated cross-tenant audit search over the platform.audit_events chain. Filters are organization, actor, action and time range; the stable sort is occurredAt DESC, id DESC (CT-5). The response omits the free-text reason; that field is only disclosed by the PII-gated export (FR-039, FR-040).",
+    "Cursor-paginated cross-tenant audit search over the platform.audit_events chain. Filters are organization, actor, action and time range; the stable sort is occurredAt DESC, id DESC (CT-5). The response omits the free-text reason; that field is only disclosed by the PII-gated export (FR-039, FR-040). The before/after payloads require platform:pii:read: without it they are null while action, entity, requestId and recordHash are still returned (FR-043, CT-1).",
   request: { query: auditQuerySchema },
   responses: {
     200: {
@@ -132,6 +137,20 @@ const piiReadGuard = createLazyDefaultCapabilityGuard(() => ({
   capability: PLATFORM_PII_READ,
 }));
 
+/**
+ * The audit-read guard has already verified the control session and resolved
+ * its capabilities. A missing or non-array context is redacted, never widened.
+ */
+function resolvePayloadDisclosure(c: {
+  get: (key: string) => unknown;
+}): AuditPayloadDisclosure {
+  const capabilities = c.get("platformCapabilities");
+  const holdsPiiRead =
+    Array.isArray(capabilities) &&
+    capabilities.some((capability: unknown) => capability === PLATFORM_PII_READ);
+  return holdsPiiRead ? AUDIT_PAYLOAD_DISCLOSURE.full : AUDIT_PAYLOAD_DISCLOSURE.redacted;
+}
+
 const searchMiddleware: MiddlewareHandler[] = [
   auditLimiter(AUDIT_SEARCH_PER_MINUTE, AUDIT_SEARCH_RATE_LIMIT_KEY),
   controlPlaneOriginGuard,
@@ -153,7 +172,10 @@ const exportMiddleware: MiddlewareHandler[] = [
 
 platformAuditRouter.openapi({ ...searchRoute, middleware: searchMiddleware }, async (c) => {
   const query = c.req.valid("query");
-  const data = await searchAuditEvents(getPlatformPrismaClient(), query);
+  const data = await searchAuditEvents(getPlatformPrismaClient(), {
+    ...query,
+    disclosure: resolvePayloadDisclosure(c),
+  });
   return c.json(
     createSuccessResponseBody({
       data,

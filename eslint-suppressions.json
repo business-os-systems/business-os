@@ -1630,9 +1630,6 @@
     "@typescript-eslint/no-unnecessary-condition": {
       "count": 1
     },
-    "max-lines-per-function": {
-      "count": 1
-    },
     "no-restricted-imports": {
       "count": 1
     }
