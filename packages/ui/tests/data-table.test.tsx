@@ -391,7 +391,9 @@ describe("shared ConfigTableRenderer action presentation", () => {
     expect(html).toContain('aria-label="Delete Role"');
     expect(html).toContain("data-testid=\"action-icon\"");
   });
+});
 
+describe("shared ConfigTableRenderer action failures", () => {
   it("logs a failed action when no error handler is provided", async () => {
     const spy = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const failing: TableConfig<BranchRow> = {
