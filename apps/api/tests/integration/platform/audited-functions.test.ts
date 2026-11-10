@@ -67,6 +67,10 @@ interface VerifyRow {
   firstBrokenId: string | null;
 }
 
+interface TenantVerifyRow extends VerifyRow {
+  organizationId: string;
+}
+
 describe.skipIf(!enabled)("Platform audited functions (T016)", () => {
   const suffix = Date.now().toString(36);
   const createdOperatorIds: string[] = [];
@@ -884,6 +888,146 @@ describe.skipIf(!enabled)("Platform audited functions (T016)", () => {
         expect(rows[0]?.verified).toBe(false);
         expect(rows[0]?.firstBrokenId).toBe(second.id);
       });
+    });
+
+    interface TwoTenantChainSeed {
+      readonly intactTenantId: string;
+      readonly tamperedTenantId: string;
+      readonly base: number;
+    }
+
+    async function seedTwoTenantChain(
+      tx: Prisma.TransactionClient,
+      seed: TwoTenantChainSeed,
+    ): Promise<string> {
+      await tx.$executeRaw(Prisma.sql`DELETE FROM platform.audit_events`);
+
+      await appendPlatformAuditEvent(tx, {
+        action: "CHAIN_PROBE",
+        entityType: "Probe",
+        entityId: "intact-first",
+        organizationId: seed.intactTenantId,
+        requestId: "req-tenant-chain-1",
+        occurredAt: new Date(seed.base),
+      });
+      await appendPlatformAuditEvent(tx, {
+        action: "CHAIN_PROBE",
+        entityType: "Probe",
+        entityId: "intact-second",
+        organizationId: seed.intactTenantId,
+        requestId: "req-tenant-chain-2",
+        occurredAt: new Date(seed.base + 1),
+      });
+      const tampered = await appendPlatformAuditEvent(tx, {
+        action: "CHAIN_PROBE",
+        entityType: "Probe",
+        entityId: "tampered-first",
+        organizationId: seed.tamperedTenantId,
+        requestId: "req-tenant-chain-3",
+        occurredAt: new Date(seed.base + 2),
+      });
+      await appendPlatformAuditEvent(tx, {
+        action: "CHAIN_PROBE",
+        entityType: "Probe",
+        entityId: "tampered-second",
+        organizationId: seed.tamperedTenantId,
+        requestId: "req-tenant-chain-4",
+        occurredAt: new Date(seed.base + 3),
+      });
+
+      await tx.$executeRaw(
+        Prisma.sql`UPDATE platform.audit_events SET "after" = '{"tampered": true}'::jsonb WHERE "id" = ${tampered.id}`,
+      );
+
+      return tampered.id;
+    }
+
+    it("attributes a tampered row to its tenant while the intact tenant verifies", async () => {
+      const actorId = await createOperator([
+        PLATFORM_CAPABILITIES.AUDIT_READ.code,
+      ]);
+      const intactTenantId = await createTenant("chain-intact");
+      const tamperedTenantId = await createTenant("chain-tampered");
+      const base = Date.now();
+
+      await withOwnerRollback(async (tx) => {
+        const tamperedId = await seedTwoTenantChain(tx, {
+          intactTenantId,
+          tamperedTenantId,
+          base,
+        });
+
+        const intactRows = await tx.$queryRaw<TenantVerifyRow[]>(
+          Prisma.sql`SELECT * FROM platform.fn_verify_audit_chain_for_tenant(${actorId}, ${intactTenantId}, ${"req-tenant-verify-1"})`,
+        );
+        expect(intactRows[0]).toMatchObject({
+          organizationId: intactTenantId,
+          verified: true,
+          checkedCount: 2,
+          firstBrokenId: null,
+        });
+
+        const tamperedRows = await tx.$queryRaw<TenantVerifyRow[]>(
+          Prisma.sql`SELECT * FROM platform.fn_verify_audit_chain_for_tenant(${actorId}, ${tamperedTenantId}, ${"req-tenant-verify-2"})`,
+        );
+        expect(tamperedRows[0]).toMatchObject({
+          organizationId: tamperedTenantId,
+          verified: false,
+          checkedCount: 2,
+          firstBrokenId: tamperedId,
+        });
+
+        // The tenant report must never replace or weaken the global walk.
+        const globalRows = await tx.$queryRaw<VerifyRow[]>(
+          Prisma.sql`SELECT * FROM platform.fn_verify_audit_chain(${actorId}, ${"req-tenant-verify-3"})`,
+        );
+        expect(globalRows[0]?.verified).toBe(false);
+        expect(globalRows[0]?.firstBrokenId).toBe(tamperedId);
+      });
+    });
+
+    it("audits tenant verification on the tenant's own chain rows", async () => {
+      const actorId = await createOperator([
+        PLATFORM_CAPABILITIES.AUDIT_READ.code,
+      ]);
+      const intactTenantId = await createTenant("chain-audited");
+      const tamperedTenantId = await createTenant("chain-audited-tampered");
+
+      await withOwnerRollback(async (tx) => {
+        await seedTwoTenantChain(tx, {
+          intactTenantId,
+          tamperedTenantId,
+          base: Date.now(),
+        });
+        await tx.$queryRaw<TenantVerifyRow[]>(
+          Prisma.sql`SELECT * FROM platform.fn_verify_audit_chain_for_tenant(${actorId}, ${intactTenantId}, ${"req-tenant-verify-audit"})`,
+        );
+
+        const audits = await tx.$queryRaw<
+          { organizationId: string | null; after: unknown }[]
+        >(
+          Prisma.sql`SELECT "organizationId", "after" FROM platform.audit_events WHERE "action" = ${PLATFORM_AUDIT_ACTIONS.AUDIT_CHAIN_VERIFIED} AND "organizationId" = ${intactTenantId}`,
+        );
+        expect(audits).toHaveLength(1);
+        expect(audits[0]?.after).toMatchObject({
+          scope: "tenant",
+          verified: true,
+          checkedCount: 2,
+        });
+      });
+    });
+
+    it("refuses tenant verification without the audit capability", async () => {
+      const actorId = await createOperator([
+        PLATFORM_CAPABILITIES.TENANTS_READ.code,
+      ]);
+      const tenantId = await createTenant("chain-denied");
+
+      await expect(
+        platformPrisma.$queryRaw(
+          Prisma.sql`SELECT * FROM platform.fn_verify_audit_chain_for_tenant(${actorId}, ${tenantId}, ${"req-tenant-verify-4"})`,
+        ),
+      ).rejects.toThrow(/CAPABILITY_DENIED/);
     });
 
     it("refuses verification without the audit capability", async () => {

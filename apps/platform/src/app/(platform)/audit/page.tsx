@@ -112,7 +112,10 @@ function AuditScreen({
         onLoadMore={() => void audit.loadMore()}
         onRefresh={() => void audit.refresh()}
       />
-      <ChainVerifyPanel />
+      <ChainVerifyPanel
+        key={audit.filters.organizationId ?? "global"}
+        organizationId={audit.filters.organizationId}
+      />
     </div>
   );
 }
