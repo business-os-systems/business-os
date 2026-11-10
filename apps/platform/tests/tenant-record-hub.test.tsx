@@ -226,30 +226,60 @@ describe("Tenant record panel denial per route", () => {
   });
 });
 
-describe("Apps panel", () => {
-  it("shows read-only installed app tiles and the console link", () => {
-    const html = renderToString(
-      <InstalledAppsGrid apps={["website-builder"]} canManageEntitlements />
-    );
-    expect(html).toContain("Website Builder");
-    expect(html).toContain("read-only here");
-    expect(html).toContain(`href="/apps"`);
-    expect(html).not.toContain('type="checkbox"');
-  });
+function installedEntitlement(): {
+  appId: string;
+  isEnabled: boolean;
+  installedAt: string;
+  version: string;
+  branchOverrides: { branchId: string; isEnabled: boolean }[];
+} {
+  return {
+    appId: "website-builder",
+    isEnabled: true,
+    installedAt: "2026-01-01T00:00:00.000Z",
+    version: "v1",
+    branchOverrides: [],
+  };
+}
 
-  it("hides the console link from a read-only operator", () => {
+describe("Apps panel", () => {
+  it("shows an enable toggle and the console link for a manager", () => {
     const html = renderToString(
       <InstalledAppsGrid
-        apps={["website-builder"]}
+        entitlements={[installedEntitlement()]}
+        canManageEntitlements
+        pendingAppId={null}
+        onToggle={() => undefined}
+      />
+    );
+    expect(html).toContain("Website Builder");
+    expect(html).toContain("Enabled");
+    expect(html).toContain('type="checkbox"');
+    expect(html).toContain(`href="/apps"`);
+  });
+
+  it("hides the console link and disables the toggle for a read-only operator", () => {
+    const html = renderToString(
+      <InstalledAppsGrid
+        entitlements={[installedEntitlement()]}
         canManageEntitlements={false}
+        pendingAppId={null}
+        onToggle={() => undefined}
       />
     );
     expect(html).not.toContain(`href="/apps"`);
+    expect(html).toContain('type="checkbox"');
+    expect(html).toContain("disabled");
   });
 
   it("renders a genuine empty state when nothing is installed", () => {
     const html = renderToString(
-      <InstalledAppsGrid apps={[]} canManageEntitlements />
+      <InstalledAppsGrid
+        entitlements={[]}
+        canManageEntitlements
+        pendingAppId={null}
+        onToggle={() => undefined}
+      />
     );
     expect(html).toContain("No installed apps");
   });

@@ -272,11 +272,26 @@ describe("Tenant apps panel states", () => {
   });
 });
 
+function entitlementsReply(): Response {
+  return reply(200, {
+    data: {
+      apps: RECORD.apps.map((appId) => ({
+        appId,
+        isEnabled: true,
+        installedAt: "2026-01-01T00:00:00.000Z",
+        version: "v1",
+        branchOverrides: [],
+      })),
+    },
+  });
+}
+
 describe("Tenant settings version reconciliation", () => {
   it("uses the newly written version for a second save", async () => {
     authState.capabilities = APPS_CAPABILITIES;
     fetchMock
       .mockResolvedValueOnce(reply(200, { data: SETTINGS }))
+      .mockResolvedValueOnce(entitlementsReply())
       .mockResolvedValueOnce(
         reply(200, {
           data: {
@@ -300,8 +315,9 @@ describe("Tenant settings version reconciliation", () => {
         })
       );
     render(withRecord(<TenantAppsPage />));
-    await settle();
-    await settle();
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      await settle();
+    }
 
     const first = document.querySelector("form");
     if (first === null) throw new Error(SETTINGS_FORM_MISSING);

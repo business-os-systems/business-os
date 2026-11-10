@@ -177,7 +177,7 @@ export function createRoleTableConfig(
           kind: "typed",
           title: "Delete role",
           message: "This permanently deletes the custom role.",
-          expectedPhrase: (role) => role.name,
+          expectedPhrase: (role: RoleDetailDto) => role.name,
         },
         onClick: (role) => handlers.onDeleteRole(role),
       },
