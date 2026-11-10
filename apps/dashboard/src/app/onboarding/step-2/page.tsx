@@ -11,11 +11,11 @@ import { groupOnboardingApps, listOnboardingApps } from "@/lib/onboarding-apps";
 const NEXT_ONBOARDING_STEP = "/onboarding/step-3";
 const ONBOARDING_APP_COUNT = listOnboardingApps().length;
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function readIndustries(payload: unknown): string[] {
+export function readIndustries(payload: unknown): string[] {
   if (!isRecord(payload) || !isRecord(payload.data)) {
     return [];
   }
@@ -28,14 +28,14 @@ function readIndustries(payload: unknown): string[] {
   );
 }
 
-function readProblemDetail(payload: unknown): string | null {
+export function readProblemDetail(payload: unknown): string | null {
   if (!isRecord(payload) || typeof payload.detail !== "string") {
     return null;
   }
   return payload.detail;
 }
 
-function readRedirectUrl(payload: unknown): string {
+export function readRedirectUrl(payload: unknown): string {
   if (!isRecord(payload) || typeof payload.redirectUrl !== "string") {
     return NEXT_ONBOARDING_STEP;
   }

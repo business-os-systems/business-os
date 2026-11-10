@@ -12,6 +12,7 @@ const groups = vi.hoisted(() => ({
   current: { recommended: [] as AppManifest[], additional: [] as AppManifest[] },
 }));
 const push = vi.hoisted(() => vi.fn());
+const JSON_HEADERS = { "content-type": "application/json" };
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push, replace: vi.fn(), refresh: vi.fn() }),
@@ -22,9 +23,12 @@ vi.mock("@/lib/onboarding-apps", async (importOriginal) => {
   return { ...actual, groupOnboardingApps: () => groups.current };
 });
 
-const { default: OnboardingStep2Page } = await import(
-  "../src/app/onboarding/step-2/page"
-);
+const {
+  default: OnboardingStep2Page,
+  readIndustries,
+  readProblemDetail,
+  readRedirectUrl,
+} = await import("../src/app/onboarding/step-2/page");
 
 const UNIVERSAL = getAppManifest("website-builder");
 if (UNIVERSAL === undefined) throw new Error("Website Builder manifest missing");
@@ -47,7 +51,7 @@ beforeEach(() => {
   fetchMock.mockResolvedValue(
     new Response(JSON.stringify({ data: { industries: [] } }), {
       status: 200,
-      headers: { "content-type": "application/json" },
+      headers: JSON_HEADERS,
     }),
   );
   vi.stubGlobal("fetch", fetchMock);
@@ -98,13 +102,13 @@ describe("onboarding step 2 picker", () => {
     fetchMock.mockResolvedValueOnce(
       new Response(JSON.stringify({ data: { industries: ["Hospitality & Lodging"] } }), {
         status: 200,
-        headers: { "content-type": "application/json" },
+        headers: JSON_HEADERS,
       }),
     );
     fetchMock.mockResolvedValueOnce(
       new Response(JSON.stringify({ redirectUrl: "/onboarding/step-3" }), {
         status: 200,
-        headers: { "content-type": "application/json" },
+        headers: JSON_HEADERS,
       }),
     );
 
@@ -134,18 +138,93 @@ describe("onboarding step 2 picker", () => {
       .mockResolvedValueOnce(
         new Response(JSON.stringify({ data: { industries: ["Hospitality & Lodging"] } }), {
           status: 200,
-          headers: { "content-type": "application/json" },
+          headers: JSON_HEADERS,
         }),
       )
       .mockResolvedValueOnce(
         new Response(JSON.stringify({ detail: "Selection was rejected." }), {
           status: 422,
-          headers: { "content-type": "application/json" },
+          headers: JSON_HEADERS,
         }),
       );
     await renderPage();
     act(() => cards()[0]?.click());
     await submit();
     expect(container.textContent).toContain("Selection was rejected.");
+  });
+});
+
+describe("onboarding step 2 payload readers", () => {
+  it("rejects malformed industries payloads and keeps only strings", () => {
+    expect(readIndustries(null)).toEqual([]);
+    expect(readIndustries({ data: null })).toEqual([]);
+    expect(readIndustries({ data: { industries: "Hospitality" } })).toEqual([]);
+    expect(readIndustries({ data: { industries: ["A", 1] } })).toEqual(["A"]);
+  });
+
+  it("reads a problem detail only when it is a string", () => {
+    expect(readProblemDetail(null)).toBeNull();
+    expect(readProblemDetail({ detail: 42 })).toBeNull();
+    expect(readProblemDetail({ detail: "Rejected." })).toBe("Rejected.");
+  });
+
+  it("falls back to the next step for a malformed redirect", () => {
+    expect(readRedirectUrl(null)).toBe("/onboarding/step-3");
+    expect(readRedirectUrl({ redirectUrl: 42 })).toBe("/onboarding/step-3");
+    expect(readRedirectUrl({ redirectUrl: "/next" })).toBe("/next");
+  });
+});
+
+describe("onboarding step 2 failure paths", () => {
+  it("logs a failed industries request without crashing", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    fetchMock.mockResolvedValueOnce(new Response("", { status: 500 }));
+    await renderPage();
+    expect(spy).toHaveBeenCalled();
+    spy.mockRestore();
+  });
+
+  it("logs a rejected industries request without crashing", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    fetchMock.mockRejectedValueOnce(new Error("offline"));
+    await renderPage();
+    expect(spy).toHaveBeenCalled();
+    spy.mockRestore();
+  });
+
+  it("shows a network error when the save rejects", async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: { industries: [] } }), {
+          status: 200,
+          headers: JSON_HEADERS,
+        }),
+      )
+      .mockRejectedValueOnce(new Error("offline"));
+    await renderPage();
+    act(() => cards()[0]?.click());
+    await submit();
+    expect(container.textContent).toContain("network error");
+  });
+
+  it("selects an additional app and uses the default redirect", async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: { industries: [] } }), {
+          status: 200,
+          headers: JSON_HEADERS,
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({}), {
+          status: 200,
+          headers: JSON_HEADERS,
+        }),
+      );
+    await renderPage();
+    act(() => cards()[1]?.click());
+    expect(container.textContent).toContain("1 applications selected");
+    await submit();
+    expect(push).toHaveBeenCalledWith("/onboarding/step-3");
   });
 });
