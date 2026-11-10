@@ -234,5 +234,19 @@ describe("Tenant fleet state and quota summary", () => {
       />,
     );
     expect(html.replace(/<!-- -->/g, "")).toContain("1/2 within");
+
+    const none = renderToString(
+      <ConfigTableRenderer
+        config={TENANT_TABLE_CONFIG}
+        data={[
+          {
+            ...TENANT,
+            quotas: { enforced: 0, overLimit: 0, measured: 0 },
+          },
+        ]}
+        rowKey={(row) => row.id}
+      />,
+    );
+    expect(none).toContain("None");
   });
 });
