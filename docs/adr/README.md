@@ -9,7 +9,7 @@ Decisions follow the [Markdown Architectural Decision Records (MADR)](https://ad
 | ADR | Title | Status | Date |
 | :--- | :--- | :--- | :--- |
 | [ADR-0001](./0001-record-architecture-decisions.md) | Record Architecture Decisions | **Accepted** | 2026-10-15 |
-| [ADR-0002](./0002-multi-tenant-isolation-and-database-boundaries.md) | Multi-Tenant Schema and Isolation Model | **Accepted** | 2026-10-15 |
+| [ADR-0002](./0002-multi-tenant-isolation-and-database-boundaries.md) | Multi-Tenant Schema and Isolation Model — amended 2026-11-10 (D-017/D-034) | **Accepted** | 2026-10-15 |
 | [ADR-0003](./0003-pure-capability-based-authorization.md) | Pure Capability-Based Authorization over Static Role Slugs | **Accepted** | 2026-10-15 |
 | [ADR-0004](./0004-dual-tier-session-management-and-edge-runtime-boundaries.md) | Dual-Tier Session Management & Edge Runtime WebCrypto Isolation | **Accepted** | 2026-10-16 |
 | [ADR-0005](./0005-universal-rfc-7807-problem-details.md) | Universal RFC 7807 Problem Details Error Envelopes | **Accepted** | 2026-10-16 |

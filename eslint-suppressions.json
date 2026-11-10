@@ -244,11 +244,6 @@
       "count": 1
     }
   },
-  "apps/api/tests/integration/platform/isolation.test.ts": {
-    "@typescript-eslint/array-type": {
-      "count": 1
-    }
-  },
   "apps/api/tests/integration/platform/lifecycle.test.ts": {
     "@typescript-eslint/require-await": {
       "count": 3

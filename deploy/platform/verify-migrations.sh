@@ -33,7 +33,8 @@ BEGIN
     ('20261106140000_platform_quota_create_guard'),
     ('20261107150000_platform_quota_enforcement'),
     ('20261107151000_platform_app_installation_counts'),
-    ('20261107152000_platform_quota_gate_types')
+    ('20261107152000_platform_quota_gate_types'),
+    ('20261110120000_tenant_rls_grants_and_flag_projection')
   ) AS expected(name)
   WHERE NOT EXISTS (
     SELECT 1
@@ -261,6 +262,51 @@ BEGIN
   IF COALESCE(obj_description('public.system_feature_flag_audit_logs'::regclass), '') NOT LIKE '%24 months%' THEN
     RAISE EXCEPTION 'Flag audit retention is not declared (OP-6)';
   END IF;
+
+  -- Tenant runtime identity (T167/T197, DB-1/DB-2): app_tenant reads and
+  -- writes only its own tenant rows, and evaluates flags through the granted
+  -- projection without ever reaching the control-plane tables.
+  IF NOT has_table_privilege('app_tenant', 'public.branches', 'SELECT') THEN
+    RAISE EXCEPTION 'Tenant boundary failed: app_tenant cannot read branches';
+  END IF;
+  IF NOT has_table_privilege('app_tenant', 'public.user_organizations', 'UPDATE') THEN
+    RAISE EXCEPTION 'Tenant boundary failed: app_tenant cannot update user_organizations';
+  END IF;
+  IF NOT has_table_privilege('app_tenant', 'public.cms_sites', 'SELECT') THEN
+    RAISE EXCEPTION 'Tenant boundary failed: app_tenant cannot read cms_sites';
+  END IF;
+  IF NOT has_table_privilege('app_tenant', 'public.cms_pages', 'DELETE') THEN
+    RAISE EXCEPTION 'Tenant boundary failed: app_tenant cannot delete cms_pages';
+  END IF;
+  IF NOT (SELECT relrowsecurity FROM pg_class WHERE oid = 'public.branches'::regclass) THEN
+    RAISE EXCEPTION 'Tenant boundary failed: RLS is disabled on branches';
+  END IF;
+  IF NOT (SELECT relrowsecurity FROM pg_class WHERE oid = 'public.cms_sites'::regclass) THEN
+    RAISE EXCEPTION 'Tenant boundary failed: RLS is disabled on cms_sites';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'branches'
+      AND policyname = 'branches_tenant_isolation'
+  ) THEN
+    RAISE EXCEPTION 'Tenant boundary failed: branches tenant policy is missing';
+  END IF;
+  IF NOT has_table_privilege('app_tenant', 'public.v_tenant_feature_flags', 'SELECT') THEN
+    RAISE EXCEPTION 'Tenant boundary failed: app_tenant cannot read the flag projection';
+  END IF;
+  IF has_table_privilege('app_tenant', 'public.system_feature_flags', 'SELECT') THEN
+    RAISE EXCEPTION 'Tenant boundary failed: app_tenant can read system_feature_flags directly';
+  END IF;
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'v_tenant_feature_flags'
+      AND column_name IN ('owner', 'removalTicket')
+  ) THEN
+    RAISE EXCEPTION 'Tenant boundary failed: the flag projection exposes control-plane metadata';
+  END IF;
 END
 $$;
 
@@ -285,7 +331,8 @@ WHERE migration_name IN (
   '20261106140000_platform_quota_create_guard',
   '20261107150000_platform_quota_enforcement',
   '20261107151000_platform_app_installation_counts',
-  '20261107152000_platform_quota_gate_types'
+  '20261107152000_platform_quota_gate_types',
+  '20261110120000_tenant_rls_grants_and_flag_projection'
 )
 ORDER BY started_at;
 
