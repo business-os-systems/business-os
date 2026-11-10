@@ -2765,11 +2765,6 @@
       "count": 3
     }
   },
-  "apps/platform/tests/navigation.test.ts": {
-    "sonarjs/no-duplicate-string": {
-      "count": 1
-    }
-  },
   "apps/platform/tests/session-loss.test.ts": {
     "@typescript-eslint/require-await": {
       "count": 1
