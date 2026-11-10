@@ -109,9 +109,15 @@ describe("onboarding step 2 picker", () => {
     expect(container.textContent).toContain("1 applications selected");
 
     await submit();
-    const post = fetchMock.mock.calls.find(
-      (call) => String(call[0]).includes("/step-2") && call[1]?.method === "POST",
-    );
+    const post = fetchMock.mock.calls.find(([input, init]) => {
+      const url =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.href
+            : input.url;
+      return url.includes("/step-2") && init?.method === "POST";
+    });
     expect(post).toBeDefined();
     expect(push).toHaveBeenCalledWith("/onboarding/step-3");
   });
