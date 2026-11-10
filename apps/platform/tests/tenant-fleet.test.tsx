@@ -16,6 +16,7 @@ import {
   type TenantSummary,
 } from "../src/lib/tenant-api";
 import { toMessage } from "../src/lib/error-message";
+import { resolveFleetState } from "../src/app/(platform)/tenants/page";
 import { formatDate, formatDateTime, UNAVAILABLE } from "../src/lib/format";
 
 vi.mock("next/navigation", () => ({
@@ -203,5 +204,33 @@ describe("Platform formatting helpers", () => {
       "SUSPENDED",
       "ARCHIVED",
     ]);
+  });
+});
+
+describe("Tenant fleet state and quota summary", () => {
+  it("maps loading, error and ready without consulting stale rows", () => {
+    expect(resolveFleetState(true, null, 0)).toEqual({ kind: "loading" });
+    expect(resolveFleetState(false, "Capability denied.", 0)).toEqual({
+      kind: "error",
+      title: "Unable to load tenants",
+      message: "Capability denied.",
+    });
+    expect(resolveFleetState(false, null, 2)).toEqual({ kind: "ready" });
+  });
+
+  it("renders the within/over quota summary", () => {
+    const html = renderToString(
+      <ConfigTableRenderer
+        config={TENANT_TABLE_CONFIG}
+        data={[
+          {
+            ...TENANT,
+            quotas: { enforced: 2, overLimit: 1, measured: 2 },
+          },
+        ]}
+        rowKey={(row) => row.id}
+      />,
+    );
+    expect(html.replace(/<!-- -->/g, "")).toContain("1/2 within");
   });
 });

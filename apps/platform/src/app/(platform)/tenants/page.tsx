@@ -16,7 +16,7 @@ import { STATUS_ALL, TenantListToolbar, type StatusFilter } from "./tenant-list-
 
 const PAGE_SIZE = 25;
 
-function resolveFleetState(
+export function resolveFleetState(
   isLoading: boolean,
   error: string | null,
   rowCount: number,
