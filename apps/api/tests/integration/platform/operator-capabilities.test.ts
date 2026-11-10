@@ -22,6 +22,7 @@ import {
   platformOperatorTestsEnabled,
   type OperatorFixture,
 } from "../../helpers/platform-operators.js";
+import { platformTestRpId } from "../../helpers/platform-rp.js";
 
 loadPlatformTestEnv();
 
@@ -158,6 +159,7 @@ it.skipIf(!enabled)("applies a capability revocation immediately", async () => {
   const afterGrant = await issueControlSession({
     prisma: fixture.platformPrisma,
     secret: process.env.CONTROL_SESSION_SECRET ?? "",
+    rpID: platformTestRpId(),
     operatorId: target.id,
   });
   expect(
@@ -182,6 +184,7 @@ it.skipIf(!enabled)("applies a capability revocation immediately", async () => {
   const afterRevoke = await issueControlSession({
     prisma: fixture.platformPrisma,
     secret: process.env.CONTROL_SESSION_SECRET ?? "",
+    rpID: platformTestRpId(),
     operatorId: target.id,
   });
   const denied = await send({
@@ -224,6 +227,7 @@ it.skipIf(!enabled)("ends capabilities and sessions on revocation", async () => 
   const session = await verifyControlSession({
     prisma: fixture.platformPrisma,
     secret: process.env.CONTROL_SESSION_SECRET ?? "",
+    rpID: platformTestRpId(),
     token: target.token,
   });
   expect(session.valid).toBe(false);

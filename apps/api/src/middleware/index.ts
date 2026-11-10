@@ -28,7 +28,9 @@ export {
 } from "./edge-admission.js";
 export {
   createPlatformCapabilityGuard,
+  createPlatformSessionGuard,
   type PlatformCapabilityGuardOptions,
+  type PlatformSessionGuardOptions,
 } from "./platform-capability.js";
 export {
   createImpersonationReadonlyGuard,

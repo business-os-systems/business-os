@@ -19,9 +19,9 @@
 1. Lower the old DNS TTL at least one TTL period before the window.
 2. Update the deployment env and deploy the API and Platform builds. The Platform build must be rebuilt when `NEXT_PUBLIC_API_URL` changes.
 3. Run `deploy/platform/verify-migrations.sh`; confirm the API and Platform health endpoints on the new hostname.
-4. Revoke every live control session (owner-only SQL or the operator-session API after signing in through break-glass) and rotate `CONTROL_SESSION_SECRET`. A domain move must not leave a session that outlives the old RP identity.
+4. Control sessions are RP-bound: a session issued under the old identity is revoked on its next request, so no manual session SQL is required. Rotate `CONTROL_SESSION_SECRET` as defence in depth.
 5. Sign in on the new domain. Old passkeys return `401 RP_MIGRATION_REQUIRED` and write `OPERATOR_SIGN_IN_FAILED` with reason `RP_IDENTITY_CHANGED`.
-6. Re-enrol each operator. Until T181 ships, use the owner/break-glass re-issue procedure; after T181, use self-service re-enrolment. Confirm `OPERATOR_PASSKEY_REGISTERED` for each.
+6. Re-enrol each operator. An operator who can still sign in (for example with another passkey enrolled under the new RP) adds a passkey through the authenticated add-passkey flow (T181). When no passkey can complete sign-in, use the break-glass procedure. Confirm `OPERATOR_PASSKEY_REGISTERED` for each.
 7. Verify the audit chain, tenant isolation, catalog reads and a representative admin read on the new domain.
 8. Keep the old domain as a redirect (or remove DNS after the TTL). Update the edge policy and any external links.
 9. Record the change, the operator re-enrolment list and the audit-chain result.
@@ -36,4 +36,4 @@
 
 - Rehearse in staging at least quarterly and before any planned move. The rehearsal uses a drill-only break-glass certificate and a staging operator.
 - Record the time to restore sign-in, the number of operators re-enrolled and any audit-chain finding. A failed rehearsal blocks the production move.
-- T181 (self-service re-enrolment) and T182 (RP-bound live sessions) remain carry-forwards; do not claim them as delivered.
+- T181 (authenticated add-passkey) and T182 (RP-bound live sessions) are delivered. The rehearsal must still verify that a stale session is revoked on its first request and that the add-passkey flow writes both audit rows.

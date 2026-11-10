@@ -6,6 +6,7 @@ import {
   STEP_UP_TOKEN_HEADER,
 } from "@suite/core";
 import { CONTROL_SESSION_COOKIE_NAME, issueControlSession, PLATFORM_AUDIT_ACTIONS } from "@suite/auth/platform";
+import { platformTestRpId } from "../../helpers/platform-rp.js";
 import { IDEMPOTENCY_HEADER } from "@suite/redis";
 import { tenantLifecycleRouter } from "../../../src/routes/admin/lifecycle.js";
 import { globalErrorHandler } from "../../../src/middleware/error-handler.js";
@@ -45,7 +46,7 @@ describe.skipIf(!enabled)("Platform tenant lifecycle contract", () => {
     for (const capability of capabilities) {
       await platformPrisma.operatorCapability.create({ data: { operatorId: operator.id, capability } });
     }
-    return (await issueControlSession({ prisma: platformPrisma, secret: secret ?? "", operatorId: operator.id })).token;
+    return (await issueControlSession({ prisma: platformPrisma, secret: secret ?? "", operatorId: operator.id, rpID: platformTestRpId() })).token;
   }
 
   async function createTenant(): Promise<{ id: string; slug: string }> {

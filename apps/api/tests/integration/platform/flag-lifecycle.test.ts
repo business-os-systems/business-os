@@ -26,6 +26,7 @@ import {
   buildFlagCreateBody,
   buildFlagKey,
 } from "../../helpers/flag-fixtures.js";
+import { platformTestRpId } from "../../helpers/platform-rp.js";
 
 loadPlatformTestEnv();
 
@@ -118,6 +119,7 @@ describe.skipIf(!enabled)("Platform flag lifecycle", () => {
     const session = await issueControlSession({
       prisma: platformPrisma,
       secret: secret ?? "",
+      rpID: platformTestRpId(),
       operatorId: operator.id,
     });
     return session.token;

@@ -92,6 +92,9 @@ model OperatorSession {
   expiresAt     DateTime  @db.Timestamptz(6)
   idleExpiresAt DateTime  @db.Timestamptz(6)
   revokedAt     DateTime? @db.Timestamptz(6)
+  // The relying-party ID the session was issued under. A session whose binding
+  // no longer matches CONTROL_WEBAUTHN_RP_ID is revoked on the next request.
+  rpId          String?   @db.VarChar(253)
   ip            String?   @db.Inet
   userAgent     String?   @db.Text
   createdAt     DateTime  @default(now()) @db.Timestamptz(6)

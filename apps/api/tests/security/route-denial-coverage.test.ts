@@ -88,6 +88,8 @@ const DENIAL_MATRIX = "tests/integration/platform/denial-matrix.test.ts";
 const IMPERSONATION = "tests/integration/platform/impersonation.test.ts";
 const OPERATOR_ENROLMENT =
   "tests/integration/platform/operator-enrolment.test.ts";
+const OPERATOR_ADD_PASSKEY =
+  "tests/integration/platform/operator-add-passkey.test.ts";
 const AUDIT = "tests/contract/platform/audit.test.ts";
 const QUOTAS = "tests/contract/platform/quotas.test.ts";
 const TENANT_PII = "tests/integration/platform/tenant-pii.test.ts";
@@ -135,6 +137,12 @@ const DENIAL_COVERAGE: Readonly<Record<string, string>> = {
     OPERATOR_ENROLMENT,
   "POST /operator-passkeys/enrolment/verify":
     OPERATOR_ENROLMENT,
+  "POST /operator-passkeys/enrolment/token":
+    OPERATOR_ADD_PASSKEY,
+  "POST /operator-passkeys/enrolment/add/options":
+    OPERATOR_ADD_PASSKEY,
+  "POST /operator-passkeys/enrolment/add/verify":
+    OPERATOR_ADD_PASSKEY,
   "GET /operators": DENIAL_MATRIX,
   "POST /operators": DENIAL_MATRIX,
   "PATCH /operators/{operatorId}":

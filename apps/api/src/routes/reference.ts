@@ -5,7 +5,10 @@ import { extractTokenFromCookie } from "@suite/auth/session";
 import { CONTROL_SESSION_COOKIE_NAME, verifyControlSession } from "@suite/auth/platform";
 import { requireAuth } from "../middleware/auth.js";
 import { rateLimitMiddleware } from "../middleware/rate-limit.js";
-import { getControlSessionSecret } from "../lib/platform-env.js";
+import {
+  getControlSessionSecret,
+  getControlWebauthnRpId,
+} from "../lib/platform-env.js";
 import { getPlatformPrismaClient } from "../lib/platform-db.js";
 import { platformCatalogCache } from "../services/catalog-cache.js";
 import {
@@ -106,6 +109,7 @@ export function createReferenceReadAuth(): MiddlewareHandler {
       const session = await verifyControlSession({
         prisma: getPlatformPrismaClient(),
         secret: getControlSessionSecret(),
+        rpID: getControlWebauthnRpId(),
         token: controlToken,
       });
       if (session.valid) {

@@ -9,6 +9,7 @@ import {
 import { UnauthorizedError } from "@suite/core/errors";
 import { createIdempotencyMiddleware } from "../../middleware/idempotency.js";
 import { rateLimitMiddleware } from "../../middleware/rate-limit.js";
+import { getControlWebauthnRpId } from "../../lib/platform-env.js";
 import {
   composeAdminFlagsRuntime,
   type AdminFlagsRuntime,
@@ -137,6 +138,7 @@ const flagsCapabilityGuard = createLazyCapabilityGuard(() => {
     prisma: current.platformClient,
     redis: current.redisClient,
     secret: current.controlSessionSecret,
+    rpID: getControlWebauthnRpId(),
     capability: current.capability,
   };
 });

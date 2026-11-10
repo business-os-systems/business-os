@@ -5,4 +5,5 @@ export * from "./audit.js";
 export * from "./bootstrap-token.js";
 export * from "./audit-actions.js";
 export * from "./operator-invitation.js";
+export * from "./enrolment-token.js";
 export * from "./rp-migration.js";

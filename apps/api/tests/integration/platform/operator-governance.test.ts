@@ -13,6 +13,7 @@ import {
   issueControlSession,
   verifyControlSession,
 } from "@suite/auth/platform";
+import { platformTestRpId } from "../../helpers/platform-rp.js";
 import { IDEMPOTENCY_HEADER } from "@suite/redis";
 import { platformOperatorPasskeysRouter } from "../../../src/routes/admin/operator-passkeys.js";
 import {
@@ -66,6 +67,7 @@ async function reissueSession(operatorId: string): Promise<string> {
     prisma: platformPrisma,
     secret: process.env.CONTROL_SESSION_SECRET ?? "",
     operatorId,
+    rpID: platformTestRpId(),
   });
   return issued.token;
 }
@@ -95,6 +97,7 @@ async function createActiveOperator(
     prisma: platformPrisma,
     secret: secret ?? "",
     operatorId: operator.id,
+    rpID: platformTestRpId(),
   });
   return { id: operator.id, token: issued.token };
 }
@@ -424,6 +427,7 @@ it.skipIf(!enabled)("suspends an operator, revokes sessions and records the reas
     prisma: platformPrisma,
     secret: secret ?? "",
     token: target.token,
+    rpID: platformTestRpId(),
   });
   expect(session.valid).toBe(false);
 
@@ -522,6 +526,7 @@ it.skipIf(!enabled)("lists and revokes one operator session", async () => {
     prisma: platformPrisma,
     secret: secret ?? "",
     token: target.token,
+    rpID: platformTestRpId(),
   });
   expect(verified.valid).toBe(false);
 

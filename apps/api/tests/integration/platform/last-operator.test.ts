@@ -19,6 +19,7 @@ import {
   platformOperatorTestsEnabled,
   type OperatorFixture,
 } from "../../helpers/platform-operators.js";
+import { platformTestRpId } from "../../helpers/platform-rp.js";
 
 loadPlatformTestEnv();
 
@@ -68,6 +69,7 @@ it.skipIf(!enabled)("allows demotion once a second manager is active", async () 
   const reissued = await issueControlSession({
     prisma: fixture.platformPrisma,
     secret: process.env.CONTROL_SESSION_SECRET ?? "",
+    rpID: platformTestRpId(),
     operatorId: target.id,
   });
   const denied = await send({

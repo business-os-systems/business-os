@@ -104,6 +104,24 @@ const PERMITTED_WRITES: readonly PermittedWrite[] = [
     path: "/operator-passkeys/enrolment/verify",
     reason: "invited-operator passkey enrolment",
   },
+  // T181: the authenticated operator exchanges their own control session for a
+  // single-use add-passkey token and registers one additional credential. Only
+  // Platform-owned operator and audit rows are written.
+  {
+    method: "POST",
+    path: "/operator-passkeys/enrolment/token",
+    reason: "active-operator add-passkey",
+  },
+  {
+    method: "POST",
+    path: "/operator-passkeys/enrolment/add/options",
+    reason: "active-operator add-passkey",
+  },
+  {
+    method: "POST",
+    path: "/operator-passkeys/enrolment/add/verify",
+    reason: "active-operator add-passkey",
+  },
   // A support session writes only Platform-owned session state and its audit
   // row; the tenant plane stays read-only for the session lifetime
   // (FR-045, FR-050, SC-017).

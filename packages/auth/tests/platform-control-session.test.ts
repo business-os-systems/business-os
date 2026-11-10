@@ -21,6 +21,7 @@ interface SessionCreateData {
   issuedAt: Date;
   expiresAt: Date;
   idleExpiresAt: Date;
+  rpId: string | null;
   ip: string | null;
   userAgent: string | null;
   createdAt: Date;
@@ -89,6 +90,7 @@ function createFakePrisma() {
 }
 
 const SECRET = "control-session-test-secret-32-characters";
+const RP_ID = "localhost";
 const OPERATOR_ID = "op_test_1";
 
 describe("@suite/auth - Platform control session", () => {
@@ -99,6 +101,7 @@ describe("@suite/auth - Platform control session", () => {
     const issued = await issueControlSession({
       prisma,
       secret: SECRET,
+      rpID: RP_ID,
       operatorId: OPERATOR_ID,
       now,
     });
@@ -120,6 +123,7 @@ describe("@suite/auth - Platform control session", () => {
     const issued = await issueControlSession({
       prisma,
       secret: SECRET,
+      rpID: RP_ID,
       operatorId: OPERATOR_ID,
       now,
     });
@@ -127,6 +131,7 @@ describe("@suite/auth - Platform control session", () => {
     const result = await verifyControlSession({
       prisma,
       secret: SECRET,
+      rpID: RP_ID,
       token: issued.token,
       now: new Date(now.getTime() + 60_000),
     });
@@ -158,6 +163,7 @@ describe("@suite/auth - Platform control session", () => {
     const result = await verifyControlSession({
       prisma,
       secret: SECRET,
+      rpID: RP_ID,
       token,
     });
 
@@ -170,6 +176,7 @@ describe("@suite/auth - Platform control session", () => {
     const issued = await issueControlSession({
       prisma,
       secret: SECRET,
+      rpID: RP_ID,
       operatorId: OPERATOR_ID,
       now,
     });
@@ -181,6 +188,7 @@ describe("@suite/auth - Platform control session", () => {
     const result = await verifyControlSession({
       prisma,
       secret: SECRET,
+      rpID: RP_ID,
       token: issued.token,
       now: new Date(now.getTime() + 60_000),
     });
@@ -194,6 +202,7 @@ describe("@suite/auth - Platform control session", () => {
     const issued = await issueControlSession({
       prisma,
       secret: SECRET,
+      rpID: RP_ID,
       operatorId: OPERATOR_ID,
       now: new Date(now.getTime() - 9 * 60 * 60 * 1000),
     });
@@ -201,6 +210,7 @@ describe("@suite/auth - Platform control session", () => {
     const result = await verifyControlSession({
       prisma,
       secret: SECRET,
+      rpID: RP_ID,
       token: issued.token,
       now,
     });
@@ -214,6 +224,7 @@ describe("@suite/auth - Platform control session", () => {
     const issued = await issueControlSession({
       prisma,
       secret: SECRET,
+      rpID: RP_ID,
       operatorId: OPERATOR_ID,
       now: new Date(
         now.getTime() - (CONTROL_SESSION_IDLE_SECONDS + 60) * 1000
@@ -223,6 +234,7 @@ describe("@suite/auth - Platform control session", () => {
     const result = await verifyControlSession({
       prisma,
       secret: SECRET,
+      rpID: RP_ID,
       token: issued.token,
       now,
     });
@@ -236,6 +248,7 @@ describe("@suite/auth - Platform control session", () => {
     const issued = await issueControlSession({
       prisma,
       secret: SECRET,
+      rpID: RP_ID,
       operatorId: OPERATOR_ID,
       now,
     });
@@ -259,6 +272,7 @@ describe("@suite/auth - Platform control session", () => {
     const issued = await issueControlSession({
       prisma,
       secret: SECRET,
+      rpID: RP_ID,
       operatorId: OPERATOR_ID,
       now,
     });
@@ -278,6 +292,7 @@ describe("@suite/auth - Platform control session", () => {
     const issued = await issueControlSession({
       prisma,
       secret: SECRET,
+      rpID: RP_ID,
       operatorId: OPERATOR_ID,
       now,
     });
@@ -285,6 +300,7 @@ describe("@suite/auth - Platform control session", () => {
     const active = await verifyAndTouchControlSession({
       prisma,
       secret: SECRET,
+      rpID: RP_ID,
       token: issued.token,
       now: new Date(now.getTime() + 29 * 60_000),
     });
@@ -293,6 +309,7 @@ describe("@suite/auth - Platform control session", () => {
     const later = await verifyControlSession({
       prisma,
       secret: SECRET,
+      rpID: RP_ID,
       token: issued.token,
       now: new Date(now.getTime() + 45 * 60_000),
     });
@@ -305,6 +322,7 @@ describe("@suite/auth - Platform control session", () => {
     const issued = await issueControlSession({
       prisma,
       secret: SECRET,
+      rpID: RP_ID,
       operatorId: OPERATOR_ID,
       now,
     });
@@ -312,6 +330,7 @@ describe("@suite/auth - Platform control session", () => {
     const result = await verifyAndTouchControlSession({
       prisma,
       secret: SECRET,
+      rpID: RP_ID,
       token: issued.token,
       now: new Date(now.getTime() + 20 * 60 * 1000),
     });
@@ -328,6 +347,7 @@ describe("@suite/auth - Platform control session", () => {
     const issued = await issueControlSession({
       prisma,
       secret: SECRET,
+      rpID: RP_ID,
       operatorId: OPERATOR_ID,
     });
 
@@ -337,5 +357,72 @@ describe("@suite/auth - Platform control session", () => {
     await expect(
       revokeControlSession({ prisma, sessionId: issued.sessionId })
     ).resolves.toBe(false);
+  });
+
+  it("records the relying-party identity on the session", async () => {
+    const { prisma, sessions } = createFakePrisma();
+    const issued = await issueControlSession({
+      prisma,
+      secret: SECRET,
+      rpID: RP_ID,
+      operatorId: OPERATOR_ID,
+    });
+
+    expect([...sessions.values()][0]?.rpId).toBe(RP_ID);
+    await expect(
+      verifyControlSession({
+        prisma,
+        secret: SECRET,
+        rpID: RP_ID,
+        token: issued.token,
+      })
+    ).resolves.toMatchObject({ valid: true });
+  });
+
+  it("revokes a session issued under a previous relying-party identity", async () => {
+    const { prisma, sessions } = createFakePrisma();
+    const now = new Date("2026-10-26T10:00:00.000Z");
+    const issued = await issueControlSession({
+      prisma,
+      secret: SECRET,
+      rpID: "old.example.com",
+      operatorId: OPERATOR_ID,
+      now,
+    });
+
+    const result = await verifyControlSession({
+      prisma,
+      secret: SECRET,
+      rpID: RP_ID,
+      token: issued.token,
+      now: new Date(now.getTime() + 60_000),
+    });
+
+    expect(result).toEqual({ valid: false, reason: "rp_mismatch" });
+    expect([...sessions.values()][0]?.revokedAt).not.toBeNull();
+  });
+
+  it("revokes a legacy session that has no relying-party binding", async () => {
+    const { prisma, sessions } = createFakePrisma();
+    const issued = await issueControlSession({
+      prisma,
+      secret: SECRET,
+      rpID: RP_ID,
+      operatorId: OPERATOR_ID,
+    });
+    const stored = [...sessions.values()][0];
+    if (stored) {
+      stored.rpId = null;
+    }
+
+    const result = await verifyControlSession({
+      prisma,
+      secret: SECRET,
+      rpID: RP_ID,
+      token: issued.token,
+    });
+
+    expect(result).toEqual({ valid: false, reason: "rp_mismatch" });
+    expect(stored?.revokedAt).not.toBeNull();
   });
 });

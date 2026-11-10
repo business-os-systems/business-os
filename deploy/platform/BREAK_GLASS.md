@@ -43,8 +43,8 @@ The break-glass hostname does not share a session with the operator domain; it i
 - Removing a certificate from the CA bundle revokes admission at the next TLS handshake; no app redeploy is needed.
 - Removing a person from the edge admission policy does **not** revoke their operator session; revoke sessions separately (FR-071).
 
-## Known gaps (carry-forwards)
+## T181/T182 boundaries
 
-- **T181**: an ACTIVE operator has no self-service re-enrolment route. A domain move or lost device currently needs the owner/break-glass procedure to issue a fresh enrolment; do not claim self-service recovery.
-- **T182**: live control sessions are not RP-bound. A domain move must revoke all sessions and rotate `CONTROL_SESSION_SECRET`.
+- **T181 (delivered)**: an ACTIVE operator with a valid control session can add another passkey through `POST /operator-passkeys/enrolment/token`. The token is single-use, ten-minute, bound to that operator and exchanged with the currently configured `CONTROL_WEBAUTHN_RP_ID`; completion and failure both revoke it and write `OPERATOR_PASSKEY_REGISTERED` / `OPERATOR_ENROLMENT_*` audit rows. A lost sole passkey still needs the break-glass procedure because there is no authenticated session to start the flow.
+- **T182 (delivered)**: control sessions record the RP ID they were issued under. A session whose binding no longer matches `CONTROL_WEBAUTHN_RP_ID` (including a legacy row with no binding) is revoked on its next request. Rotate `CONTROL_SESSION_SECRET` during a domain move as defence in depth.
 - The page is intentionally read-only and writes no audit row. The certificate authentication is recorded by the proxy; the bootstrap and passkey events are audited by the API. If a future version adds an app-level recovery action, it must write its audit row in the same transaction.

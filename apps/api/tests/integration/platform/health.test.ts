@@ -16,6 +16,7 @@ import {
   createPlatformTestClient,
   platformIntegrationTestsEnabled,
 } from "../../helpers/platform-db.js";
+import { platformTestRpId } from "../../helpers/platform-rp.js";
 
 loadPlatformTestEnv();
 
@@ -163,6 +164,7 @@ beforeAll(async () => {
   const session = await issueControlSession({
     prisma: platformPrisma,
     secret: secret ?? "",
+    rpID: platformTestRpId(),
     operatorId: operator.id,
   });
   token = session.token;

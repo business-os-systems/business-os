@@ -24,6 +24,7 @@ import {
   createPlatformTestClient,
   platformIntegrationTestsEnabled,
 } from "../../helpers/platform-db.js";
+import { platformTestRpId } from "../../helpers/platform-rp.js";
 
 loadPlatformTestEnv();
 
@@ -77,6 +78,7 @@ describe.skipIf(!enabled)("Platform tenant lifecycle routes", () => {
     const issued = await issueControlSession({
       prisma: platformPrisma,
       secret: secret ?? "",
+      rpID: platformTestRpId(),
       operatorId: operator.id,
     });
     return { id: operator.id, token: issued.token };

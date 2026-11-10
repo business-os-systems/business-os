@@ -25,7 +25,7 @@ import {
  * operator health view share one bounded definition of "connected".
  */
 
-export const DEFAULT_PROBE_TIMEOUT_MS = 150;
+export const DEFAULT_PROBE_TIMEOUT_MS = 1000;
 const API_SERVICE_NAME = "api";
 const PLATFORM_DASHBOARD_SERVICE_NAME = "platform-dashboard";
 
