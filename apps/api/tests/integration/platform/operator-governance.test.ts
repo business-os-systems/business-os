@@ -59,6 +59,15 @@ let ownerToken: string;
 let limitedToken: string;
 let keyCounter = 0;
 
+async function reissueSession(operatorId: string): Promise<string> {
+  const issued = await issueControlSession({
+    prisma: platformPrisma,
+    secret: process.env.CONTROL_SESSION_SECRET ?? "",
+    operatorId,
+  });
+  return issued.token;
+}
+
 async function createActiveOperator(
   capabilities: readonly string[]
 ): Promise<{ id: string; token: string }> {
@@ -442,7 +451,12 @@ it.skipIf(!enabled)("invalidates the capability cache after a grant and revoke",
   expect(granted.data.capabilities).toContain(
     PLATFORM_CAPABILITIES.OPERATORS_MANAGE.code
   );
-  const allowed = await send({ method: "GET", path: "/", token: target.token });
+  const afterGrant = await reissueSession(target.id);
+  const allowed = await send({
+    method: "GET",
+    path: "/",
+    token: afterGrant,
+  });
   expect(allowed.status).toBe(200);
 
   const revoke = await send({
@@ -453,10 +467,19 @@ it.skipIf(!enabled)("invalidates the capability cache after a grant and revoke",
     body: { revoke: [PLATFORM_CAPABILITIES.OPERATORS_MANAGE.code] },
   });
   expect(revoke.status).toBe(200);
+
+  const stale = await send({
+    method: "GET",
+    path: "/",
+    token: afterGrant,
+  });
+  expect(stale.status).toBe(401);
+
+  const afterRevoke = await reissueSession(target.id);
   const deniedAfter = await send({
     method: "GET",
     path: "/",
-    token: target.token,
+    token: afterRevoke,
   });
   expect(deniedAfter.status).toBe(403);
 

@@ -253,6 +253,33 @@ describe("@suite/auth - Platform control session", () => {
     );
   });
 
+  it("keeps an active session valid past the signed idle claim", async () => {
+    const { prisma } = createFakePrisma();
+    const now = new Date("2026-10-26T10:00:00.000Z");
+    const issued = await issueControlSession({
+      prisma,
+      secret: SECRET,
+      operatorId: OPERATOR_ID,
+      now,
+    });
+
+    const active = await verifyAndTouchControlSession({
+      prisma,
+      secret: SECRET,
+      token: issued.token,
+      now: new Date(now.getTime() + 29 * 60_000),
+    });
+    expect(active.valid).toBe(true);
+
+    const later = await verifyControlSession({
+      prisma,
+      secret: SECRET,
+      token: issued.token,
+      now: new Date(now.getTime() + 45 * 60_000),
+    });
+    expect(later.valid).toBe(true);
+  });
+
   it("verifies and touches a session in one step", async () => {
     const { prisma, sessions } = createFakePrisma();
     const now = new Date("2026-10-26T10:00:00.000Z");

@@ -4,6 +4,7 @@ import {
   PLATFORM_ERROR_CODE,
 } from "@suite/core";
 import {
+  issueControlSession,
   PLATFORM_AUDIT_ACTIONS,
   verifyControlSession,
 } from "@suite/auth/platform";
@@ -154,8 +155,13 @@ it.skipIf(!enabled)("applies a capability revocation immediately", async () => {
     body: { grant: [PLATFORM_CAPABILITIES.OPERATORS_MANAGE.code] },
   });
   expect(grant.status).toBe(200);
+  const afterGrant = await issueControlSession({
+    prisma: fixture.platformPrisma,
+    secret: process.env.CONTROL_SESSION_SECRET ?? "",
+    operatorId: target.id,
+  });
   expect(
-    (await send({ method: "GET", path: "/", token: target.token })).status
+    (await send({ method: "GET", path: "/", token: afterGrant.token })).status
   ).toBe(200);
 
   const revoke = await send({
@@ -165,10 +171,23 @@ it.skipIf(!enabled)("applies a capability revocation immediately", async () => {
     body: { revoke: [PLATFORM_CAPABILITIES.OPERATORS_MANAGE.code] },
   });
   expect(revoke.status).toBe(200);
+
+  const stale = await send({
+    method: "GET",
+    path: "/",
+    token: afterGrant.token,
+  });
+  expect(stale.status).toBe(401);
+
+  const afterRevoke = await issueControlSession({
+    prisma: fixture.platformPrisma,
+    secret: process.env.CONTROL_SESSION_SECRET ?? "",
+    operatorId: target.id,
+  });
   const denied = await send({
     method: "GET",
     path: "/",
-    token: target.token,
+    token: afterRevoke.token,
   });
   expect(denied.status).toBe(403);
   expect((await parseProblem(denied)).code).toBe(

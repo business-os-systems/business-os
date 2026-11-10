@@ -3,6 +3,7 @@ import {
   PLATFORM_CAPABILITIES,
   PLATFORM_ERROR_CODE,
 } from "@suite/core";
+import { issueControlSession } from "@suite/auth/platform";
 import {
   OPERATOR_RATE_LIMIT_KEY,
   platformOperatorsRouter,
@@ -62,10 +63,17 @@ it.skipIf(!enabled)("allows demotion once a second manager is active", async () 
   });
   expect(revoke.status).toBe(200);
 
+  // FR-059: the revoke also rotated the target's session; re-authenticate to
+  // prove the capability is gone rather than only the cookie.
+  const reissued = await issueControlSession({
+    prisma: fixture.platformPrisma,
+    secret: process.env.CONTROL_SESSION_SECRET ?? "",
+    operatorId: target.id,
+  });
   const denied = await send({
     method: "GET",
     path: "/",
-    token: target.token,
+    token: reissued.token,
   });
   expect(denied.status).toBe(403);
   expect((await parseProblem(denied)).code).toBe(

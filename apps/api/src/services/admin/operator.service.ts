@@ -566,6 +566,12 @@ async function applyCapabilityChanges(
     after: { capabilities: after },
     requestId: actor.requestId,
   });
+  // FR-059: a privilege change revokes the target's live sessions, so the old
+  // cookie cannot keep the previous capability set.
+  await tx.operatorSession.updateMany({
+    where: { operatorId: target.id, revokedAt: null },
+    data: { revokedAt: now },
+  });
   return after;
 }
 
