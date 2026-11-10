@@ -46,13 +46,14 @@ export interface OnboardingAppGroups {
   readonly additional: readonly AppManifest[];
 }
 
-export function groupOnboardingApps(
+export function groupApps(
+  apps: readonly AppManifest[],
   userIndustries: readonly string[]
 ): OnboardingAppGroups {
   const recommended: AppManifest[] = [];
   const additional: AppManifest[] = [];
 
-  for (const app of listOnboardingApps()) {
+  for (const app of apps) {
     if (isAppRecommended(app, userIndustries)) {
       recommended.push(app);
     } else {
@@ -61,4 +62,10 @@ export function groupOnboardingApps(
   }
 
   return { recommended, additional };
+}
+
+export function groupOnboardingApps(
+  userIndustries: readonly string[]
+): OnboardingAppGroups {
+  return groupApps(listOnboardingApps(), userIndustries);
 }

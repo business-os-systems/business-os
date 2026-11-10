@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { renderToString } from "react-dom/server";
 import { getAppManifest } from "@suite/core";
 import OnboardingStep2Page from "../src/app/onboarding/step-2/page";
+import { AppSelectionCard } from "../src/components/onboarding/app-selection-card";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
@@ -29,6 +30,26 @@ describe("onboarding app picker registry", () => {
     expect(html).toContain(manifest.title.replaceAll("&", "&amp;"));
     expect(html).toContain(manifest.description);
     expect(html).toContain("All industries");
+  });
+
+  it("renders a non-recommended card with its category", () => {
+    const manifest = getAppManifest(WEBSITE_BUILDER_APP_ID);
+    if (manifest === undefined) throw new Error("Manifest missing");
+    const app = {
+      ...manifest,
+      category: "Core Suite",
+      targetIndustries: ["Hospitality & Lodging"],
+    };
+    const html = renderToString(
+      <AppSelectionCard
+        app={app}
+        isSelected={false}
+        isRecommended={false}
+        onToggle={() => undefined}
+      />,
+    );
+    expect(html).toContain("Core Suite");
+    expect(html).toContain("Hospitality &amp; Lodging");
   });
 
   it("omits applications that the compiled registry does not declare", () => {

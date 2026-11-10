@@ -1,5 +1,28 @@
+import type { Prisma } from "@suite/db";
 import { prisma } from "./client.js";
-import { APP_MANIFESTS, getAppManifest } from "@suite/core";
+import { APP_MANIFESTS, getAppManifest, type AppManifest } from "@suite/core";
+
+export function mergeAppSettings(
+  existingSettings: Record<string, unknown>,
+  manifest: AppManifest,
+  appId: string,
+): Prisma.InputJsonObject {
+  const resolvedTitle =
+    existingSettings.title && existingSettings.title !== appId
+      ? (existingSettings.title as string)
+      : manifest.title;
+  const resolvedHref = (existingSettings.href as string) || manifest.href;
+  return {
+    ...(existingSettings as Prisma.InputJsonObject),
+    code: (existingSettings.code as string) || manifest.code,
+    name: (existingSettings.name as string) || manifest.name,
+    iconName: (existingSettings.iconName as string) || manifest.iconKey,
+    description: (existingSettings.description as string) || manifest.description,
+    permission: (existingSettings.permission as string) || manifest.permission,
+    title: resolvedTitle,
+    href: resolvedHref,
+  };
+}
 
 export async function backfillAppMetadata() {
   console.log("🔄 Starting App Manifest Metadata & Owner Wildcard Capability Backfill...");
@@ -68,23 +91,11 @@ export async function backfillAppMetadata() {
       existingSettings.title === app.appId;
 
     if (needsBackfill && manifest) {
-      const resolvedTitle =
-        existingSettings.title && existingSettings.title !== app.appId
-          ? (existingSettings.title as string)
-          : manifest.title;
-      const resolvedHref =
-        (existingSettings.href as string) || manifest.href;
-
-      const mergedSettings = {
-        ...existingSettings,
-        code: (existingSettings.code as string) || manifest.code,
-        name: (existingSettings.name as string) || manifest.name,
-        iconName: (existingSettings.iconName as string) || manifest.iconKey,
-        description: (existingSettings.description as string) || manifest.description,
-        permission: (existingSettings.permission as string) || manifest.permission,
-        title: resolvedTitle,
-        href: resolvedHref,
-      };
+      const mergedSettings = mergeAppSettings(
+        existingSettings,
+        manifest,
+        app.appId,
+      );
 
 
       await prisma.installedApp.update({

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { APP_MANIFESTS, getAppManifest } from "@suite/core";
 import {
   describeTargetIndustries,
+  groupApps,
   groupOnboardingApps,
   isAppRecommended,
   listOnboardingApps,
@@ -48,3 +49,18 @@ describe("onboarding app registry", () => {
     expect(groups.additional).toEqual([]);
   });
 });
+
+  it("groups a non-universal app as additional", () => {
+    const manifest = getAppManifest("website-builder");
+    if (!manifest) throw new Error("website-builder must be registered");
+    const hospitality = {
+      ...manifest,
+      appId: "lodging-pms",
+      targetIndustries: ["Hospitality & Lodging"],
+    };
+    const groups = groupApps([manifest, hospitality], []);
+    expect(groups.recommended.map((app) => app.appId)).toEqual([
+      "website-builder",
+    ]);
+    expect(groups.additional.map((app) => app.appId)).toEqual(["lodging-pms"]);
+  });
