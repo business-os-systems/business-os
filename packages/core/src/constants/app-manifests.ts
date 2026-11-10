@@ -13,9 +13,19 @@ export interface AppManifest {
   code: string;
   version: string;
   href: string;
-  iconName: string;
+  /**
+   * Key into the dashboard navigation icon registry. Every app declares its
+   * icon once here; an unregistered key fails loudly in the registry resolver
+   * instead of silently rendering an emoji or a guessed fallback.
+   */
+  iconKey: string;
   description: string;
   permission: string;
+  /**
+   * Industries this app serves. The wildcard entry `*` marks a universal app
+   * that onboarding recommends regardless of the tenant's industry profile.
+   */
+  targetIndustries: readonly string[];
   category?: string;
   capabilities?: ReadonlyArray<{
     action: string;
@@ -31,10 +41,12 @@ const APP_MANIFEST_REGISTRY = {
     code: "App 01",
     version: "1.0.0",
     href: "/sites",
-    iconName: "sites",
+    iconKey: "sites",
     description:
       "Visual canvas studio, section blueprints, responsive device preview, and edge storefront delivery.",
     permission: "cms:sites:read",
+    // App 01 serves every industry; onboarding always recommends it.
+    targetIndustries: ["*"],
     capabilities: [
       {
         action: "cms:sites:read",
