@@ -79,7 +79,7 @@ export async function backfillAppMetadata() {
         ...existingSettings,
         code: (existingSettings.code as string) || manifest.code,
         name: (existingSettings.name as string) || manifest.name,
-        iconName: (existingSettings.iconName as string) || manifest.iconName,
+        iconName: (existingSettings.iconName as string) || manifest.iconKey,
         description: (existingSettings.description as string) || manifest.description,
         permission: (existingSettings.permission as string) || manifest.permission,
         title: resolvedTitle,

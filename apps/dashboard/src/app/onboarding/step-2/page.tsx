@@ -2,114 +2,45 @@
 
 import React, { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Checkbox } from "@suite/ui";
+import { Button } from "@suite/ui";
 import { AlertTriangleIcon, ArrowLeftIcon, ArrowRightIcon } from "@suite/ui/icons";
+import { AppSelectionCard } from "@/components/onboarding/app-selection-card";
 import { OnboardingStepper } from "@/components/onboarding/onboarding-stepper";
+import { groupOnboardingApps, listOnboardingApps } from "@/lib/onboarding-apps";
 
-export interface CatalogApp {
-  id: string;
-  code: string;
-  title: string;
-  description: string;
-  category: string;
-  targetIndustries: string[];
-  icon: string;
+const NEXT_ONBOARDING_STEP = "/onboarding/step-3";
+const ONBOARDING_APP_COUNT = listOnboardingApps().length;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-const APP_CATALOG: CatalogApp[] = [
-  {
-    id: "website-builder",
-    code: "CMS",
-    title: "Website & Headless CMS",
-    description: "Visual drag-and-drop web builder, block library, custom domain publishing, and headless CMS.",
-    category: "Core Suite",
-    targetIndustries: ["*"],
-    icon: "🌐",
-  },
-  {
-    id: "lodging-pms",
-    code: "PMS",
-    title: "Property & Room Management",
-    description: "Room inventory, reservation timeline, front desk check-in/out, rate plans, and night audit.",
-    category: "Hospitality",
-    targetIndustries: ["Hospitality & Lodging", "Real Estate & Property"],
-    icon: "🏨",
-  },
-  {
-    id: "retail-pos",
-    code: "POS",
-    title: "Point of Sale & Checkout",
-    description: "Cashier terminals, barcode scanning, split billing, table ordering, and receipt printing.",
-    category: "Commerce",
-    targetIndustries: [
-      "Restaurant & Food Service",
-      "Retail & E-Commerce",
-      "Hospitality & Lodging",
-      "Wellness, Fitness & Beauty",
-    ],
-    icon: "💳",
-  },
-  {
-    id: "inventory-manager",
-    code: "INV",
-    title: "Inventory & Stock Control",
-    description: "Multi-warehouse tracking, stock movements, purchase orders, reorder thresholds, and batches.",
-    category: "Operations",
-    targetIndustries: [
-      "Manufacturing & Logistics",
-      "Retail & E-Commerce",
-      "Restaurant & Food Service",
-      "Healthcare & Medical",
-    ],
-    icon: "📦",
-  },
-  {
-    id: "customer-crm",
-    code: "CRM",
-    title: "Customer CRM & Pipeline",
-    description: "Lead pipeline, client profiles, communication logs, automated follow-ups, and lifecycle stages.",
-    category: "Sales & Growth",
-    targetIndustries: [
-      "Professional Services & Consulting",
-      "Technology & Software",
-      "Real Estate & Property",
-      "Finance & FinTech",
-    ],
-    icon: "👥",
-  },
-  {
-    id: "financial-ledger",
-    code: "FIN",
-    title: "Invoicing & Financial Ledger",
-    description: "Double-entry general ledger, automated tax invoices, receivables/payables, and reconciliation.",
-    category: "Finance",
-    targetIndustries: ["*"],
-    icon: "📊",
-  },
-  {
-    id: "executive-analytics",
-    code: "BI",
-    title: "Executive Dashboard & BI",
-    description: "Real-time KPI metrics, cross-module revenue reporting, cohort analysis, and trend forecasting.",
-    category: "Analytics",
-    targetIndustries: ["*"],
-    icon: "📈",
-  },
-  {
-    id: "hr-payroll",
-    code: "HRM",
-    title: "HR & Workforce Management",
-    description: "Staff directory, shift rosters, clock-in tracking, leave requests, and payroll calculation.",
-    category: "Workforce",
-    targetIndustries: [
-      "Healthcare & Medical",
-      "Manufacturing & Logistics",
-      "Education & Training",
-      "Hospitality & Lodging",
-    ],
-    icon: "🧑‍💼",
-  },
-];
+function readIndustries(payload: unknown): string[] {
+  if (!isRecord(payload) || !isRecord(payload.data)) {
+    return [];
+  }
+  const industries = payload.data.industries;
+  if (!Array.isArray(industries)) {
+    return [];
+  }
+  return industries.filter(
+    (industry): industry is string => typeof industry === "string"
+  );
+}
+
+function readProblemDetail(payload: unknown): string | null {
+  if (!isRecord(payload) || typeof payload.detail !== "string") {
+    return null;
+  }
+  return payload.detail;
+}
+
+function readRedirectUrl(payload: unknown): string {
+  if (!isRecord(payload) || typeof payload.redirectUrl !== "string") {
+    return NEXT_ONBOARDING_STEP;
+  }
+  return payload.redirectUrl;
+}
 
 export default function OnboardingStep2Page() {
   const router = useRouter();
@@ -119,37 +50,36 @@ export default function OnboardingStep2Page() {
   const [userIndustries, setUserIndustries] = useState<string[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Load tenant industries from user session metadata if available
+  // Recommendations read the industries captured in onboarding step 1; the
+  // picker itself carries no app or industry data of its own.
   useEffect(() => {
-    async function loadUserSession() {
+    let isMounted = true;
+
+    async function loadTenantIndustries() {
       try {
-        const res = await fetch("/api/v1/user/profile");
-        if (res.ok) {
-          const data = await res.json();
-          const meta = (data.user?.metadata || {}) as Record<string, unknown>;
-          if (Array.isArray(meta.industries)) {
-            setUserIndustries(meta.industries as string[]);
-          }
+        const response = await fetch("/api/v1/onboarding/step-1");
+        if (!response.ok) {
+          console.error(
+            `Failed to load onboarding industries: ${response.status} ${response.statusText}`
+          );
+          return;
         }
-      } catch {
-        // Fallback to empty user industries
+        const payload: unknown = await response.json();
+        if (isMounted) {
+          setUserIndustries(readIndustries(payload));
+        }
+      } catch (error) {
+        console.error("Failed to load onboarding industries.", error);
       }
     }
-    loadUserSession();
+
+    void loadTenantIndustries();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  const isAppRecommended = (app: CatalogApp): boolean => {
-    if (userIndustries.length === 0) {
-      return app.targetIndustries.includes("*");
-    }
-    return (
-      app.targetIndustries.includes("*") ||
-      app.targetIndustries.some((ind) => userIndustries.includes(ind))
-    );
-  };
-
-  const recommendedApps = APP_CATALOG.filter(isAppRecommended);
-  const additionalApps = APP_CATALOG.filter((a) => !isAppRecommended(a));
+  const { recommended, additional } = groupOnboardingApps(userIndustries);
 
   const toggleApp = (appId: string) => {
     setSelectedApps((prev) =>
@@ -174,21 +104,24 @@ export default function OnboardingStep2Page() {
         const res = await fetch("/api/v1/onboarding/step-2", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            selectedApps,
-          }),
+          body: JSON.stringify({ selectedApps }),
         });
 
+        const payload: unknown = await res.json().catch(() => null);
         if (!res.ok) {
-          const err = await res.json().catch(() => null);
-          setFormError(err?.detail || "Failed to persist application selection.");
+          setFormError(
+            readProblemDetail(payload) ??
+              "Failed to persist application selection."
+          );
           return;
         }
 
-        const data = await res.json();
-        router.push(data.redirectUrl || "/onboarding/step-3");
-      } catch {
-        setFormError("A network error occurred. Please check your connection and try again.");
+        router.push(readRedirectUrl(payload));
+      } catch (error) {
+        console.error("Failed to persist the onboarding app selection.", error);
+        setFormError(
+          "A network error occurred. Please check your connection and try again."
+        );
       }
     });
   };
@@ -222,10 +155,14 @@ export default function OnboardingStep2Page() {
         </div>
       )}
 
-
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Section 1: Recommended Apps */}
-        {recommendedApps.length > 0 && (
+        {ONBOARDING_APP_COUNT === 0 && (
+          <p className="text-sm text-text-secondary">
+            No applications are registered for this workspace yet.
+          </p>
+        )}
+
+        {recommended.length > 0 && (
           <div>
             <div className="flex items-center gap-2 mb-3">
               <span className="text-xs font-bold uppercase tracking-wider text-action flex items-center gap-1.5">
@@ -237,57 +174,20 @@ export default function OnboardingStep2Page() {
               </span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {recommendedApps.map((app) => {
-                const isSelected = selectedApps.includes(app.id);
-                return (
-                  <div
-                    key={app.id}
-                    onClick={() => toggleApp(app.id)}
-                    className={`cursor-pointer p-4 rounded-xl border transition-all duration-fast select-none flex flex-col justify-between ${
-                      isSelected
-                        ? "bg-action/5 border-action shadow-xs ring-1 ring-action"
-                        : "bg-surface border-border hover:border-text-secondary/40"
-                    }`}
-                  >
-                    <div>
-                      <div className="flex items-start justify-between gap-3 mb-2">
-                        <div className="flex items-center gap-2.5">
-                          <span className="text-2xl p-1.5 rounded-lg bg-surface-muted border border-border">
-                            {app.icon}
-                          </span>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <h3 className="text-sm font-bold text-text">
-                                {app.title}
-                              </h3>
-                              <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-surface-muted text-text-secondary border border-border">
-                                {app.code}
-                              </span>
-                            </div>
-                            <span className="text-[10px] font-semibold text-action uppercase tracking-wide">
-                              Recommended
-                            </span>
-                          </div>
-                        </div>
-                        <Checkbox
-                          checked={isSelected}
-                          readOnly
-                          className="mt-1"
-                        />
-                      </div>
-                      <p className="text-xs text-text-secondary line-clamp-2">
-                        {app.description}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
+              {recommended.map((app) => (
+                <AppSelectionCard
+                  key={app.appId}
+                  app={app}
+                  isSelected={selectedApps.includes(app.appId)}
+                  isRecommended
+                  onToggle={toggleApp}
+                />
+              ))}
             </div>
           </div>
         )}
 
-        {/* Section 2: Additional Apps */}
-        {additionalApps.length > 0 && (
+        {additional.length > 0 && (
           <div>
             <div className="mb-3">
               <span className="text-xs font-bold uppercase tracking-wider text-text-secondary">
@@ -295,56 +195,19 @@ export default function OnboardingStep2Page() {
               </span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {additionalApps.map((app) => {
-                const isSelected = selectedApps.includes(app.id);
-                return (
-                  <div
-                    key={app.id}
-                    onClick={() => toggleApp(app.id)}
-                    className={`cursor-pointer p-4 rounded-xl border transition-all duration-fast select-none flex flex-col justify-between ${
-                      isSelected
-                        ? "bg-action/5 border-action shadow-xs ring-1 ring-action"
-                        : "bg-surface border-border hover:border-text-secondary/40"
-                    }`}
-                  >
-                    <div>
-                      <div className="flex items-start justify-between gap-3 mb-2">
-                        <div className="flex items-center gap-2.5">
-                          <span className="text-2xl p-1.5 rounded-lg bg-surface-muted border border-border">
-                            {app.icon}
-                          </span>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <h3 className="text-sm font-bold text-text">
-                                {app.title}
-                              </h3>
-                              <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-surface-muted text-text-secondary border border-border">
-                                {app.code}
-                              </span>
-                            </div>
-                            <span className="text-[10px] text-text-muted">
-                              {app.category}
-                            </span>
-                          </div>
-                        </div>
-                        <Checkbox
-                          checked={isSelected}
-                          readOnly
-                          className="mt-1"
-                        />
-                      </div>
-                      <p className="text-xs text-text-secondary line-clamp-2">
-                        {app.description}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
+              {additional.map((app) => (
+                <AppSelectionCard
+                  key={app.appId}
+                  app={app}
+                  isSelected={selectedApps.includes(app.appId)}
+                  isRecommended={false}
+                  onToggle={toggleApp}
+                />
+              ))}
             </div>
           </div>
         )}
 
-        {/* Navigation & Submit Actions */}
         <div className="pt-4 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-3">
           <Button
             type="button"
@@ -371,7 +234,6 @@ export default function OnboardingStep2Page() {
               )
             }
           >
-
             {isPending ? "Saving selection..." : `Continue to Workspace Setup (${selectedApps.length} apps)`}
           </Button>
         </div>

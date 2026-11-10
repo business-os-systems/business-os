@@ -31,7 +31,7 @@ function buildManifestSettings(
       name: manifest.name,
       title: manifest.title,
       href: manifest.href,
-      iconName: manifest.iconName,
+      iconName: manifest.iconKey,
       description: manifest.description,
       permission: manifest.permission,
       installedBy: userId,

@@ -133,8 +133,8 @@ describe("Platform Onboarding Pipeline & Tenant Bootstrapping (@suite/dashboard)
       const html = renderToString(<OnboardingStep2Page />);
       expect(html).toContain("Choose applications for your workspace");
       expect(html).toContain("Recommended for your industry");
-      expect(html).toContain("Website &amp; Headless CMS");
-      expect(html).toContain("Property &amp; Room Management");
+      expect(html).toContain("Website Builder &amp; Headless CMS");
+      expect(html).toContain("All industries");
       expect(html).toContain("Continue to Workspace Setup");
     });
 
