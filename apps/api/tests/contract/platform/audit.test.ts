@@ -264,3 +264,56 @@ it.skipIf(!enabled)("exports filtered CSV with the recorded reason", async () =>
   expect(exported?.reason).toBe("investigation ticket 42");
   expect(exported?.after).toMatchObject({ rowCount: 3 });
 });
+
+it.skipIf(!enabled)("redacts payloads when PII is held without a recorded reason", async () => {
+  const response = await directRequest(
+    searchPath({ organizationId, action: testAction, limit: "10" }),
+    { token: managerToken },
+  );
+  expect(response.status).toBe(200);
+  const page = envelopeSchema(auditPageSchema).parse(await response.json());
+  expect(page.data.items.length).toBeGreaterThan(0);
+  for (const item of page.data.items) {
+    expect(item.before).toBeNull();
+    expect(item.after).toBeNull();
+  }
+});
+
+it.skipIf(!enabled)("discloses payloads and records AUDIT_SEARCHED when a reason is supplied", async () => {
+  const reason = "Investigating support ticket 1234";
+  const before = await fixture.ownerPrisma.auditEvent.count({
+    where: { action: PLATFORM_AUDIT_ACTIONS.AUDIT_SEARCHED },
+  });
+  const response = await directRequest(
+    searchPath({ organizationId, action: testAction, limit: "10" }),
+    { token: managerToken, reason },
+  );
+  expect(response.status).toBe(200);
+  const page = envelopeSchema(auditPageSchema).parse(await response.json());
+  expect(page.data.items.some((item) => item.after !== null)).toBe(true);
+
+  const rows = await fixture.ownerPrisma.auditEvent.findMany({
+    where: { action: PLATFORM_AUDIT_ACTIONS.AUDIT_SEARCHED },
+    orderBy: { occurredAt: "desc" },
+    take: 1,
+  });
+  expect(rows).toHaveLength(1);
+  expect(before + 1).toBe(
+    await fixture.ownerPrisma.auditEvent.count({
+      where: { action: PLATFORM_AUDIT_ACTIONS.AUDIT_SEARCHED },
+    }),
+  );
+  expect(rows[0]?.reason).toBe(reason);
+  expect(rows[0]?.entityId).toBe(organizationId);
+});
+
+it.skipIf(!enabled)("rejects an undersized PII reason", async () => {
+  const response = await directRequest(
+    searchPath({ organizationId, action: testAction, limit: "1" }),
+    { token: managerToken, reason: "why" },
+  );
+  expect(response.status).toBe(422);
+  expect((await parseProblem(response)).code).toBe(
+    PLATFORM_ERROR_CODE.VALIDATION_FAILED,
+  );
+});

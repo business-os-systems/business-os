@@ -1,5 +1,9 @@
 import { Prisma, type PrismaClient } from "@suite/db";
 import { PLATFORM_ERROR_CODE } from "@suite/core";
+import {
+  PLATFORM_AUDIT_ACTIONS,
+  appendPlatformAuditEvent,
+} from "@suite/auth/platform";
 import { InternalServerError, ValidationError } from "@suite/core/errors";
 import {
   auditItemSchema,
@@ -122,6 +126,9 @@ export interface AuditSearchInput extends AuditQuery {
    * cannot prove platform:pii:read must pass the redacted policy (fail closed).
    */
   readonly disclosure: AuditPayloadDisclosure;
+  readonly readerOperatorId?: string;
+  readonly requestId?: string;
+  readonly reason?: string;
 }
 
 /**
@@ -164,15 +171,37 @@ export async function searchAuditEvents(
     .slice(0, input.limit)
     .map((row) => toAuditItem(row, input.disclosure));
   const last = rows[items.length - 1];
+  const nextCursor =
+    rows.length > input.limit && last !== undefined
+      ? encodeAuditCursor({
+          occurredAt: last.occurredAtCursor,
+          id: last.id,
+        })
+      : null;
+
+  // FR-043: a full PII disclosure is a sensitive read; record the reason on
+  // the tamper-evident chain. The row is appended after the page is read, so
+  // it cannot appear in the response that authorised it.
+  if (
+    input.disclosure === AUDIT_PAYLOAD_DISCLOSURE.full &&
+    input.reason !== undefined &&
+    input.readerOperatorId !== undefined
+  ) {
+    await appendPlatformAuditEvent(prisma, {
+      actorOperatorId: input.readerOperatorId,
+      action: PLATFORM_AUDIT_ACTIONS.AUDIT_SEARCHED,
+      entityType: "platform.audit_events",
+      entityId: input.organizationId ?? "platform",
+      reason: input.reason,
+      requestId: input.requestId ?? "unknown",
+      before: null,
+      after: { returned: items.length },
+    });
+  }
+
   return {
     items,
-    nextCursor:
-      rows.length > input.limit && last !== undefined
-        ? encodeAuditCursor({
-            occurredAt: last.occurredAtCursor,
-            id: last.id,
-          })
-        : null,
+    nextCursor,
   };
 }
 
