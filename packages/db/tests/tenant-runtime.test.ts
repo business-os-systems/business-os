@@ -54,7 +54,7 @@ describe("Tenant runtime configuration", () => {
   });
 
   it("rejects an empty organization context", async () => {
-    await expect(withTenantContext("", async () => 1)).rejects.toThrow(
+    await expect(withTenantContext("", () => Promise.resolve(1))).rejects.toThrow(
       /organization id/,
     );
   });
