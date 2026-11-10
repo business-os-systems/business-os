@@ -282,4 +282,11 @@ export default tseslint.config(
       "no-restricted-syntax": ["error", ...P1_SELECTORS],
     },
   },
+  {
+    // apps/platform's validated environment boundary (mirrors apps/api/src/lib/env.ts).
+    files: ["apps/platform/src/lib/env.ts"],
+    rules: {
+      "no-restricted-syntax": ["error", ...P1_SELECTORS],
+    },
+  },
 );

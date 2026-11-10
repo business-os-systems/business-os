@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { Alert, Card, CardContent, CardHeader, CardTitle } from "@suite/ui";
 import { LayersIcon } from "@suite/ui/icons";
-import { BREAK_GLASS_HEADER, isBreakGlassAdmitted } from "./break-glass-gate";
+import {
+  BREAK_GLASS_HEADER,
+  BREAK_GLASS_SECRET_HEADER,
+  isBreakGlassAdmitted,
+} from "./break-glass-gate";
 
 export const metadata: Metadata = {
   // The denial page must not advertise the route (FR-068), so the document
@@ -94,7 +98,10 @@ function Admitted() {
 
 export default async function BreakGlassPage() {
   const requestHeaders = await headers();
-  const admitted = isBreakGlassAdmitted(requestHeaders.get(BREAK_GLASS_HEADER));
+  const admitted = isBreakGlassAdmitted(
+    requestHeaders.get(BREAK_GLASS_HEADER),
+    requestHeaders.get(BREAK_GLASS_SECRET_HEADER),
+  );
 
   return (
     <main className="flex min-h-screen items-center justify-center p-6">

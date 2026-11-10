@@ -1,13 +1,21 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderToString } from "react-dom/server";
 
-const headerState = vi.hoisted(() => ({ value: null as string | null }));
+const headerState = vi.hoisted(() => ({
+  value: null as string | null,
+  secret: null as string | null,
+}));
+
+process.env.BREAK_GLASS_PROXY_SECRET = "test-break-glass-secret";
 
 vi.mock("next/headers", () => ({
   headers: () =>
     Promise.resolve({
-      get: (name: string) =>
-        name === "x-break-glass-verified" ? headerState.value : null,
+      get: (name: string) => {
+        if (name === "x-break-glass-verified") return headerState.value;
+        if (name === "x-break-glass-secret") return headerState.secret;
+        return null;
+      },
     }),
 }));
 
@@ -53,8 +61,18 @@ describe("generic edge denial page", () => {
     expect(metadata.robots).toEqual({ index: false, follow: false });
   });
 
-  it("shows the recovery procedure only after the exact admission value", async () => {
+  it("denies the admission flag without the proxy shared secret", async () => {
     headerState.value = "1";
+    headerState.secret = null;
+    expectNoApplicationContent(await renderPage());
+
+    headerState.secret = "wrong-secret";
+    expectNoApplicationContent(await renderPage());
+  });
+
+  it("shows the recovery procedure only after the flag and shared secret", async () => {
+    headerState.value = "1";
+    headerState.secret = "test-break-glass-secret";
     const html = await renderPage();
 
     expect(html).toContain("Break-glass access");

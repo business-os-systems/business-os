@@ -181,9 +181,9 @@ export async function verifyControlSession(
   if (claims.exp <= nowSeconds) {
     return { valid: false, reason: "expired" };
   }
-  if (claims.idleExp <= nowSeconds) {
-    return { valid: false, reason: "idle_timeout" };
-  }
+  // The signed idleExp is a claim for observability, not the authority: the
+  // database row is touched on every request and enforces the sliding window
+  // below, so a fixed claim cannot cut an active session short.
 
   const tokenHash = await sha256Hex(input.token);
   const session = await input.prisma.operatorSession.findUnique({
@@ -239,12 +239,20 @@ export async function touchControlSession(
   const now = input.now ?? new Date();
   const session = await input.prisma.operatorSession.findUnique({
     where: { id: input.sessionId },
-    select: { id: true, revokedAt: true, expiresAt: true },
+    select: {
+      id: true,
+      revokedAt: true,
+      expiresAt: true,
+      idleExpiresAt: true,
+    },
   });
   if (session === null || session.revokedAt !== null) {
     return false;
   }
   if (session.expiresAt.getTime() <= now.getTime()) {
+    return false;
+  }
+  if (session.idleExpiresAt.getTime() <= now.getTime()) {
     return false;
   }
 
