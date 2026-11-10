@@ -10,6 +10,7 @@ import {
   issueStepUpToken,
   verifyAndConsumeStepUpToken,
 } from "@suite/auth/platform";
+import { seedPlatformCatalogs } from "@suite/db";
 import { redis } from "@suite/redis";
 import { globalErrorHandler } from "../../../src/middleware/error-handler.js";
 import { clearRateLimitStore } from "../../../src/middleware/rate-limit.js";
@@ -309,6 +310,7 @@ beforeAll(async () => {
   platformImpersonationRouter.onError(globalErrorHandler);
   platformCatalogsRouter.onError(globalErrorHandler);
   fixture = await createOperatorFixture(EMAIL_PREFIX);
+  await seedPlatformCatalogs(fixture.ownerPrisma);
   operator = await fixture.createOperator([
     PLATFORM_CAPABILITIES.TENANTS_LIFECYCLE.code,
     PLATFORM_CAPABILITIES.OPERATORS_MANAGE.code,
