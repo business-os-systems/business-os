@@ -13,6 +13,7 @@ const groups = vi.hoisted(() => ({
 }));
 const push = vi.hoisted(() => vi.fn());
 const JSON_HEADERS = { "content-type": "application/json" };
+const NEXT_STEP = "/onboarding/step-3";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push, replace: vi.fn(), refresh: vi.fn() }),
@@ -106,7 +107,7 @@ describe("onboarding step 2 picker", () => {
       }),
     );
     fetchMock.mockResolvedValueOnce(
-      new Response(JSON.stringify({ redirectUrl: "/onboarding/step-3" }), {
+      new Response(JSON.stringify({ redirectUrl: NEXT_STEP }), {
         status: 200,
         headers: JSON_HEADERS,
       }),
@@ -124,7 +125,7 @@ describe("onboarding step 2 picker", () => {
         requestUrl(input).includes("/step-2") && init?.method === "POST",
     );
     expect(post).toBeDefined();
-    expect(push).toHaveBeenCalledWith("/onboarding/step-3");
+    expect(push).toHaveBeenCalledWith(NEXT_STEP);
   });
 
   it("requires at least one application", async () => {
@@ -169,8 +170,8 @@ describe("onboarding step 2 payload readers", () => {
   });
 
   it("falls back to the next step for a malformed redirect", () => {
-    expect(readRedirectUrl(null)).toBe("/onboarding/step-3");
-    expect(readRedirectUrl({ redirectUrl: 42 })).toBe("/onboarding/step-3");
+    expect(readRedirectUrl(null)).toBe(NEXT_STEP);
+    expect(readRedirectUrl({ redirectUrl: 42 })).toBe(NEXT_STEP);
     expect(readRedirectUrl({ redirectUrl: "/next" })).toBe("/next");
   });
 });
@@ -225,6 +226,6 @@ describe("onboarding step 2 failure paths", () => {
     act(() => cards()[1]?.click());
     expect(container.textContent).toContain("1 applications selected");
     await submit();
-    expect(push).toHaveBeenCalledWith("/onboarding/step-3");
+    expect(push).toHaveBeenCalledWith(NEXT_STEP);
   });
 });
