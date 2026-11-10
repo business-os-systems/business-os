@@ -27,18 +27,20 @@ const enabled = platformIntegrationTestsEnabled() && Boolean(secret);
 const ORG_STATUSES: readonly string[] = Object.values(OrgStatus);
 
 const TENANT_ITEM_KEYS = [
+  "asOf",
   "branchCount",
   "createdAt",
   "id",
   "installedAppIds",
   "memberCount",
   "name",
+  "quotas",
   "slug",
   "status",
 ];
 
 const PROFILE_KEYS = ["createdAt", "id", "name", "slug", "status"];
-const COUNT_KEYS = ["branches", "members"];
+const COUNT_KEYS = ["asOf", "branches", "members"];
 const QUOTA_RECORD_KEYS = [
   "asOf",
   "currentValue",
@@ -90,7 +92,7 @@ interface RecordBody {
       status: string;
       createdAt: string;
     };
-    counts: { branches: number; members: number };
+    counts: { branches: number; members: number; asOf: string };
     apps: string[];
     quotas: QuotaItem[];
     lifecycle: unknown[];
@@ -284,7 +286,8 @@ describe.skipIf(!enabled)("Platform tenant contract", () => {
     expect(isIsoTimestamp(body.data.profile.createdAt)).toBe(true);
 
     expect(Object.keys(body.data.counts).sort()).toEqual(COUNT_KEYS);
-    expect(body.data.counts).toEqual({ branches: 0, members: 0 });
+    expect(body.data.counts).toMatchObject({ branches: 0, members: 0 });
+    expect(isIsoTimestamp(body.data.counts.asOf)).toBe(true);
 
     expect(Array.isArray(body.data.apps)).toBe(true);
     const appIdsAreStrings = body.data.apps.every(

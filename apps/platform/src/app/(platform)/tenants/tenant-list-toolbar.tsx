@@ -1,6 +1,7 @@
 "use client";
 
 import { Input, Select } from "@suite/ui";
+import { APP_MANIFESTS } from "@suite/core";
 import { TENANT_STATUSES, type TenantStatus } from "@/lib/tenant-api";
 
 export type StatusFilter =
@@ -8,6 +9,15 @@ export type StatusFilter =
   | { readonly kind: "status"; readonly status: TenantStatus };
 
 export const STATUS_ALL: StatusFilter = { kind: "all" };
+
+function appOptions() {
+  return [
+    { label: "All applications", value: "" },
+    ...Object.entries(APP_MANIFESTS)
+      .map(([appId, manifest]) => ({ label: manifest.title, value: appId }))
+      .sort((left, right) => left.label.localeCompare(right.label)),
+  ];
+}
 
 function statusOptions() {
   return [
@@ -19,22 +29,54 @@ function statusOptions() {
   ];
 }
 
+function AppField({
+  value,
+  disabled,
+  onChange,
+}: {
+  readonly value: string;
+  readonly disabled: boolean;
+  readonly onChange: (value: string) => void;
+}) {
+  return (
+    <div className="sm:w-52">
+      <label
+        htmlFor="tenant-app"
+        className="mb-1 block text-xs font-semibold text-text-secondary"
+      >
+        Application
+      </label>
+      <Select
+        id="tenant-app"
+        value={value}
+        options={appOptions()}
+        disabled={disabled}
+        onChange={onChange}
+      />
+    </div>
+  );
+}
+
 export interface TenantListToolbarProps {
   readonly search: string;
   readonly filter: StatusFilter;
+  readonly appFilter: string;
   readonly total: number | null;
   readonly isBusy: boolean;
   readonly onSearchChange: (value: string) => void;
   readonly onFilterChange: (value: StatusFilter) => void;
+  readonly onAppFilterChange: (value: string) => void;
 }
 
 export function TenantListToolbar({
   search,
   filter,
+  appFilter,
   total,
   isBusy,
   onSearchChange,
   onFilterChange,
+  onAppFilterChange,
 }: TenantListToolbarProps) {
   const selected = filter.kind === "status" ? filter.status : "";
 
@@ -76,6 +118,11 @@ export function TenantListToolbar({
           }
         />
       </div>
+      <AppField
+        value={appFilter}
+        disabled={isBusy}
+        onChange={onAppFilterChange}
+      />
       <p className="pb-2 text-xs text-text-muted" aria-live="polite">
         {total === null ? "Count unavailable" : `${total} tenants`}
       </p>

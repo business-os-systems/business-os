@@ -11,6 +11,13 @@ export interface TenantOverviewRow {
   readonly branchCount: number;
   readonly memberCount: number;
   readonly installedAppIds: string[];
+  readonly asOf: Date;
+}
+
+export interface TenantQuotaSummary {
+  readonly enforced: number;
+  readonly overLimit: number;
+  readonly measured: number;
 }
 
 export interface TenantFilter {
@@ -26,7 +33,8 @@ export interface TenantListFilters extends TenantFilter {
 
 const OVERVIEW_COLUMNS = Prisma.sql`
   "id", "name", "slug", "status", "createdAt",
-  "branchCount", "memberCount", "installedAppIds"
+  "branchCount", "memberCount", "installedAppIds",
+  now() AS "asOf"
 `;
 
 /**
@@ -75,11 +83,54 @@ export async function listTenantOverview(
   `);
 }
 
+/**
+ * One batched quota read for the whole page. The view computes consumption for
+ * the measurable resources; the summary keeps the fleet table honest without
+ * an N+1 query per tenant.
+ */
+export async function readQuotaSummaries(
+  prisma: PrismaClient,
+  organizationIds: readonly string[],
+): Promise<Map<string, TenantQuotaSummary>> {
+  if (organizationIds.length === 0) return new Map();
+  const rows = await prisma.$queryRaw<
+    {
+      organizationId: string;
+      enforced: bigint | number;
+      overLimit: bigint | number;
+      measured: bigint | number;
+    }[]
+  >(Prisma.sql`
+    SELECT
+      "organizationId",
+      count(*) FILTER (WHERE "isEnforced")::bigint AS "enforced",
+      count(*) FILTER (
+        WHERE "isEnforced"
+          AND "currentValue" IS NOT NULL
+          AND "currentValue"::numeric > "limitValue"::numeric
+      )::bigint AS "overLimit",
+      count(*) FILTER (WHERE "currentValue" IS NOT NULL)::bigint AS "measured"
+    FROM "platform"."v_tenant_usage"
+    WHERE "organizationId" IN (${Prisma.join(organizationIds)})
+    GROUP BY "organizationId"
+  `);
+  return new Map(
+    rows.map((row) => [
+      row.organizationId,
+      {
+        enforced: Number(row.enforced),
+        overLimit: Number(row.overLimit),
+        measured: Number(row.measured),
+      },
+    ]),
+  );
+}
+
 export async function countTenantOverview(
   prisma: PrismaClient,
   filter: TenantFilter
 ): Promise<number> {
-  const rows = await prisma.$queryRaw<Array<{ total: bigint | number }>>(
+  const rows = await prisma.$queryRaw<{ total: bigint | number }[]>(
     Prisma.sql`
       SELECT count(*)::bigint AS total
       FROM "platform"."v_tenant_overview"

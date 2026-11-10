@@ -132,11 +132,6 @@
       "count": 1
     }
   },
-  "apps/api/src/services/admin/tenant-view.service.ts": {
-    "@typescript-eslint/array-type": {
-      "count": 1
-    }
-  },
   "apps/api/src/workers/platform-outbox.worker.ts": {
     "@typescript-eslint/array-type": {
       "count": 1
@@ -2671,9 +2666,6 @@
   },
   "apps/platform/src/app/(platform)/tenants/page.tsx": {
     "max-lines-per-function": {
-      "count": 1
-    },
-    "no-nested-ternary": {
       "count": 1
     }
   },

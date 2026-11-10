@@ -16,6 +16,9 @@ import {
   type TenantSummary,
 } from "../src/lib/tenant-api";
 import { toMessage } from "../src/lib/error-message";
+
+const CAPABILITY_DENIED = "Capability denied.";
+import { resolveFleetState } from "../src/app/(platform)/tenants/page";
 import { formatDate, formatDateTime, UNAVAILABLE } from "../src/lib/format";
 
 vi.mock("next/navigation", () => ({
@@ -34,6 +37,8 @@ const TENANT: TenantSummary = {
   branchCount: 2,
   memberCount: 7,
   installedAppIds: ["website-builder"],
+  asOf: "2026-01-05T00:00:00.000Z",
+  quotas: { enforced: 2, overLimit: 0, measured: 2 },
 };
 
 const READY: ConfigTableState = { kind: "ready" };
@@ -90,9 +95,9 @@ describe("Tenant fleet table", () => {
     const html = renderTable([], {
       kind: "error",
       title: "Unable to load tenants",
-      message: "Capability denied.",
+      message: CAPABILITY_DENIED,
     });
-    expect(html).toContain("Capability denied.");
+    expect(html).toContain(CAPABILITY_DENIED);
     expect(html).not.toContain("<table");
   });
 
@@ -201,5 +206,47 @@ describe("Platform formatting helpers", () => {
       "SUSPENDED",
       "ARCHIVED",
     ]);
+  });
+});
+
+describe("Tenant fleet state and quota summary", () => {
+  it("maps loading, error and ready without consulting stale rows", () => {
+    expect(resolveFleetState(true, null, 0)).toEqual({ kind: "loading" });
+    expect(resolveFleetState(false, CAPABILITY_DENIED, 0)).toEqual({
+      kind: "error",
+      title: "Unable to load tenants",
+      message: CAPABILITY_DENIED,
+    });
+    expect(resolveFleetState(false, null, 2)).toEqual({ kind: "ready" });
+  });
+
+  it("renders the within/over quota summary", () => {
+    const html = renderToString(
+      <ConfigTableRenderer
+        config={TENANT_TABLE_CONFIG}
+        data={[
+          {
+            ...TENANT,
+            quotas: { enforced: 2, overLimit: 1, measured: 2 },
+          },
+        ]}
+        rowKey={(row) => row.id}
+      />,
+    );
+    expect(html.replace(/<!-- -->/g, "")).toContain("1/2 within");
+
+    const none = renderToString(
+      <ConfigTableRenderer
+        config={TENANT_TABLE_CONFIG}
+        data={[
+          {
+            ...TENANT,
+            quotas: { enforced: 0, overLimit: 0, measured: 0 },
+          },
+        ]}
+        rowKey={(row) => row.id}
+      />,
+    );
+    expect(none).toContain("None");
   });
 });

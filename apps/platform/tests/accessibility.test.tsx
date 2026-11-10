@@ -67,15 +67,17 @@ vi.mock("next/headers", () => ({
   headers: () => Promise.resolve({ get: () => null }),
 }));
 
+const RECORD_TIMESTAMP = "2026-01-01T00:00:00.000Z";
+
 const RECORD: TenantRecord = {
   profile: {
     id: "org_1",
     name: "River View",
     slug: "river-view",
     status: "ACTIVE",
-    createdAt: "2026-01-01T00:00:00.000Z",
+    createdAt: RECORD_TIMESTAMP,
   },
-  counts: { branches: 1, members: 2 },
+  counts: { asOf: RECORD_TIMESTAMP, branches: 1, members: 2 },
   apps: ["website-builder"],
   quotas: [],
   lifecycle: [],
@@ -97,8 +99,8 @@ const CATALOG: Catalog = {
       isActive: true,
       metadata: {},
       version: 1,
-      createdAt: "2026-01-01T00:00:00.000Z",
-      updatedAt: "2026-01-01T00:00:00.000Z",
+      createdAt: RECORD_TIMESTAMP,
+      updatedAt: RECORD_TIMESTAMP,
     },
   ],
 };

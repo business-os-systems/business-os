@@ -33,7 +33,7 @@ export function TenantOverviewPanel({
         <CardContent>
           <p className="mb-2 text-xs text-text-muted">
             Source: platform overview view, as of{" "}
-            {formatDateTime(new Date().toISOString())}.
+            {formatDateTime(record.counts.asOf)}.
           </p>
           <dl>
             <DefinitionRow label="Name" value={record.profile.name} />

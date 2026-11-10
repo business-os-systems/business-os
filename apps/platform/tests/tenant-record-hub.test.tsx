@@ -67,7 +67,7 @@ const RECORD: TenantRecord = {
     status: "ACTIVE",
     createdAt: "2026-01-01T00:00:00.000Z",
   },
-  counts: { branches: 1, members: 2 },
+  counts: { asOf: "2026-01-01T00:00:00.000Z", branches: 1, members: 2 },
   apps: ["website-builder"],
   quotas: [],
   lifecycle: [],

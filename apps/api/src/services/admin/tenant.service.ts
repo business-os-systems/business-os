@@ -4,7 +4,9 @@ import { PLATFORM_ERROR_CODE } from "@suite/core";
 import {
   countTenantOverview,
   listTenantOverview,
+  readQuotaSummaries,
   type TenantOverviewRow,
+  type TenantQuotaSummary,
 } from "./tenant-view.service.js";
 
 export interface TenantListQuery {
@@ -24,6 +26,8 @@ export interface TenantSummary {
   readonly branchCount: number;
   readonly memberCount: number;
   readonly installedAppIds: string[];
+  readonly asOf: string;
+  readonly quotas: TenantQuotaSummary;
 }
 
 export interface TenantPage {
@@ -69,7 +73,10 @@ export function decodeTenantCursor(raw: string): CursorPosition {
   return { name: candidate.name, id: candidate.id };
 }
 
-function toSummary(row: TenantOverviewRow): TenantSummary {
+function toSummary(
+  row: TenantOverviewRow,
+  quotas: TenantQuotaSummary,
+): TenantSummary {
   return {
     id: row.id,
     name: row.name,
@@ -79,6 +86,8 @@ function toSummary(row: TenantOverviewRow): TenantSummary {
     branchCount: row.branchCount,
     memberCount: row.memberCount,
     installedAppIds: row.installedAppIds,
+    asOf: row.asOf.toISOString(),
+    quotas,
   };
 }
 
@@ -97,13 +106,29 @@ export async function listTenants(
   });
   const page = rows.slice(0, query.limit);
   const last = page[page.length - 1];
+  const [quotaSummaries, total] = await Promise.all([
+    readQuotaSummaries(
+      prisma,
+      page.map((row) => row.id),
+    ),
+    countTenantOverview(prisma, filter),
+  ]);
 
   return {
-    items: page.map(toSummary),
+    items: page.map((row) =>
+      toSummary(
+        row,
+        quotaSummaries.get(row.id) ?? {
+          enforced: 0,
+          overLimit: 0,
+          measured: 0,
+        },
+      ),
+    ),
     nextCursor:
       rows.length > query.limit && last !== undefined
         ? encodeTenantCursor(last)
         : null,
-    total: await countTenantOverview(prisma, filter),
+    total,
   };
 }
