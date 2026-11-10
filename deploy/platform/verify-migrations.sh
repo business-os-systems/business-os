@@ -35,7 +35,7 @@ BEGIN
     ('20261107151000_platform_app_installation_counts'),
     ('20261107152000_platform_quota_gate_types'),
     ('20261110120000_tenant_rls_grants_and_flag_projection'),
-    ('20261110130000_platform_tenant_audit_chain')
+    ('20261110140000_platform_tenant_audit_chain')
   ) AS expected(name)
   WHERE NOT EXISTS (
     SELECT 1
@@ -334,7 +334,7 @@ WHERE migration_name IN (
   '20261107151000_platform_app_installation_counts',
   '20261107152000_platform_quota_gate_types',
   '20261110120000_tenant_rls_grants_and_flag_projection',
-  '20261110130000_platform_tenant_audit_chain'
+  '20261110140000_platform_tenant_audit_chain'
 )
 ORDER BY started_at;
 
