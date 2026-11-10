@@ -230,6 +230,9 @@ describe("onboarding step 2 failure paths", () => {
     );
   });
 
+});
+
+describe("onboarding step 2 redirect", () => {
   it("selects an additional app and uses the default redirect", async () => {
     fetchMock
       .mockResolvedValueOnce(

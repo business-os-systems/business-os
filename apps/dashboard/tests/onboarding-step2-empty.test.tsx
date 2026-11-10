@@ -23,12 +23,12 @@ const { default: OnboardingStep2Page } = await import(
 let container: HTMLElement | null = null;
 
 afterEach(() => {
-  if (container !== null) {
+  const element = container;
+  if (element !== null) {
     act(() => {
-      const root = createRoot(container as HTMLElement);
-      root.unmount();
+      createRoot(element).unmount();
     });
-    container.remove();
+    element.remove();
     container = null;
   }
   vi.unstubAllGlobals();
