@@ -19,11 +19,16 @@ import {
 } from "../src/components/layout/app-record-nav";
 import { canAccessPath, visibleNavigation } from "../src/components/layout/navigation.config";
 import { PlatformShell } from "../src/components/layout/platform-shell";
-import { AppRecordProvider } from "../src/app/(platform)/apps/[appId]/app-record-context";
+import {
+  AppRecordProvider,
+  useAppRecord,
+} from "../src/app/(platform)/apps/[appId]/app-record-context";
+import { AppOverviewPanel } from "../src/app/(platform)/apps/[appId]/app-overview-panel";
 import AppRecordLayout from "../src/app/(platform)/apps/[appId]/layout";
 import AppRecordOverviewPage from "../src/app/(platform)/apps/[appId]/overview/page";
 import AppRecordUnknownPage from "../src/app/(platform)/apps/[appId]/[...unknown]/page";
 import AppRecordIndexPage from "../src/app/(platform)/apps/[appId]/page";
+import AppRecordNotFound from "../src/app/(platform)/apps/[appId]/not-found";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -32,9 +37,13 @@ const notFoundMock = vi.hoisted(() => vi.fn());
 const redirectMock = vi.hoisted(() => vi.fn());
 const navState = vi.hoisted(() => ({
   pathname: "/apps/website-builder/overview",
+  appId: "website-builder",
   push: vi.fn(),
 }));
-const authState = vi.hoisted(() => ({ capabilities: [] as string[] }));
+const authState = vi.hoisted(() => ({
+  capabilities: [] as string[],
+  isSignedIn: true,
+}));
 
 vi.mock("@/lib/apps-api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/apps-api")>();
@@ -44,7 +53,7 @@ vi.mock("@/lib/apps-api", async (importOriginal) => {
 vi.mock("next/navigation", () => ({
   usePathname: () => navState.pathname,
   useRouter: () => ({ push: navState.push, replace: vi.fn(), refresh: vi.fn() }),
-  useParams: () => ({ appId: "website-builder" }),
+  useParams: () => ({ appId: navState.appId }),
   useSearchParams: () => new URLSearchParams(),
   notFound: notFoundMock,
   redirect: redirectMock,
@@ -52,10 +61,12 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("../src/components/auth/auth-provider", () => ({
   usePlatformAuth: () => ({
-    session: {
-      operator: { id: "op_1", email: "ops@example.com", displayName: "Ops" },
-      capabilities: authState.capabilities,
-    },
+    session: authState.isSignedIn
+      ? {
+          operator: { id: "op_1", email: "ops@example.com", displayName: "Ops" },
+          capabilities: authState.capabilities,
+        }
+      : null,
     loading: false,
     error: null,
     signOutFailed: false,
@@ -85,12 +96,19 @@ function withRecord(element: ReactElement): ReactElement {
   );
 }
 
+function UnprovidedRecord(): ReactElement {
+  useAppRecord();
+  return <p>record</p>;
+}
+
 let container: HTMLDivElement;
 let root: Root;
 
 beforeEach(() => {
   authState.capabilities = [PLATFORM_CAPABILITIES.APPS_READ.code];
+  authState.isSignedIn = true;
   navState.pathname = `/apps/${APP_ID}/overview`;
+  navState.appId = APP_ID;
   navState.push.mockReset();
   fetchAppCatalog.mockReset();
   container = document.createElement("div");
@@ -247,6 +265,13 @@ describe("Application record overview", () => {
     );
   });
 
+  it("renders an unavailable manifest version without guessing", () => {
+    const html = renderToString(
+      <AppOverviewPanel app={{ ...APP, appId: "unregistered-app" }} />,
+    );
+    expect(html).toContain("Unavailable");
+  });
+
   it("denies the panel without the read capability", () => {
     authState.capabilities = [];
     expect(renderToString(withRecord(<AppRecordOverviewPage />))).toContain("Capability denied");
@@ -254,6 +279,17 @@ describe("Application record overview", () => {
 });
 
 describe("Application record routing", () => {
+  it("renders the record not-found surface", () => {
+    const html = renderToString(<AppRecordNotFound />);
+    expect(html).toContain("Back to applications");
+  });
+
+  it("requires the record provider", () => {
+    expect(() => renderToString(<UnprovidedRecord />)).toThrow(
+      "useAppRecord must be used inside the application record.",
+    );
+  });
+
   it("sends an unconfigured record path to not-found", () => {
     notFoundMock.mockReset();
     AppRecordUnknownPage();
@@ -327,5 +363,64 @@ describe("Application record layout", () => {
 
     expect(container.textContent).toContain("Application not found");
     expect(container.textContent).not.toContain("Overview panel");
+  });
+});
+
+describe("Application record layout states", () => {
+  it("renders the retry state when the catalog read fails", async () => {
+    fetchAppCatalog.mockRejectedValueOnce(new Error("Read failed"));
+
+    await act(async () => {
+      root.render(
+        <AppRecordLayout>
+          <p>Overview panel</p>
+        </AppRecordLayout>,
+      );
+      await Promise.resolve();
+    });
+
+    expect(container.textContent).toContain("Unable to load this application");
+    expect(container.textContent).toContain("Read failed");
+  });
+
+  it("renders nothing while signed out", async () => {
+    authState.isSignedIn = false;
+    await act(async () => {
+      root.render(
+        <AppRecordLayout>
+          <p>Overview panel</p>
+        </AppRecordLayout>,
+      );
+      await Promise.resolve();
+    });
+    expect(container.textContent).toBe("");
+    expect(fetchAppCatalog).not.toHaveBeenCalled();
+  });
+
+  it("denies a direct render without the read capability", async () => {
+    authState.capabilities = [];
+    await act(async () => {
+      root.render(
+        <AppRecordLayout>
+          <p>Overview panel</p>
+        </AppRecordLayout>,
+      );
+      await Promise.resolve();
+    });
+    expect(container.textContent).toContain("Capability denied");
+  });
+
+  it("renders missing for an invalid application id", async () => {
+    navState.appId = "..";
+    await act(async () => {
+      root.render(
+        <AppRecordLayout>
+          <p>Overview panel</p>
+        </AppRecordLayout>,
+      );
+      await Promise.resolve();
+    });
+    expect(container.textContent).toContain("Application not found");
+    expect(fetchAppCatalog).not.toHaveBeenCalled();
   });
 });

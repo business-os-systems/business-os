@@ -242,37 +242,98 @@ describe("App catalog states", () => {
   });
 });
 
+const EDIT_OVERRIDE_LABEL = "Edit override";
+const OVERRIDE_CAPABILITIES = [
+  PLATFORM_CAPABILITIES.APPS_READ.code,
+  PLATFORM_CAPABILITIES.ENTITLEMENTS_MANAGE.code,
+];
+
+function findButton(label: string): HTMLButtonElement | undefined {
+  return [...document.querySelectorAll("button")].find((button) =>
+    button.textContent.includes(label)
+  );
+}
+
+async function openOverrideEditor(): Promise<HTMLFormElement> {
+  authState.capabilities = [...OVERRIDE_CAPABILITIES];
+  render(<AppCatalogPage />);
+  await settle();
+
+  const edit = findButton(EDIT_OVERRIDE_LABEL);
+  if (edit === undefined) throw new Error("The override action was not rendered");
+  act(() => edit.click());
+  await settle();
+
+  const form = document.querySelector("form");
+  if (form === null) throw new Error("The override form was not rendered");
+  return form;
+}
+
+async function submitOverride(form: HTMLFormElement): Promise<void> {
+  await act(async () => {
+    form.requestSubmit();
+    await Promise.resolve();
+  });
+  await settle();
+}
+
 describe("App catalog row actions", () => {
   it("keeps the override action for an entitlement manager", async () => {
-    authState.capabilities = [
-      PLATFORM_CAPABILITIES.APPS_READ.code,
-      PLATFORM_CAPABILITIES.ENTITLEMENTS_MANAGE.code,
-    ];
     fetchMock.mockResolvedValueOnce(reply(200, { data: { apps: [APP] } }));
-    render(<AppCatalogPage />);
-    await settle();
-
-    const edit = [...document.querySelectorAll("button")].find((button) =>
-      button.textContent.includes("Edit override")
-    );
-    if (edit === undefined) throw new Error("The override action was not rendered");
-    act(() => edit.click());
+    await openOverrideEditor();
 
     expect(document.body.textContent).toContain("Catalog override");
     expect(document.body.textContent).toContain(APP.title);
   });
+});
 
+describe("App catalog override lifecycle", () => {
+  it("closes and reloads after saving an override", async () => {
+    fetchMock
+      .mockResolvedValueOnce(reply(200, { data: { apps: [APP] } }))
+      .mockResolvedValueOnce(reply(200, { data: { ...APP, sortOrder: 1 } }))
+      .mockResolvedValueOnce(reply(200, { data: { apps: [APP] } }));
+    const form = await openOverrideEditor();
+    await submitOverride(form);
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(document.body.textContent).not.toContain("Catalog override");
+  });
+
+  it("closes and reloads after a stale override", async () => {
+    fetchMock
+      .mockResolvedValueOnce(reply(200, { data: { apps: [APP] } }))
+      .mockResolvedValueOnce(
+        reply(409, {
+          type: "/errors/version-conflict",
+          title: "Resource Conflict",
+          status: 409,
+          detail: "The catalog override changed since it was observed.",
+          code: "VERSION_CONFLICT",
+        })
+      )
+      .mockResolvedValueOnce(reply(200, { data: { apps: [APP] } }));
+    const form = await openOverrideEditor();
+    await submitOverride(form);
+
+    const reload = findButton("Reload catalog");
+    if (reload === undefined) throw new Error("The reload action was not rendered");
+    act(() => reload.click());
+    await settle();
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(document.body.textContent).not.toContain("Catalog override");
+  });
+});
+
+describe("App catalog row action authorization", () => {
   it("hides the override action from a read-only operator", async () => {
     authState.capabilities = [PLATFORM_CAPABILITIES.APPS_READ.code];
     fetchMock.mockResolvedValueOnce(reply(200, { data: { apps: [APP] } }));
     render(<AppCatalogPage />);
     await settle();
 
-    expect(
-      [...document.querySelectorAll("button")].some((button) =>
-        button.textContent.includes("Edit override")
-      )
-    ).toBe(false);
+    expect(findButton(EDIT_OVERRIDE_LABEL)).toBeUndefined();
   });
 });
 
