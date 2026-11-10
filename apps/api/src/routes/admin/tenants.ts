@@ -48,6 +48,7 @@ const tenantRecordSchema = z.object({
     name: z.string(),
     slug: z.string(),
     status: orgStatusSchema,
+    timezone: z.string(),
     createdAt: z.string(),
   }),
   counts: z.object({

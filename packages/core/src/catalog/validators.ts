@@ -1,6 +1,7 @@
 import {
   CATALOG_DEFINITIONS,
   type CatalogKey,
+  type CatalogPatternStandard,
 } from "../constants/catalogs.js";
 import { isValidIanaTimeZone } from "../time/format.js";
 
@@ -14,10 +15,8 @@ const COUNTRY_PATTERN = /^[A-Z]{2}$/;
 const LANGUAGE_PATTERN =
   /^[A-Za-z]{2,3}(?:-[A-Za-z]{4})?(?:-(?:[A-Za-z]{2}|\d{3}))?(?:-[A-Za-z0-9]{5,8})*$/;
 const SLUG_PATTERN = /^[a-z0-9_]{2,64}$/;
-const DATE_FORMAT_PATTERN =
-  /^(?:YYYY|YY|MMMM|MMM|MM|M|DD|D)(?:[-/. ](?:YYYY|YY|MMMM|MMM|MM|M|DD|D)){1,2}$/i;
-const DATE_TOKEN_PATTERN = /YYYY|YY|MMMM|MMM|MM|M|DD|D/gi;
-const TIME_FORMAT_PATTERN = /^(?:12h|24h)$/i;
+const PATTERN_FIELD_TOKEN = /([A-Za-z])\1*/g;
+const MAXIMUM_PATTERN_FIELD_LENGTH = 5;
 
 function valid(normalized: string): CatalogValidationResult {
   return { valid: true, normalized };
@@ -45,32 +44,26 @@ function normalizeLanguageTag(tag: string): string {
     .join("-");
 }
 
-function isYearToken(token: string): boolean {
-  const upper = token.toUpperCase();
-  return upper === "YYYY" || upper === "YY";
-}
-
-function isMonthToken(token: string): boolean {
-  const upper = token.toUpperCase();
-  return (
-    upper === "MMMM" || upper === "MMM" || upper === "MM" || upper === "M"
-  );
-}
-
-function isDayToken(token: string): boolean {
-  const upper = token.toUpperCase();
-  return upper === "DD" || upper === "D";
-}
-
-function isValidDateFormat(code: string): boolean {
-  if (!DATE_FORMAT_PATTERN.test(code)) {
+/**
+ * Validates the shape of a declared Unicode LDML pattern. The allowed field
+ * symbols and the minimum field count are catalog metadata, so a new format
+ * made of standard symbols is accepted without changing this module (FR-107).
+ */
+function isValidPattern(
+  code: string,
+  standard: CatalogPatternStandard
+): boolean {
+  const tokens = code.match(PATTERN_FIELD_TOKEN) ?? [];
+  if (tokens.length < standard.minimumFields) {
     return false;
   }
-  const tokens = code.match(DATE_TOKEN_PATTERN) ?? [];
-  return (
-    tokens.some(isYearToken) &&
-    tokens.some(isMonthToken) &&
-    tokens.some(isDayToken)
+  const allowedLetters: ReadonlySet<string> = new Set(
+    standard.fieldLetters.split("")
+  );
+  return tokens.every(
+    (token) =>
+      token.length <= MAXIMUM_PATTERN_FIELD_LENGTH &&
+      allowedLetters.has(token.charAt(0))
   );
 }
 
@@ -85,8 +78,7 @@ export function normalizeCatalogCode(key: CatalogKey, code: string): string {
       return normalizeLanguageTag(trimmed);
     case "iana_timezone":
       return trimmed;
-    case "date_format":
-    case "time_format":
+    case "pattern":
     case "slug":
       return trimmed.toLowerCase();
     default: {
@@ -110,8 +102,8 @@ export function validateCatalogCode(
     );
   }
 
-  const { format } = CATALOG_DEFINITIONS[key];
-  switch (format) {
+  const definition = CATALOG_DEFINITIONS[key];
+  switch (definition.format) {
     case "iso4217":
       return CURRENCY_PATTERN.test(normalized)
         ? valid(normalized)
@@ -128,16 +120,12 @@ export function validateCatalogCode(
       return isValidIanaTimeZone(normalized)
         ? valid(normalized)
         : invalid("Time zones must be valid IANA identifiers, such as Asia/Kolkata.");
-    case "date_format":
-      return isValidDateFormat(normalized)
+    case "pattern":
+      return isValidPattern(normalized, definition.pattern)
         ? valid(normalized)
         : invalid(
-            "Date formats must combine a year, month and day, such as YYYY-MM-DD."
+            `${definition.label} must use standard field symbols and at least ${definition.pattern.minimumFields} of them.`
           );
-    case "time_format":
-      return TIME_FORMAT_PATTERN.test(normalized)
-        ? valid(normalized)
-        : invalid("Time formats must be 12h or 24h.");
     case "slug":
       return SLUG_PATTERN.test(normalized)
         ? valid(normalized)
@@ -145,7 +133,7 @@ export function validateCatalogCode(
             "Values must be 2 to 64 lower-case letters, digits or underscores."
           );
     default: {
-      const exhaustive: never = format;
+      const exhaustive: never = definition;
       return exhaustive;
     }
   }

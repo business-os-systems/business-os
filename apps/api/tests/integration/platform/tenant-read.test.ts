@@ -182,7 +182,7 @@ describe.skipIf(!enabled)("Platform tenant read routes", () => {
     expect(response.status).toBe(200);
     const body = (await response.json()) as {
       data: {
-        profile: { id: string; name: string };
+        profile: { id: string; name: string; timezone: string };
         counts: { branches: number; members: number; asOf: string };
         apps: string[];
         quotas: unknown[];
@@ -191,9 +191,31 @@ describe.skipIf(!enabled)("Platform tenant read routes", () => {
     };
     expect(body.data.profile.id).toBe(tenant.id);
     expect(body.data.profile.name).toBe(tenant.name);
+    expect(body.data.profile.timezone).toBe("UTC");
     expect(body.data.counts).toMatchObject({ branches: 0, members: 0 });
     expect(typeof body.data.counts.asOf).toBe("string");
     expect(Array.isArray(body.data.apps)).toBe(true);
+  });
+
+  it("reads the tenant time zone from the root branch", async () => {
+    const tenant = await createTenant("timezone");
+    await ownerPrisma.branch.create({
+      data: {
+        organizationId: tenant.id,
+        name: "New York HQ",
+        code: "HQ",
+        type: "main",
+        timezone: "America/New_York",
+      },
+    });
+
+    const response = await authedGet(`/tenants/${tenant.id}`, readerToken);
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      data: { profile: { timezone: string } };
+    };
+    expect(body.data.profile.timezone).toBe("America/New_York");
   });
 
   it("includes quota consumption, unit and as-of time in the tenant record", async () => {
