@@ -19,7 +19,6 @@ import {
   createOperatorFixture,
   parseProblem,
   platformOperatorTestsEnabled,
-  sendOperatorRequest,
   type OperatorFixture,
 } from "../helpers/platform-operators.js";
 
@@ -81,11 +80,13 @@ function directRequest(
   return Promise.resolve(platformAuditRouter.request(path, { method: "GET", headers }));
 }
 
-async function searchAudit(token: string): Promise<z.infer<typeof envelopeSchema>> {
-  const response = await sendOperatorRequest(platformAuditRouter, {
-    method: "GET",
-    path: searchPath(),
+async function searchAudit(
+  token: string,
+  reason?: string,
+): Promise<z.infer<typeof envelopeSchema>> {
+  const response = await directRequest(searchPath(), {
     token,
+    ...(reason === undefined ? {} : { reason }),
   });
   expect(response.status).toBe(200);
   return envelopeSchema.parse(await response.json());
@@ -140,7 +141,6 @@ afterAll(async () => {
 
 it.skipIf(!enabled)("redacts before/after for an operator without platform:pii:read", async () => {
   const page = await searchAudit(auditOnlyToken);
-
   expect(page.data.items).toHaveLength(2);
   for (const item of page.data.items) {
     expect(item.before).toBeNull();
@@ -152,14 +152,24 @@ it.skipIf(!enabled)("redacts before/after for an operator without platform:pii:r
   }
 });
 
-it.skipIf(!enabled)("returns before/after to an operator holding platform:pii:read", async () => {
-  const page = await searchAudit(managerToken);
+it.skipIf(!enabled)("returns before/after to an operator holding platform:pii:read and a reason", async () => {
+  const page = await searchAudit(managerToken, "security review ticket 309");
 
   expect(page.data.items).toHaveLength(2);
   expect(page.data.items[0]?.before).toEqual({ priorIndex: 2 });
   expect(page.data.items[0]?.after).toEqual({ index: 2 });
   expect(page.data.items[1]?.before).toEqual({ priorIndex: 1 });
   expect(page.data.items[1]?.after).toEqual({ index: 1 });
+});
+
+it.skipIf(!enabled)("redacts payloads for a PII holder without a recorded reason", async () => {
+  const page = await searchAudit(managerToken);
+
+  expect(page.data.items).toHaveLength(2);
+  for (const item of page.data.items) {
+    expect(item.before).toBeNull();
+    expect(item.after).toBeNull();
+  }
 });
 
 it.skipIf(!enabled)("keeps the export gated on both platform capabilities", async () => {

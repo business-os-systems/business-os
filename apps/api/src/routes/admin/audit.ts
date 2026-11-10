@@ -46,8 +46,8 @@ const searchRoute = createRoute({
   tags: [AUDIT_TAG],
   summary: "Search the tamper-evident audit chain",
   description:
-    "Cursor-paginated cross-tenant audit search over the platform.audit_events chain. Filters are organization, actor, action and time range; the stable sort is occurredAt DESC, id DESC (CT-5). The response omits the free-text reason; that field is only disclosed by the PII-gated export (FR-039, FR-040). The before/after payloads require platform:pii:read: without it they are null while action, entity, requestId and recordHash are still returned (FR-043, CT-1).",
-  request: { query: auditQuerySchema },
+    "Cursor-paginated cross-tenant audit search over the platform.audit_events chain. Filters are organization, actor, action and time range; the stable sort is occurredAt DESC, id DESC (CT-5). The response omits the free-text reason; that field is only disclosed by the PII-gated export (FR-039, FR-040). The before/after payloads require platform:pii:read and a valid X-PII-Reason header (5-255 chars): without the reason they are null while action, entity, requestId and recordHash are still returned, and a full disclosure writes AUDIT_SEARCHED with the reason (FR-043, CT-1).",
+  request: { query: auditQuerySchema, headers: auditPiiHeaderSchema },
   responses: {
     200: {
       description: "Audit page",
@@ -141,14 +141,20 @@ const piiReadGuard = createLazyDefaultCapabilityGuard(() => ({
  * The audit-read guard has already verified the control session and resolved
  * its capabilities. A missing or non-array context is redacted, never widened.
  */
-function resolvePayloadDisclosure(c: {
-  get: (key: string) => unknown;
-}): AuditPayloadDisclosure {
+function resolvePayloadDisclosure(
+  c: { get: (key: string) => unknown },
+  reason: string | undefined,
+): AuditPayloadDisclosure {
   const capabilities = c.get("platformCapabilities");
   const holdsPiiRead =
     Array.isArray(capabilities) &&
     capabilities.some((capability: unknown) => capability === PLATFORM_PII_READ);
-  return holdsPiiRead ? AUDIT_PAYLOAD_DISCLOSURE.full : AUDIT_PAYLOAD_DISCLOSURE.redacted;
+  // FR-043: the capability alone never discloses payloads; a recorded reason
+  // is also required. Missing reason stays redacted, never an error.
+  if (!holdsPiiRead || reason === undefined) {
+    return AUDIT_PAYLOAD_DISCLOSURE.redacted;
+  }
+  return AUDIT_PAYLOAD_DISCLOSURE.full;
 }
 
 const searchMiddleware: MiddlewareHandler[] = [
@@ -172,9 +178,15 @@ const exportMiddleware: MiddlewareHandler[] = [
 
 platformAuditRouter.openapi({ ...searchRoute, middleware: searchMiddleware }, async (c) => {
   const query = c.req.valid("query");
+  const headers = c.req.valid("header");
+  const reason = headers["x-pii-reason"];
+  const actor = readActor(c);
   const data = await searchAuditEvents(getPlatformPrismaClient(), {
     ...query,
-    disclosure: resolvePayloadDisclosure(c),
+    disclosure: resolvePayloadDisclosure(c, reason),
+    readerOperatorId: actor.operatorId,
+    requestId: actor.requestId,
+    ...(reason === undefined ? {} : { reason }),
   });
   return c.json(
     createSuccessResponseBody({

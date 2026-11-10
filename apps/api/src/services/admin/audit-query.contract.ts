@@ -63,7 +63,12 @@ export const auditVerifyResultSchema = z
   .strict();
 
 export const auditPiiHeaderSchema = z.object({
-  "x-pii-reason": z.string().trim().max(MAXIMUM_PII_REASON_LENGTH).optional(),
+  "x-pii-reason": z
+    .string()
+    .trim()
+    .min(MINIMUM_PII_REASON_LENGTH)
+    .max(MAXIMUM_PII_REASON_LENGTH)
+    .optional(),
 });
 
 export type AuditQuery = z.infer<typeof auditQuerySchema>;
