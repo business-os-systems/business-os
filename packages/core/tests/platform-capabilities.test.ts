@@ -11,8 +11,8 @@ import {
 
 describe("@suite/core - Platform capability registry", () => {
   it("declares every capability with a prefix, a group and documentation", () => {
-    expect(PLATFORM_CAPABILITY_CODES).toHaveLength(12);
-    expect(new Set(PLATFORM_CAPABILITY_CODES).size).toBe(12);
+    expect(PLATFORM_CAPABILITY_CODES).toHaveLength(13);
+    expect(new Set(PLATFORM_CAPABILITY_CODES).size).toBe(13);
 
     for (const capability of Object.values(PLATFORM_CAPABILITIES)) {
       expect(capability.code).toMatch(/^platform:[a-z:]+$/);

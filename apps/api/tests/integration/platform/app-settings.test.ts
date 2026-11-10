@@ -39,6 +39,7 @@ const settingsWriteEnvelopeSchema = z.object({
 
 let fixture: OperatorFixture;
 let managerToken: string;
+let managerOperatorId: string;
 const organizationIds: string[] = [];
 
 function send(input: {
@@ -98,20 +99,26 @@ beforeAll(async () => {
   fixture = await createOperatorFixture(EMAIL_PREFIX);
   await clearRateLimitStore(ENTITLEMENT_RATE_LIMIT_KEY);
   await clearRateLimitStore(ENTITLEMENT_READ_RATE_LIMIT_KEY);
-  managerToken = (
-    await fixture.createOperator([
-      PLATFORM_CAPABILITIES.ENTITLEMENTS_MANAGE.code,
-    ])
-  ).token;
+  const manager = await fixture.createOperator([
+    PLATFORM_CAPABILITIES.ENTITLEMENTS_MANAGE.code,
+  ]);
+  managerToken = manager.token;
+  managerOperatorId = manager.id;
 });
 
 beforeEach(async () => {
   if (!enabled) return;
   await clearRateLimitStore(ENTITLEMENT_RATE_LIMIT_KEY);
+  await fixture.ownerPrisma.appSettingsDefault.deleteMany({
+    where: { appId: APP_ID },
+  });
 });
 
 afterAll(async () => {
   if (!enabled) return;
+  await fixture.ownerPrisma.appSettingsDefault.deleteMany({
+    where: { appId: APP_ID },
+  });
   if (organizationIds.length > 0) {
     await fixture.ownerPrisma.organization.deleteMany({
       where: { id: { in: organizationIds } },
@@ -140,6 +147,25 @@ it.skipIf(!enabled)("surfaces every stored value that no longer validates", asyn
   expect(settings.staleFields.some((field) => field.name === DOMAIN_KEY)).toBe(
     false
   );
+  expect(settings.effectiveValues[DOMAIN_KEY]).toBe(true);
+  expect(settings.sources[DOMAIN_KEY]).toBe("tenant");
+});
+
+it.skipIf(!enabled)("resolves the application default before the schema default", async () => {
+  const organizationId = await createTenantWithApp("app-default", {});
+  await fixture.ownerPrisma.appSettingsDefault.create({
+    data: {
+      appId: APP_ID,
+      settings: { [LOCALE_KEY]: "en-GB" },
+      version: 1,
+      updatedBy: managerOperatorId,
+    },
+  });
+
+  const settings = await readSettings(organizationId);
+  expect(settings.values).toEqual({});
+  expect(settings.effectiveValues[LOCALE_KEY]).toBe("en-GB");
+  expect(settings.sources[LOCALE_KEY]).toBe("app");
 });
 
 it.skipIf(!enabled)("reports removed keys only when a valid write replaces them", async () => {

@@ -75,6 +75,14 @@ export const PLATFORM_RETENTION = [
     enforcedBy: "owner-only tenant offboarding procedure",
   },
   {
+    table: "app_settings_defaults",
+    retention: "life of the platform",
+    disposition: "retain",
+    personalData: false,
+    basis: "Application settings defaults; configuration values, no personal data.",
+    enforcedBy: "no prune required",
+  },
+  {
     table: "app_overrides",
     retention: "life of the platform",
     disposition: "retain",

@@ -1,6 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@suite/ui";
+import { ResolvedSettings } from "@/components/settings/resolved-settings";
 import {
   unmappedInvalidParams,
 } from "@/components/forms/invalid-params";
@@ -14,7 +15,7 @@ import type {
   AppSettingsWriteResult,
 } from "@/lib/app-settings-api";
 import { isConflictError, readInvalidParams } from "@/lib/problem-error";
-import { SettingsAlerts } from "./settings-alerts";
+import { SettingsAlerts } from "@/components/settings/settings-alerts";
 import { SettingsForm } from "./settings-form";
 import { useSettingsForm } from "./use-settings-form";
 
@@ -55,6 +56,11 @@ export function AppSettingsEditor({
             invalidParams
           )}
           onReload={onReload}
+        />
+        <ResolvedSettings
+          fields={settings.schema.fields}
+          values={settings.effectiveValues}
+          sources={settings.sources}
         />
         <SettingsForm formId={formId} fields={fields} form={form} />
       </CardContent>

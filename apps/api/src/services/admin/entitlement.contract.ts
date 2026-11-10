@@ -1,5 +1,8 @@
 import { z } from "zod";
-import { settingsFieldDefinitionSchema } from "@suite/core";
+import {
+  settingsFieldDefinitionSchema,
+  settingsValueSourceSchema,
+} from "@suite/core";
 
 const MAX_APP_ID_LENGTH = 64;
 const MAX_VERSION_TOKEN_LENGTH = 64;
@@ -57,6 +60,8 @@ export const appSettingsViewSchema = z
     appId: z.string(),
     schema: appSettingsSchemaSchema,
     values: z.record(z.unknown()),
+    effectiveValues: z.record(z.unknown()),
+    sources: z.record(settingsValueSourceSchema),
     staleFields: z.array(staleFieldSchema).readonly(),
     version: z.string(),
   })

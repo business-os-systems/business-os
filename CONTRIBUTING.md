@@ -1,6 +1,9 @@
 # Engineering SDLC & Contributing Guidelines
+
 ## The 12-Pillar Enterprise Governance Protocol
+
 ### Universal Composable Business Operating System (Business OS)
+
 ### Target Workspace: `/home/rohit-bahuguna/RB/business-os`
 
 Welcome to the **Business OS** engineering repository. This project is built and maintained to **top-tier enterprise standards** (modeled on the engineering rigor of Stripe, Shopify Plus, Linear, and AWS).
@@ -12,6 +15,7 @@ Every contributor, engineer, and AI agent must adhere strictly to the **12-Pilla
 ## 1. Identity & Git Committer Configuration
 
 All Git actions, commits, and PRs in this repository **MUST** use this developer identity:
+
 - **Author Name:** `Rohit Bahuguna`
 - **Author Email:** `rohitbahuguna.work@gmail.com`
 - **SSH Remote Host:** `github-personal` (configured in `~/.ssh/config` using `~/.ssh/personal`)
@@ -23,6 +27,7 @@ All Git actions, commits, and PRs in this repository **MUST** use this developer
 ## 2. Ticketing & Sprint Management
 
 ### Rule 1: Strict Issue-First Policy & Mandatory Human Issue Approval Gate (NO TICKET = NO CODE)
+
 - **You are STRICTLY FORBIDDEN from writing code, editing files, creating branches, or committing without an active, numbered GitHub Issue (`#X`).**
 - **MANDATORY HUMAN ISSUE APPROVAL GATE:**
   - AI agents are **STRICTLY FORBIDDEN from autonomously creating GitHub issues or milestones**.
@@ -35,7 +40,9 @@ All Git actions, commits, and PRs in this repository **MUST** use this developer
   3. Only then proceed to create the branch.
 
 ### Rule 2: Deterministic Kanban State Machine
+
 Every ticket transitions through 5 sequential states on the **Business OS Core Product Roadmap** project board:
+
 1. `📋 Product Backlog`: Unscheduled future features or technical debt.
 2. `🎯 Ready for Sprint`: Fully specified with concrete Pass/Fail acceptance criteria.
 3. `⏳ In Progress`: Feature branch checked out and actively being coded.
@@ -47,6 +54,7 @@ Every ticket transitions through 5 sequential states on the **Business OS Core P
 ## 3. Git & Branching Strategy
 
 ### Rule 3: 3-Tier Environment Promotion Pipeline
+
 We follow a structured 3-tier environment promotion architecture modeling enterprise release trains:
 
 ```
@@ -65,6 +73,7 @@ feat/#X-slug ──(PR)──> dev ──(Promotion PR)──> staging ──(Re
    - Deployed strictly via verified Release PRs from `staging` with SemVer release tagging.
 
 ### Rule 4: Protected Branches & Branch Naming Standard
+
 - **Protected Branches:** Direct pushes and force-pushes (`git push --force`) to `main`, `staging`, and `dev` are strictly prohibited.
 - **Branch Naming Standard:**
   ```bash
@@ -81,6 +90,7 @@ feat/#X-slug ──(PR)──> dev ──(Promotion PR)──> staging ──(Re
 ## 4. Monorepo Topology & Architectural Boundaries
 
 ### Master Workspace Directory Layout
+
 ```
 business-os/
 ├── .changeset/                   # Semantic versioning and changelog generator
@@ -125,6 +135,7 @@ business-os/
 ```
 
 ### Architectural Boundary Directives:
+
 1. **Unidirectional Flow:** Code flows strictly downward (`apps/*` $\rightarrow$ `packages/modules/*` $\rightarrow$ `packages/*`).
 2. **Zero Cross-App Imports:** Deployable apps (`apps/*`) never import other apps directly.
 3. **Zero Cross-Module Direct Imports:** Pluggable modules (`packages/modules/*`) never import each other directly; cross-module events pass asynchronously via BullMQ / Redis or public platform contracts.
@@ -137,6 +148,7 @@ business-os/
 ## 5. Code Standards & Local Quality Gates
 
 ### Rule 5: Zero-Compromise Type Safety & Validation
+
 - `strict: true` across all TypeScript compiler configurations.
 - **Zero raw `any` types** and zero `@ts-ignore` bypasses.
 - All network boundaries (REST endpoints, RPC parameters, BullMQ payloads) must be parsed and validated with **Zod**.
@@ -144,7 +156,9 @@ business-os/
 - **Env-First Pre-Declaration Law:** Every environment variable accessed in runtime code, configuration, scripts, or test utilities (`process.env.*`, `import.meta.env.*`) MUST be pre-declared and documented in root and package-level `.env.example` templates and local `.env` files with safe, intention-revealing default or placeholder values before being referenced in code. Referencing undeclared, undocumented, or phantom environment variables in code is strictly prohibited.
 
 ### Rule 5.1: Enterprise Clean Code & Refactoring Standards (Constitution Principle XII)
+
 All code submitted to Business OS MUST comply with Constitution Principle XII:
+
 1. **Function Decomposition & SLAP:** Functions must be small, cohesive, and operate at a single level of abstraction. Route handlers MUST NOT exceed 100 lines; helper functions MUST NOT exceed 30 lines. Complex orchestration must be extracted into dedicated domain services.
 2. **Parameter Discipline & No Flag Arguments:** Limit positional parameters to $\le 2$. For 3+ parameters, pass a single typed options object with destructuring. Boolean flag parameters that split function behavior into two distinct branches are strictly prohibited.
 3. **Naming & Domain Modeling:** Use intention-revealing, pronounceable, and searchable English names. Avoid cryptic abbreviations (`usrOrgRel`, `calcBDate`). Magic numbers and strings must be replaced by centralized, strongly typed `as const` constants. Prefer dedicated domain value objects with Zod validation over primitive obsession for core business concepts.
@@ -157,22 +171,35 @@ All code submitted to Business OS MUST comply with Constitution Principle XII:
 10. **Code Smell Monitoring:** Actively prevent and address rigidity, fragility, immobility, needless repetition, and opacity during code review.
 
 ### Rule 6: Mandatory Local Quality Gates
+
 Before any commit or push is accepted, run the complete local gate:
+
 ```bash
 pnpm turbo run lint && pnpm turbo run typecheck && pnpm turbo run test
 ```
+
 All three checks must pass with zero errors.
+
+For a pull request, also run the diff-coverage gate against `dev`:
+
+```bash
+pnpm verify:diff
+```
+
+It runs coverage only for packages changed since `origin/dev`, then fails on any added executable line that no Vitest suite exercised. The pre-push hook runs the same command, so the CI Diff Coverage job is verified before the branch leaves the machine. A genuinely unmeasurable line goes into `tooling/quality/diff-coverage-baseline.json` with an owner, an expiry and a reason; the gate rejects stale and expired entries.
 
 ---
 
 ## 6. Pull Request Lifecycle & The Human Approval Gate
 
 ### Rule 7: Pull Request Size Discipline (The Small PR Rule)
+
 - Pull requests must stay focused. The soft ceiling is **700 changed lines** (insertions + deletions, excluding auto-generated lockfiles and database migrations). The median merged PR in this repository is 706 lines, so this is the size reviewers actually handle.
 - **1,000 changed lines is the hard ceiling.** A PR above 700 explains why in its description; above 1,000 it is split, unless a maintainer records an exception in the PR.
 - Large epics must be split into logical sub-tickets to ensure rigorous, fast code review.
 
 ### Rule 8: Mandatory CI Gates & THE HUMAN MERGE APPROVAL GATE
+
 - Every PR triggers GitHub Actions Continuous Integration (`.github/workflows/ci.yml`):
   - ✅ **Lint:** `pnpm turbo run lint`
   - ✅ **Typecheck:** `pnpm turbo run typecheck`
@@ -195,6 +222,7 @@ All three checks must pass with zero errors.
 ## 7. Data Safety & Architecture Documentation
 
 ### Rule 9: Zero-Downtime Migration Policy (Expand-and-Contract)
+
 - Destructive schema migrations (dropping columns, changing types in place) are prohibited on production schemas.
 - Forward-only, timestamped SQL migrations applied via `prisma migrate deploy`.
 - Running `prisma db push` on production or staging databases is strictly forbidden.
@@ -205,6 +233,7 @@ All three checks must pass with zero errors.
 - A schema change is one unit: schema file, schema tag, table prefix, registry entry, migration, grants and documentation.
 
 ### Rule 10: Architectural Decision Records (ADRs)
+
 - Non-obvious architectural choices, library selections, or trade-offs must be documented as an ADR in `docs/adr/000X-title.md` covering: Context, Decision, Alternatives Considered, and Consequences.
 
 ---
@@ -212,7 +241,9 @@ All three checks must pass with zero errors.
 ## 8. AI Agent Operational Protocol & Absolute Guardrails
 
 ### Rule 11: The Agent's Mandatory 7-Step Cycle
+
 When working on any ticket, the AI agent must strictly follow:
+
 1. **Identify Issue:** Verify the assigned GitHub Issue number and pass/fail criteria via `gh issue list`.
 2. **Branch from `dev`:** Create isolated branch `git checkout -b <type>/#<issue-num>-<slug> dev`.
 3. **Verify Identity:** Ensure commits are attributed to `Rohit Bahuguna <rohitbahuguna.work@gmail.com>`.
@@ -223,7 +254,9 @@ When working on any ticket, the AI agent must strictly follow:
 8. **Post-Merge Integration Gate (P0 Stop-the-Line):** Immediately after merging, verify `dev`'s post-merge CI turns **Green ✅**. If `dev` breaks, all new work stops until `dev` is resolved.
 
 ### Rule 12: Architectural Quality Bar & Absolute Negative Constraints
+
 You are **STRICTLY PROHIBITED** from:
+
 - ❌ Merging any Pull Request without explicit human written approval.
 - ❌ Direct pushing or force-pushing to `main`, `staging`, or `dev`.
 - ❌ Using `@ts-ignore` or `any` to bypass TypeScript errors.
@@ -278,12 +311,14 @@ A PR missing any item is not ready for review.
 ## 9. Versioning, Changesets & Feature Flags
 
 ### Semantic Versioning (SemVer) & Changesets:
+
 - Changes are tracked using `@changesets/cli` in `.changeset/`.
 - Merging to `dev` aggregates changesets.
 - Promoting to `staging` generates pre-release versions (e.g. `v0.1.0-beta.1`).
 - Promoting to `main` executes `changeset version`, bumping `package.json` versions and updating `CHANGELOG.md`.
 
 ### Feature Flags Architecture ("Deploy != Release"):
+
 - Deploying code does not mean releasing it. New features are wrapped in feature flags.
 - Evaluated in Redis in `< 0.2ms` with zero database overhead.
 - Supports progressive rollout (Canary $\rightarrow$ 25% $\rightarrow$ 100%) and instant 1ms kill-switches.
@@ -296,6 +331,7 @@ A PR missing any item is not ready for review.
 ## 10. Specification References
 
 Before implementing domain features, you **MUST** consult the authoritative specifications in `/home/rohit-bahuguna/RB/Composable_Business_Operating_System/`:
+
 - **Architecture & Scaling:** `02-architecture-and-tech-stack/TECH_STACK_HLD_AND_SCALING_BLUEPRINT.md`
 - **Platform Core DB Schema:** `03-platform-core/CORE_DATABASE_LLD_AND_ERD.md`
 - **API & Event Contracts:** `03-platform-core/CORE_API_AND_EVENT_CONTRACTS.md`

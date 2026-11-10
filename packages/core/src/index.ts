@@ -143,12 +143,23 @@ export {
   getAppSettingsDefinition,
   isSettingsValues,
   validateAppSettings,
+  validateTenantAppSettings,
+  SETTINGS_FIELD_SCOPES,
+  type SettingsScope,
   type AppSettingsDefinition,
   type SettingsFieldDefinition,
   type SettingsValidationIssue,
   type SettingsValidationResult,
   type SettingsValues,
 } from "./apps/settings-schemas.js";
+export {
+  resolveAppSettings,
+  settingsValueSourceSchema,
+  type ResolvedSetting,
+  type ResolvedSettings,
+  type SettingsResolutionInput,
+  type SettingsValueSource,
+} from "./apps/settings-resolution.js";
 
 // Platform error-code registry
 export {

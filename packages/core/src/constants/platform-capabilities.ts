@@ -33,6 +33,13 @@ export const PLATFORM_CAPABILITIES = {
       "Read application records, catalog entries, settings and previews without authoring or publishing.",
     group: "Applications",
   },
+  APPS_AUTHOR: {
+    code: "platform:apps:author",
+    label: "Author application content",
+    description:
+      "Edit application defaults and create draft catalog content without publishing.",
+    group: "Applications",
+  },
   TENANTS_READ: {
     code: "platform:tenants:read",
     label: "Read tenants",

@@ -58,6 +58,11 @@ const PERMITTED_WRITES: readonly PermittedWrite[] = [
     path: "/tenants/:orgId/apps/:appId/settings",
     reason: "validated application settings",
   },
+  {
+    method: "PATCH",
+    path: "/apps/:appId/settings",
+    reason: "validated application defaults",
+  },
   // Quotas are platform-owned configuration, written through one audited
   // definer function per item; no tenant business record is touched.
   { method: "PUT", path: "/tenants/:orgId/quotas", reason: "quota governance" },

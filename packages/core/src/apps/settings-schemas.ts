@@ -15,6 +15,9 @@ export type SettingsValues = Record<string, unknown>;
 
 const SETTINGS_ROOT_FIELD = "values";
 const SETTINGS_KEY_MAX_LENGTH = 64;
+
+export const SETTINGS_FIELD_SCOPES = ["app", "tenant"] as const;
+export type SettingsScope = (typeof SETTINGS_FIELD_SCOPES)[number];
 const SETTINGS_LABEL_MAX_LENGTH = 120;
 const SETTINGS_DESCRIPTION_MAX_LENGTH = 500;
 
@@ -59,6 +62,8 @@ const booleanSettingsFieldSchema = z
     label: z.string().trim().min(1).max(SETTINGS_LABEL_MAX_LENGTH),
     description: z.string().trim().min(1).max(SETTINGS_DESCRIPTION_MAX_LENGTH),
     required: z.boolean(),
+    scope: z.enum(SETTINGS_FIELD_SCOPES),
+    defaultValue: z.boolean(),
     kind: z.literal("boolean"),
   })
   .strict();
@@ -69,6 +74,8 @@ const textSettingsFieldSchema = z
     label: z.string().trim().min(1).max(SETTINGS_LABEL_MAX_LENGTH),
     description: z.string().trim().min(1).max(SETTINGS_DESCRIPTION_MAX_LENGTH),
     required: z.boolean(),
+    scope: z.enum(SETTINGS_FIELD_SCOPES),
+    defaultValue: z.string(),
     kind: z.literal("text"),
     minLength: z.number().int().nonnegative(),
     maxLength: z.number().int().positive(),
@@ -105,6 +112,7 @@ export interface AppSettingsDefinition {
 
 interface CompiledAppSettingsDefinition extends AppSettingsDefinition {
   readonly schema: z.ZodType<SettingsValues, z.ZodTypeDef, SettingsValues>;
+  readonly tenantSchema: z.ZodType<SettingsValues, z.ZodTypeDef, SettingsValues>;
 }
 
 function buildTextFieldSchema(
@@ -137,10 +145,12 @@ function buildFieldSchema(field: SettingsFieldDefinition): z.ZodTypeAny {
 }
 
 function compileSettingsSchema(
-  fields: readonly SettingsFieldDefinition[]
+  fields: readonly SettingsFieldDefinition[],
+  scope: SettingsScope,
 ): z.ZodType<SettingsValues, z.ZodTypeDef, SettingsValues> {
   const shape: Record<string, z.ZodTypeAny> = {};
   for (const field of fields) {
+    if (scope === "tenant" && field.scope !== "tenant") continue;
     const fieldSchema = buildFieldSchema(field);
     shape[field.key] = field.required ? fieldSchema : fieldSchema.optional();
   }
@@ -158,10 +168,20 @@ function defineAppSettings(
       );
     }
   }
+  for (const field of fields) {
+    const fieldSchema = buildFieldSchema(field);
+    const parsed = fieldSchema.safeParse(field.defaultValue);
+    if (!parsed.success) {
+      throw new Error(
+        `Settings field "${field.key}" declares a default that fails its own schema.`
+      );
+    }
+  }
   return {
     appId,
     fields: [...fields],
-    schema: compileSettingsSchema(fields),
+    schema: compileSettingsSchema(fields, "app"),
+    tenantSchema: compileSettingsSchema(fields, "tenant"),
   };
 }
 
@@ -176,6 +196,8 @@ const WEBSITE_BUILDER_SETTINGS_FIELDS = [
     description:
       "Allow this tenant to attach custom domains to its published sites.",
     required: false,
+    scope: "tenant",
+    defaultValue: false,
     kind: "boolean",
   },
   {
@@ -184,6 +206,8 @@ const WEBSITE_BUILDER_SETTINGS_FIELDS = [
     description:
       "Locale used for new sites when the request does not choose one.",
     required: false,
+    scope: "tenant",
+    defaultValue: "en",
     kind: "text",
     minLength: 2,
     maxLength: 35,
@@ -229,6 +253,31 @@ export function validateAppSettings(
   definition: AppSettingsDefinition,
   payload: unknown
 ): SettingsValidationResult {
+  return validateSettingsWithSchema(
+    payload,
+    COMPILED_SETTINGS_DEFINITIONS[definition.appId].schema,
+  );
+}
+
+/**
+ * Tenant overrides may only carry tenant-scoped fields. App-scoped fields are
+ * rejected as unknown for this layer, so a tenant cannot silently fork a
+ * platform-owned default.
+ */
+export function validateTenantAppSettings(
+  definition: AppSettingsDefinition,
+  payload: unknown
+): SettingsValidationResult {
+  return validateSettingsWithSchema(
+    payload,
+    COMPILED_SETTINGS_DEFINITIONS[definition.appId].tenantSchema,
+  );
+}
+
+function validateSettingsWithSchema(
+  payload: unknown,
+  schema: z.ZodType<SettingsValues, z.ZodTypeDef, SettingsValues>,
+): SettingsValidationResult {
   if (!isSettingsValues(payload)) {
     return {
       success: false,
@@ -241,7 +290,6 @@ export function validateAppSettings(
     };
   }
 
-  const schema = COMPILED_SETTINGS_DEFINITIONS[definition.appId].schema;
   const result = schema.safeParse(payload);
   if (result.success) {
     return { success: true, values: result.data };

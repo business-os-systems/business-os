@@ -23,6 +23,15 @@ export function canReadApps(
   return hasPlatformAppsReadAccess(capabilities);
 }
 
+export function canAuthorApps(
+  capabilities: readonly string[] | undefined | null,
+): boolean {
+  return hasPlatformCapability(
+    capabilities,
+    PLATFORM_CAPABILITIES.APPS_AUTHOR.code,
+  );
+}
+
 export function canReadTenants(
   capabilities: readonly string[] | undefined | null,
 ): boolean {

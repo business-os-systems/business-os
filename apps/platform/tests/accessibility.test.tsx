@@ -31,6 +31,7 @@ import TenantActivityPage from "../src/app/(platform)/tenants/[orgId]/activity/p
 import TenantDangerPage from "../src/app/(platform)/tenants/[orgId]/danger/page";
 import TenantSupportPage from "../src/app/(platform)/tenants/[orgId]/support/page";
 import AppRecordOverviewPage from "../src/app/(platform)/apps/[appId]/overview/page";
+import { AppSettingsDefaultsPanel } from "../src/app/(platform)/apps/[appId]/settings/app-settings-defaults-panel";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT =
   true;
@@ -138,6 +139,40 @@ function withAppRecord(element: ReactElement): ReactElement {
   );
 }
 
+const SETTINGS_DEFAULTS = {
+  appId: "website-builder",
+  schema: {
+    fields: [
+      {
+        key: "customDomainEnabled",
+        label: "Custom domains",
+        description: "Allow custom domains.",
+        required: false,
+        scope: "tenant" as const,
+        defaultValue: false,
+        kind: "boolean" as const,
+      },
+      {
+        key: "defaultLocale",
+        label: "Default locale",
+        description: "Locale for new sites.",
+        required: false,
+        scope: "tenant" as const,
+        defaultValue: "en",
+        kind: "text" as const,
+        minLength: 2,
+        maxLength: 35,
+        format: "bcp47" as const,
+      },
+    ],
+  },
+  values: {},
+  effectiveValues: { customDomainEnabled: false, defaultLocale: "en" },
+  sources: { customDomainEnabled: "schema" as const, defaultLocale: "schema" as const },
+  staleFields: [],
+  version: "0",
+};
+
 function withCatalogs(element: ReactElement): ReactElement {
   return (
     <CatalogsProvider
@@ -173,6 +208,19 @@ const SCREENS: readonly Screen[] = [
     id: "app-record-overview",
     pathname: "/apps/website-builder/overview",
     element: withAppRecord(<AppRecordOverviewPage />),
+  },
+  {
+    id: "app-record-settings",
+    pathname: "/apps/website-builder/settings",
+    element: (
+      <AppSettingsDefaultsPanel
+        appId="website-builder"
+        defaults={SETTINGS_DEFAULTS}
+        canAuthor
+        onSaved={() => undefined}
+        onReload={() => undefined}
+      />
+    ),
   },
   { id: "catalog-panel", pathname: "/catalogs/currency", element: withCatalogs(<CatalogPanelPage />) },
   { id: "flags", pathname: "/flags", element: <FlagsPage /> },

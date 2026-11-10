@@ -125,7 +125,7 @@ describe("Application record navigation config", () => {
   it("declares the record group and every destination as a route", () => {
     expect(APP_RECORD_NAV_GROUPS.map((group) => group.id)).toEqual(["record"]);
     const items = APP_RECORD_NAV_GROUPS.flatMap((group) => group.items);
-    expect(items.map((item) => item.id)).toEqual(["overview"]);
+    expect(items.map((item) => item.id)).toEqual(["overview", "settings"]);
     for (const item of items) {
       expect(appRecordHref(APP_ID, item.segment)).toBe(`/apps/${APP_ID}/${item.segment}`);
     }
@@ -141,12 +141,12 @@ describe("Application record navigation config", () => {
       visibleAppRecordGroups([PLATFORM_CAPABILITIES.APPS_READ.code])[0]?.items.map(
         (item) => item.id,
       ),
-    ).toEqual(["overview"]);
+    ).toEqual(["overview", "settings"]);
     expect(
       visibleAppRecordGroups([
         PLATFORM_CAPABILITIES.ENTITLEMENTS_MANAGE.code,
       ])[0]?.items.map((item) => item.id),
-    ).toEqual(["overview"]);
+    ).toEqual(["overview", "settings"]);
   });
 
   it("recognizes hub routes and active destinations", () => {
@@ -155,7 +155,7 @@ describe("Application record navigation config", () => {
     expect(isAppRecordHubRoute(`/apps/${APP_ID}/overview`)).toBe(true);
     expect(isAppRecordKnownDestination(`/apps/${APP_ID}`)).toBe(true);
     expect(isAppRecordKnownDestination(`/apps/${APP_ID}/overview`)).toBe(true);
-    expect(isAppRecordKnownDestination(`/apps/${APP_ID}/settings`)).toBe(false);
+    expect(isAppRecordKnownDestination(`/apps/${APP_ID}/settings`)).toBe(true);
     expect(
       isAppRecordKnownDestination(`/apps/${APP_ID}/overview/extra`),
     ).toBe(false);

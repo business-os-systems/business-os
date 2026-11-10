@@ -12,6 +12,7 @@ import { platformOperatorsRouter } from "../../../src/routes/admin/operators.js"
 import { platformEntitlementsRouter } from "../../../src/routes/admin/entitlements.js";
 import { platformQuotasRouter } from "../../../src/routes/admin/quotas.js";
 import { platformAppCatalogRouter } from "../../../src/routes/admin/app-catalog.js";
+import { platformAppSettingsRouter } from "../../../src/routes/admin/app-settings.js";
 import { platformSystemRouter } from "../../../src/routes/admin/system.js";
 import { tenantAdminRouter } from "../../../src/routes/admin/tenants.js";
 import { tenantPiiRouter } from "../../../src/routes/admin/tenant-pii.js";
@@ -46,6 +47,7 @@ platformOperatorsRouter.onError(globalErrorHandler);
 platformEntitlementsRouter.onError(globalErrorHandler);
 platformQuotasRouter.onError(globalErrorHandler);
 platformAppCatalogRouter.onError(globalErrorHandler);
+platformAppSettingsRouter.onError(globalErrorHandler);
 tenantAdminRouter.onError(globalErrorHandler);
 tenantPiiRouter.onError(globalErrorHandler);
 tenantLifecycleRouter.onError(globalErrorHandler);
@@ -58,6 +60,7 @@ type RouterKey =
   | typeof ADMIN_ENTITLEMENTS_ROUTER
   | typeof ADMIN_QUOTAS_ROUTER
   | typeof ADMIN_CATALOG_ROUTER
+  | "admin-app-settings"
   | "admin-tenants"
   | "admin-tenant-pii"
   | "admin-tenant-lifecycle";
@@ -70,6 +73,7 @@ const ROUTERS = {
   [ADMIN_ENTITLEMENTS_ROUTER]: platformEntitlementsRouter,
   [ADMIN_QUOTAS_ROUTER]: platformQuotasRouter,
   [ADMIN_CATALOG_ROUTER]: platformAppCatalogRouter,
+  "admin-app-settings": platformAppSettingsRouter,
   "admin-tenants": tenantAdminRouter,
   "admin-tenant-pii": tenantPiiRouter,
   "admin-tenant-lifecycle": tenantLifecycleRouter,
@@ -142,6 +146,22 @@ const PROTECTED_ROUTES: readonly ProtectedRoute[] = [
     method: "PATCH",
     path: "/website-builder",
     router: ADMIN_CATALOG_ROUTER,
+    anonymous: { status: 401, code: PLATFORM_ERROR_CODE.AUTH_REQUIRED },
+    originGuarded: true,
+  },
+  {
+    id: "admin-app-settings/read",
+    method: "GET",
+    path: "/website-builder/settings",
+    router: "admin-app-settings",
+    anonymous: { status: 401, code: PLATFORM_ERROR_CODE.AUTH_REQUIRED },
+    originGuarded: true,
+  },
+  {
+    id: "admin-app-settings/write",
+    method: "PATCH",
+    path: "/website-builder/settings",
+    router: "admin-app-settings",
     anonymous: { status: 401, code: PLATFORM_ERROR_CODE.AUTH_REQUIRED },
     originGuarded: true,
   },
@@ -323,6 +343,8 @@ const PROTECTED_ROUTES: readonly ProtectedRoute[] = [
 const CAPABILITY_ENFORCEMENT = {
   "platform:apps:read":
     "P-01 (#340), enforced by GET /catalog and the Platform application record (entitlement managers retain read)",
+  "platform:apps:author":
+    "P-02 (#341), enforced by PATCH /apps/:appId/settings and the settings defaults panel",
   "platform:tenants:read": "P-11 (#220)",
   "platform:tenants:lifecycle": "P-13 (#222), enforced by the lifecycle routes",
   "platform:quotas:manage":
