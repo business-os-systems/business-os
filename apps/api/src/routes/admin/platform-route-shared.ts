@@ -2,8 +2,10 @@ import type { MiddlewareHandler } from "hono";
 import { PLATFORM_ERROR_CODE, STEP_UP_TOKEN_HEADER } from "@suite/core";
 import { UnauthorizedError } from "@suite/core/errors";
 import {
+  createPlatformAnyCapabilityGuard,
   createPlatformCapabilityGuard,
   createPlatformSessionGuard,
+  type PlatformAnyCapabilityGuardOptions,
   type PlatformCapabilityGuardOptions,
 } from "../../middleware/platform-capability.js";
 import {
@@ -74,6 +76,23 @@ export function createLazyDefaultCapabilityGuard(
 ): MiddlewareHandler {
   const guard = createLazyGuard(() =>
     createPlatformCapabilityGuard({
+      ...createOptions(),
+      redis: getPlatformRedis(),
+      rpID: getControlWebauthnRpId(),
+    })
+  );
+  return async (c, next) => guard()(c, next);
+}
+
+/** Route-safe lazy guard that accepts any one of the listed capabilities. */
+export function createLazyDefaultAnyCapabilityGuard(
+  createOptions: () => Omit<
+    PlatformAnyCapabilityGuardOptions,
+    "redis" | "rpID"
+  >
+): MiddlewareHandler {
+  const guard = createLazyGuard(() =>
+    createPlatformAnyCapabilityGuard({
       ...createOptions(),
       redis: getPlatformRedis(),
       rpID: getControlWebauthnRpId(),

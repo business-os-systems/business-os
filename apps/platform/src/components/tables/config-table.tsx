@@ -2,6 +2,7 @@
 
 import {
   ConfigTableRenderer,
+  type TableActionConfig,
   type TableConfig,
   type TableEmptyStateConfig,
 } from "@suite/ui";
@@ -42,6 +43,9 @@ export interface ConfigTableProps<T extends object> {
   readonly rowKey: (row: T) => string;
   readonly rowLabel: (row: T) => string;
   readonly onRowClick?: (row: T) => void;
+  /** Row actions declared by the screen and authorized against the session. */
+  readonly actions?: readonly TableActionConfig<T>[];
+  readonly userPermissions?: readonly string[];
   /** Overrides the configured empty state, for example after a filter returns nothing. */
   readonly emptyState?: TableEmptyStateConfig;
 }
@@ -58,12 +62,17 @@ export function ConfigTable<T extends object>({
   rowKey,
   rowLabel,
   onRowClick,
+  actions,
+  userPermissions,
   emptyState,
 }: ConfigTableProps<T>) {
   const errorTitle = state.kind === "error" ? state.title : undefined;
+  const resolvedConfig =
+    actions === undefined ? config : { ...config, actions: [...actions] };
   return (
     <ConfigTableRenderer
-      config={config}
+      config={resolvedConfig}
+      userPermissions={userPermissions}
       data={rows}
       rowKey={rowKey}
       rowLabel={rowLabel}

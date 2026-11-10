@@ -132,6 +132,7 @@ function setInputValue(element: HTMLInputElement, value: string): void {
 beforeEach(() => {
   process.env.NEXT_PUBLIC_API_URL = "http://api.test";
   authState.capabilities = [];
+  navState.push.mockReset();
   fetchMock = vi.fn<typeof fetch>();
   vi.stubGlobal("fetch", fetchMock);
 });
@@ -154,12 +155,17 @@ describe("App catalog capability gate", () => {
         (item) => item.id
       )
     ).toContain("apps");
+    expect(
+      visibleNavigation([PLATFORM_CAPABILITIES.APPS_READ.code]).map(
+        (item) => item.id
+      )
+    ).toContain("apps");
     expect(canAccessPath([], "/apps")).toBe(false);
     expect(
-      canAccessPath(
-        [PLATFORM_CAPABILITIES.ENTITLEMENTS_MANAGE.code],
-        "/apps"
-      )
+      canAccessPath([PLATFORM_CAPABILITIES.ENTITLEMENTS_MANAGE.code], "/apps")
+    ).toBe(true);
+    expect(
+      canAccessPath([PLATFORM_CAPABILITIES.APPS_READ.code], "/apps")
     ).toBe(true);
     expect(renderToString(<AppCatalogPage />)).toContain("Capability denied");
     expect(
@@ -180,14 +186,14 @@ describe("App catalog capability gate", () => {
 
 describe("App catalog states", () => {
   it("renders the loading state before the catalog arrives", () => {
-    authState.capabilities = [PLATFORM_CAPABILITIES.ENTITLEMENTS_MANAGE.code];
+    authState.capabilities = [PLATFORM_CAPABILITIES.APPS_READ.code];
     expect(renderToString(<AppCatalogPage />)).toContain(
       "Loading the application catalog"
     );
   });
 
   it("renders the empty state for an empty registry projection", async () => {
-    authState.capabilities = [PLATFORM_CAPABILITIES.ENTITLEMENTS_MANAGE.code];
+    authState.capabilities = [PLATFORM_CAPABILITIES.APPS_READ.code];
     fetchMock.mockResolvedValueOnce(reply(200, { data: { apps: [] } }));
     render(<AppCatalogPage />);
     await settle();
@@ -197,7 +203,7 @@ describe("App catalog states", () => {
   });
 
   it("does not render an aborted first request as an error", async () => {
-    authState.capabilities = [PLATFORM_CAPABILITIES.ENTITLEMENTS_MANAGE.code];
+    authState.capabilities = [PLATFORM_CAPABILITIES.APPS_READ.code];
     const aborted = Object.assign(new Error("aborted"), { name: "AbortError" });
     fetchMock.mockImplementationOnce(() => Promise.reject(aborted));
     render(<AppCatalogPage />);
@@ -210,7 +216,7 @@ describe("App catalog states", () => {
   });
 
   it("renders the RFC 7807 error detail and code", async () => {
-    authState.capabilities = [PLATFORM_CAPABILITIES.ENTITLEMENTS_MANAGE.code];
+    authState.capabilities = [PLATFORM_CAPABILITIES.APPS_READ.code];
     fetchMock.mockResolvedValueOnce(reply(429, VIEW_PROBLEM));
     render(<AppCatalogPage />);
     await settle();
@@ -218,6 +224,56 @@ describe("App catalog states", () => {
     expect(document.body.textContent).toContain(VIEW_PROBLEM.code);
   });
 
+  it("navigates from a catalog row into the application record", async () => {
+    authState.capabilities = [PLATFORM_CAPABILITIES.APPS_READ.code];
+    fetchMock.mockResolvedValueOnce(reply(200, { data: { apps: [APP] } }));
+    render(<AppCatalogPage />);
+    await settle();
+
+    const open = [...document.querySelectorAll("button")].find((button) =>
+      button.textContent.includes(APP.title)
+    );
+    if (open === undefined) throw new Error("The row target was not rendered");
+    act(() => open.click());
+
+    expect(navState.push).toHaveBeenCalledWith(
+      "/apps/website-builder/overview"
+    );
+  });
+});
+
+describe("App catalog row actions", () => {
+  it("keeps the override action for an entitlement manager", async () => {
+    authState.capabilities = [
+      PLATFORM_CAPABILITIES.APPS_READ.code,
+      PLATFORM_CAPABILITIES.ENTITLEMENTS_MANAGE.code,
+    ];
+    fetchMock.mockResolvedValueOnce(reply(200, { data: { apps: [APP] } }));
+    render(<AppCatalogPage />);
+    await settle();
+
+    const edit = [...document.querySelectorAll("button")].find((button) =>
+      button.textContent.includes("Edit override")
+    );
+    if (edit === undefined) throw new Error("The override action was not rendered");
+    act(() => edit.click());
+
+    expect(document.body.textContent).toContain("Catalog override");
+    expect(document.body.textContent).toContain(APP.title);
+  });
+
+  it("hides the override action from a read-only operator", async () => {
+    authState.capabilities = [PLATFORM_CAPABILITIES.APPS_READ.code];
+    fetchMock.mockResolvedValueOnce(reply(200, { data: { apps: [APP] } }));
+    render(<AppCatalogPage />);
+    await settle();
+
+    expect(
+      [...document.querySelectorAll("button")].some((button) =>
+        button.textContent.includes("Edit override")
+      )
+    ).toBe(false);
+  });
 });
 
 describe("App catalog table and shared view state", () => {

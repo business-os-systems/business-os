@@ -70,6 +70,11 @@ export function appDisplayTitle(appId: string): string {
   return getAppManifest(appId)?.title ?? appId;
 }
 
+/** The compiled application version, or null for an unregistered id. */
+export function appManifestVersion(appId: string): string | null {
+  return getAppManifest(appId)?.version ?? null;
+}
+
 export function installedAppPath(orgId: string): string {
   return `/api/v1/admin/tenants/${encodeURIComponent(orgId)}/entitlements`;
 }

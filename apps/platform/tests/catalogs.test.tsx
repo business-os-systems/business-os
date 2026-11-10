@@ -18,7 +18,7 @@ import {
 } from "../src/components/layout/catalogs-nav.config";
 import {
   canAccessPath,
-  requiredCapabilityForPath,
+  requiredCapabilitiesForPath,
 } from "../src/components/layout/navigation.config";
 import {
   createCatalogValueTableConfig,
@@ -247,9 +247,9 @@ describe("Catalogs hub routing and capability gate", () => {
     expect(visibleCatalogsNavItems([])).toEqual([]);
     expect(isCatalogsHubRoute(CURRENCIES_HREF)).toBe(true);
     expect(isCatalogsHubRoute("/tenants/org_1")).toBe(false);
-    expect(requiredCapabilityForPath(CURRENCIES_HREF)).toBe(
+    expect(requiredCapabilitiesForPath(CURRENCIES_HREF)).toEqual([
       CATALOGS_CAPABILITY,
-    );
+    ]);
     expect(canAccessPath([], CURRENCIES_HREF)).toBe(false);
     expect(canAccessPath([CATALOGS_CAPABILITY], CURRENCIES_HREF)).toBe(true);
   });
