@@ -82,8 +82,9 @@ export function useTenantEntitlements(
         });
         setApps(next);
       } catch (cause) {
-        setError(toMessage(cause));
+        const message = toMessage(cause);
         await load();
+        setError(message);
       } finally {
         setPendingAppId(null);
       }

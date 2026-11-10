@@ -127,6 +127,25 @@ describe("tenant apps panel", () => {
     expect(checkboxes()[1]?.checked).toBe(true);
   });
 
+  it("shows the RFC 7807 failure and reloads the list", async () => {
+    api.fetchTenantEntitlements.mockResolvedValue([enabledApp, disabledApp]);
+    api.setTenantEntitlement.mockRejectedValueOnce(
+      new Error("The entitlement changed. Reload and retry."),
+    );
+
+    await renderPanel(true);
+    act(() => checkboxes()[1]?.click());
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(container.textContent).toContain(
+      "The entitlement changed. Reload and retry.",
+    );
+    expect(api.fetchTenantEntitlements).toHaveBeenCalledTimes(2);
+  });
+
   it("disables the toggles for a read-only operator", async () => {
     api.fetchTenantEntitlements.mockResolvedValue([enabledApp, disabledApp]);
 
