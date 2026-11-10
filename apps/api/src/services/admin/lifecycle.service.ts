@@ -24,6 +24,7 @@ import {
 } from "@suite/core/errors";
 import { appendPlatformOutboxEvent } from "../../workers/platform-outbox.worker.js";
 import { throwMappedPlatformSqlError } from "./platform-sql-errors.js";
+import { assertFreshStepUp } from "./step-up-guard.service.js";
 import { readTenantOverview } from "./tenant-view.service.js";
 
 const REASON_REQUIRED_MESSAGE = `A reason of ${TENANT_LIFECYCLE_REASON_MIN_LENGTH} to ${TENANT_LIFECYCLE_REASON_MAX_LENGTH} characters is required.`;
@@ -36,6 +37,8 @@ export interface ChangeTenantStatusInput {
   readonly operatorId: string;
   readonly requestId: string;
   readonly confirmationSlug?: string;
+  /** Single-use confirmation token; the transaction consumes it before writes. */
+  readonly stepUpToken: string | null;
 }
 
 export interface TenantLifecycleResult {
@@ -314,9 +317,13 @@ export async function changeTenantStatus(
   const targetStatus = await resolveTargetStatus(prisma, input);
 
   try {
-    return await prisma.$transaction((tx) =>
-      applyTransition({ tx, input, expectedStatus, targetStatus, reason })
-    );
+    return await prisma.$transaction(async (tx) => {
+      await assertFreshStepUp({
+        operatorId: input.operatorId,
+        token: input.stepUpToken,
+      });
+      return applyTransition({ tx, input, expectedStatus, targetStatus, reason });
+    });
   } catch (error) {
     throwMappedPlatformSqlError(error, LIFECYCLE_RULES);
   }

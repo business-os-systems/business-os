@@ -1,7 +1,12 @@
 import { z, type Hook } from "@hono/zod-openapi";
 import type { Env } from "hono";
 import { ValidationError } from "@suite/core/errors";
-import { PLATFORM_ERROR_CODE, problemDetailsSchema } from "@suite/core";
+import {
+  MAX_STEP_UP_TOKEN_LENGTH,
+  PLATFORM_ERROR_CODE,
+  problemDetailsSchema,
+  STEP_UP_TOKEN_HEADER,
+} from "@suite/core";
 
 /**
  * Every Platform router renders a schema failure as RFC 7807 problem details,
@@ -32,13 +37,27 @@ export const envelope = <T extends z.ZodTypeAny>(data: T) =>
     timestamp: z.string(),
   });
 
+/**
+ * Destructive Platform routes declare the step-up header so the contract names
+ * it. It stays optional here because the service is the enforcement point and
+ * answers the registry code STEP_UP_REQUIRED (like the PII-reason header).
+ */
+export const stepUpHeaderSchema = z.object({
+  [STEP_UP_TOKEN_HEADER]: z
+    .string()
+    .trim()
+    .min(1)
+    .max(MAX_STEP_UP_TOKEN_LENGTH)
+    .optional(),
+});
+
 export const errorResponses = {
   401: {
     description: "Authentication required",
     content: { "application/problem+json": { schema: problemDetailsSchema } },
   },
   403: {
-    description: "Capability denied",
+    description: "Capability or step-up confirmation denied",
     content: { "application/problem+json": { schema: problemDetailsSchema } },
   },
   404: {

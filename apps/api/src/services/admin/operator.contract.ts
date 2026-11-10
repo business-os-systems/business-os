@@ -172,6 +172,8 @@ export type ChangeOperatorCapabilitiesInput = z.infer<
 > & {
   readonly operatorId: string;
   readonly actor: OperatorActor;
+  /** Single-use confirmation token, consumed before the change is applied. */
+  readonly stepUpToken: string | null;
 };
 
 export type OperatorSessionSummary = z.infer<typeof operatorSessionSchema>;

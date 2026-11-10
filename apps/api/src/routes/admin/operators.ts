@@ -34,11 +34,13 @@ import {
   envelope,
   errorResponses,
   platformValidationHook,
+  stepUpHeaderSchema,
 } from "./openapi-shared.js";
 import {
   createLazyDefaultCapabilityGuard,
   readActor,
   readRequestId,
+  readStepUpToken,
 } from "./platform-route-shared.js";
 
 const PLATFORM_OPERATORS = PLATFORM_CAPABILITIES.OPERATORS_MANAGE.code;
@@ -150,9 +152,10 @@ const capabilitiesRoute = createRoute({
   tags: [OPERATORS_TAG],
   summary: "Grant or revoke operator capabilities",
   description:
-    "Applies explicit grants and revocations in one transaction, writes the audit row, and invalidates the capability cache. Revoking operator management is blocked for the last manager.",
+    "Applies explicit grants and revocations in one transaction after consuming a fresh single-use x-step-up-token, writes the audit row, and invalidates the capability cache. Revoking operator management is blocked for the last manager.",
   request: {
     params: operatorIdParamsSchema,
+    headers: stepUpHeaderSchema,
     body: {
       required: true,
       content: {
@@ -313,6 +316,7 @@ platformOperatorsRouter.openapi(capabilitiesRoute, async (c) => {
     grant: body.grant,
     revoke: body.revoke,
     actor: readActor(c),
+    stepUpToken: readStepUpToken(c),
   });
   return c.json(
     createSuccessResponseBody({

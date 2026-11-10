@@ -11,3 +11,9 @@ export const FORM_IDEMPOTENCY_HEADER = "x-idempotency-key";
  * (FR-050). It must be on the CORS allow-list or a browser preflight rejects
  * the very request the guard exists to inspect. */
 export const SUPPORT_SESSION_HEADER = "X-Support-Session";
+/** Carries the single-use confirmation token a fresh passkey ceremony issues
+ * (FR-046). Destructive Platform routes consume it inside their mutation
+ * transaction, and it must be on the CORS allow-list for browser callers. */
+export const STEP_UP_TOKEN_HEADER = "x-step-up-token";
+/** Upper bound for the opaque token before any signature or Redis work. */
+export const MAX_STEP_UP_TOKEN_LENGTH = 4096;

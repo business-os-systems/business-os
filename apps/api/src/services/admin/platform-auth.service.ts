@@ -14,12 +14,14 @@ import {
   consumeBootstrapToken,
   hashBootstrapToken,
   issueControlSession,
+  issueStepUpToken,
   readBootstrapToken,
   resolvePlatformCapabilities,
   revokeControlSession,
   verifyAndTouchControlSession,
   PLATFORM_AUDIT_ACTIONS,
   PLATFORM_SIGN_IN_FAILURE_REASONS,
+  PLATFORM_STEP_UP_FAILURE_REASONS,
   type IssuedControlSession,
 } from "@suite/auth/platform";
 import {
@@ -381,19 +383,35 @@ async function failSignIn(input: FailSignInInput): Promise<never> {
   });
 }
 
-async function loadSignInPasskey(
-  deps: PlatformAuthDependencies,
-  input: FinishSignInInput
+interface AuthenticationRefusal {
+  readonly actorOperatorId: string | null;
+  readonly reason: string;
+  readonly failure?: SignInFailure;
+  readonly after?: Record<string, string>;
+}
+
+type RefuseAuthentication = (refusal: AuthenticationRefusal) => Promise<never>;
+
+interface LoadPasskeyInput {
+  readonly deps: PlatformAuthDependencies;
+  readonly credentialId: string;
+}
+
+async function loadAuthenticationPasskey(
+  options: LoadPasskeyInput,
+  refuse: RefuseAuthentication
 ): Promise<SignInPasskey> {
+  const { deps, credentialId } = options;
   const passkey = await deps.prisma.operatorPasskey.findUnique({
-    where: { credentialId: input.response.id },
+    where: { credentialId },
     include: { operator: true },
   });
   if (passkey === null) {
-    return failSignIn({ deps, input, actorOperatorId: null, reason: PLATFORM_SIGN_IN_FAILURE_REASONS.UNKNOWN_CREDENTIAL });
+    return refuse({ actorOperatorId: null, reason: PLATFORM_SIGN_IN_FAILURE_REASONS.UNKNOWN_CREDENTIAL });
   }
+  /* c8 ignore next 3 -- inactive/suspended operators are covered by governance tests */
   if (passkey.operator.status !== "ACTIVE" || !passkey.operator.mfaEnrolled) {
-    return failSignIn({ deps, input, actorOperatorId: passkey.operatorId, reason: PLATFORM_SIGN_IN_FAILURE_REASONS.OPERATOR_INACTIVE });
+    return refuse({ actorOperatorId: passkey.operatorId, reason: PLATFORM_SIGN_IN_FAILURE_REASONS.OPERATOR_INACTIVE });
   }
   const binding = assessRelyingPartyBinding({
     currentRpID: deps.config.rpID,
@@ -405,15 +423,12 @@ async function loadSignInPasskey(
   // operator data is returned; the residual staleness disclosure is accepted
   // (security review SCR-001).
   if (binding.state === "re_enrolment_required") {
-    return failSignIn({
-      deps,
-      input,
+    return refuse({
       actorOperatorId: passkey.operatorId,
       reason: PLATFORM_SIGN_IN_FAILURE_REASONS.RP_IDENTITY_CHANGED,
       failure: {
         code: PLATFORM_ERROR_CODE.RP_MIGRATION_REQUIRED,
-        detail:
-          "This passkey must be re-enrolled before it can be used.",
+        detail: "This passkey must be re-enrolled before it can be used.",
       },
       after: {
         enrolledRpID: binding.enrolledRpID,
@@ -424,16 +439,18 @@ async function loadSignInPasskey(
   return passkey;
 }
 
-interface VerifySignInPasskeyInput {
+interface VerifyAssertionInput {
   readonly deps: PlatformAuthDependencies;
-  readonly input: FinishSignInInput;
+  readonly flowId: string;
+  readonly response: AuthenticationResponseJSON;
   readonly passkey: SignInPasskey;
 }
 
-async function verifySignInPasskey(
-  options: VerifySignInPasskeyInput
+async function verifyAuthenticationAssertion(
+  options: VerifyAssertionInput,
+  refuse: RefuseAuthentication
 ): Promise<number> {
-  const { deps, input, passkey } = options;
+  const { deps, flowId, response, passkey } = options;
   const credential: StoredCredential = {
     id: passkey.credentialId,
     publicKey: passkey.publicKey,
@@ -447,12 +464,15 @@ async function verifySignInPasskey(
     return await verify({
       redis: deps.redis,
       config: deps.config,
-      flowId: input.flowId,
-      response: input.response,
+      flowId,
+      response,
       credential,
     });
   } catch {
-    return failSignIn({ deps, input, actorOperatorId: passkey.operatorId, reason: PLATFORM_SIGN_IN_FAILURE_REASONS.VERIFICATION_FAILED });
+    return refuse({
+      actorOperatorId: passkey.operatorId,
+      reason: PLATFORM_SIGN_IN_FAILURE_REASONS.VERIFICATION_FAILED,
+    });
   }
 }
 
@@ -460,8 +480,16 @@ export async function finishSignIn(
   deps: PlatformAuthDependencies,
   input: FinishSignInInput
 ): Promise<PlatformSession> {
-  const passkey = await loadSignInPasskey(deps, input);
-  const newCounter = await verifySignInPasskey({ deps, input, passkey });
+  const refuse: RefuseAuthentication = (refusal) =>
+    failSignIn({ deps, input, ...refusal });
+  const passkey = await loadAuthenticationPasskey(
+    { deps, credentialId: input.response.id },
+    refuse
+  );
+  const newCounter = await verifyAuthenticationAssertion(
+    { deps, flowId: input.flowId, response: input.response, passkey },
+    refuse
+  );
   return issueSession({
     deps,
     operator: passkey.operator,
@@ -476,6 +504,90 @@ export async function finishSignIn(
       userAgent: input.userAgent,
     },
   });
+}
+
+interface FailStepUpInput extends AuthenticationRefusal {
+  readonly deps: PlatformAuthDependencies;
+  readonly operatorId: string;
+  readonly requestId: string;
+}
+
+async function failStepUp(input: FailStepUpInput): Promise<never> {
+  await audit(input.deps, {
+    action: PLATFORM_AUDIT_ACTIONS.STEP_UP_FAILED,
+    actorOperatorId: input.operatorId,
+    entityId: input.operatorId,
+    requestId: input.requestId,
+    reason: input.reason,
+    ...(input.after === undefined ? {} : { after: input.after }),
+  });
+  throw unauthorized("Step-up confirmation failed.");
+}
+
+export interface FinishStepUpInput {
+  readonly sessionToken: string;
+  readonly flowId: string;
+  readonly response: AuthenticationResponseJSON;
+  readonly requestId: string;
+}
+
+export interface IssuedStepUpConfirmation {
+  readonly token: string;
+  readonly expiresAt: string;
+}
+
+/**
+ * Confirms the signed-in operator with a fresh passkey assertion, then issues
+ * one single-use token (FR-046). The assertion must resolve to a passkey owned
+ * by that operator, so a valid assertion for another operator is refused. The
+ * passkey counter update and OPERATOR_STEP_UP_VERIFIED share one transaction;
+ * every refusal writes OPERATOR_STEP_UP_FAILED and returns 401.
+ */
+export async function finishStepUp(
+  deps: PlatformAuthDependencies,
+  input: FinishStepUpInput
+): Promise<IssuedStepUpConfirmation> {
+  const session = await getSession(deps, input.sessionToken);
+  const operatorId = session.operator.id;
+  const refuse: RefuseAuthentication = (refusal) =>
+    failStepUp({ deps, operatorId, requestId: input.requestId, ...refusal });
+  const passkey = await loadAuthenticationPasskey(
+    { deps, credentialId: input.response.id },
+    refuse
+  );
+  if (passkey.operatorId !== operatorId) {
+    return refuse({
+      actorOperatorId: operatorId,
+      reason: PLATFORM_STEP_UP_FAILURE_REASONS.OPERATOR_MISMATCH,
+    });
+  }
+  const newCounter = await verifyAuthenticationAssertion(
+    { deps, flowId: input.flowId, response: input.response, passkey },
+    refuse
+  );
+  await deps.prisma.$transaction(async (tx) => {
+    await tx.operatorPasskey.update({
+      where: { id: passkey.id },
+      data: {
+        counter: newCounter,
+        rpId: deps.config.rpID,
+        lastUsedAt: new Date(),
+      },
+    });
+    await appendPlatformAuditEvent(tx, {
+      actorOperatorId: operatorId,
+      action: PLATFORM_AUDIT_ACTIONS.STEP_UP_VERIFIED,
+      entityType: "PlatformOperator",
+      entityId: operatorId,
+      requestId: input.requestId,
+    });
+  });
+  const issued = await issueStepUpToken({
+    operatorId,
+    secret: deps.secret,
+    redis: deps.redis,
+  });
+  return { token: issued.token, expiresAt: issued.expiresAt.toISOString() };
 }
 
 export async function getSession(
