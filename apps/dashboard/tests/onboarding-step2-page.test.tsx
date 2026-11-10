@@ -208,6 +208,28 @@ describe("onboarding step 2 failure paths", () => {
     expect(container.textContent).toContain("network error");
   });
 
+  it("falls back when the problem detail is missing", async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: { industries: [] } }), {
+          status: 200,
+          headers: JSON_HEADERS,
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({}), {
+          status: 422,
+          headers: JSON_HEADERS,
+        }),
+      );
+    await renderPage();
+    act(() => cards()[0]?.click());
+    await submit();
+    expect(container.textContent).toContain(
+      "Failed to persist application selection.",
+    );
+  });
+
   it("selects an additional app and uses the default redirect", async () => {
     fetchMock
       .mockResolvedValueOnce(
