@@ -28,9 +28,15 @@ export interface HubNavFooter {
   readonly href: string;
 }
 
-export interface HubNavProps {
+export interface HubNavSidebarProps {
   readonly title: string;
   readonly ariaLabel: string;
+  readonly groups: readonly HubNavGroup[];
+  readonly footer: HubNavFooter;
+  readonly pathname: string;
+}
+
+export interface HubNavMobileSwitcherProps {
   readonly mobileAriaLabel: string;
   readonly groups: readonly HubNavGroup[];
   readonly footer: HubNavFooter;
@@ -109,17 +115,44 @@ function HubNavFooterLink({ footer }: { readonly footer: HubNavFooter }) {
   );
 }
 
-function HubNavMobileSwitcher({
+/**
+ * The 240px hub sidebar (H-3.3). It is a shell-level sibling of the content
+ * column, so it spans the viewport and never scrolls with the panel.
+ */
+export function HubNavSidebar({
+  title,
+  ariaLabel,
   groups,
   footer,
   pathname,
+}: HubNavSidebarProps) {
+  return (
+    <aside className="hidden w-60 flex-shrink-0 flex-col border-r border-border bg-surface md:flex">
+      <div className="flex h-12 flex-shrink-0 items-center border-b border-border px-3.5">
+        <span className="text-xs font-bold tracking-tight text-text">
+          {title}
+        </span>
+      </div>
+      <nav
+        className="flex-1 space-y-3 overflow-y-auto p-2.5"
+        aria-label={ariaLabel}
+      >
+        {groups.map((group) => (
+          <HubNavGroupBlock key={group.id} group={group} pathname={pathname} />
+        ))}
+      </nav>
+      <HubNavFooterLink footer={footer} />
+    </aside>
+  );
+}
+
+/** Compact hub switcher that replaces the sidebar below `md` (H-3.12). */
+export function HubNavMobileSwitcher({
   mobileAriaLabel,
-}: {
-  readonly groups: readonly HubNavGroup[];
-  readonly footer: HubNavFooter;
-  readonly pathname: string;
-  readonly mobileAriaLabel: string;
-}) {
+  groups,
+  footer,
+  pathname,
+}: HubNavMobileSwitcherProps) {
   const router = useRouter();
   const options = groups.flatMap((group) =>
     group.items.map((item) => ({
@@ -152,42 +185,5 @@ function HubNavMobileSwitcher({
         <ArrowLeftIcon className="h-4 w-4" />
       </Link>
     </div>
-  );
-}
-
-/** One 240px hub sidebar shared by every Platform hub (H-3.3 to H-3.12). */
-export function HubNav({
-  title,
-  ariaLabel,
-  mobileAriaLabel,
-  groups,
-  footer,
-  pathname,
-}: HubNavProps) {
-  return (
-    <>
-      <aside className="hidden w-60 flex-shrink-0 flex-col border-r border-border bg-surface md:flex">
-        <div className="flex h-12 flex-shrink-0 items-center border-b border-border px-3.5">
-          <span className="text-xs font-bold tracking-tight text-text">
-            {title}
-          </span>
-        </div>
-        <nav
-          className="flex-1 space-y-3 overflow-y-auto p-2.5"
-          aria-label={ariaLabel}
-        >
-          {groups.map((group) => (
-            <HubNavGroupBlock key={group.id} group={group} pathname={pathname} />
-          ))}
-        </nav>
-        <HubNavFooterLink footer={footer} />
-      </aside>
-      <HubNavMobileSwitcher
-        groups={groups}
-        footer={footer}
-        pathname={pathname}
-        mobileAriaLabel={mobileAriaLabel}
-      />
-    </>
   );
 }

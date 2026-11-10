@@ -116,6 +116,18 @@ export function isTenantRecordHubRoute(pathname: string): boolean {
   return /^\/tenants\/[^/]+(?:\/|$)/.test(pathname);
 }
 
+/**
+ * Reads the tenant id out of a hub pathname so the shell can render the hub
+ * navigation. Tenant ids are URL-safe cuid2/ULID values (CT-10), so the
+ * segment is used as-is before destination hrefs encode it again.
+ */
+export function tenantRecordOrgIdFromPathname(
+  pathname: string
+): string | null {
+  const match = /^\/tenants\/([^/]+)(?:\/|$)/.exec(pathname);
+  return match?.[1] ?? null;
+}
+
 export function isTenantRecordHrefActive(
   pathname: string,
   href: string

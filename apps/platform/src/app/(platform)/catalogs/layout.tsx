@@ -3,7 +3,6 @@
 import type { ReactNode } from "react";
 import { PLATFORM_CAPABILITIES } from "@suite/core";
 import { usePlatformAuth } from "@/components/auth/auth-provider";
-import { CatalogsNav } from "@/components/layout/catalogs-nav";
 import {
   CapabilityDeniedView,
   PlatformViewState,
@@ -55,19 +54,14 @@ export default function CatalogsLayout({
   }
 
   return (
-    <div className="flex min-h-full flex-col gap-4 md:flex-row md:gap-6">
-      <CatalogsNav capabilities={capabilities ?? []} />
-      <div className="min-w-0 flex-1">
-        <CatalogsProvider
-          value={{
-            catalogs: resource.catalogs,
-            applyValue: resource.applyValue,
-            reload: resource.reload,
-          }}
-        >
-          {children}
-        </CatalogsProvider>
-      </div>
-    </div>
+    <CatalogsProvider
+      value={{
+        catalogs: resource.catalogs,
+        applyValue: resource.applyValue,
+        reload: resource.reload,
+      }}
+    >
+      {children}
+    </CatalogsProvider>
   );
 }
