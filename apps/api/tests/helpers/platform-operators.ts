@@ -14,6 +14,7 @@ import {
   disconnectPlatformTestClient,
   platformIntegrationTestsEnabled,
 } from "./platform-db.js";
+import { platformTestRpId } from "./platform-rp.js";
 
 const FORWARDED_FOR = "198.51.100.40";
 
@@ -112,6 +113,7 @@ async function createActiveOperator(
   const issued = await issueControlSession({
     prisma: state.platformPrisma,
     secret: requireEnv("CONTROL_SESSION_SECRET"),
+    rpID: platformTestRpId(),
     operatorId: operator.id,
   });
   return { id: operator.id, token: issued.token };

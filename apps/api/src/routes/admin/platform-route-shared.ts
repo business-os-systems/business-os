@@ -3,9 +3,17 @@ import { PLATFORM_ERROR_CODE } from "@suite/core";
 import { UnauthorizedError } from "@suite/core/errors";
 import {
   createPlatformCapabilityGuard,
+  createPlatformSessionGuard,
   type PlatformCapabilityGuardOptions,
 } from "../../middleware/platform-capability.js";
-import { getPlatformRedis } from "../../lib/platform-db.js";
+import {
+  getPlatformPrismaClient,
+  getPlatformRedis,
+} from "../../lib/platform-db.js";
+import {
+  getControlSessionSecret,
+  getControlWebauthnRpId,
+} from "../../lib/platform-env.js";
 
 /**
  * One lazy guard per router. The options factory runs on the first request so
@@ -47,12 +55,31 @@ export function readActor(c: { get: (key: string) => unknown }): {
  * Route-safe lazy guard for new routers; transport code never imports Redis.
  */
 export function createLazyDefaultCapabilityGuard(
-  createOptions: () => Omit<PlatformCapabilityGuardOptions, "redis">
+  createOptions: () => Omit<
+    PlatformCapabilityGuardOptions,
+    "redis" | "rpID"
+  >
 ): MiddlewareHandler {
   const guard = createLazyGuard(() =>
     createPlatformCapabilityGuard({
       ...createOptions(),
       redis: getPlatformRedis(),
+      rpID: getControlWebauthnRpId(),
+    })
+  );
+  return async (c, next) => guard()(c, next);
+}
+
+/**
+ * Session-only guard for self-service surfaces that need an authenticated
+ * operator but no capability. RP binding is enforced by the shared verifier.
+ */
+export function createLazyDefaultSessionGuard(): MiddlewareHandler {
+  const guard = createLazyGuard(() =>
+    createPlatformSessionGuard({
+      prisma: getPlatformPrismaClient(),
+      secret: getControlSessionSecret(),
+      rpID: getControlWebauthnRpId(),
     })
   );
   return async (c, next) => guard()(c, next);

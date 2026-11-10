@@ -37,6 +37,7 @@ import {
   disconnectPlatformTestClient,
   platformIntegrationTestsEnabled,
 } from "../../helpers/platform-db.js";
+import { platformTestRpId } from "../../helpers/platform-rp.js";
 
 loadPlatformTestEnv();
 
@@ -63,6 +64,7 @@ async function reissueSession(operatorId: string): Promise<string> {
   const issued = await issueControlSession({
     prisma: platformPrisma,
     secret: process.env.CONTROL_SESSION_SECRET ?? "",
+    rpID: platformTestRpId(),
     operatorId,
   });
   return issued.token;
@@ -92,6 +94,7 @@ async function createActiveOperator(
   const issued = await issueControlSession({
     prisma: platformPrisma,
     secret: secret ?? "",
+    rpID: platformTestRpId(),
     operatorId: operator.id,
   });
   return { id: operator.id, token: issued.token };
@@ -417,6 +420,7 @@ it.skipIf(!enabled)("suspends an operator, revokes sessions and records the reas
   const session = await verifyControlSession({
     prisma: platformPrisma,
     secret: secret ?? "",
+    rpID: platformTestRpId(),
     token: target.token,
   });
   expect(session.valid).toBe(false);
@@ -515,6 +519,7 @@ it.skipIf(!enabled)("lists and revokes one operator session", async () => {
   const verified = await verifyControlSession({
     prisma: platformPrisma,
     secret: secret ?? "",
+    rpID: platformTestRpId(),
     token: target.token,
   });
   expect(verified.valid).toBe(false);

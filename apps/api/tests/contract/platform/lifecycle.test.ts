@@ -8,6 +8,7 @@ import { globalErrorHandler } from "../../../src/middleware/error-handler.js";
 import { clearRateLimitStore } from "../../../src/middleware/rate-limit.js";
 import { loadPlatformTestEnv } from "../../helpers/platform-env.js";
 import { createPlatformOwnerTestClient, createPlatformTestClient, platformIntegrationTestsEnabled } from "../../helpers/platform-db.js";
+import { platformTestRpId } from "../../helpers/platform-rp.js";
 
 loadPlatformTestEnv();
 
@@ -40,7 +41,7 @@ describe.skipIf(!enabled)("Platform tenant lifecycle contract", () => {
     for (const capability of capabilities) {
       await platformPrisma.operatorCapability.create({ data: { operatorId: operator.id, capability } });
     }
-    return (await issueControlSession({ prisma: platformPrisma, secret: secret ?? "", operatorId: operator.id })).token;
+    return (await issueControlSession({ prisma: platformPrisma, secret: secret ?? "", rpID: platformTestRpId(), operatorId: operator.id })).token;
   }
 
   async function createTenant(): Promise<{ id: string; slug: string }> {

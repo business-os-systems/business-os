@@ -12,6 +12,7 @@ import {
 import { platformAuthRouter } from "../../src/routes/admin/auth.js";
 import { globalErrorHandler } from "../../src/middleware/error-handler.js";
 import { loadPlatformTestEnv } from "../helpers/platform-env.js";
+import { platformTestRpId } from "../helpers/platform-rp.js";
 
 loadPlatformTestEnv();
 
@@ -51,6 +52,7 @@ describe.skipIf(!enabled)("Platform auth session lifecycle", () => {
     const issued = await issueControlSession({
       prisma,
       secret: secret ?? "",
+      rpID: platformTestRpId(),
       operatorId,
     });
     token = issued.token;

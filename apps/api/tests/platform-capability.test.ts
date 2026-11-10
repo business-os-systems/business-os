@@ -10,6 +10,7 @@ import { globalErrorHandler } from "../src/middleware/error-handler.js";
 import { createPlatformCapabilityGuard } from "../src/middleware/platform-capability.js";
 
 const SECRET = "capability-guard-test-secret-32-characters";
+const RP_ID = "localhost";
 const OPERATOR_ID = "op_guard_1";
 
 type StoredSession = OperatorSession & { operator: { status: "ACTIVE" } };
@@ -73,6 +74,7 @@ async function createApp(capabilities: string[]) {
   const issued = await issueControlSession({
     prisma,
     secret: SECRET,
+    rpID: RP_ID,
     operatorId: OPERATOR_ID,
   });
 
@@ -84,6 +86,7 @@ async function createApp(capabilities: string[]) {
       prisma,
       redis,
       secret: SECRET,
+      rpID: RP_ID,
       capability: "platform:tenants:read",
     })
   );

@@ -42,6 +42,7 @@ export type ControlSessionFailureReason =
   | "expired"
   | "idle_timeout"
   | "revoked"
+  | "rp_mismatch"
   | "not_found"
   | "operator_inactive";
 
@@ -59,6 +60,8 @@ export interface IssueControlSessionInput {
   readonly prisma: Pick<PrismaClient, "operatorSession">;
   readonly secret: string;
   readonly operatorId: string;
+  /** The relying-party identity the operator authenticated against. */
+  readonly rpID: string;
   readonly ip?: string | null;
   readonly userAgent?: string | null;
   readonly now?: Date;
@@ -76,6 +79,8 @@ export interface VerifyControlSessionInput {
   readonly prisma: PrismaClient;
   readonly secret: string;
   readonly token: string;
+  /** The currently configured relying-party identity. */
+  readonly rpID: string;
   readonly now?: Date;
 }
 
@@ -140,6 +145,7 @@ export async function issueControlSession(
       issuedAt: now,
       expiresAt,
       idleExpiresAt,
+      rpId: input.rpID,
       ip: input.ip ?? null,
       userAgent: input.userAgent ?? null,
       createdAt: now,
@@ -153,6 +159,14 @@ export async function issueControlSession(
     idleExpiresAt,
     cookie: createControlSessionCookieOptions(),
   };
+}
+
+async function revokeStaleReliance(
+  prisma: PrismaClient,
+  sessionId: string,
+  now: Date
+): Promise<void> {
+  await revokeControlSession({ prisma, sessionId, now });
 }
 
 export async function verifyControlSession(
@@ -199,6 +213,13 @@ export async function verifyControlSession(
   }
   if (session.revokedAt !== null) {
     return { valid: false, reason: "revoked" };
+  }
+  // T182: a session is valid only under the relying-party identity that issued
+  // it. A domain move changes that identity, so the stale row is revoked here
+  // rather than left usable until its absolute expiry.
+  if (session.rpId !== input.rpID) {
+    await revokeStaleReliance(input.prisma, session.id, now);
+    return { valid: false, reason: "rp_mismatch" };
   }
   if (session.expiresAt.getTime() <= now.getTime()) {
     return { valid: false, reason: "expired" };

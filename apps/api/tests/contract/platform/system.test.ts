@@ -18,6 +18,7 @@ import {
   createPlatformTestClient,
   platformIntegrationTestsEnabled,
 } from "../../helpers/platform-db.js";
+import { platformTestRpId } from "../../helpers/platform-rp.js";
 
 loadPlatformTestEnv();
 
@@ -144,6 +145,7 @@ async function createOperator(capabilities: readonly string[]): Promise<string> 
   const session = await issueControlSession({
     prisma: platformPrisma,
     secret: secret ?? "",
+    rpID: platformTestRpId(),
     operatorId: operator.id,
   });
   return session.token;

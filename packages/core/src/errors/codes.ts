@@ -127,6 +127,16 @@ export const PLATFORM_ERROR_CODES = {
     title: "Operator Invitation Invalid",
     slug: "/errors/operator-invitation-invalid",
   },
+  OPERATOR_ENROLMENT_INVALID: {
+    status: 401,
+    title: "Passkey Enrolment Invalid",
+    slug: "/errors/operator-enrolment-invalid",
+  },
+  OPERATOR_PASSKEY_ALREADY_REGISTERED: {
+    status: 409,
+    title: "Passkey Already Registered",
+    slug: "/errors/operator-passkey-already-registered",
+  },
   RP_MIGRATION_REQUIRED: {
     status: 401,
     title: "Passkey Re-enrolment Required",

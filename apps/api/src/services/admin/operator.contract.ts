@@ -155,6 +155,17 @@ export const enrolledOperatorSchema = z.object({
   mfaEnrolled: z.literal(true),
 });
 
+/**
+ * The raw add-passkey token is returned once. An idempotent replay stores the
+ * redacted form, so the one-time secret is never kept in the replay cache.
+ */
+export const enrolmentTokenResponseSchema = z.object({
+  token: z.string().nullable(),
+  expiresAt: z.string(),
+});
+
+export type EnrolledOperator = z.infer<typeof enrolledOperatorSchema>;
+
 export interface OperatorActor {
   readonly operatorId: string;
   readonly requestId: string;
@@ -181,11 +192,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-/**
- * The raw invitation token is a once-only secret. The stored replay removes it
- * while keeping the operator, so a retry cannot mint or re-serve a token.
- */
-export function redactCreatedOperatorToken(body: string): string {
+function redactDataField(body: string, field: string): string {
   if (body.trim() === "") {
     return body;
   }
@@ -193,11 +200,24 @@ export function redactCreatedOperatorToken(body: string): string {
   if (!isRecord(parsed) || !isRecord(parsed.data)) {
     return body;
   }
-  if (!("invitationToken" in parsed.data)) {
+  if (!(field in parsed.data)) {
     return body;
   }
   return JSON.stringify({
     ...parsed,
-    data: { ...parsed.data, invitationToken: null },
+    data: { ...parsed.data, [field]: null },
   });
+}
+
+/**
+ * A once-only secret must not survive in the idempotency replay cache. The
+ * stored copy keeps the rest of the response so a retry still sees the
+ * operator but cannot mint or re-serve the raw token.
+ */
+export function redactCreatedOperatorToken(body: string): string {
+  return redactDataField(body, "invitationToken");
+}
+
+export function redactEnrolmentTokenResponse(body: string): string {
+  return redactDataField(body, "token");
 }

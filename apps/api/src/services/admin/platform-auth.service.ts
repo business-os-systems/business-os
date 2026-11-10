@@ -116,6 +116,7 @@ async function issueSession(input: IssueSessionInput): Promise<PlatformSession> 
       prisma: tx,
       secret: deps.secret,
       operatorId: operator.id,
+      rpID: deps.config.rpID,
       ip: context.ip,
       userAgent: context.userAgent,
     });
@@ -488,6 +489,7 @@ export async function getSession(
   const verified = await verifyAndTouchControlSession({
     prisma: deps.prisma,
     secret: deps.secret,
+    rpID: deps.config.rpID,
     token,
   });
   if (!verified.valid) {
@@ -524,6 +526,7 @@ export async function logout(
   const verified = await verifyAndTouchControlSession({
     prisma: deps.prisma,
     secret: deps.secret,
+    rpID: deps.config.rpID,
     token: input.token,
   });
   if (!verified.valid) {
