@@ -59,6 +59,12 @@ export const tenantSummarySchema = z.object({
   branchCount: z.number().int().nonnegative(),
   memberCount: z.number().int().nonnegative(),
   installedAppIds: z.array(z.string().min(1).max(64)).max(64),
+  asOf: timestampSchema,
+  quotas: z.object({
+    enforced: z.number().int().nonnegative(),
+    overLimit: z.number().int().nonnegative(),
+    measured: z.number().int().nonnegative(),
+  }),
 });
 
 export const tenantPageSchema = z.object({
@@ -104,6 +110,7 @@ export const tenantRecordSchema = z.object({
   counts: z.object({
     branches: z.number().int().nonnegative(),
     members: z.number().int().nonnegative(),
+    asOf: timestampSchema,
   }),
   apps: z.array(z.string().min(1).max(64)).max(64),
   quotas: z.array(tenantQuotaSchema).max(64),
@@ -153,6 +160,7 @@ export type TenantLifecycleResult = z.infer<
 export interface TenantListQuery {
   readonly q?: string;
   readonly status?: TenantStatus;
+  readonly appId?: string;
   readonly cursor?: string;
   readonly limit?: number;
 }
@@ -179,6 +187,7 @@ function listQueryString(query: TenantListQuery): string {
   return buildQueryString({
     q: query.q === undefined || query.q === "" ? undefined : query.q,
     status: query.status,
+    appId: query.appId === undefined || query.appId === "" ? undefined : query.appId,
     cursor: query.cursor,
     limit: query.limit,
   });

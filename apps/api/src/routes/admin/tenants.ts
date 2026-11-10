@@ -28,6 +28,12 @@ const tenantSummarySchema = z.object({
   branchCount: z.number().int().nonnegative(),
   memberCount: z.number().int().nonnegative(),
   installedAppIds: z.array(z.string()),
+  asOf: z.string(),
+  quotas: z.object({
+    enforced: z.number().int().nonnegative(),
+    overLimit: z.number().int().nonnegative(),
+    measured: z.number().int().nonnegative(),
+  }),
 });
 
 const tenantPageSchema = z.object({
@@ -47,6 +53,7 @@ const tenantRecordSchema = z.object({
   counts: z.object({
     branches: z.number().int().nonnegative(),
     members: z.number().int().nonnegative(),
+    asOf: z.string(),
   }),
   apps: z.array(z.string()),
   quotas: z.array(

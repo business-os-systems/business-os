@@ -10,15 +10,29 @@ import {
   TENANT_TABLE_CONFIG,
 } from "@/components/tables/tenant-table.config";
 import { toMessage } from "@/lib/error-message";
+import { formatDateTime } from "@/lib/format";
 import { fetchTenantPage, type TenantSummary } from "@/lib/tenant-api";
 import { STATUS_ALL, TenantListToolbar, type StatusFilter } from "./tenant-list-toolbar";
 
 const PAGE_SIZE = 25;
 
+function resolveFleetState(
+  isLoading: boolean,
+  error: string | null,
+  rowCount: number,
+): ConfigTableState {
+  if (isLoading && rowCount === 0) return { kind: "loading" };
+  if (error !== null && rowCount === 0) {
+    return { kind: "error", title: "Unable to load tenants", message: error };
+  }
+  return { kind: "ready" };
+}
+
 export default function TenantsPage() {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<StatusFilter>(STATUS_ALL);
+  const [appFilter, setAppFilter] = useState("");
   const [rows, setRows] = useState<readonly TenantSummary[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [total, setTotal] = useState<number | null>(null);
@@ -30,7 +44,11 @@ export default function TenantsPage() {
   const requestTicket = useRequestTicket();
 
   const loadFirstPage = useCallback(
-    async (nextSearch: string, nextFilter: StatusFilter) => {
+    async (
+      nextSearch: string,
+      nextFilter: StatusFilter,
+      nextAppFilter: string,
+    ) => {
       const current = requestTicket.begin();
 
       setIsLoading(true);
@@ -43,6 +61,7 @@ export default function TenantsPage() {
         const page = await fetchTenantPage({
           q: nextSearch.trim() === "" ? undefined : nextSearch.trim(),
           status: nextFilter.kind === "status" ? nextFilter.status : undefined,
+          appId: nextAppFilter === "" ? undefined : nextAppFilter,
           limit: PAGE_SIZE,
         });
         if (!requestTicket.isCurrent(current)) {
@@ -71,12 +90,12 @@ export default function TenantsPage() {
   useEffect(() => {
     // Debounce so typing does not issue one request per keystroke.
     const handle = setTimeout(() => {
-      void loadFirstPage(search, filter);
+      void loadFirstPage(search, filter, appFilter);
     }, 300);
     return () => {
       clearTimeout(handle);
     };
-  }, [search, filter, loadFirstPage]);
+  }, [search, filter, appFilter, loadFirstPage]);
 
   async function loadMore(): Promise<void> {
     if (cursor === null) {
@@ -89,6 +108,7 @@ export default function TenantsPage() {
       const page = await fetchTenantPage({
         q: search.trim() === "" ? undefined : search.trim(),
         status: filter.kind === "status" ? filter.status : undefined,
+        appId: appFilter === "" ? undefined : appFilter,
         cursor,
         limit: PAGE_SIZE,
       });
@@ -107,14 +127,10 @@ export default function TenantsPage() {
     }
   }
 
-  const isFiltered = search.trim() !== "" || filter.kind === "status";
+  const isFiltered =
+    search.trim() !== "" || filter.kind === "status" || appFilter !== "";
 
-  const state: ConfigTableState =
-    isLoading && rows.length === 0
-      ? { kind: "loading" }
-      : error !== null && rows.length === 0
-        ? { kind: "error", title: "Unable to load tenants", message: error }
-        : { kind: "ready" };
+  const state = resolveFleetState(isLoading, error, rows.length);
 
   return (
     <div className="max-w-full space-y-4">
@@ -129,10 +145,12 @@ export default function TenantsPage() {
       <TenantListToolbar
         search={search}
         filter={filter}
+        appFilter={appFilter}
         total={total}
         isBusy={isLoading}
         onSearchChange={setSearch}
         onFilterChange={setFilter}
+        onAppFilterChange={setAppFilter}
       />
 
       <ConfigTable
@@ -146,6 +164,12 @@ export default function TenantsPage() {
           router.push(`/tenants/${encodeURIComponent(row.id)}`);
         }}
       />
+
+      {rows.length === 0 ? null : (
+        <p className="text-xs text-text-muted">
+          Counts as of {formatDateTime(rows[0]?.asOf ?? "")}.
+        </p>
+      )}
 
       {cursor !== null ? (
         <div className="flex justify-center">

@@ -42,7 +42,11 @@ export interface TenantRecord {
     readonly status: OrgStatus;
     readonly createdAt: string;
   };
-  readonly counts: { readonly branches: number; readonly members: number };
+  readonly counts: {
+    readonly branches: number;
+    readonly members: number;
+    readonly asOf: string;
+  };
   readonly apps: string[];
   readonly quotas: TenantQuota[];
   readonly lifecycle: TenantLifecycleEntry[];
@@ -97,6 +101,7 @@ export async function getTenantRecord(
     counts: {
       branches: overview.branchCount,
       members: overview.memberCount,
+      asOf: overview.asOf.toISOString(),
     },
     apps: overview.installedAppIds,
     quotas: quotaList.items.map((quota) => ({

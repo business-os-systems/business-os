@@ -99,6 +99,29 @@ export const TENANT_TABLE_CONFIG: TableConfig<TenantSummary> = {
       },
     },
     {
+      key: "quotas",
+      header: "Quotas",
+      align: "right",
+      width: "12%",
+      render: (_value, row) => {
+        const { enforced, overLimit } = row.quotas;
+        if (enforced === 0) {
+          return <span className="text-text-muted">None</span>;
+        }
+        return (
+          <span
+            className={
+              overLimit > 0
+                ? "whitespace-nowrap text-xs font-semibold text-danger"
+                : "whitespace-nowrap text-xs text-text-secondary"
+            }
+          >
+            {enforced - overLimit}/{enforced} within
+          </span>
+        );
+      },
+    },
+    {
       key: "createdAt",
       header: "Created",
       align: "right",

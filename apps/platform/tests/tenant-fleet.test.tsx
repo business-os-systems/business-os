@@ -34,6 +34,8 @@ const TENANT: TenantSummary = {
   branchCount: 2,
   memberCount: 7,
   installedAppIds: ["website-builder"],
+  asOf: "2026-01-05T00:00:00.000Z",
+  quotas: { enforced: 2, overLimit: 0, measured: 2 },
 };
 
 const READY: ConfigTableState = { kind: "ready" };

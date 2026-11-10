@@ -183,7 +183,7 @@ describe.skipIf(!enabled)("Platform tenant read routes", () => {
     const body = (await response.json()) as {
       data: {
         profile: { id: string; name: string };
-        counts: { branches: number; members: number };
+        counts: { branches: number; members: number; asOf: string };
         apps: string[];
         quotas: unknown[];
         lifecycle: unknown[];
@@ -191,7 +191,8 @@ describe.skipIf(!enabled)("Platform tenant read routes", () => {
     };
     expect(body.data.profile.id).toBe(tenant.id);
     expect(body.data.profile.name).toBe(tenant.name);
-    expect(body.data.counts).toEqual({ branches: 0, members: 0 });
+    expect(body.data.counts).toMatchObject({ branches: 0, members: 0 });
+    expect(typeof body.data.counts.asOf).toBe("string");
     expect(Array.isArray(body.data.apps)).toBe(true);
   });
 
