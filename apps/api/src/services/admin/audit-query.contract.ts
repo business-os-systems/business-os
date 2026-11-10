@@ -54,11 +54,26 @@ export const auditPageSchema = z
   })
   .strict();
 
+export const auditVerifyTenantResultSchema = z
+  .object({
+    organizationId: z.string().min(1),
+    verified: z.boolean(),
+    checkedCount: z.number().int().nonnegative(),
+    firstBrokenId: z.string().nullable(),
+  })
+  .strict();
+
 export const auditVerifyResultSchema = z
   .object({
     verified: z.boolean(),
     checkedCount: z.number().int().nonnegative(),
     firstBrokenId: z.string().nullable(),
+    /**
+     * Present only when the caller supplied organizationId. The global fields
+     * above stay authoritative; this report attributes chain integrity to the
+     * tenant's own rows.
+     */
+    tenant: auditVerifyTenantResultSchema.optional(),
   })
   .strict();
 
@@ -77,6 +92,9 @@ export type AuditExportQuery = z.infer<typeof auditExportQuerySchema>;
 export type AuditItem = z.infer<typeof auditItemSchema>;
 export type AuditPage = z.infer<typeof auditPageSchema>;
 export type AuditVerifyResult = z.infer<typeof auditVerifyResultSchema>;
+export type AuditVerifyTenantResult = z.infer<
+  typeof auditVerifyTenantResultSchema
+>;
 
 interface AuditCursor {
   /** The database timestamp with microsecond precision, in UTC ISO form. */

@@ -27,6 +27,7 @@ const SQL_FILES = [
   "../../packages/db/prisma/schema/migrations/20261107150000_platform_quota_enforcement/migration.sql",
   "../../packages/db/prisma/schema/migrations/20261107151000_platform_app_installation_counts/migration.sql",
   "../../packages/db/prisma/schema/migrations/20261107152000_platform_quota_gate_types/migration.sql",
+  "../../packages/db/prisma/schema/migrations/20261110130000_platform_tenant_audit_chain/migration.sql",
   "../../deploy/platform/reseal-audit-chain.sql",
 ].map((relativePath) => resolve(process.cwd(), relativePath));
 
@@ -44,6 +45,7 @@ const PUBLIC_FUNCTIONS = [
   "fn_set_app_setting_versioned",
   "fn_tenant_pii",
   "fn_verify_audit_chain",
+  "fn_verify_audit_chain_for_tenant",
   "fn_tenant_admin_contacts",
 ] as const;
 

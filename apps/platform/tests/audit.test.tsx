@@ -404,6 +404,69 @@ describe("Chain verification panel", () => {
   });
 });
 
+describe("Chain verification scopes", () => {
+  it("labels the global and tenant scopes when an organization is named", async () => {
+    fetchMock.mockResolvedValueOnce(
+      reply(
+        200,
+        envelope({
+          verified: false,
+          checkedCount: 9,
+          firstBrokenId: "audit_other",
+          tenant: {
+            organizationId: "org_1",
+            verified: true,
+            checkedCount: 4,
+            firstBrokenId: null,
+          },
+        }),
+      ),
+    );
+    render(<ChainVerifyPanel organizationId="org_1" />);
+    act(() => findButton(VERIFY_LABEL).click());
+    await flush();
+
+    expect(document.body.textContent).toContain("Global chain");
+    expect(document.body.textContent).toContain("audit_other");
+    expect(document.body.textContent).toContain("Tenant chain");
+    expect(document.body.textContent).toContain("Scope: org_1");
+    expect(document.body.textContent).toContain("4 events checked");
+    const call = fetchMock.mock.calls[0];
+    if (call === undefined) {
+      throw new Error("The verifier was not called");
+    }
+    expect(requestUrl(call[0])).toBe(
+      "http://api.test/api/v1/admin/audit/verify?organizationId=org_1",
+    );
+  });
+
+  it("does not present an empty tenant scope as a verification claim", async () => {
+    fetchMock.mockResolvedValueOnce(
+      reply(
+        200,
+        envelope({
+          verified: true,
+          checkedCount: 1,
+          firstBrokenId: null,
+          tenant: {
+            organizationId: "org_empty",
+            verified: true,
+            checkedCount: 0,
+            firstBrokenId: null,
+          },
+        }),
+      ),
+    );
+    render(<ChainVerifyPanel organizationId="org_empty" />);
+    act(() => findButton(VERIFY_LABEL).click());
+    await flush();
+
+    expect(document.body.textContent).toContain(
+      "No audit records in this scope, so there is nothing to verify.",
+    );
+  });
+});
+
 describe("Chain verification failures", () => {
   it("shows the first broken record for a broken chain", async () => {
     fetchMock.mockResolvedValueOnce(

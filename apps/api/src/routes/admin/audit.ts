@@ -61,9 +61,9 @@ const verifyRoute = createRoute({
   method: "get",
   path: "/audit/verify",
   tags: [AUDIT_TAG],
-  summary: "Verify the audit chain",
+  summary: "Verify the global and tenant audit chains",
   description:
-    "Recomputes the global D-019 chain with the database verifier and audits the verification itself (FR-042, FR-044). The chain is global; organizationId is accepted for contract stability but a per-tenant walk cannot validate cross-tenant links.",
+    "Recomputes the global D-019 chain with the database verifier and audits the verification itself (FR-042, FR-044). The global walk is always performed and keeps its strict first-break semantics. When organizationId is supplied, the response also carries a tenant report built by walking the same global order and validating every row owned by that tenant against its actual predecessor, so a break in another tenant's row is never attributed to an intact tenant. A tenant with no governed rows reports verified with checkedCount 0: nothing was walked, so the UI must not present that as a verification claim. Cross-tenant links make a standalone per-tenant walk impossible; the tenant report is an attribution of the global chain, not a replacement for it.",
   request: { query: auditVerifyQuerySchema },
   responses: {
     200: {
@@ -200,9 +200,13 @@ platformAuditRouter.openapi({ ...searchRoute, middleware: searchMiddleware }, as
 
 platformAuditRouter.openapi({ ...verifyRoute, middleware: verifyMiddleware }, async (c) => {
   const actor = readActor(c);
+  const query = c.req.valid("query");
   const data = await verifyAuditChain(getPlatformPrismaClient(), {
     actorId: actor.operatorId,
     requestId: auditRequestId(c),
+    ...(query.organizationId === undefined
+      ? {}
+      : { organizationId: query.organizationId }),
   });
   return c.json(
     createSuccessResponseBody({
