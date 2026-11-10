@@ -6,6 +6,7 @@ import { ChevronDownIcon, ChevronUpIcon } from "../../icons/index.js";
 import { cn } from "../../lib/utils.js";
 import type {
   TableActionConfig,
+  TableActionVerification,
   TableColumnConfig,
   TableConfig,
   TableEmptyStateConfig,
@@ -24,7 +25,7 @@ interface SortState<T extends object> {
   readonly direction: SortDirection;
 }
 
-export interface ConfigTableRendererProps<T extends object> {
+interface ConfigTableRendererBaseProps<T extends object> {
   readonly config: TableConfig<T>;
   readonly data: readonly T[];
   readonly rowKey?: (row: T) => string;
@@ -38,14 +39,31 @@ export interface ConfigTableRendererProps<T extends object> {
   readonly footer?: React.ReactNode;
   /** Overrides the configured empty state, e.g. after a filter returns nothing. */
   readonly emptyState?: TableEmptyStateConfig;
-  readonly onRowOpen?: (row: T) => void;
-  readonly rowLabel?: (row: T) => string;
+  readonly onActionError?: (error: unknown) => void;
 }
+
+/**
+ * Opening a row is a two-part contract: the handler and its accessible label.
+ * Supplying one without the other is a type error, so the label can never fall
+ * back to an opaque row id.
+ */
+type RowOpenBehavior<T extends object> =
+  | {
+      readonly onRowOpen: (row: T) => void;
+      readonly rowLabel: (row: T) => string;
+    }
+  | {
+      readonly onRowOpen?: undefined;
+      readonly rowLabel?: (row: T) => string;
+    };
+
+export type ConfigTableRendererProps<T extends object> =
+  ConfigTableRendererBaseProps<T> & RowOpenBehavior<T>;
 
 interface PendingAction<T extends object> {
   readonly row: T;
   readonly action: TableActionConfig<T>;
-  readonly expectedPhrase: string | undefined;
+  readonly verification: TableActionVerification<T>;
 }
 
 const ALIGNMENT_CLASS = {
@@ -299,16 +317,31 @@ function ActionCell<T extends object>({
   return (
     <td className="px-4 py-3 text-right">
       <span className="inline-flex items-center gap-1.5">
-        {visible.map((action) => (
-          <Button
-            key={action.id}
-            variant={action.variant === "destructive" ? "destructive" : "ghost"}
-            size="sm"
-            onClick={() => onAction(row, action)}
-          >
-            {resolveLabel(action.label, row)}
-          </Button>
-        ))}
+        {visible.map((action) => {
+          const label = resolveLabel(action.label, row);
+          const tooltip =
+            typeof action.tooltip === "function"
+              ? action.tooltip(row)
+              : action.tooltip;
+          const icon = action.renderIcon?.(row);
+          return (
+            <Button
+              key={action.id}
+              variant={action.variant === "destructive" ? "destructive" : "ghost"}
+              size="sm"
+              title={tooltip}
+              aria-label={action.iconOnly === true ? label : undefined}
+              onClick={() => onAction(row, action)}
+            >
+              {icon}
+              {action.iconOnly === true ? (
+                <span className="sr-only">{label}</span>
+              ) : (
+                label
+              )}
+            </Button>
+          );
+        })}
       </span>
     </td>
   );
@@ -409,7 +442,7 @@ function TableGrid<T extends object>({
   readonly rows: readonly T[];
   readonly actions: readonly TableActionConfig<T>[];
   readonly rowKey: (row: T) => string;
-  readonly rowLabel: (row: T) => string;
+  readonly rowLabel: ((row: T) => string) | undefined;
   readonly nullLabel: string;
   readonly onRowOpen: ((row: T) => void) | undefined;
   readonly onAction: (row: T, action: TableActionConfig<T>) => void;
@@ -434,7 +467,7 @@ function TableGrid<T extends object>({
                 row={row}
                 columns={config.columns}
                 actions={actions}
-                rowLabel={rowLabel(row)}
+                rowLabel={rowLabel === undefined ? "" : rowLabel(row)}
                 nullLabel={nullLabel}
                 onRowOpen={onRowOpen}
                 onAction={onAction}
@@ -472,7 +505,7 @@ function TableSurface<T extends object>({
   readonly nullLabel: string;
   readonly actions: readonly TableActionConfig<T>[];
   readonly rowKey: (row: T) => string;
-  readonly rowLabel: (row: T) => string;
+  readonly rowLabel: ((row: T) => string) | undefined;
   readonly onRowOpen: ((row: T) => void) | undefined;
   readonly onAction: (row: T, action: TableActionConfig<T>) => void;
   readonly sort: SortState<T> | null;
@@ -529,22 +562,52 @@ function PendingConfirmation<T extends object>({
   readonly onClose: () => void;
   readonly onConfirm: () => Promise<void>;
 }) {
+  const verification = pending.verification;
   return (
     <ConfirmActionDialog
-      title={
-        pending.action.confirmationTitle ??
-        resolveLabel(pending.action.label, pending.row)
-      }
-      description={
-        pending.action.confirmationMessage ??
-        "This action requires explicit verification before proceeding."
-      }
+      title={verification.title}
+      description={verification.message}
       actionLabel={resolveLabel(pending.action.label, pending.row)}
-      expectedPhrase={pending.expectedPhrase}
+      expectedPhrase={
+        verification.kind === "typed"
+          ? verification.expectedPhrase(pending.row)
+          : undefined
+      }
       onClose={onClose}
       onConfirm={onConfirm}
     />
   );
+}
+
+function useTableActions<T extends object>(
+  onActionError: ((error: unknown) => void) | undefined,
+) {
+  const [pending, setPending] = useState<PendingAction<T> | null>(null);
+
+  async function runAction(
+    row: T,
+    action: TableActionConfig<T>,
+  ): Promise<void> {
+    try {
+      await action.onClick(row);
+    } catch (error) {
+      if (onActionError !== undefined) {
+        onActionError(error);
+        return;
+      }
+      console.error("Table action failed", error);
+    }
+  }
+
+  function requestAction(row: T, action: TableActionConfig<T>): void {
+    if (action.verification === undefined) {
+      void runAction(row, action);
+      return;
+    }
+    setPending({ row, action, verification: action.verification });
+  }
+
+  return { pending, setPending, runAction, requestAction };
 }
 
 /**
@@ -552,35 +615,30 @@ function PendingConfirmation<T extends object>({
  * row actions, empty state and destructive confirmation come from the typed
  * TableConfig; the engine owns presentation only.
  */
-export function ConfigTableRenderer<T extends object>({
-  config,
-  data,
-  rowKey,
-  isLoading = false,
-  error = null,
-  errorTitle = "Could not load this table",
-  nullLabel = "",
-  userPermissions,
-  className,
-  toolbar,
-  footer,
-  emptyState,
-  onRowOpen,
-  rowLabel,
-}: ConfigTableRendererProps<T>) {
+export function ConfigTableRenderer<T extends object>(
+  props: ConfigTableRendererProps<T>,
+) {
+  const {
+    config,
+    data,
+    rowKey,
+    isLoading = false,
+    error = null,
+    errorTitle = "Could not load this table",
+    nullLabel = "",
+    userPermissions,
+    className,
+    toolbar,
+    footer,
+    emptyState,
+    onActionError,
+  } = props;
+  const onRowOpen = props.onRowOpen;
+  const rowLabel = props.onRowOpen === undefined ? undefined : props.rowLabel;
   const { sorted, sort, toggle } = useTableSort(data);
-  const [pending, setPending] = useState<PendingAction<T> | null>(null);
-
+  const { pending, setPending, runAction, requestAction } =
+    useTableActions<T>(onActionError);
   const actions = useAuthorizedActions(config.actions, userPermissions);
-
-  function requestAction(row: T, action: TableActionConfig<T>): void {
-    const expectedPhrase = action.dangerVerificationSlug?.(row);
-    if (expectedPhrase !== undefined || action.requiresConfirmation === true) {
-      setPending({ row, action, expectedPhrase });
-      return;
-    }
-    void action.onClick(row);
-  }
 
   return (
     <div className={cn("flex min-h-0 flex-col", className)}>
@@ -595,7 +653,7 @@ export function ConfigTableRenderer<T extends object>({
         nullLabel={nullLabel}
         actions={actions}
         rowKey={rowKey ?? defaultRowKey}
-        rowLabel={rowLabel ?? rowKey ?? defaultRowKey}
+        rowLabel={rowLabel}
         onRowOpen={onRowOpen}
         onAction={requestAction}
         sort={sort}
@@ -607,7 +665,7 @@ export function ConfigTableRenderer<T extends object>({
           pending={pending}
           onClose={() => setPending(null)}
           onConfirm={async () => {
-            await pending.action.onClick(pending.row);
+            await runAction(pending.row, pending.action);
             setPending(null);
           }}
         />

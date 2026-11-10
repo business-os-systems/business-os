@@ -49,7 +49,12 @@ const config: TableConfig<BranchRow> = {
       label: "Deactivate",
       variant: "destructive",
       permission: "core:branches:manage",
-      dangerVerificationSlug: (row) => row.code,
+      verification: {
+        kind: "typed",
+        title: "Deactivate branch",
+        message: "This deactivates the branch and stops tenant access.",
+        expectedPhrase: (row) => row.code,
+      },
       onClick: onDelete,
     },
   ],
@@ -364,6 +369,59 @@ describe("shared ConfigTableRenderer direction", () => {
   });
 });
 
+describe("shared ConfigTableRenderer action presentation", () => {
+  it("renders an icon-only action with a tooltip and accessible label", () => {
+    const iconConfig: TableConfig<BranchRow> = {
+      ...config,
+      actions: [
+        {
+          id: "delete",
+          label: "Delete Role",
+          tooltip: "Delete the role",
+          iconOnly: true,
+          renderIcon: () => <span data-testid="action-icon" />,
+          onClick: vi.fn(),
+        },
+      ],
+    };
+    const html = renderToString(
+      <ConfigTableRenderer config={iconConfig} data={rows} rowKey={(row) => row.id} />,
+    );
+    expect(html).toContain('title="Delete the role"');
+    expect(html).toContain('aria-label="Delete Role"');
+    expect(html).toContain("data-testid=\"action-icon\"");
+  });
+
+  it("routes a failed action to onActionError", async () => {
+    const onActionError = vi.fn();
+    const failing: TableConfig<BranchRow> = {
+      ...config,
+      actions: [
+        {
+          id: "edit",
+          label: "Edit",
+          onClick: () => Promise.reject(new Error("boom")),
+        },
+      ],
+    };
+    const { container, root } = mount(
+      <ConfigTableRenderer
+        config={failing}
+        data={rows}
+        rowKey={(row) => row.id}
+        onActionError={onActionError}
+      />,
+    );
+    act(() => field(container, "Edit").click());
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(onActionError).toHaveBeenCalled();
+    act(() => root.unmount());
+    container.remove();
+  });
+});
+
 describe("shared ConfigTableRenderer row open", () => {
   it("opens a row with the keyboard", () => {
     const { container, root } = mount(
@@ -371,6 +429,7 @@ describe("shared ConfigTableRenderer row open", () => {
         config={config}
         data={rows}
         rowKey={(row) => row.id}
+        rowLabel={(row) => row.name}
         onRowOpen={onRowOpen}
       />,
     );
@@ -392,6 +451,7 @@ describe("shared ConfigTableRenderer row open", () => {
         config={config}
         data={rows}
         rowKey={(row) => row.id}
+        rowLabel={(row) => row.name}
         onRowOpen={onRowOpen}
       />,
     );
@@ -429,7 +489,11 @@ describe("shared ConfigTableRenderer confirmation", () => {
         {
           id: "archive",
           label: "Archive",
-          requiresConfirmation: true,
+          verification: {
+            kind: "confirm",
+            title: "Archive branch",
+            message: "This archives the branch.",
+          },
           onClick: onArchive,
         },
       ],
