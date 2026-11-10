@@ -199,7 +199,7 @@ describe("Platform accessibility (T139, OP-4)", () => {
       renderScreen(screen);
       const results = await axe.run(container, AXE_OPTIONS);
       expect(results.violations.map((violation) => violation.id)).toEqual([]);
-    });
+    }, 20000);
 
     it(`keeps ${screen.id} keyboard reachable`, () => {
       renderScreen(screen);

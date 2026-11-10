@@ -98,7 +98,7 @@ interface OperatorRecordViewProps {
   readonly onBack: () => void;
 }
 
-function OperatorRecordView({
+export function OperatorRecordView({
   operator,
   isSelf,
   notice,

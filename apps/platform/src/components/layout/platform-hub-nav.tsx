@@ -3,10 +3,7 @@
 import type { ReactNode } from "react";
 import { isCatalogsHubRoute } from "./catalogs-nav.config";
 import { CatalogsMobileSwitcher, CatalogsNavSidebar } from "./catalogs-nav";
-import {
-  isTenantRecordHubRoute,
-  tenantRecordOrgIdFromPathname,
-} from "./tenant-record-nav.config";
+import { tenantRecordOrgIdFromPathname } from "./tenant-record-nav.config";
 import {
   TenantRecordMobileSwitcher,
   TenantRecordNavSidebar,
@@ -31,11 +28,8 @@ export function PlatformHubNavSidebar({
   if (!allowed) {
     return null;
   }
-  if (isTenantRecordHubRoute(pathname)) {
-    const orgId = tenantRecordOrgIdFromPathname(pathname);
-    if (orgId === null) {
-      return null;
-    }
+  const orgId = tenantRecordOrgIdFromPathname(pathname);
+  if (orgId !== null) {
     return (
       <TenantRecordNavSidebar orgId={orgId} capabilities={capabilities} />
     );
@@ -63,11 +57,8 @@ export function PlatformHubMobileSwitcher({
   if (!allowed) {
     return null;
   }
-  if (isTenantRecordHubRoute(pathname)) {
-    const orgId = tenantRecordOrgIdFromPathname(pathname);
-    if (orgId === null) {
-      return null;
-    }
+  const orgId = tenantRecordOrgIdFromPathname(pathname);
+  if (orgId !== null) {
     return (
       <HubMobileBar>
         <TenantRecordMobileSwitcher
