@@ -2,8 +2,12 @@ export {
   prisma,
   createTenantPrismaClient,
   getTenantDb,
+  getTenantRuntimeClient,
+  disconnectTenantRuntimeClient,
+  withTenantContext,
   withTransaction,
   withTenantTransaction,
+  type TenantContextTransactionOptions,
   type TenantPrismaClient,
 } from "./client.js";
 
