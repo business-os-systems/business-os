@@ -207,6 +207,29 @@ it.skipIf(!enabled)("verifies the global audit chain", async () => {
   }
 });
 
+it.skipIf(!enabled)("returns a tenant report alongside the unchanged global result", async () => {
+  const response = await sendOperatorRequest(platformAuditRouter, {
+    method: "GET",
+    path: `/audit/verify?${new URLSearchParams({ organizationId }).toString()}`,
+    token: managerToken,
+  });
+  expect(response.status).toBe(200);
+  const body = envelopeSchema(auditVerifyResultSchema).parse(await response.json());
+
+  expect(typeof body.data.verified).toBe("boolean");
+  const tenant = body.data.tenant;
+  if (tenant === undefined) {
+    throw new Error("The tenant report was not returned");
+  }
+  expect(tenant.organizationId).toBe(organizationId);
+  expect(typeof tenant.verified).toBe("boolean");
+  expect(tenant.checkedCount).toBeGreaterThanOrEqual(0);
+  expect(
+    tenant.firstBrokenId === null || typeof tenant.firstBrokenId === "string",
+  ).toBe(true);
+  expect(response.headers.get("cache-control")).toBe("no-store");
+});
+
 it.skipIf(!enabled)("denies search and verify without platform:audit:read", async () => {
   const search = await sendOperatorRequest(platformAuditRouter, {
     method: "GET",

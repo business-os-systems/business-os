@@ -1,27 +1,32 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { PrismaClient } from "@suite/db";
-import { PLATFORM_CAPABILITIES, PLATFORM_ERROR_CODE } from "@suite/core";
+import {
+  PLATFORM_CAPABILITIES,
+  PLATFORM_ERROR_CODE,
+  STEP_UP_TOKEN_HEADER,
+} from "@suite/core";
 import { CONTROL_SESSION_COOKIE_NAME, issueControlSession, PLATFORM_AUDIT_ACTIONS } from "@suite/auth/platform";
+import { platformTestRpId } from "../../helpers/platform-rp.js";
 import { IDEMPOTENCY_HEADER } from "@suite/redis";
 import { tenantLifecycleRouter } from "../../../src/routes/admin/lifecycle.js";
 import { globalErrorHandler } from "../../../src/middleware/error-handler.js";
 import { clearRateLimitStore } from "../../../src/middleware/rate-limit.js";
 import { loadPlatformTestEnv } from "../../helpers/platform-env.js";
 import { createPlatformOwnerTestClient, createPlatformTestClient, platformIntegrationTestsEnabled } from "../../helpers/platform-db.js";
-import { platformTestRpId } from "../../helpers/platform-rp.js";
+import { issueStepUpTokenForSessionToken } from "../../helpers/platform-operators.js";
 
 loadPlatformTestEnv();
 
 const secret = process.env.CONTROL_SESSION_SECRET;
 const enabled = platformIntegrationTestsEnabled() && Boolean(secret);
 
-type ProblemBody = { type: string; status: number; code: string };
-type LifecycleData = {
+interface ProblemBody { type: string; status: number; code: string }
+interface LifecycleData {
   fromStatus: string;
   toStatus: string;
   lifecycleEventId: string;
   occurredAt: string;
-};
+}
 
 describe.skipIf(!enabled)("Platform tenant lifecycle contract", () => {
   const suffix = Date.now().toString(36);
@@ -41,7 +46,7 @@ describe.skipIf(!enabled)("Platform tenant lifecycle contract", () => {
     for (const capability of capabilities) {
       await platformPrisma.operatorCapability.create({ data: { operatorId: operator.id, capability } });
     }
-    return (await issueControlSession({ prisma: platformPrisma, secret: secret ?? "", rpID: platformTestRpId(), operatorId: operator.id })).token;
+    return (await issueControlSession({ prisma: platformPrisma, secret: secret ?? "", operatorId: operator.id, rpID: platformTestRpId() })).token;
   }
 
   async function createTenant(): Promise<{ id: string; slug: string }> {
@@ -59,25 +64,27 @@ describe.skipIf(!enabled)("Platform tenant lifecycle contract", () => {
     return value;
   }
 
-  function post(
+  async function post(
     path: string,
     token: string,
     body: Record<string, unknown>,
     idempotencyKey = `lifecycle-contract-${suffix}-${++keyCounter}`,
   ): Promise<Response> {
-    return Promise.resolve(
-      tenantLifecycleRouter.request(path, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Cookie: `${CONTROL_SESSION_COOKIE_NAME}=${token}`,
-          [IDEMPOTENCY_HEADER]: idempotencyKey,
-          Origin: controlPlaneOrigin(),
-          "X-Forwarded-For": "198.51.100.12",
-        },
-        body: JSON.stringify(body),
-      }),
-    );
+    const stepUpToken = await issueStepUpTokenForSessionToken(token);
+    return tenantLifecycleRouter.request(path, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: `${CONTROL_SESSION_COOKIE_NAME}=${token}`,
+        [IDEMPOTENCY_HEADER]: idempotencyKey,
+        Origin: controlPlaneOrigin(),
+        "X-Forwarded-For": "198.51.100.12",
+        ...(stepUpToken === null
+          ? {}
+          : { [STEP_UP_TOKEN_HEADER]: stepUpToken }),
+      },
+      body: JSON.stringify(body),
+    });
   }
   async function problem(response: Response): Promise<ProblemBody> {
     expect(response.headers.get("content-type")).toContain("application/problem+json");

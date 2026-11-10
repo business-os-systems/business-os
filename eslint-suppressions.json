@@ -144,9 +144,6 @@
     }
   },
   "apps/api/tests/contract/platform/lifecycle.test.ts": {
-    "@typescript-eslint/consistent-type-definitions": {
-      "count": 2
-    },
     "max-lines-per-function": {
       "count": 1
     }
@@ -1352,23 +1349,8 @@
     }
   },
   "apps/dashboard/src/app/onboarding/step-2/page.tsx": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 1
-    },
     "@typescript-eslint/no-misused-promises": {
       "count": 1
-    },
-    "@typescript-eslint/no-unsafe-argument": {
-      "count": 2
-    },
-    "@typescript-eslint/no-unsafe-assignment": {
-      "count": 3
-    },
-    "@typescript-eslint/no-unsafe-member-access": {
-      "count": 3
-    },
-    "@typescript-eslint/prefer-nullish-coalescing": {
-      "count": 3
     },
     "@typescript-eslint/require-await": {
       "count": 1
@@ -3171,9 +3153,6 @@
       "count": 1
     },
     "security/detect-unsafe-regex": {
-      "count": 1
-    },
-    "sonarjs/cognitive-complexity": {
       "count": 1
     }
   },

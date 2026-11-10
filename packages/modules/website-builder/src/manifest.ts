@@ -7,10 +7,11 @@ export const WEBSITE_BUILDER_MANIFEST: AppManifest = {
   code: "App 01",
   version: "1.0.0",
   href: "/sites",
-  iconName: "sites",
+  iconKey: "sites",
   description:
     "Visual canvas studio, section blueprints, responsive device preview, and edge storefront delivery.",
   permission: "cms:sites:read",
+  targetIndustries: ["*"],
   capabilities: [
     {
       action: "cms:sites:read",

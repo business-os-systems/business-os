@@ -35,6 +35,10 @@ const PERMITTED_WRITES: readonly PermittedWrite[] = [
   { method: "POST", path: "/sign-in/options", reason: "operator sign-in" },
   { method: "POST", path: "/sign-in/verify", reason: "operator sign-in" },
   { method: "POST", path: "/logout", reason: "operator sign-out" },
+  // Exchanges a fresh passkey assertion for a single-use step-up token; it
+  // writes no tenant business record and only the passkey counter plus the
+  // OPERATOR_STEP_UP_VERIFIED audit row move (FR-046).
+  { method: "POST", path: "/step-up/verify", reason: "step-up confirmation" },
   { method: "POST", path: "/flags", reason: "platform configuration" },
   // Tenant lifecycle changes the platform-owned Organisation status; it writes
   // no tenant business record (FR-019, contracts/admin-api.md).

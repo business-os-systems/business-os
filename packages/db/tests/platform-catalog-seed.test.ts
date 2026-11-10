@@ -151,7 +151,7 @@ describe("reference catalog normalization", () => {
 
   it("rejects invalid codes, duplicate normalized codes and empty labels", () => {
     expect(() =>
-      normalizeCatalogSeedValues("time_format", [{ code: "HH:mm", label: "Hour pattern" }]),
+      normalizeCatalogSeedValues("time_format", [{ code: "25:00", label: "Invalid time pattern" }]),
     ).toThrow(ReferenceCatalogSeedError);
 
     expect(() =>

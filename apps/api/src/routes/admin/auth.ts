@@ -5,6 +5,7 @@ import { UnauthorizedError } from "@suite/core/errors";
 import { createSuccessResponseBody } from "@suite/core";
 import { AUTH_ERROR_CODES } from "@suite/auth";
 import {
+  RATE_LIMITS,
   platformBootstrapOptionsSchema,
   platformSessionViewSchema,
   platformSignInOptionsSchema,
@@ -18,6 +19,7 @@ import {
 import {
   finishBootstrap,
   finishSignIn,
+  finishStepUp,
   getSession,
   logout,
   startBootstrap,
@@ -44,6 +46,13 @@ const BootstrapOptionsResponseSchema = envelope(
 );
 const SignInOptionsResponseSchema = envelope(platformSignInOptionsSchema);
 const VerifyResponseSchema = envelope(SessionDataSchema);
+const StepUpConfirmSchema = z
+  .object({
+    token: z.string().min(1),
+    expiresAt: z.string().datetime(),
+  })
+  .strict();
+const StepUpConfirmResponseSchema = envelope(StepUpConfirmSchema);
 
 const BootstrapOptionsBody = z.object({ token: z.string().min(1) });
 const BootstrapVerifyBody = z.object({
@@ -52,6 +61,10 @@ const BootstrapVerifyBody = z.object({
   response: z.unknown(),
 });
 const SignInVerifyBody = z.object({
+  flowId: z.string().min(1),
+  response: z.unknown(),
+});
+const StepUpVerifyBody = z.object({
   flowId: z.string().min(1),
   response: z.unknown(),
 });
@@ -200,6 +213,29 @@ const signInVerifyRoute = createRoute({
   },
 });
 
+const stepUpVerifyRoute = createRoute({
+  method: "post",
+  path: "/step-up/verify",
+  tags: ["Platform Auth"],
+  summary: "Confirm the operator with a fresh passkey assertion",
+  description:
+    "Exchanges a fresh WebAuthn assertion for one single-use step-up token (FR-046). The assertion must resolve to a passkey owned by the signed-in operator and must answer a challenge started by POST /sign-in/options. The response token travels as x-step-up-token on destructive Platform mutations and expires after five minutes; it is never stored in a cookie. Refusals write OPERATOR_STEP_UP_FAILED and successes write OPERATOR_STEP_UP_VERIFIED. Both the challenge and the token are single-use.",
+  request: {
+    body: {
+      content: { "application/json": { schema: StepUpVerifyBody } },
+    },
+  },
+  responses: {
+    200: {
+      description: "Single-use step-up token",
+      content: {
+        "application/json": { schema: StepUpConfirmResponseSchema },
+      },
+    },
+    ...errorResponses,
+  },
+});
+
 const meRoute = createRoute({
   method: "get",
   path: "/me",
@@ -239,9 +275,16 @@ const webauthnRateLimit = rateLimitMiddleware({
   keyPrefix: "rl:platform:auth:webauthn",
   failureMode: "closed",
 });
+const stepUpRateLimit = rateLimitMiddleware({
+  limit: RATE_LIMITS.MAX_STEP_UP_ATTEMPTS_PER_MINUTE,
+  windowSeconds: RATE_LIMITS.WINDOW_1_MIN_SECONDS,
+  keyPrefix: "rl:platform:auth:step-up",
+  failureMode: "closed",
+});
 platformAuthRouter.use("*", authRouteRateLimit);
 platformAuthRouter.use("/bootstrap/*", webauthnRateLimit);
 platformAuthRouter.use("/sign-in/*", webauthnRateLimit);
+platformAuthRouter.use("/step-up/*", stepUpRateLimit);
 platformAuthRouter.use("*", controlPlaneOriginGuard);
 
 platformAuthRouter.openapi(bootstrapOptionsRoute, async (c) => {
@@ -283,6 +326,30 @@ platformAuthRouter.openapi(signInVerifyRoute, async (c) => {
   });
   writeSessionCookie(c, session.session);
   return success(c, sessionView(session.operator, session.capabilities));
+});
+
+platformAuthRouter.openapi(stepUpVerifyRoute, async (c) => {
+  const sessionToken = getCookie(c, CONTROL_SESSION_COOKIE_NAME);
+  if (!sessionToken) {
+    throw new UnauthorizedError("Authentication required.", {
+      code: AUTH_ERROR_CODES.AUTH_REQUIRED,
+    });
+  }
+  const body = c.req.valid("json");
+  const confirmation = await finishStepUp(platformAuthDependencies(), {
+    sessionToken,
+    flowId: body.flowId,
+    response: parseAuthenticationResponse(body.response),
+    requestId: requestContext(c).requestId,
+  });
+  return c.json(
+    createSuccessResponseBody({
+      data: confirmation,
+      requestId: requestContext(c).requestId,
+    }),
+    200,
+    { "Cache-Control": "no-store" }
+  );
 });
 
 platformAuthRouter.openapi(meRoute, async (c) => {

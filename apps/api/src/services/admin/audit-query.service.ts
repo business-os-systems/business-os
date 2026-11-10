@@ -14,6 +14,7 @@ import {
   type AuditPage,
   type AuditQuery,
   type AuditVerifyResult,
+  type AuditVerifyTenantResult,
 } from "./audit-query.contract.js";
 
 interface AuditSearchRow {
@@ -208,20 +209,37 @@ export async function searchAuditEvents(
 export interface VerifyAuditChainInput {
   readonly actorId: string;
   readonly requestId: string;
+  /**
+   * When present, the response also carries a tenant-attributed report. The
+   * global verification is always performed and keeps its strict first-break
+   * semantics (D-019).
+   */
+  readonly organizationId?: string;
 }
 
-/**
- * The D-019 chain is global; a per-tenant walk cannot validate links that cross
- * tenants. The optional organizationId filter on the route is reserved and is
- * deliberately not applied here.
- */
-export async function verifyAuditChain(
+interface AuditVerifyRow {
+  readonly verified: boolean;
+  readonly checkedCount: number;
+  readonly firstBrokenId: string | null;
+}
+
+interface AuditVerifyTenantRow extends AuditVerifyRow {
+  readonly organizationId: string;
+}
+
+function toAuditVerifyResult(row: AuditVerifyRow): AuditVerifyResult {
+  return {
+    verified: row.verified,
+    checkedCount: Number(row.checkedCount),
+    firstBrokenId: row.firstBrokenId ?? null,
+  };
+}
+
+async function verifyGlobalAuditChain(
   prisma: PrismaClient,
   input: VerifyAuditChainInput,
 ): Promise<AuditVerifyResult> {
-  const rows = await prisma.$queryRaw<
-    { verified: boolean; checkedCount: number; firstBrokenId: string | null }[]
-  >(Prisma.sql`
+  const rows = await prisma.$queryRaw<AuditVerifyRow[]>(Prisma.sql`
     SELECT "verified", "checkedCount", "firstBrokenId"
     FROM platform.fn_verify_audit_chain(${input.actorId}, ${input.requestId})
   `);
@@ -231,9 +249,60 @@ export async function verifyAuditChain(
     throw new InternalServerError("The audit-chain verification returned no result.");
   }
 
+  return toAuditVerifyResult(row);
+}
+
+/**
+ * The D-019 chain is global, so a filtered walk cannot validate cross-tenant
+ * links. The database function therefore walks the global order and checks
+ * every row owned by the tenant against its actual predecessor. This is an
+ * attribution of integrity, not an independent tenant chain; the global result
+ * always accompanies it.
+ */
+async function verifyTenantAuditChain(
+  prisma: PrismaClient,
+  input: VerifyAuditChainInput & { readonly organizationId: string },
+): Promise<AuditVerifyTenantResult> {
+  const rows = await prisma.$queryRaw<AuditVerifyTenantRow[]>(Prisma.sql`
+    SELECT "organizationId", "verified", "checkedCount", "firstBrokenId"
+    FROM platform.fn_verify_audit_chain_for_tenant(
+      ${input.actorId},
+      ${input.organizationId},
+      ${input.requestId}
+    )
+  `);
+
+  const row = rows[0];
+  if (row === undefined) {
+    throw new InternalServerError(
+      "The tenant audit-chain verification returned no result.",
+    );
+  }
+
   return {
-    verified: row.verified,
-    checkedCount: Number(row.checkedCount),
-    firstBrokenId: row.firstBrokenId ?? null,
+    organizationId: row.organizationId,
+    ...toAuditVerifyResult(row),
   };
+}
+
+/**
+ * Verifies the global D-019 chain and, when a tenant is named, adds its
+ * tenant-attributed report. The global walk is unchanged so a tenant request
+ * can never weaken or replace it (FR-042).
+ */
+export async function verifyAuditChain(
+  prisma: PrismaClient,
+  input: VerifyAuditChainInput,
+): Promise<AuditVerifyResult> {
+  const global = await verifyGlobalAuditChain(prisma, input);
+  if (input.organizationId === undefined) {
+    return global;
+  }
+
+  const tenant = await verifyTenantAuditChain(prisma, {
+    ...input,
+    organizationId: input.organizationId,
+  });
+
+  return { ...global, tenant };
 }

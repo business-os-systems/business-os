@@ -40,22 +40,6 @@ describe("@suite/core - reference catalog validation", () => {
     expect(validateCatalogCode("timezone", "Mars/Olympus").valid).toBe(false);
   });
 
-  it("accepts structurally valid date formats and the hour-cycle time formats", () => {
-    expect(validateCatalogCode("date_format", "YYYY-MM-DD").valid).toBe(true);
-    expect(validateCatalogCode("date_format", "DD/MM/YYYY").valid).toBe(true);
-    expect(validateCatalogCode("date_format", "YYYY-DD").valid).toBe(false);
-    expect(validateCatalogCode("time_format", "12h")).toEqual({
-      valid: true,
-      normalized: "12h",
-    });
-    expect(validateCatalogCode("time_format", "24H")).toEqual({
-      valid: true,
-      normalized: "24h",
-    });
-    expect(validateCatalogCode("time_format", "HH:mm").valid).toBe(false);
-    expect(validateCatalogCode("time_format", "25:00").valid).toBe(false);
-  });
-
   it("normalizes slug catalogs and rejects punctuation", () => {
     expect(normalizeCatalogCode("branch_type", " Homestay ")).toBe("homestay");
     const slug = validateCatalogCode("branch_type", "Homestay");
@@ -68,5 +52,38 @@ describe("@suite/core - reference catalog validation", () => {
 
   it("exposes exactly the ten canonical catalog keys", () => {
     expect(CATALOG_KEYS).toHaveLength(10);
+  });
+});
+
+describe("@suite/core - declared pattern standards", () => {
+  it("accepts any declared Unicode date pattern shape, including a new format", () => {
+    expect(validateCatalogCode("date_format", "YYYY-MM-DD").valid).toBe(true);
+    expect(validateCatalogCode("date_format", "DD/MM/YYYY").valid).toBe(true);
+    expect(validateCatalogCode("date_format", "EEE, DD MMM YYYY")).toEqual({
+      valid: true,
+      normalized: "eee, dd mmm yyyy",
+    });
+    expect(validateCatalogCode("date_format", "YYYY-DD").valid).toBe(false);
+    expect(validateCatalogCode("date_format", "not-a-date").valid).toBe(false);
+  });
+
+  it("accepts any declared Unicode time pattern shape, including a new format", () => {
+    expect(validateCatalogCode("time_format", "12h")).toEqual({
+      valid: true,
+      normalized: "12h",
+    });
+    expect(validateCatalogCode("time_format", "24H")).toEqual({
+      valid: true,
+      normalized: "24h",
+    });
+    expect(validateCatalogCode("time_format", "HH:mm")).toEqual({
+      valid: true,
+      normalized: "hh:mm",
+    });
+    expect(validateCatalogCode("time_format", "HH:mm:ss")).toEqual({
+      valid: true,
+      normalized: "hh:mm:ss",
+    });
+    expect(validateCatalogCode("time_format", "25:00").valid).toBe(false);
   });
 });

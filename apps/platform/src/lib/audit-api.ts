@@ -49,11 +49,22 @@ const auditPageSchema = z
   })
   .strict();
 
+const auditVerifyTenantResultSchema = z
+  .object({
+    organizationId: z.string().min(1),
+    verified: z.boolean(),
+    checkedCount: z.number().int().nonnegative(),
+    firstBrokenId: z.string().nullable(),
+  })
+  .strict();
+
 const auditVerifyResultSchema = z
   .object({
     verified: z.boolean(),
     checkedCount: z.number().int().nonnegative(),
     firstBrokenId: z.string().nullable(),
+    /** Present only when the request named a tenant. */
+    tenant: auditVerifyTenantResultSchema.optional(),
   })
   .strict();
 
@@ -91,6 +102,9 @@ export type AuditPayload = z.infer<typeof auditPayloadSchema>;
 export type AuditRecord = z.infer<typeof auditRecordSchema>;
 export type AuditPage = z.infer<typeof auditPageSchema>;
 export type AuditVerifyResult = z.infer<typeof auditVerifyResultSchema>;
+export type AuditVerifyTenantResult = z.infer<
+  typeof auditVerifyTenantResultSchema
+>;
 export type AuditFilters = z.infer<typeof auditFiltersSchema>;
 
 export interface AuditListQuery extends AuditFilters {
@@ -135,10 +149,15 @@ export async function fetchAuditPage(
   return readSuccessData(response, auditPageSchema);
 }
 
-export async function verifyAuditChain(): Promise<AuditVerifyResult> {
-  // The chain is global; the API accepts organizationId for contract stability,
-  // but a per-tenant walk cannot validate cross-tenant links.
-  const response = await platformFetch(`${AUDIT_API_PATH}/verify`);
+/**
+ * The global chain is verified on every call. Naming a tenant adds the
+ * tenant-attributed report; the API never replaces the global result with it.
+ */
+export async function verifyAuditChain(
+  organizationId?: string,
+): Promise<AuditVerifyResult> {
+  const search = buildQueryString({ organizationId });
+  const response = await platformFetch(`${AUDIT_API_PATH}/verify${search}`);
   if (!response.ok) {
     throw await toProblemError(response);
   }

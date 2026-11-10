@@ -3,6 +3,7 @@ import type { PrismaClient } from "@suite/db";
 import {
   PLATFORM_CAPABILITIES,
   PLATFORM_ERROR_CODE,
+  STEP_UP_TOKEN_HEADER,
   problemDetailsSchema,
 } from "@suite/core";
 import {
@@ -12,6 +13,7 @@ import {
   issueControlSession,
   verifyControlSession,
 } from "@suite/auth/platform";
+import { platformTestRpId } from "../../helpers/platform-rp.js";
 import { IDEMPOTENCY_HEADER } from "@suite/redis";
 import { platformOperatorPasskeysRouter } from "../../../src/routes/admin/operator-passkeys.js";
 import {
@@ -37,7 +39,7 @@ import {
   disconnectPlatformTestClient,
   platformIntegrationTestsEnabled,
 } from "../../helpers/platform-db.js";
-import { platformTestRpId } from "../../helpers/platform-rp.js";
+import { issueStepUpTokenForSessionToken } from "../../helpers/platform-operators.js";
 
 loadPlatformTestEnv();
 
@@ -64,8 +66,8 @@ async function reissueSession(operatorId: string): Promise<string> {
   const issued = await issueControlSession({
     prisma: platformPrisma,
     secret: process.env.CONTROL_SESSION_SECRET ?? "",
-    rpID: platformTestRpId(),
     operatorId,
+    rpID: platformTestRpId(),
   });
   return issued.token;
 }
@@ -94,13 +96,13 @@ async function createActiveOperator(
   const issued = await issueControlSession({
     prisma: platformPrisma,
     secret: secret ?? "",
-    rpID: platformTestRpId(),
     operatorId: operator.id,
+    rpID: platformTestRpId(),
   });
   return { id: operator.id, token: issued.token };
 }
 
-function send(input: {
+async function send(input: {
   readonly method: string;
   readonly path: string;
   readonly token?: string;
@@ -121,13 +123,17 @@ function send(input: {
   if (input.idempotencyKey !== undefined) {
     headers[IDEMPOTENCY_HEADER] = input.idempotencyKey;
   }
-  return Promise.resolve(
-    platformOperatorsRouter.request(input.path, {
-      method: input.method,
-      headers,
-      ...(input.body === undefined ? {} : { body: JSON.stringify(input.body) }),
-    })
-  );
+  if (input.method !== "GET" && input.token !== undefined) {
+    const stepUpToken = await issueStepUpTokenForSessionToken(input.token);
+    if (stepUpToken !== null) {
+      headers[STEP_UP_TOKEN_HEADER] = stepUpToken;
+    }
+  }
+  return platformOperatorsRouter.request(input.path, {
+    method: input.method,
+    headers,
+    ...(input.body === undefined ? {} : { body: JSON.stringify(input.body) }),
+  });
 }
 
 async function problem(response: Response) {
@@ -420,8 +426,8 @@ it.skipIf(!enabled)("suspends an operator, revokes sessions and records the reas
   const session = await verifyControlSession({
     prisma: platformPrisma,
     secret: secret ?? "",
-    rpID: platformTestRpId(),
     token: target.token,
+    rpID: platformTestRpId(),
   });
   expect(session.valid).toBe(false);
 
@@ -519,8 +525,8 @@ it.skipIf(!enabled)("lists and revokes one operator session", async () => {
   const verified = await verifyControlSession({
     prisma: platformPrisma,
     secret: secret ?? "",
-    rpID: platformTestRpId(),
     token: target.token,
+    rpID: platformTestRpId(),
   });
   expect(verified.valid).toBe(false);
 

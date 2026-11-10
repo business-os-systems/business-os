@@ -10,26 +10,29 @@ import {
   CardTitle,
 } from "@suite/ui";
 import { verifyAuditChain, type AuditVerifyResult } from "@/lib/audit-api";
+import {
+  ChainOutcomeBlock,
+  resolveChainOutcome,
+  type ChainOutcome,
+} from "@/components/audit/chain-verify-outcome";
 import { toMessage } from "@/lib/error-message";
-import { formatDateTime } from "@/lib/format";
 
 /**
- * The three server-answerable outcomes of a chain check. "idle" is the only
- * state before a response, so the panel never claims verification it has not
- * received.
+ * One verification result holds both scopes because the API always verifies the
+ * global chain and adds the tenant report only when an organization is named.
+ * "idle" is the only state before a response, so the panel never claims
+ * verification it has not received.
  */
 export type AuditVerifyState =
   | { readonly kind: "idle" }
   | { readonly kind: "loading" }
   | {
-      readonly kind: "verified";
-      readonly checkedCount: number;
-      readonly checkedAt: string;
-    }
-  | {
-      readonly kind: "broken";
-      readonly checkedCount: number;
-      readonly firstBrokenId: string | null;
+      readonly kind: "result";
+      readonly global: ChainOutcome;
+      readonly tenant: {
+        readonly organizationId: string;
+        readonly outcome: ChainOutcome;
+      } | null;
       readonly checkedAt: string;
     }
   | { readonly kind: "error"; readonly detail: string };
@@ -38,52 +41,42 @@ function resolveAuditVerifyState(
   result: AuditVerifyResult,
   checkedAt: string,
 ): AuditVerifyState {
-  if (!result.verified) {
-    return {
-      kind: "broken",
-      checkedCount: result.checkedCount,
-      firstBrokenId: result.firstBrokenId,
-      checkedAt,
-    };
-  }
+  const tenant =
+    result.tenant === undefined
+      ? null
+      : {
+          organizationId: result.tenant.organizationId,
+          outcome: resolveChainOutcome(result.tenant),
+        };
+
   return {
-    kind: "verified",
-    checkedCount: result.checkedCount,
+    kind: "result",
+    global: resolveChainOutcome(result),
+    tenant,
     checkedAt,
   };
 }
 
-function VerifiedOutcome({
+function VerificationResult({
   state,
 }: {
-  readonly state: Extract<AuditVerifyState, { kind: "verified" }>;
+  readonly state: Extract<AuditVerifyState, { kind: "result" }>;
 }) {
   return (
-    <div className="space-y-0.5">
-      <p className="text-sm font-semibold text-success">Verified</p>
-      <p className="text-xs text-text-secondary">
-        {state.checkedCount} events checked. Checked at{" "}
-        {formatDateTime(state.checkedAt)}.
-      </p>
-    </div>
-  );
-}
-
-function BrokenOutcome({
-  state,
-}: {
-  readonly state: Extract<AuditVerifyState, { kind: "broken" }>;
-}) {
-  return (
-    <div className="space-y-0.5">
-      <p className="text-sm font-semibold text-danger">Broken chain</p>
-      <p className="text-xs text-text-secondary">
-        {state.checkedCount} events checked. First broken record:{" "}
-        <span className="font-mono text-danger">
-          {state.firstBrokenId ?? "not reported by the verifier"}
-        </span>
-        . Checked at {formatDateTime(state.checkedAt)}.
-      </p>
+    <div className="space-y-3">
+      <ChainOutcomeBlock
+        title="Global chain"
+        outcome={state.global}
+        checkedAt={state.checkedAt}
+      />
+      {state.tenant === null ? null : (
+        <ChainOutcomeBlock
+          title="Tenant chain"
+          detail={`Scope: ${state.tenant.organizationId}`}
+          outcome={state.tenant.outcome}
+          checkedAt={state.checkedAt}
+        />
+      )}
     </div>
   );
 }
@@ -98,10 +91,8 @@ function VerifyOutcome({ state }: { readonly state: AuditVerifyState }) {
       );
     case "loading":
       return <p className="text-xs text-text-secondary">Verifying the chain...</p>;
-    case "verified":
-      return <VerifiedOutcome state={state} />;
-    case "broken":
-      return <BrokenOutcome state={state} />;
+    case "result":
+      return <VerificationResult state={state} />;
     case "error":
       return (
         <Alert
@@ -113,14 +104,18 @@ function VerifyOutcome({ state }: { readonly state: AuditVerifyState }) {
   }
 }
 
-export function ChainVerifyPanel() {
+export function ChainVerifyPanel({
+  organizationId,
+}: {
+  readonly organizationId?: string;
+}) {
   const [state, setState] = useState<AuditVerifyState>({ kind: "idle" });
   const isVerifying = state.kind === "loading";
 
   async function verify(): Promise<void> {
     setState({ kind: "loading" });
     try {
-      const result = await verifyAuditChain();
+      const result = await verifyAuditChain(organizationId);
       setState(resolveAuditVerifyState(result, new Date().toISOString()));
     } catch (cause) {
       setState({ kind: "error", detail: toMessage(cause) });
@@ -134,9 +129,11 @@ export function ChainVerifyPanel() {
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-sm text-text-secondary">
-          Recompute the tamper-evident audit chain on the server. The chain is
-          global: a per-tenant walk cannot validate cross-tenant links, so every
-          check covers all tenants.
+          Recompute the tamper-evident audit chain on the server. The global
+          scope always walks the complete chain. When an organization filter is
+          applied, the response also reports that tenant&apos;s rows: each row
+          is checked against its actual global predecessor, so a break in
+          another tenant&apos;s row is not attributed to this tenant.
         </p>
         <div className="flex flex-wrap items-center gap-3">
           <Button

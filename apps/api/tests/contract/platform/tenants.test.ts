@@ -40,7 +40,7 @@ const TENANT_ITEM_KEYS = [
   "status",
 ];
 
-const PROFILE_KEYS = ["createdAt", "id", "name", "slug", "status"];
+const PROFILE_KEYS = ["createdAt", "id", "name", "slug", "status", "timezone"];
 const COUNT_KEYS = ["asOf", "branches", "members"];
 const QUOTA_RECORD_KEYS = [
   "asOf",
@@ -91,6 +91,7 @@ interface RecordBody {
       name: string;
       slug: string;
       status: string;
+      timezone: string;
       createdAt: string;
     };
     counts: { branches: number; members: number; asOf: string };
@@ -285,6 +286,7 @@ describe.skipIf(!enabled)("Platform tenant contract", () => {
     expect(body.data.profile.name).toBe(tenantName);
     expect(body.data.profile.slug).toBe(tenantSlug);
     expect(ORG_STATUSES).toContain(body.data.profile.status);
+    expect(body.data.profile.timezone).toBe("UTC");
     expect(isIsoTimestamp(body.data.profile.createdAt)).toBe(true);
 
     expect(Object.keys(body.data.counts).sort()).toEqual(COUNT_KEYS);

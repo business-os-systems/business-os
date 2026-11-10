@@ -25,9 +25,12 @@ import {
   type TenantLifecycleResult,
 } from "../../services/admin/lifecycle.service.js";
 import { problemDetailsSchema } from "@suite/core";
-import { envelope, errorResponses } from "./openapi-shared.js";
+import { envelope, errorResponses, stepUpHeaderSchema } from "./openapi-shared.js";
 import { controlPlaneOriginGuard } from "../../middleware/control-plane-origin.js";
-import { createLazyDefaultCapabilityGuard } from "./platform-route-shared.js";
+import {
+  createLazyDefaultCapabilityGuard,
+  readStepUpToken,
+} from "./platform-route-shared.js";
 
 const PLATFORM_LIFECYCLE = PLATFORM_CAPABILITIES.TENANTS_LIFECYCLE.code;
 
@@ -70,19 +73,19 @@ const LIFECYCLE_ROUTE_DEFINITIONS: Record<
   SUSPEND: {
     summary: "Suspend a tenant",
     description:
-      "Blocks tenant sign-in and every tenant request within sixty seconds. Requires the status the operator observed; a stale status is a conflict, never an overwrite.",
+      "Blocks tenant sign-in and every tenant request within sixty seconds. Requires a fresh single-use x-step-up-token and the status the operator observed; a stale status is a conflict, never an overwrite.",
     bodySchema: lifecycleBodySchema,
   },
   RESTORE: {
     summary: "Restore a suspended tenant",
     description:
-      "Returns the tenant to the status recorded before the suspension and notifies its administrators.",
+      "Returns the tenant to the status recorded before the suspension and notifies its administrators. Requires a fresh single-use x-step-up-token.",
     bodySchema: lifecycleBodySchema,
   },
   ARCHIVE: {
     summary: "Archive a tenant",
     description:
-      "Makes tenant data inaccessible to the tenant while retaining it. The operator must retype the tenant slug.",
+      "Makes tenant data inaccessible to the tenant while retaining it. Requires a fresh single-use x-step-up-token and retyping the tenant slug.",
     bodySchema: archiveBodySchema,
   },
 };
@@ -114,6 +117,7 @@ interface LifecycleChangeRequest {
   readonly body: LifecycleBody;
   readonly operatorId: string;
   readonly requestId: string;
+  readonly stepUpToken: string | null;
 }
 
 async function executeLifecycleChange(
@@ -126,6 +130,7 @@ async function executeLifecycleChange(
     reason: request.body.reason,
     operatorId: request.operatorId,
     requestId: request.requestId,
+    stepUpToken: request.stepUpToken,
     ...(request.body.confirmSlug === undefined
       ? {}
       : { confirmationSlug: request.body.confirmSlug }),
@@ -135,6 +140,7 @@ async function executeLifecycleChange(
 function lifecycleRequest(bodySchema: typeof lifecycleBodySchema | typeof archiveBodySchema) {
   return {
     params: tenantParamsSchema,
+    headers: stepUpHeaderSchema,
     body: {
       required: true as const,
       content: {
@@ -223,6 +229,7 @@ tenantLifecycleRouter.openapi(suspendRoute, async (c) => {
     body: c.req.valid("json"),
     operatorId: operatorId(c),
     requestId: requestId(c),
+    stepUpToken: readStepUpToken(c),
   });
   return c.json(
     createSuccessResponseBody({ data, requestId: requestId(c) }),
@@ -238,6 +245,7 @@ tenantLifecycleRouter.openapi(restoreRoute, async (c) => {
     body: c.req.valid("json"),
     operatorId: operatorId(c),
     requestId: requestId(c),
+    stepUpToken: readStepUpToken(c),
   });
   return c.json(
     createSuccessResponseBody({ data, requestId: requestId(c) }),
@@ -253,6 +261,7 @@ tenantLifecycleRouter.openapi(archiveRoute, async (c) => {
     body: c.req.valid("json"),
     operatorId: operatorId(c),
     requestId: requestId(c),
+    stepUpToken: readStepUpToken(c),
   });
   return c.json(
     createSuccessResponseBody({ data, requestId: requestId(c) }),

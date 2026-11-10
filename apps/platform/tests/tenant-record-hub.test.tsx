@@ -65,6 +65,7 @@ const RECORD: TenantRecord = {
     name: "River View",
     slug: "river-view",
     status: "ACTIVE",
+    timezone: "Asia/Kolkata",
     createdAt: "2026-01-01T00:00:00.000Z",
   },
   counts: { asOf: "2026-01-01T00:00:00.000Z", branches: 1, members: 2 },

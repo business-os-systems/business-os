@@ -20,22 +20,52 @@ export const CATALOG_KEYS = [
 
 export type CatalogKey = (typeof CATALOG_KEYS)[number];
 
-export type CatalogCodeFormat =
+export type StandardCatalogCodeFormat =
   | "iso4217"
   | "iso3166"
   | "bcp47"
   | "iana_timezone"
-  | "date_format"
-  | "time_format"
   | "slug";
 
-export interface CatalogDefinition {
+/**
+ * Pattern catalogs are validated against a declared standard, never a list of
+ * enumerated values. The standard names the allowed field symbols and the
+ * minimum number of fields, so a new format made of those symbols is accepted
+ * without a code change (FR-101, FR-107).
+ */
+export interface CatalogPatternStandard {
+  readonly standard: "unicode-ldml";
+  readonly fieldLetters: string;
+  readonly minimumFields: number;
+}
+
+interface BaseCatalogDefinition {
   readonly key: CatalogKey;
   readonly label: string;
   readonly description: string;
-  readonly format: CatalogCodeFormat;
   readonly isSystem: boolean;
 }
+
+export interface StandardCatalogDefinition extends BaseCatalogDefinition {
+  readonly format: StandardCatalogCodeFormat;
+}
+
+export interface PatternCatalogDefinition extends BaseCatalogDefinition {
+  readonly format: "pattern";
+  readonly pattern: CatalogPatternStandard;
+}
+
+export type CatalogDefinition =
+  | StandardCatalogDefinition
+  | PatternCatalogDefinition;
+
+export type CatalogCodeFormat =
+  | StandardCatalogCodeFormat
+  | PatternCatalogDefinition["format"];
+
+/** Field symbols declared by Unicode LDML date/time patterns (TR35). */
+const UNICODE_LDML_FIELD_LETTERS =
+  "GyYuUrQqMLwWdDFgEecabBhHKkmsSAzZOvVxX";
 
 export const CATALOG_DEFINITIONS = {
   currency: {
@@ -69,15 +99,25 @@ export const CATALOG_DEFINITIONS = {
   date_format: {
     key: "date_format",
     label: "Date formats",
-    description: "Supported date presentation formats.",
-    format: "date_format",
+    description: "Date presentation patterns declared against Unicode LDML.",
+    format: "pattern",
+    pattern: {
+      standard: "unicode-ldml",
+      fieldLetters: UNICODE_LDML_FIELD_LETTERS,
+      minimumFields: 3,
+    },
     isSystem: true,
   },
   time_format: {
     key: "time_format",
     label: "Time formats",
-    description: "12-hour or 24-hour clock preference.",
-    format: "time_format",
+    description: "Time presentation patterns declared against Unicode LDML.",
+    format: "pattern",
+    pattern: {
+      standard: "unicode-ldml",
+      fieldLetters: UNICODE_LDML_FIELD_LETTERS,
+      minimumFields: 1,
+    },
     isSystem: true,
   },
   tax_system: {

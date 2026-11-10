@@ -1,5 +1,5 @@
 import type { MiddlewareHandler } from "hono";
-import { PLATFORM_ERROR_CODE } from "@suite/core";
+import { PLATFORM_ERROR_CODE, STEP_UP_TOKEN_HEADER } from "@suite/core";
 import { UnauthorizedError } from "@suite/core/errors";
 import {
   createPlatformCapabilityGuard,
@@ -41,6 +41,18 @@ export function readRequestId(c: {
 }): string {
   const value = c.get("requestId");
   return typeof value === "string" ? value : "unknown";
+}
+
+/**
+ * The raw x-step-up-token header, or null when absent. The header stays
+ * optional in the OpenAPI contract so the service answers with the registry
+ * code STEP_UP_REQUIRED instead of a generic schema failure.
+ */
+export function readStepUpToken(c: {
+  req: { header: (name: string) => string | undefined };
+}): string | null {
+  const value = c.req.header(STEP_UP_TOKEN_HEADER)?.trim();
+  return value === undefined || value === "" ? null : value;
 }
 
 /** The authenticated operator plus the request correlation id. */

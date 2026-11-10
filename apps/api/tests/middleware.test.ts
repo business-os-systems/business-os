@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { OpenAPIHono } from "@hono/zod-openapi";
-import { PII_REASON_HEADER, type ProblemDetails } from "@suite/core";
+import {
+  PII_REASON_HEADER,
+  STEP_UP_TOKEN_HEADER,
+  type ProblemDetails,
+} from "@suite/core";
 import { IDEMPOTENCY_HEADER } from "@suite/redis";
 import { requestIdMiddleware } from "../src/middleware/request-id.js";
 import { securityHeadersMiddleware } from "../src/middleware/security-headers.js";
@@ -90,6 +94,7 @@ describe("Middleware Suite", () => {
       expect(res.headers.get("Access-Control-Allow-Headers")).toBe(CORS_ALLOWED_HEADERS);
       expect(CORS_ALLOWED_HEADERS).toContain(IDEMPOTENCY_HEADER);
       expect(CORS_ALLOWED_HEADERS).toContain(PII_REASON_HEADER);
+      expect(CORS_ALLOWED_HEADERS).toContain(STEP_UP_TOKEN_HEADER);
     });
 
     it("rejects unauthorized origin on OPTIONS preflight with 403", async () => {
