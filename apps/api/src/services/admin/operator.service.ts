@@ -27,6 +27,7 @@ import {
 } from "@suite/auth/platform";
 import type { RegistrationResponseJSON } from "@simplewebauthn/server";
 import { decodeIdCursor, pageSlice } from "../../lib/id-cursor.js";
+import { isUniqueConstraintViolation } from "./prisma-errors.js";
 import {
   assertAnotherOperatorManager,
   lockOperatorGovernance,
@@ -132,23 +133,8 @@ function validateCapabilities(
   return [...new Set(valid)];
 }
 
-const PRISMA_UNIQUE_VIOLATION = "P2002";
-
 function isEmailUniqueViolation(error: unknown): boolean {
-  if (
-    !(error instanceof Prisma.PrismaClientKnownRequestError) ||
-    error.code !== PRISMA_UNIQUE_VIOLATION
-  ) {
-    return false;
-  }
-  const target = error.meta?.target;
-  if (typeof target === "string") {
-    return target.includes("email");
-  }
-  if (Array.isArray(target)) {
-    return target.some((field) => field === "email");
-  }
-  return false;
+  return isUniqueConstraintViolation(error, "email");
 }
 
 function validateInvitationTtl(hours: number): number {

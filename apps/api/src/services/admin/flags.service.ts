@@ -15,6 +15,7 @@ import {
   appendPlatformAuditEvent,
   toJsonInput,
 } from "@suite/auth/platform";
+import { isUniqueConstraintViolation } from "./prisma-errors.js";
 import {
   FLAG_ENVIRONMENTS,
   RULE_TYPES,
@@ -260,10 +261,7 @@ async function invalidateFlagCacheAfterCommit(
 }
 
 function mapWriteError(error: unknown): unknown {
-  if (
-    error instanceof Prisma.PrismaClientKnownRequestError &&
-    error.code === "P2002"
-  ) {
+  if (isUniqueConstraintViolation(error)) {
     return new ConflictError(
       "A flag with this key already exists in this environment.",
       { code: PLATFORM_ERROR_CODE.FLAG_EXISTS }
