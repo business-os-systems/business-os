@@ -133,6 +133,7 @@ export function validateCatalogCode(
             "Values must be 2 to 64 lower-case letters, digits or underscores."
           );
     default: {
+      /* c8 ignore next 3 -- exhaustive guard: a new rule type fails typecheck */
       const exhaustive: never = definition;
       return exhaustive;
     }

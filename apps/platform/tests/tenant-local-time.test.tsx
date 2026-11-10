@@ -55,6 +55,32 @@ describe("Tenant local time formatting", () => {
   it("renders an unknown zone as unavailable instead of throwing", () => {
     expect(formatDateTimeInZone(CREATED_AT, "Mars/Olympus")).toBe(UNAVAILABLE);
   });
+
+  it("renders an unparsable instant as unavailable", () => {
+    expect(formatDateTimeInZone("not-a-date", TENANT_TIME_ZONE)).toBe(
+      UNAVAILABLE
+    );
+  });
+
+  it("rethrows an unexpected formatter failure", () => {
+    const original = Intl.DateTimeFormat;
+    Object.defineProperty(Intl, "DateTimeFormat", {
+      configurable: true,
+      value: () => {
+        throw new TypeError("formatter failed");
+      },
+    });
+    try {
+      expect(() => formatDateTimeInZone(CREATED_AT, TENANT_TIME_ZONE)).toThrow(
+        TypeError
+      );
+    } finally {
+      Object.defineProperty(Intl, "DateTimeFormat", {
+        configurable: true,
+        value: original,
+      });
+    }
+  });
 });
 
 describe("Tenant overview local-time toggle", () => {
