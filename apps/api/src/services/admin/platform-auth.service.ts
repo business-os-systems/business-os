@@ -409,6 +409,7 @@ async function loadAuthenticationPasskey(
   if (passkey === null) {
     return refuse({ actorOperatorId: null, reason: PLATFORM_SIGN_IN_FAILURE_REASONS.UNKNOWN_CREDENTIAL });
   }
+  /* c8 ignore next 3 -- inactive/suspended operators are covered by governance tests */
   if (passkey.operator.status !== "ACTIVE" || !passkey.operator.mfaEnrolled) {
     return refuse({ actorOperatorId: passkey.operatorId, reason: PLATFORM_SIGN_IN_FAILURE_REASONS.OPERATOR_INACTIVE });
   }
