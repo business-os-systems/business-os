@@ -31,9 +31,14 @@ import {
 import {
   assertProductionConfiguration,
   getPublicApiUrl,
+  isEdgeAdmissionEnforced,
   isInternalDocsEnabled,
   isProduction,
 } from "./lib/env.js";
+import {
+  createEdgeAdmissionMiddleware,
+} from "./middleware/edge-admission.js";
+import { getEdgeAudience, getEdgeTeamDomain } from "./lib/platform-env.js";
 import { createWebsiteBuilderRoutes } from "@suite/website-builder/routes";
 import {
   PageService,
@@ -123,6 +128,17 @@ export function createApp(options: AppOptions = {}) {
       SiteService.withQuotaGuard(tenantQuotaGuard)
     )
   );
+
+  // FR-069: when enforced, the origin verifies the Cloudflare Access
+  // assertion itself; the /auth mount is covered before the admin router.
+  if (isEdgeAdmissionEnforced()) {
+    const edgeAdmission = createEdgeAdmissionMiddleware({
+      teamDomain: getEdgeTeamDomain(),
+      audience: getEdgeAudience(),
+    });
+    app.use("/api/v1/admin", edgeAdmission);
+    app.use("/api/v1/admin/*", edgeAdmission);
+  }
 
   // Platform operator auth is public/session-based, not tenant-auth.
   app.route("/api/v1/admin/auth", platformAuthRouter);

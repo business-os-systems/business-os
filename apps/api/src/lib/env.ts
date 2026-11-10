@@ -6,6 +6,15 @@
 import { isTemplateSecret } from "@suite/core";
 
 export const isProduction = process.env.NODE_ENV === "production";
+
+/**
+ * Edge admission is mandatory in production and can be switched on locally
+ * with EDGE_ADMISSION_ENFORCED=true. When enforced, the API verifies the
+ * Cloudflare Access assertion itself instead of trusting the proxy hop.
+ */
+export function isEdgeAdmissionEnforced(): boolean {
+  return isProduction || process.env.EDGE_ADMISSION_ENFORCED === "true";
+}
 export const isDevelopment = process.env.NODE_ENV === "development";
 export const isTest = process.env.NODE_ENV === "test";
 
