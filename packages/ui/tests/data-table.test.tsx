@@ -377,7 +377,7 @@ describe("shared ConfigTableRenderer action presentation", () => {
         {
           id: "delete",
           label: "Delete Role",
-          tooltip: "Delete the role",
+          tooltip: (row) => `Delete ${row.name}`,
           iconOnly: true,
           renderIcon: () => <span data-testid="action-icon" />,
           onClick: vi.fn(),
@@ -387,9 +387,38 @@ describe("shared ConfigTableRenderer action presentation", () => {
     const html = renderToString(
       <ConfigTableRenderer config={iconConfig} data={rows} rowKey={(row) => row.id} />,
     );
-    expect(html).toContain('title="Delete the role"');
+    expect(html).toContain('title="Delete Flagship Riverside Cafe"');
     expect(html).toContain('aria-label="Delete Role"');
     expect(html).toContain("data-testid=\"action-icon\"");
+  });
+
+  it("logs a failed action when no error handler is provided", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const failing: TableConfig<BranchRow> = {
+      ...config,
+      actions: [
+        {
+          id: "edit",
+          label: "Edit",
+          onClick: () => Promise.reject(new Error("boom")),
+        },
+      ],
+    };
+    const { container, root } = mount(
+      <ConfigTableRenderer
+        config={failing}
+        data={rows}
+        rowKey={(row) => row.id}
+      />,
+    );
+    act(() => field(container, "Edit").click());
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(spy).toHaveBeenCalled();
+    spy.mockRestore();
+    act(() => root.unmount());
+    container.remove();
   });
 
   it("routes a failed action to onActionError", async () => {
