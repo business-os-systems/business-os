@@ -1,7 +1,6 @@
 import { Prisma, type PrismaClient } from "@suite/db";
 import {
   PLATFORM_ERROR_CODE,
-  isCatalogKey,
   validateCatalogCode,
   type CatalogKey,
 } from "@suite/core";
@@ -15,6 +14,8 @@ import { appendPlatformAuditEvent, PLATFORM_AUDIT_ACTIONS } from "@suite/auth/pl
 import type { CatalogValue as CatalogValueRow } from "@suite/db";
 import { logger } from "@suite/logger";
 import { catalogCacheKey, type CatalogCache } from "@suite/redis";
+import { assertCatalogKey } from "../catalog-key.js";
+import { isUniqueConstraintViolation } from "./prisma-errors.js";
 import {
   catalogMetadataSchema,
   type CatalogList,
@@ -68,15 +69,6 @@ function toSnapshot(row: CatalogValueRow): CatalogValueSnapshot {
   };
 }
 
-function assertCatalogKey(value: string): CatalogKey {
-  if (!isCatalogKey(value)) {
-    throw new NotFoundError(`Unknown reference catalog: ${value}.`, {
-      code: PLATFORM_ERROR_CODE.UNKNOWN_CATALOG,
-    });
-  }
-  return value;
-}
-
 function normalizeCode(key: CatalogKey, code: string): string {
   const result = validateCatalogCode(key, code);
   if (!result.valid) {
@@ -90,7 +82,7 @@ function normalizeCode(key: CatalogKey, code: string): string {
 }
 
 function isDuplicateCodeError(error: unknown): boolean {
-  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
+  return isUniqueConstraintViolation(error);
 }
 
 async function assertCatalogExists(tx: Prisma.TransactionClient, key: CatalogKey): Promise<void> {

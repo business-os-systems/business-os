@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { PrismaClient } from "@suite/db";
-import { PLATFORM_ERROR_CODE, isCatalogKey, type CatalogKey } from "@suite/core";
+import { PLATFORM_ERROR_CODE, type CatalogKey } from "@suite/core";
 import { NotFoundError } from "@suite/core/errors";
 import { logger } from "@suite/logger";
 import {
@@ -8,6 +8,7 @@ import {
   type CatalogCache,
   type CatalogCacheKey,
 } from "@suite/redis";
+import { assertCatalogKey } from "../catalog-key.js";
 import { getCatalogCacheTtlSeconds } from "../../lib/platform-env.js";
 import {
   catalogMetadataSchema,
@@ -99,15 +100,6 @@ function toReferenceCatalog(row: CatalogRow): ReferenceCatalog {
 function buildEtag(payload: unknown): string {
   const canonical = JSON.stringify(payload);
   return `"${createHash("sha256").update(canonical).digest("hex")}"`;
-}
-
-function assertCatalogKey(value: string): CatalogKey {
-  if (!isCatalogKey(value)) {
-    throw new NotFoundError(`Unknown reference catalog: ${value}.`, {
-      code: PLATFORM_ERROR_CODE.UNKNOWN_CATALOG,
-    });
-  }
-  return value;
 }
 
 async function loadCatalogRows(
