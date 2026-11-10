@@ -69,6 +69,12 @@ async function renderPage(): Promise<void> {
   });
 }
 
+function requestUrl(input: Parameters<typeof fetch>[0]): string {
+  if (typeof input === "string") return input;
+  if (input instanceof URL) return input.href;
+  return input.url;
+}
+
 function cards(): HTMLElement[] {
   return Array.from(container.querySelectorAll(".cursor-pointer"));
 }
@@ -109,15 +115,10 @@ describe("onboarding step 2 picker", () => {
     expect(container.textContent).toContain("1 applications selected");
 
     await submit();
-    const post = fetchMock.mock.calls.find(([input, init]) => {
-      const url =
-        typeof input === "string"
-          ? input
-          : input instanceof URL
-            ? input.href
-            : input.url;
-      return url.includes("/step-2") && init?.method === "POST";
-    });
+    const post = fetchMock.mock.calls.find(
+      ([input, init]) =>
+        requestUrl(input).includes("/step-2") && init?.method === "POST",
+    );
     expect(post).toBeDefined();
     expect(push).toHaveBeenCalledWith("/onboarding/step-3");
   });
