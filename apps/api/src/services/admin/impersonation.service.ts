@@ -16,6 +16,7 @@ import {
   getImpersonationMaxMinutes,
 } from "../../lib/platform-env.js";
 import { signImpersonationTicket } from "./impersonation-ticket.js";
+import { assertFreshStepUp } from "./step-up-guard.service.js";
 import { readTenantOverview } from "./tenant-view.service.js";
 
 /** FR-047: a support session can never outlive thirty minutes. */
@@ -35,6 +36,8 @@ export interface StartImpersonationInput {
   readonly targetUserId?: string;
   readonly operatorId: string;
   readonly requestId: string;
+  /** Single-use confirmation token; the transaction consumes it before writes. */
+  readonly stepUpToken: string | null;
   /** Resolved from the trusted-proxy chain; null when no address is known. */
   readonly ip: string | null;
   /** Diagnostic only, already bounded by the route. */
@@ -266,6 +269,10 @@ export async function startImpersonation(
   const secret = getControlSessionSecret();
 
   return prisma.$transaction(async (tx) => {
+    await assertFreshStepUp({
+      operatorId: input.operatorId,
+      token: input.stepUpToken,
+    });
     await lockOperatorSupportSessions(tx, input.operatorId);
     await assertTenantCanSupportSession(tx, input.organizationId);
     await assertNoActiveSupportSession(tx, input.operatorId, now);

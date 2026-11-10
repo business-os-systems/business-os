@@ -32,6 +32,7 @@ import {
   assertAnotherOperatorManager,
   lockOperatorGovernance,
 } from "./operator-guard.js";
+import { assertFreshStepUp } from "./step-up-guard.service.js";
 import {
   finishRegistration,
   startRegistration,
@@ -570,6 +571,10 @@ async function changeOperatorCapabilities(
   const { prisma, redis, ...input } = context;
   const change = assertCapabilityChange(input.grant, input.revoke);
   const capabilities = await prisma.$transaction(async (tx) => {
+    await assertFreshStepUp({
+      operatorId: input.actor.operatorId,
+      token: input.stepUpToken,
+    });
     await lockOperatorGovernance(tx);
     const target = await tx.platformOperator.findUnique({
       where: { id: input.operatorId },

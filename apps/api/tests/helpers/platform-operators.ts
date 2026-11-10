@@ -1,12 +1,14 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import type { PrismaClient } from "@suite/db";
-import { problemDetailsSchema } from "@suite/core";
+import { STEP_UP_TOKEN_HEADER, problemDetailsSchema } from "@suite/core";
 import {
   CONTROL_SESSION_COOKIE_NAME,
   hashOperatorInvitationToken,
   issueControlSession,
+  issueStepUpToken,
+  verifyControlSession,
 } from "@suite/auth/platform";
-import { IDEMPOTENCY_HEADER } from "@suite/redis";
+import { IDEMPOTENCY_HEADER, redis } from "@suite/redis";
 import type { z } from "zod";
 import {
   createPlatformOwnerTestClient,
@@ -44,6 +46,11 @@ export interface SendRequestInput {
   readonly body?: unknown;
   /** Fixed key for a deliberate replay; otherwise every mutation gets a fresh one. */
   readonly idempotencyKey?: string;
+  /**
+   * Explicit step-up token for a denial test. Omitted means a fresh valid token
+   * is issued for the session operator; null sends the header absent.
+   */
+  readonly stepUpToken?: string | null;
 }
 
 export interface InvitationFixture {
@@ -207,7 +214,50 @@ export async function createOperatorFixture(
   };
 }
 
-export function sendOperatorRequest(
+let sessionLookupClient: PrismaClient | null = null;
+
+function sessionLookup(): PrismaClient {
+  sessionLookupClient ??= createPlatformTestClient();
+  return sessionLookupClient;
+}
+
+async function operatorIdFromSessionToken(
+  sessionToken: string
+): Promise<string | null> {
+  const secret = process.env.CONTROL_SESSION_SECRET;
+  if (secret === undefined || secret.trim() === "") {
+    return null;
+  }
+  const verified = await verifyControlSession({
+    prisma: sessionLookup(),
+    secret,
+    token: sessionToken,
+  });
+  return verified.valid ? verified.operatorId : null;
+}
+
+/**
+ * A fresh single-use step-up token for the operator a control session belongs
+ * to. Suites that drive a route directly use this instead of duplicating the
+ * fixture wiring; the nonce still expires and is consumed by the route.
+ */
+export async function issueStepUpTokenForSessionToken(
+  sessionToken: string
+): Promise<string | null> {
+  const operatorId = await operatorIdFromSessionToken(sessionToken);
+  const secret = process.env.CONTROL_SESSION_SECRET;
+  if (operatorId === null || secret === undefined) {
+    return null;
+  }
+  const issued = await issueStepUpToken({
+    operatorId,
+    secret,
+    redis,
+  });
+  return issued.token;
+}
+
+export async function sendOperatorRequest(
   router: RequestableRouter,
   input: SendRequestInput
 ): Promise<Response> {
@@ -224,13 +274,18 @@ export function sendOperatorRequest(
   if (input.method !== "GET") {
     headers[IDEMPOTENCY_HEADER] = input.idempotencyKey ?? randomUUID();
   }
-  return Promise.resolve(
-    router.request(input.path, {
-      method: input.method,
-      headers,
-      ...(input.body === undefined ? {} : { body: JSON.stringify(input.body) }),
-    })
-  );
+  const stepUpToken =
+    input.stepUpToken === undefined && input.token !== undefined
+      ? await issueStepUpTokenForSessionToken(input.token)
+      : input.stepUpToken;
+  if (stepUpToken !== null && stepUpToken !== undefined) {
+    headers[STEP_UP_TOKEN_HEADER] = stepUpToken;
+  }
+  return router.request(input.path, {
+    method: input.method,
+    headers,
+    ...(input.body === undefined ? {} : { body: JSON.stringify(input.body) }),
+  });
 }
 
 export async function parseProblem(

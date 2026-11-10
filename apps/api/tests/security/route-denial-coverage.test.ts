@@ -104,6 +104,7 @@ const DENIAL_COVERAGE: Readonly<Record<string, string>> = {
   "POST /auth/sign-in/verify": AUTH_ROUTES,
   "GET /auth/me": AUTH_ROUTES,
   "POST /auth/logout": AUTH_ROUTES,
+  "POST /auth/step-up/verify": "tests/integration/platform/step-up.test.ts",
   "GET /catalogs": CATALOGS,
   "POST /catalogs/{category}/values": CATALOGS,
   "PATCH /catalogs/{category}/values/{code}":

@@ -17,10 +17,16 @@ import {
   listActiveForOperator,
   startImpersonation,
 } from "../../services/admin/impersonation.service.js";
-import { envelope, errorResponses, platformValidationHook } from "./openapi-shared.js";
+import {
+  envelope,
+  errorResponses,
+  platformValidationHook,
+  stepUpHeaderSchema,
+} from "./openapi-shared.js";
 import {
   createLazyDefaultCapabilityGuard,
   readActor,
+  readStepUpToken,
 } from "./platform-route-shared.js";
 
 const PLATFORM_IMPERSONATE = PLATFORM_CAPABILITIES.IMPERSONATE.code;
@@ -90,8 +96,9 @@ const startRoute = createRoute({
   tags: [IMPERSONATION_TAG],
   summary: "Start a read-only support session",
   description:
-    "Starts a time-boxed, read-only support session with a recorded reason and ticket reference. The session expires within thirty minutes and the response carries the signed ticket the tenant plane verifies (FR-045..FR-047, FR-050, SC-017). A second active session for the same operator is refused. Strong identity confirmation (FR-046) is deliberately not enforced yet: no step-up issuance route exists, so it stays tracked by T158; Idempotency-Key replay is tracked by T161/CT-4.",
+    "Starts a time-boxed, read-only support session with a recorded reason and ticket reference. The session expires within thirty minutes and the response carries the signed ticket the tenant plane verifies (FR-045..FR-047, FR-050, SC-017). Starting requires a fresh single-use x-step-up-token and refuses a second active session for the same operator. Idempotency-Key replay is tracked by T161/CT-4.",
   request: {
+    headers: stepUpHeaderSchema,
     body: {
       required: true,
       content: { "application/json": { schema: startBodySchema } },
@@ -222,6 +229,7 @@ platformImpersonationRouter.openapi(
         : { targetUserId: body.targetUserId }),
       operatorId,
       requestId: context.requestId,
+      stepUpToken: readStepUpToken(c),
       ip: context.ip,
       userAgent: context.userAgent,
     });

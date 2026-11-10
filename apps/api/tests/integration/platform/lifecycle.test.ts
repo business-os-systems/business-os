@@ -2,7 +2,11 @@ import { Hono } from "hono";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { PrismaClient } from "@suite/db";
 import type { Redis } from "@suite/redis";
-import { PLATFORM_CAPABILITIES, PLATFORM_ERROR_CODE } from "@suite/core";
+import {
+  PLATFORM_CAPABILITIES,
+  PLATFORM_ERROR_CODE,
+  STEP_UP_TOKEN_HEADER,
+} from "@suite/core";
 import {
   CONTROL_SESSION_COOKIE_NAME,
   issueControlSession,
@@ -14,6 +18,7 @@ import { clearRateLimitStore } from "../../../src/middleware/rate-limit.js";
 import { createTenantAccessGuard } from "../../../src/middleware/tenant-access.js";
 import { TENANT_ACCESS_CACHE_TTL_SECONDS } from "../../../src/services/admin/tenant-access.service.js";
 import { loadPlatformTestEnv } from "../../helpers/platform-env.js";
+import { issueStepUpTokenForSessionToken } from "../../helpers/platform-operators.js";
 import {
   createPlatformOwnerTestClient,
   createPlatformTestClient,
@@ -114,25 +119,27 @@ describe.skipIf(!enabled)("Platform tenant lifecycle routes", () => {
     return origin;
   }
 
-  function post(
+  async function post(
     path: string,
     token: string,
     body: Record<string, unknown>,
     idempotencyKey = `lifecycle-${suffix}-${++keyCounter}`
   ): Promise<Response> {
-    return Promise.resolve(
-      tenantLifecycleRouter.request(path, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Cookie: `${CONTROL_SESSION_COOKIE_NAME}=${token}`,
-          "Idempotency-Key": idempotencyKey,
-          Origin: requireLifecycleOrigin(),
-          "X-Forwarded-For": "198.51.100.11",
-        },
-        body: JSON.stringify(body),
-      })
-    );
+    const stepUpToken = await issueStepUpTokenForSessionToken(token);
+    return tenantLifecycleRouter.request(path, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Cookie: `${CONTROL_SESSION_COOKIE_NAME}=${token}`,
+        "Idempotency-Key": idempotencyKey,
+        Origin: requireLifecycleOrigin(),
+        "X-Forwarded-For": "198.51.100.11",
+        ...(stepUpToken === null
+          ? {}
+          : { [STEP_UP_TOKEN_HEADER]: stepUpToken }),
+      },
+      body: JSON.stringify(body),
+    });
   }
 
   beforeAll(async () => {

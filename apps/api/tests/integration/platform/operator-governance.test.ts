@@ -3,6 +3,7 @@ import type { PrismaClient } from "@suite/db";
 import {
   PLATFORM_CAPABILITIES,
   PLATFORM_ERROR_CODE,
+  STEP_UP_TOKEN_HEADER,
   problemDetailsSchema,
 } from "@suite/core";
 import {
@@ -37,6 +38,7 @@ import {
   disconnectPlatformTestClient,
   platformIntegrationTestsEnabled,
 } from "../../helpers/platform-db.js";
+import { issueStepUpTokenForSessionToken } from "../../helpers/platform-operators.js";
 
 loadPlatformTestEnv();
 
@@ -97,7 +99,7 @@ async function createActiveOperator(
   return { id: operator.id, token: issued.token };
 }
 
-function send(input: {
+async function send(input: {
   readonly method: string;
   readonly path: string;
   readonly token?: string;
@@ -118,13 +120,17 @@ function send(input: {
   if (input.idempotencyKey !== undefined) {
     headers[IDEMPOTENCY_HEADER] = input.idempotencyKey;
   }
-  return Promise.resolve(
-    platformOperatorsRouter.request(input.path, {
-      method: input.method,
-      headers,
-      ...(input.body === undefined ? {} : { body: JSON.stringify(input.body) }),
-    })
-  );
+  if (input.method !== "GET" && input.token !== undefined) {
+    const stepUpToken = await issueStepUpTokenForSessionToken(input.token);
+    if (stepUpToken !== null) {
+      headers[STEP_UP_TOKEN_HEADER] = stepUpToken;
+    }
+  }
+  return platformOperatorsRouter.request(input.path, {
+    method: input.method,
+    headers,
+    ...(input.body === undefined ? {} : { body: JSON.stringify(input.body) }),
+  });
 }
 
 async function problem(response: Response) {

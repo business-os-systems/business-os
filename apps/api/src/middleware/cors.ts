@@ -3,6 +3,7 @@ import { AUTH_ERROR_CODES } from "@suite/auth";
 import {
   FORM_IDEMPOTENCY_HEADER,
   PII_REASON_HEADER,
+  STEP_UP_TOKEN_HEADER,
   SUPPORT_SESSION_HEADER,
 } from "@suite/core";
 import { IDEMPOTENCY_HEADER } from "@suite/redis";
@@ -23,7 +24,7 @@ export const CORS_ALLOW_CREDENTIALS_CONTEXT_KEY = "corsAllowCredentials";
  * Website Builder form ingestion sends FORM_IDEMPOTENCY_HEADER; the control
  * plane sends IDEMPOTENCY_HEADER. They are different contracts, not aliases.
  */
-export const CORS_ALLOWED_HEADERS = `Content-Type, Authorization, x-request-id, x-trace-id, x-correlation-id, x-organization-id, x-branch-id, ${FORM_IDEMPOTENCY_HEADER}, ${IDEMPOTENCY_HEADER}, ${PII_REASON_HEADER}, ${SUPPORT_SESSION_HEADER}, x-api-key`;
+export const CORS_ALLOWED_HEADERS = `Content-Type, Authorization, x-request-id, x-trace-id, x-correlation-id, x-organization-id, x-branch-id, ${FORM_IDEMPOTENCY_HEADER}, ${IDEMPOTENCY_HEADER}, ${PII_REASON_HEADER}, ${SUPPORT_SESSION_HEADER}, ${STEP_UP_TOKEN_HEADER}, x-api-key`;
 
 /**
  * Parses allowed origins from explicit options or the pre-declared environment variable.

@@ -16,6 +16,7 @@ import { logger } from "@suite/logger";
 import { catalogCacheKey, type CatalogCache } from "@suite/redis";
 import { assertCatalogKey } from "../catalog-key.js";
 import { isUniqueConstraintViolation } from "./prisma-errors.js";
+import { assertFreshStepUp } from "./step-up-guard.service.js";
 import {
   catalogMetadataSchema,
   type CatalogList,
@@ -37,6 +38,8 @@ export interface UpdateCatalogValueInput {
   readonly body: UpdateCatalogValueBody;
   readonly operatorId: string;
   readonly requestId: string;
+  /** Consumed only when the request retires the value (isActive=false). */
+  readonly stepUpToken: string | null;
 }
 
 interface CatalogValueSnapshot {
@@ -260,6 +263,12 @@ export async function updateCatalogValue(
   const code = normalizeCode(key, input.code);
 
   const updated = await context.prisma.$transaction(async (tx) => {
+    if (input.body.isActive === false) {
+      await assertFreshStepUp({
+        operatorId: input.operatorId,
+        token: input.stepUpToken,
+      });
+    }
     const current = await tx.catalogValue.findUnique({
       where: { catalogKey_code: { catalogKey: key, code } },
     });

@@ -149,9 +149,6 @@
     }
   },
   "apps/api/tests/contract/platform/lifecycle.test.ts": {
-    "@typescript-eslint/consistent-type-definitions": {
-      "count": 2
-    },
     "max-lines-per-function": {
       "count": 1
     }

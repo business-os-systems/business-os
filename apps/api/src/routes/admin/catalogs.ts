@@ -25,11 +25,17 @@ import {
   createCatalogValueBodySchema,
   updateCatalogValueBodySchema,
 } from "../../services/admin/catalog-admin.contract.js";
-import { envelope, errorResponses, platformValidationHook } from "./openapi-shared.js";
+import {
+  envelope,
+  errorResponses,
+  platformValidationHook,
+  stepUpHeaderSchema,
+} from "./openapi-shared.js";
 import {
   createLazyDefaultCapabilityGuard,
   readActor,
   readRequestId,
+  readStepUpToken,
 } from "./platform-route-shared.js";
 
 const PLATFORM_CATALOGS = PLATFORM_CAPABILITIES.CATALOGS_MANAGE.code;
@@ -94,9 +100,10 @@ const updateValueRoute = createRoute({
   tags: [CATALOGS_TAG],
   summary: "Relabel, reorder, edit or retire a reference value",
   description:
-    "Updates only the supplied fields. Retirement sets isActive=false and never deletes the row; the version guard rejects a stale edit with 409 CATALOG_VERSION_CONFLICT. The audit row is written in the same transaction (FR-101, FR-107, FR-114, CT-7).",
+    "Updates only the supplied fields. Retirement sets isActive=false and never deletes the row; it requires a fresh single-use x-step-up-token, which the transaction consumes before the write. The version guard rejects a stale edit with 409 CATALOG_VERSION_CONFLICT. The audit row is written in the same transaction (FR-101, FR-107, FR-114, CT-7).",
   request: {
     params: catalogValueParamsSchema,
+    headers: stepUpHeaderSchema,
     body: {
       required: true,
       content: { "application/json": { schema: updateCatalogValueBodySchema } },
@@ -186,6 +193,7 @@ platformCatalogsRouter.openapi({ ...updateValueRoute, middleware: writeMiddlewar
       body,
       operatorId: actor.operatorId,
       requestId: actor.requestId,
+      stepUpToken: readStepUpToken(c),
     },
   );
   return c.json(createSuccessResponseBody({ data, requestId: readRequestId(c) }), 200);
