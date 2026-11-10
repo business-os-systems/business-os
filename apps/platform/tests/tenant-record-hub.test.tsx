@@ -12,7 +12,10 @@ import {
   tenantRecordHref,
   visibleTenantRecordGroups,
 } from "../src/components/layout/tenant-record-nav.config";
-import { TenantRecordNav } from "../src/components/layout/tenant-record-nav";
+import {
+  TenantRecordMobileSwitcher,
+  TenantRecordNavSidebar,
+} from "../src/components/layout/tenant-record-nav";
 import { PlatformShell } from "../src/components/layout/platform-shell";
 import { TenantRecordProvider } from "../src/app/(platform)/tenants/[orgId]/tenant-record-context";
 import TenantOverviewPage from "../src/app/(platform)/tenants/[orgId]/overview/page";
@@ -151,7 +154,7 @@ describe("Hub navigation rendering", () => {
   it("renders only permitted items and marks the active route", () => {
     navState.pathname = `/tenants/${ORG_ID}/overview`;
     const html = renderToString(
-      <TenantRecordNav
+      <TenantRecordNavSidebar
         orgId={ORG_ID}
         capabilities={[PLATFORM_CAPABILITIES.TENANTS_READ.code]}
       />
@@ -169,15 +172,32 @@ describe("Hub navigation rendering", () => {
 
   it("renders grouped overlines and the compact mobile switcher", () => {
     navState.pathname = `/tenants/${ORG_ID}/danger`;
-    const html = renderToString(
-      <TenantRecordNav orgId={ORG_ID} capabilities={ALL_CAPABILITIES} />
+    const sidebar = renderToString(
+      <TenantRecordNavSidebar orgId={ORG_ID} capabilities={ALL_CAPABILITIES} />
     );
-    expect(html).toContain("Record");
-    expect(html).toContain("Risky");
-    expect(html).toContain("Danger zone");
-    expect(html).toContain(`aria-label="Tenant record section"`);
+    expect(sidebar).toContain("Record");
+    expect(sidebar).toContain("Risky");
+    expect(sidebar).toContain("Danger zone");
+    const switcher = renderToString(
+      <TenantRecordMobileSwitcher
+        orgId={ORG_ID}
+        capabilities={ALL_CAPABILITIES}
+      />
+    );
+    expect(switcher).toContain(`aria-label="Tenant record section"`);
   });
 
+  it("renders no destination without capabilities", () => {
+    const html = renderToString(
+      <TenantRecordNavSidebar orgId={ORG_ID} capabilities={[]} />
+    );
+    expect(html).not.toContain(">Overview<");
+    expect(html).not.toContain("Danger zone");
+    expect(html).toContain("All tenants");
+  });
+});
+
+describe("Hub shell layout", () => {
   it("collapses the primary rail inside the hub and expands on the collection", () => {
     authState.capabilities = [PLATFORM_CAPABILITIES.TENANTS_READ.code];
     navState.pathname = `/tenants/${ORG_ID}/overview`;
@@ -198,13 +218,31 @@ describe("Hub navigation rendering", () => {
     ).toContain("w-52");
   });
 
-  it("renders no destination without capabilities", () => {
+  it("renders the hub sidebar outside the scrolling main", () => {
+    authState.capabilities = [PLATFORM_CAPABILITIES.TENANTS_READ.code];
+    navState.pathname = `/tenants/${ORG_ID}/overview`;
     const html = renderToString(
-      <TenantRecordNav orgId={ORG_ID} capabilities={[]} />
+      <PlatformShell>
+        <p>Hub content</p>
+      </PlatformShell>
     );
-    expect(html).not.toContain(">Overview<");
-    expect(html).not.toContain("Danger zone");
-    expect(html).toContain("All tenants");
+    const navStart = html.indexOf('aria-label="Tenant record"');
+    const mainStart = html.indexOf("<main");
+    expect(navStart).toBeGreaterThan(-1);
+    expect(mainStart).toBeGreaterThan(-1);
+    expect(navStart).toBeLessThan(mainStart);
+    expect(html.slice(mainStart)).not.toContain("Tenant record");
+  });
+
+  it("renders no hub navigation outside a hub route", () => {
+    authState.capabilities = [PLATFORM_CAPABILITIES.TENANTS_READ.code];
+    navState.pathname = "/tenants";
+    const html = renderToString(
+      <PlatformShell>
+        <p>Fleet</p>
+      </PlatformShell>
+    );
+    expect(html).not.toContain('aria-label="Tenant record"');
   });
 });
 

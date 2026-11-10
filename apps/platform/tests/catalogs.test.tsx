@@ -5,6 +5,8 @@ import { createRoot, type Root } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { PLATFORM_CAPABILITIES } from "@suite/core";
 import CatalogsLayout from "../src/app/(platform)/catalogs/layout";
+import { PlatformShell } from "../src/components/layout/platform-shell";
+import { CatalogsNavSidebar } from "../src/components/layout/catalogs-nav";
 import CatalogsIndexPage from "../src/app/(platform)/catalogs/page";
 import CatalogPage from "../src/app/(platform)/catalogs/[category]/page";
 import { useCatalogsContext } from "../src/app/(platform)/catalogs/catalogs-context";
@@ -282,14 +284,34 @@ describe("Catalogs hub states", () => {
     expect(document.body.textContent).toContain(READ_PROBLEM.code);
   });
 
-  it("renders every catalog as a sidebar route and the panel for the URL", async () => {
+  it("renders every catalog as a sidebar route", () => {
+    const html = renderToString(
+      <CatalogsNavSidebar capabilities={[CATALOGS_CAPABILITY]} />,
+    );
+    expect(html).toContain(`href="${CURRENCIES_HREF}"`);
+    expect(html).toContain('href="/catalogs/country"');
+  });
+
+  it("renders the panel for the URL", async () => {
     await renderLoaded();
-    expect(
-      document.querySelector(`a[href="${CURRENCIES_HREF}"]`),
-    ).not.toBeNull();
-    expect(document.querySelector('a[href="/catalogs/country"]')).not.toBeNull();
     expect(document.body.textContent).toContain("Retired");
     expect(document.body.textContent).toContain("Active");
+  });
+
+  it("renders the hub sidebar outside the scrolling main in the shell", () => {
+    authState.capabilities = [CATALOGS_CAPABILITY];
+    navState.pathname = CURRENCIES_HREF;
+    const html = renderToString(
+      <PlatformShell>
+        <div>catalog panel</div>
+      </PlatformShell>,
+    );
+    const navStart = html.indexOf('aria-label="Reference catalogs"');
+    const mainStart = html.indexOf("<main");
+    expect(navStart).toBeGreaterThan(-1);
+    expect(mainStart).toBeGreaterThan(-1);
+    expect(navStart).toBeLessThan(mainStart);
+    expect(html.slice(mainStart)).not.toContain("Reference catalogs");
   });
 });
 

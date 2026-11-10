@@ -6,16 +6,9 @@ import { Alert, Badge, Button, Spinner } from "@suite/ui";
 import { ArrowLeftIcon } from "@suite/ui/icons";
 import { NotFoundError } from "@suite/core/errors";
 import { usePlatformAuth } from "@/components/auth/auth-provider";
-import { TenantRecordNav } from "@/components/layout/tenant-record-nav";
 import { toMessage } from "@/lib/error-message";
 import { fetchTenantRecord, type TenantRecord } from "@/lib/tenant-api";
 import { TenantRecordProvider } from "./tenant-record-context";
-
-function capabilityList(
-  session: { readonly capabilities: readonly string[] } | null | undefined
-): readonly string[] {
-  return session?.capabilities ?? [];
-}
 
 function recordForOrgId(
   record: TenantRecord | null,
@@ -110,26 +103,20 @@ export default function TenantRecordLayout({
   // Never render a record fetched for a different org while a new org loads.
   const currentRecord = recordForOrgId(record, orgId);
   return (
-    <div className="flex min-h-full flex-col gap-4 md:flex-row md:gap-6">
-      <TenantRecordNav orgId={orgId} capabilities={capabilityList(session)} />
-      <div className="min-w-0 flex-1 space-y-4">
-        {currentRecord === null ? (
-          <RecordLoadState
-            isLoading={isLoading || record !== null}
-            isMissing={isMissing}
-            message={message}
-            onRetry={() => void load()}
-            onBack={() => router.push("/tenants")}
-          />
-        ) : (
-          <TenantRecordReady
-            record={currentRecord}
-            reload={() => void load()}
-          >
-            {children}
-          </TenantRecordReady>
-        )}
-      </div>
+    <div className="space-y-4">
+      {currentRecord === null ? (
+        <RecordLoadState
+          isLoading={isLoading || record !== null}
+          isMissing={isMissing}
+          message={message}
+          onRetry={() => void load()}
+          onBack={() => router.push("/tenants")}
+        />
+      ) : (
+        <TenantRecordReady record={currentRecord} reload={() => void load()}>
+          {children}
+        </TenantRecordReady>
+      )}
     </div>
   );
 }

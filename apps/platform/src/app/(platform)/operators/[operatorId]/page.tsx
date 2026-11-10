@@ -98,7 +98,7 @@ interface OperatorRecordViewProps {
   readonly onBack: () => void;
 }
 
-function OperatorRecordView({
+export function OperatorRecordView({
   operator,
   isSelf,
   notice,
@@ -108,7 +108,7 @@ function OperatorRecordView({
 }: OperatorRecordViewProps) {
   const canEdit = canEditOperatorCapabilities(operator.status, isSelf);
   return (
-    <div className="max-w-4xl space-y-4">
+    <div className="max-w-full space-y-4">
       <OperatorRecordHeader operator={operator} onBack={onBack} />
       {notice === null ? null : (
         <Alert

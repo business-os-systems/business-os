@@ -26,7 +26,9 @@ import {
 } from "../src/components/forms/operator-status.config";
 import { OperatorStatusModal } from "../src/components/forms/operator-status-modal";
 import OperatorsPage from "../src/app/(platform)/operators/page";
-import OperatorRecordPage from "../src/app/(platform)/operators/[operatorId]/page";
+import OperatorRecordPage, {
+  OperatorRecordView,
+} from "../src/app/(platform)/operators/[operatorId]/page";
 import { OperatorCapabilitiesPanel } from "../src/app/(platform)/operators/[operatorId]/operator-capabilities-panel";
 import { OperatorSessionsPanel } from "../src/app/(platform)/operators/[operatorId]/operator-sessions-panel";
 import { PlatformShell } from "../src/components/layout/platform-shell";
@@ -206,6 +208,23 @@ describe("Operator capability gate", () => {
   it("denies both operator route components at the page guard", () => {
     expect(renderToString(<OperatorsPage />)).toContain("Capability denied");
     expect(renderToString(<OperatorRecordPage />)).toContain("Capability denied");
+  });
+});
+
+describe("Operator record view", () => {
+  it("renders at the full content width", () => {
+    const html = renderToString(
+      <OperatorRecordView
+        operator={OPERATOR}
+        isSelf={false}
+        notice={null}
+        onDismissNotice={() => undefined}
+        onApplied={() => undefined}
+        onBack={() => undefined}
+      />,
+    );
+    expect(html).toContain("max-w-full");
+    expect(html).toContain("Ops Lead");
   });
 });
 

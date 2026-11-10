@@ -11,6 +11,10 @@ import {
 } from "./navigation.config";
 import { isPlatformHubRoute } from "./hub-routes";
 import { PlatformSidebar } from "./platform-sidebar";
+import {
+  PlatformHubMobileSwitcher,
+  PlatformHubNavSidebar,
+} from "./platform-hub-nav";
 import { SupportSessionMarker } from "./support-session-marker";
 
 export function PlatformShell({ children }: { children: ReactNode }) {
@@ -64,8 +68,13 @@ export function PlatformShell({ children }: { children: ReactNode }) {
         pathname={pathnameValue}
         collapsed={isPlatformHubRoute(pathnameValue)}
       />
+      <PlatformHubNavSidebar
+        pathname={pathnameValue}
+        capabilities={session.capabilities}
+        allowed={allowed}
+      />
 
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <header className="flex h-12 w-full items-center justify-between border-b border-border bg-surface-container-lowest px-3 sm:px-5">
           <div className="flex flex-col leading-tight">
             <span className="text-xs font-semibold text-on-surface">
@@ -97,6 +106,11 @@ export function PlatformShell({ children }: { children: ReactNode }) {
             </Button>
           </div>
         </header>
+        <PlatformHubMobileSwitcher
+          pathname={pathnameValue}
+          capabilities={session.capabilities}
+          allowed={allowed}
+        />
         <SupportSessionMarker />
         <main className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4 md:p-6">
           {allowed ? (
