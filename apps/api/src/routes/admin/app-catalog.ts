@@ -2,6 +2,7 @@ import { createRoute, OpenAPIHono } from "@hono/zod-openapi";
 import type { MiddlewareHandler } from "hono";
 import {
   createSuccessResponseBody,
+  PLATFORM_APPS_READ_CAPABILITIES,
   PLATFORM_CAPABILITIES,
   RATE_LIMITS,
   problemDetailsSchema,
@@ -27,6 +28,7 @@ import {
   platformValidationHook,
 } from "./openapi-shared.js";
 import {
+  createLazyDefaultAnyCapabilityGuard,
   createLazyDefaultCapabilityGuard,
   readActor,
   readRequestId,
@@ -57,7 +59,7 @@ const listCatalogRoute = createRoute({
   tags: [CATALOG_TAG],
   summary: "List the application catalog",
   description:
-    "The compiled application registry merged with its operational overrides (availability, display order and category). installedCount counts tenant installations. A registry identifier is the only source of truth; an override for an unregistered application is never returned (FR-082, FR-085).",
+    "The compiled application registry merged with its operational overrides (availability, display order and category). installedCount counts tenant installations. A registry identifier is the only source of truth; an override for an unregistered application is never returned (FR-082, FR-085). Reads require platform:apps:read or platform:entitlements:manage; the override mutation remains platform:entitlements:manage.",
   responses: {
     200: {
       description: "Application catalog",
@@ -110,7 +112,15 @@ const catalogMutationLimiter = rateLimitMiddleware({
   methods: ["PATCH"],
 });
 
-const catalogCapabilityGuard = createLazyDefaultCapabilityGuard(() => ({
+const catalogReadCapabilityGuard = createLazyDefaultAnyCapabilityGuard(
+  () => ({
+    prisma: getPlatformPrismaClient(),
+    secret: getControlSessionSecret(),
+    capabilities: PLATFORM_APPS_READ_CAPABILITIES,
+  })
+);
+
+const catalogWriteCapabilityGuard = createLazyDefaultCapabilityGuard(() => ({
   prisma: getPlatformPrismaClient(),
   secret: getControlSessionSecret(),
   capability: PLATFORM_ENTITLEMENTS,
@@ -121,13 +131,13 @@ const mutationIdempotency = createMutationIdempotencyMiddleware();
 const readMiddleware: MiddlewareHandler[] = [
   catalogReadLimiter,
   controlPlaneOriginGuard,
-  catalogCapabilityGuard,
+  catalogReadCapabilityGuard,
 ];
 
 const writeMiddleware: MiddlewareHandler[] = [
   catalogMutationLimiter,
   controlPlaneOriginGuard,
-  catalogCapabilityGuard,
+  catalogWriteCapabilityGuard,
   mutationIdempotency,
 ];
 

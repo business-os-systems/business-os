@@ -1,4 +1,7 @@
-import { PLATFORM_CAPABILITIES } from "@suite/core";
+import {
+  PLATFORM_CAPABILITIES,
+  hasPlatformAppsReadAccess,
+} from "@suite/core";
 
 /**
  * One fail-closed platform capability predicate. Missing or empty context
@@ -12,6 +15,12 @@ export function hasPlatformCapability(
     return false;
   }
   return capabilities.includes(required);
+}
+
+export function canReadApps(
+  capabilities: readonly string[] | undefined | null,
+): boolean {
+  return hasPlatformAppsReadAccess(capabilities);
 }
 
 export function canReadTenants(

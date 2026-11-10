@@ -1,6 +1,11 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { appRecordIdFromPathname } from "./app-record-nav.config";
+import {
+  AppRecordMobileSwitcher,
+  AppRecordNavSidebar,
+} from "./app-record-nav";
 import { isCatalogsHubRoute } from "./catalogs-nav.config";
 import { CatalogsMobileSwitcher, CatalogsNavSidebar } from "./catalogs-nav";
 import { tenantRecordOrgIdFromPathname } from "./tenant-record-nav.config";
@@ -27,6 +32,10 @@ export function PlatformHubNavSidebar({
 }: PlatformHubNavProps) {
   if (!allowed) {
     return null;
+  }
+  const appId = appRecordIdFromPathname(pathname);
+  if (appId !== null) {
+    return <AppRecordNavSidebar appId={appId} capabilities={capabilities} />;
   }
   const orgId = tenantRecordOrgIdFromPathname(pathname);
   if (orgId !== null) {
@@ -56,6 +65,14 @@ export function PlatformHubMobileSwitcher({
 }: PlatformHubNavProps) {
   if (!allowed) {
     return null;
+  }
+  const appId = appRecordIdFromPathname(pathname);
+  if (appId !== null) {
+    return (
+      <HubMobileBar>
+        <AppRecordMobileSwitcher appId={appId} capabilities={capabilities} />
+      </HubMobileBar>
+    );
   }
   const orgId = tenantRecordOrgIdFromPathname(pathname);
   if (orgId !== null) {

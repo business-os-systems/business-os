@@ -9,8 +9,10 @@ import { PlatformShell } from "../src/components/layout/platform-shell";
 import { PLATFORM_NAV_ITEMS } from "../src/components/layout/navigation.config";
 import { TenantRecordProvider } from "../src/app/(platform)/tenants/[orgId]/tenant-record-context";
 import { CatalogsProvider } from "../src/app/(platform)/catalogs/catalogs-context";
+import { AppRecordProvider } from "../src/app/(platform)/apps/[appId]/app-record-context";
 import type { TenantRecord } from "../src/lib/tenant-api";
 import type { Catalog } from "../src/lib/catalogs-api";
+import type { CatalogApp } from "../src/lib/apps-api";
 import OverviewPage from "../src/app/(platform)/page";
 import TenantsPage from "../src/app/(platform)/tenants/page";
 import AppsPage from "../src/app/(platform)/apps/page";
@@ -28,6 +30,7 @@ import TenantQuotasPage from "../src/app/(platform)/tenants/[orgId]/quotas/page"
 import TenantActivityPage from "../src/app/(platform)/tenants/[orgId]/activity/page";
 import TenantDangerPage from "../src/app/(platform)/tenants/[orgId]/danger/page";
 import TenantSupportPage from "../src/app/(platform)/tenants/[orgId]/support/page";
+import AppRecordOverviewPage from "../src/app/(platform)/apps/[appId]/overview/page";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT =
   true;
@@ -114,6 +117,27 @@ function withTenant(element: ReactElement): ReactElement {
   );
 }
 
+const APP_RECORD: CatalogApp = {
+  appId: "website-builder",
+  name: "Website Builder",
+  title: "Website Builder & Headless CMS",
+  description: "Visual canvas studio.",
+  category: "content",
+  availability: "AVAILABLE",
+  sortOrder: 0,
+  installedCount: 2,
+  version: null,
+  updatedAt: null,
+};
+
+function withAppRecord(element: ReactElement): ReactElement {
+  return (
+    <AppRecordProvider value={{ app: APP_RECORD, reload: () => undefined }}>
+      {element}
+    </AppRecordProvider>
+  );
+}
+
 function withCatalogs(element: ReactElement): ReactElement {
   return (
     <CatalogsProvider
@@ -145,6 +169,11 @@ const SCREENS: readonly Screen[] = [
   { id: "tenant-danger", pathname: "/tenants/org_1/danger", element: withTenant(<TenantDangerPage />) },
   { id: "tenant-support", pathname: "/tenants/org_1/support", element: withTenant(<TenantSupportPage />) },
   { id: "apps", pathname: "/apps", element: <AppsPage /> },
+  {
+    id: "app-record-overview",
+    pathname: "/apps/website-builder/overview",
+    element: withAppRecord(<AppRecordOverviewPage />),
+  },
   { id: "catalog-panel", pathname: "/catalogs/currency", element: withCatalogs(<CatalogPanelPage />) },
   { id: "flags", pathname: "/flags", element: <FlagsPage /> },
   { id: "audit", pathname: "/audit", element: <AuditPage /> },

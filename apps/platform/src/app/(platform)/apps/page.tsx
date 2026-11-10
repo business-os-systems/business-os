@@ -1,23 +1,23 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import type { TableActionConfig } from "@suite/ui";
 import { ConfigTable } from "@/components/tables/config-table";
 import {
   CATALOG_TABLE_CONFIG,
-  sortCatalogApps,
+  catalogRowActions,
 } from "@/components/apps/apps.config";
-import {
-  CapabilityDeniedView,
-  PlatformViewState,
-} from "@/components/states/view-state";
-import {
-  toViewProblem,
-  type ViewProblem,
-} from "@/lib/problem-view";
+import { CapabilityDeniedView, PlatformViewState } from "@/components/states/view-state";
+import { toViewProblem, type ViewProblem } from "@/lib/problem-view";
 import { usePlatformAuth } from "@/components/auth/auth-provider";
 import { isAbortError } from "@/lib/abort";
 import { fetchAppCatalog, type CatalogApp } from "@/lib/apps-api";
-import { canManageEntitlements } from "@/lib/capability";
+import {
+  APP_RECORD_OVERVIEW_SEGMENT,
+  appRecordHref,
+} from "@/components/layout/app-record-nav.config";
+import { canReadApps } from "@/lib/capability";
 import { CatalogOverrideModal } from "./catalog-override-modal";
 
 function useCatalog(enabled: boolean) {
@@ -41,15 +41,19 @@ function useCatalog(enabled: boolean) {
     return () => controller.abort();
   }, [enabled, load]);
 
-  return { apps, problem, load, setApps };
+  return { apps, problem, load };
 }
 
 function CatalogContent({
   apps,
-  onSelect,
+  onOpen,
+  actions,
+  userPermissions,
 }: {
   readonly apps: readonly CatalogApp[];
-  readonly onSelect: (app: CatalogApp) => void;
+  readonly onOpen: (app: CatalogApp) => void;
+  readonly actions: readonly TableActionConfig<CatalogApp>[];
+  readonly userPermissions: readonly string[];
 }) {
   if (apps.length === 0) {
     return (
@@ -70,19 +74,24 @@ function CatalogContent({
       state={{ kind: "ready" }}
       rowKey={(row) => row.appId}
       rowLabel={(row) => row.title}
-      onRowClick={onSelect}
+      onRowClick={onOpen}
+      actions={actions}
+      userPermissions={userPermissions}
     />
   );
 }
 
 export default function AppCatalogPage() {
   const { session } = usePlatformAuth();
-  const allowed = canManageEntitlements(session?.capabilities);
+  const router = useRouter();
+  const allowed = canReadApps(session?.capabilities);
   const catalog = useCatalog(allowed);
   const [selected, setSelected] = useState<CatalogApp | null>(null);
 
   if (!allowed) {
-    return <CapabilityDeniedView message="Your operator account cannot manage app entitlements." />;
+    return (
+      <CapabilityDeniedView message="Your operator account cannot read application records." />
+    );
   }
   if (catalog.problem !== null) {
     return (
@@ -106,27 +115,28 @@ export default function AppCatalogPage() {
       <div>
         <h1 className="text-2xl font-semibold">Applications</h1>
         <p className="mt-1 text-sm text-text-secondary">
-          The compiled registry and its operational overrides. Availability is presentation only:
-          hiding an app never disables a tenant that already installed it.
+          The compiled registry and its operational overrides. Open an application to manage its
+          record; availability remains presentation only, because hiding an app never disables a
+          tenant that already installed it.
         </p>
       </div>
-      <CatalogContent apps={catalog.apps} onSelect={setSelected} />
+      <CatalogContent
+        apps={catalog.apps}
+        onOpen={(app) => router.push(appRecordHref(app.appId, APP_RECORD_OVERVIEW_SEGMENT))}
+        actions={catalogRowActions(setSelected)}
+        userPermissions={session?.capabilities ?? []}
+      />
       {selected === null ? null : (
         <CatalogOverrideModal
           app={selected}
           onClose={() => setSelected(null)}
-          onReload={() => void catalog.load()}
-          onSaved={(saved) => {
-            catalog.setApps((current) =>
-              current === null
-                ? current
-                : sortCatalogApps(
-                    current.map((app) =>
-                      app.appId === saved.appId ? saved : app,
-                    ),
-                  ),
-            );
+          onReload={() => {
             setSelected(null);
+            void catalog.load();
+          }}
+          onSaved={() => {
+            setSelected(null);
+            void catalog.load();
           }}
         />
       )}

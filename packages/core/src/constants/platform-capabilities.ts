@@ -7,6 +7,7 @@
  */
 
 export const PLATFORM_CAPABILITY_GROUPS = [
+  "Applications",
   "Tenants",
   "Governance",
   "Reference",
@@ -25,6 +26,13 @@ export interface PlatformCapabilityDefinition {
 }
 
 export const PLATFORM_CAPABILITIES = {
+  APPS_READ: {
+    code: "platform:apps:read",
+    label: "Read applications",
+    description:
+      "Read application records, catalog entries, settings and previews without authoring or publishing.",
+    group: "Applications",
+  },
   TENANTS_READ: {
     code: "platform:tenants:read",
     label: "Read tenants",
@@ -101,6 +109,28 @@ export const PLATFORM_CAPABILITIES = {
 } as const satisfies Record<string, PlatformCapabilityDefinition>;
 
 export type PlatformCapabilityKey = keyof typeof PLATFORM_CAPABILITIES;
+
+/**
+ * Capabilities that grant read access to an application record. The dedicated
+ * reader is the narrow grant; the catalog/entitlement manager keeps the access
+ * it already had before the dedicated capability existed.
+ */
+export const PLATFORM_APPS_READ_CAPABILITIES = [
+  PLATFORM_CAPABILITIES.APPS_READ.code,
+  PLATFORM_CAPABILITIES.ENTITLEMENTS_MANAGE.code,
+] as const;
+
+/** Fail-closed read check shared by the Platform UI and the API guard. */
+export function hasPlatformAppsReadAccess(
+  capabilities: readonly string[] | undefined | null
+): boolean {
+  if (capabilities === undefined || capabilities === null) {
+    return false;
+  }
+  return PLATFORM_APPS_READ_CAPABILITIES.some((capability) =>
+    capabilities.includes(capability)
+  );
+}
 
 export type PlatformCapability =
   (typeof PLATFORM_CAPABILITIES)[PlatformCapabilityKey]["code"];

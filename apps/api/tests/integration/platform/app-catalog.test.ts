@@ -81,6 +81,7 @@ interface OverrideSnapshot {
 
 let fixture: OperatorFixture;
 let managerToken: string;
+let readerToken: string;
 let limitedToken: string;
 let managerOperatorId: string;
 let originalOverride: OverrideSnapshot | null = null;
@@ -107,7 +108,7 @@ function patch(body: unknown, idempotencyKey?: string): Promise<Response> {
 }
 
 async function readCatalog(): Promise<CatalogApp[]> {
-  const response = await send({ method: "GET", path: "/", token: managerToken });
+  const response = await send({ method: "GET", path: "/", token: readerToken });
   expect(response.status).toBe(200);
   const body = catalogEnvelopeSchema.parse(await response.json());
   return body.data.apps;
@@ -160,6 +161,9 @@ beforeAll(async () => {
   ]);
   managerToken = manager.token;
   managerOperatorId = manager.id;
+  readerToken = (
+    await fixture.createOperator([PLATFORM_CAPABILITIES.APPS_READ.code])
+  ).token;
   limitedToken = (
     await fixture.createOperator([PLATFORM_CAPABILITIES.TENANTS_READ.code])
   ).token;
@@ -354,6 +358,30 @@ it.skipIf(!enabled)("hiding an app never disables an existing installation", asy
   expect(installed?.isEnabled).toBe(true);
 });
 
+it.skipIf(!enabled)("keeps read access for an entitlement manager", async () => {
+  const read = await send({ method: "GET", path: "/", token: managerToken });
+  expect(read.status).toBe(200);
+  const body = catalogEnvelopeSchema.parse(await read.json());
+  expect(body.data.apps.length).toBeGreaterThan(0);
+});
+
+it.skipIf(!enabled)("allows a read-only operator to read but never to write", async () => {
+  const read = await send({ method: "GET", path: "/", token: readerToken });
+  expect(read.status).toBe(200);
+
+  const write = await send({
+    method: "PATCH",
+    path: `/${APP_ID}`,
+    token: readerToken,
+    body: { availability: "HIDDEN", expectedVersion: null },
+    idempotencyKey: `catalog-readonly-${Date.now().toString(36)}`,
+  });
+  expect(write.status).toBe(403);
+  expect((await parseProblem(write)).code).toBe(
+    PLATFORM_ERROR_CODE.CAPABILITY_DENIED
+  );
+});
+
 it.skipIf(!enabled)("denies catalog reads and writes without the capability", async () => {
   const read = await send({ method: "GET", path: "/", token: limitedToken });
   expect(read.status).toBe(403);
@@ -366,6 +394,7 @@ it.skipIf(!enabled)("denies catalog reads and writes without the capability", as
     path: `/${APP_ID}`,
     token: limitedToken,
     body: { availability: "HIDDEN", expectedVersion: null },
+    idempotencyKey: `catalog-denied-${Date.now().toString(36)}`,
   });
   expect(write.status).toBe(403);
 });

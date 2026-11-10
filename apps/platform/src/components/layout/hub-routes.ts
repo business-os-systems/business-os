@@ -1,3 +1,4 @@
+import { isAppRecordHubRoute } from "./app-record-nav.config";
 import { isCatalogsHubRoute } from "./catalogs-nav.config";
 import { isTenantRecordHubRoute } from "./tenant-record-nav.config";
 
@@ -7,5 +8,9 @@ import { isTenantRecordHubRoute } from "./tenant-record-nav.config";
  * ad-hoc pathname check in a component.
  */
 export function isPlatformHubRoute(pathname: string): boolean {
-  return isTenantRecordHubRoute(pathname) || isCatalogsHubRoute(pathname);
+  return (
+    isAppRecordHubRoute(pathname) ||
+    isTenantRecordHubRoute(pathname) ||
+    isCatalogsHubRoute(pathname)
+  );
 }

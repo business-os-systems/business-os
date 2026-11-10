@@ -1,5 +1,13 @@
-import { PLATFORM_CAPABILITIES, type PlatformCapability } from "@suite/core";
+import {
+  PLATFORM_APPS_READ_CAPABILITIES,
+  PLATFORM_CAPABILITIES,
+  type PlatformCapability,
+} from "@suite/core";
 import { hasPlatformCapability } from "@/lib/capability";
+import {
+  isAppRecordHubRoute,
+  isAppRecordKnownDestination,
+} from "./app-record-nav.config";
 
 export type PlatformNavIconKey =
   | "home"
@@ -16,7 +24,13 @@ export interface PlatformNavItem {
   readonly label: string;
   readonly href: string;
   readonly icon: PlatformNavIconKey;
-  readonly capability: PlatformCapability;
+  /**
+   * Any one of these capabilities grants the destination. Most destinations
+   * declare a single capability; Applications accepts either its dedicated
+   * read capability or the catalog/entitlement management capability that
+   * already implied read access before the dedicated capability existed.
+   */
+  readonly capabilities: readonly PlatformCapability[];
 }
 
 export interface PlatformNavGroup {
@@ -39,56 +53,56 @@ export const PLATFORM_NAV_GROUPS: readonly PlatformNavGroup[] = [
         label: "Overview",
         href: "/",
         icon: "home",
-        capability: PLATFORM_CAPABILITIES.TELEMETRY_READ.code,
+        capabilities: [PLATFORM_CAPABILITIES.TELEMETRY_READ.code],
       },
       {
         id: "tenants",
         label: "Tenants",
         href: "/tenants",
         icon: "tenants",
-        capability: PLATFORM_CAPABILITIES.TENANTS_READ.code,
+        capabilities: [PLATFORM_CAPABILITIES.TENANTS_READ.code],
       },
       {
         id: "apps",
         label: "Applications",
         href: "/apps",
         icon: "apps",
-        capability: PLATFORM_CAPABILITIES.ENTITLEMENTS_MANAGE.code,
+        capabilities: PLATFORM_APPS_READ_CAPABILITIES,
       },
       {
         id: "catalogs",
         label: "Catalogs",
         href: "/catalogs",
         icon: "catalogs",
-        capability: PLATFORM_CAPABILITIES.CATALOGS_MANAGE.code,
+        capabilities: [PLATFORM_CAPABILITIES.CATALOGS_MANAGE.code],
       },
       {
         id: "flags",
         label: "Feature flags",
         href: "/flags",
         icon: "flags",
-        capability: PLATFORM_CAPABILITIES.FLAGS_MANAGE.code,
+        capabilities: [PLATFORM_CAPABILITIES.FLAGS_MANAGE.code],
       },
       {
         id: "audit",
         label: "Audit",
         href: "/audit",
         icon: "audit",
-        capability: PLATFORM_CAPABILITIES.AUDIT_READ.code,
+        capabilities: [PLATFORM_CAPABILITIES.AUDIT_READ.code],
       },
       {
         id: "operators",
         label: "Operators",
         href: "/operators",
         icon: "operators",
-        capability: PLATFORM_CAPABILITIES.OPERATORS_MANAGE.code,
+        capabilities: [PLATFORM_CAPABILITIES.OPERATORS_MANAGE.code],
       },
       {
         id: "system",
         label: "System",
         href: "/system",
         icon: "system",
-        capability: PLATFORM_CAPABILITIES.TELEMETRY_READ.code,
+        capabilities: [PLATFORM_CAPABILITIES.TELEMETRY_READ.code],
       },
     ],
   },
@@ -108,33 +122,41 @@ export function isNavigationHrefActive(
 }
 
 /**
- * Resolves the capability that gates a destination. Nested routes inherit the
- * capability of their top-level destination; unknown paths return null.
+ * Resolves every capability that can gate a destination. Nested routes inherit
+ * the capabilities of their top-level destination; unknown paths return none.
  */
-export function requiredCapabilityForPath(
+export function requiredCapabilitiesForPath(
   pathname: string
-): PlatformCapability | null {
+): readonly PlatformCapability[] {
   const item = PLATFORM_NAV_ITEMS.find((navItem) =>
     isNavigationHrefActive(pathname, navItem.href)
   );
-  return item?.capability ?? null;
+  return item?.capabilities ?? [];
 }
 
 export function canAccessPath(
   capabilities: readonly PlatformCapability[],
   pathname: string
 ): boolean {
-  const required = requiredCapabilityForPath(pathname);
-  return required !== null && hasPlatformCapability(capabilities, required);
+  if (isAppRecordHubRoute(pathname) && !isAppRecordKnownDestination(pathname)) {
+    return false;
+  }
+  const required = requiredCapabilitiesForPath(pathname);
+  return required.some((capability) =>
+    hasPlatformCapability(capabilities, capability)
+  );
 }
 
 export function visibleNavigationGroups(
   capabilities: readonly PlatformCapability[]
 ): PlatformNavGroup[] {
-  const granted = new Set(capabilities);
   return PLATFORM_NAV_GROUPS.map((group) => ({
     ...group,
-    items: group.items.filter((item) => granted.has(item.capability)),
+    items: group.items.filter((item) =>
+      item.capabilities.some((capability) =>
+        hasPlatformCapability(capabilities, capability)
+      )
+    ),
   })).filter((group) => group.items.length > 0);
 }
 

@@ -1,4 +1,5 @@
-import type { TableConfig } from "@suite/ui";
+import type { TableActionConfig, TableConfig } from "@suite/ui";
+import { PLATFORM_CAPABILITIES } from "@suite/core";
 import { formatDateTime } from "@/lib/format";
 import {
   APP_CATALOG_AVAILABILITIES,
@@ -138,17 +139,18 @@ export function validateCatalogOverrideForm(
   return errors;
 }
 
-/** Keeps the table in the same order the catalog read uses after an override. */
-export function sortCatalogApps(
-  apps: readonly CatalogApp[]
-): readonly CatalogApp[] {
-  return [...apps].sort((first, second) => {
-    if (first.sortOrder !== second.sortOrder) {
-      return first.sortOrder - second.sortOrder;
-    }
-    const byTitle = first.title.localeCompare(second.title);
-    return byTitle === 0 ? first.appId.localeCompare(second.appId) : byTitle;
-  });
+/** Row actions for the catalog table; the engine enforces the declared permission. */
+export function catalogRowActions(
+  onEditOverride: (app: CatalogApp) => void,
+): readonly TableActionConfig<CatalogApp>[] {
+  return [
+    {
+      id: "edit-override",
+      label: "Edit override",
+      permission: PLATFORM_CAPABILITIES.ENTITLEMENTS_MANAGE.code,
+      onClick: onEditOverride,
+    },
+  ];
 }
 
 export function buildCatalogOverrideBody(

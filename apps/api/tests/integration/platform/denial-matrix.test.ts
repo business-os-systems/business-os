@@ -321,6 +321,8 @@ const PROTECTED_ROUTES: readonly ProtectedRoute[] = [
  * until it has an enforcement slice (CT-1, capability four-part rule).
  */
 const CAPABILITY_ENFORCEMENT = {
+  "platform:apps:read":
+    "P-01 (#340), enforced by GET /catalog and the Platform application record (entitlement managers retain read)",
   "platform:tenants:read": "P-11 (#220)",
   "platform:tenants:lifecycle": "P-13 (#222), enforced by the lifecycle routes",
   "platform:quotas:manage":

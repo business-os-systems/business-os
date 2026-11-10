@@ -23,6 +23,13 @@ export interface PlatformCapabilityGuardOptions
   readonly capability: PlatformCapability;
 }
 
+/** Any one of the listed capabilities grants access; an empty list denies. */
+export interface PlatformAnyCapabilityGuardOptions
+  extends PlatformSessionGuardOptions {
+  readonly redis: Redis;
+  readonly capabilities: readonly PlatformCapability[];
+}
+
 interface VerifiedRequestSession {
   readonly operatorId: string;
 }
@@ -70,6 +77,30 @@ export function createPlatformSessionGuard(
   };
 }
 
+async function authorizeCapabilities(
+  c: Parameters<MiddlewareHandler>[0],
+  options: PlatformSessionGuardOptions & { readonly redis: Redis },
+  required: readonly PlatformCapability[]
+): Promise<void> {
+  const session = await requireControlSession(c, options);
+  const capabilities = await resolvePlatformCapabilities({
+    prisma: options.prisma,
+    redis: options.redis,
+    operatorId: session.operatorId,
+  });
+  const granted = required.some((capability) =>
+    capabilities.includes(capability)
+  );
+  if (!granted) {
+    throw new ForbiddenError("Capability denied.", {
+      code: PLATFORM_ERROR_CODE.CAPABILITY_DENIED,
+    });
+  }
+
+  c.set("operatorId", session.operatorId);
+  c.set("platformCapabilities", capabilities);
+}
+
 /**
  * Enforces one Platform capability after verifying the control session.
  * The session is touched on success so active operators keep their idle window.
@@ -78,20 +109,21 @@ export function createPlatformCapabilityGuard(
   options: PlatformCapabilityGuardOptions
 ): MiddlewareHandler {
   return async (c, next) => {
-    const session = await requireControlSession(c, options);
-    const capabilities = await resolvePlatformCapabilities({
-      prisma: options.prisma,
-      redis: options.redis,
-      operatorId: session.operatorId,
-    });
-    if (!capabilities.includes(options.capability)) {
-      throw new ForbiddenError("Capability denied.", {
-        code: PLATFORM_ERROR_CODE.CAPABILITY_DENIED,
-      });
-    }
+    await authorizeCapabilities(c, options, [options.capability]);
+    await next();
+  };
+}
 
-    c.set("operatorId", session.operatorId);
-    c.set("platformCapabilities", capabilities);
+/**
+ * Enforces any one of several Platform capabilities. Applications use it so a
+ * dedicated reader and an operator who already manages catalog entitlements
+ * both retain access.
+ */
+export function createPlatformAnyCapabilityGuard(
+  options: PlatformAnyCapabilityGuardOptions
+): MiddlewareHandler {
+  return async (c, next) => {
+    await authorizeCapabilities(c, options, options.capabilities);
     await next();
   };
 }

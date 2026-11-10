@@ -100,6 +100,8 @@ export {
   PLATFORM_CAPABILITIES,
   PLATFORM_CAPABILITY_CODES,
   PLATFORM_CAPABILITY_GROUPS,
+  PLATFORM_APPS_READ_CAPABILITIES,
+  hasPlatformAppsReadAccess,
   isPlatformCapability,
   getPlatformCapability,
   type PlatformCapability,
