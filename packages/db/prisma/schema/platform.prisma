@@ -53,6 +53,7 @@ model PlatformOperator {
   lifecycleEvents       LifecycleEvent[]         @relation("LifecycleEvents")
   quotaUpdates          Quota[]                  @relation("QuotaUpdates")
   appOverrideUpdates    AppOverride[]            @relation("AppOverrideUpdates")
+  appSettingsDefaults   AppSettingsDefault[]     @relation("AppSettingsDefaultUpdates")
   impersonationSessions ImpersonationSession[]   @relation("ImpersonationSessions")
   auditEvents           AuditEvent[]             @relation("AuditEvents")
 
@@ -189,6 +190,21 @@ model AppOverride {
   updatedByOperator PlatformOperator @relation("AppOverrideUpdates", fields: [updatedBy], references: [id], onDelete: Restrict)
 
   @@map("app_overrides")
+  @@schema("platform")
+}
+
+model AppSettingsDefault {
+  id        String   @id @default(cuid())
+  appId     String   @unique @db.VarChar(64)
+  settings  Json     @default("{}")
+  version   Int      @default(0)
+  updatedBy String
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  updatedByOperator PlatformOperator @relation("AppSettingsDefaultUpdates", fields: [updatedBy], references: [id], onDelete: Restrict)
+
+  @@map("app_settings_defaults")
   @@schema("platform")
 }
 

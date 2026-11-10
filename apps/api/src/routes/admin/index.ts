@@ -9,6 +9,7 @@ import { platformOperatorPasskeysRouter } from "./operator-passkeys.js";
 import { platformEntitlementsRouter } from "./entitlements.js";
 import { platformQuotasRouter } from "./quotas.js";
 import { platformAppCatalogRouter } from "./app-catalog.js";
+import { platformAppSettingsRouter } from "./app-settings.js";
 import { platformAuditRouter } from "./audit.js";
 import { platformCatalogsRouter } from "./catalogs.js";
 import { platformImpersonationRouter } from "./impersonation.js";
@@ -31,6 +32,7 @@ adminRouter.route("/operator-passkeys", platformOperatorPasskeysRouter);
 // "/catalog/:appId" request by the app-catalog router.
 adminRouter.route("/catalogs", platformCatalogsRouter);
 adminRouter.route("/catalog", platformAppCatalogRouter);
+adminRouter.route("/apps", platformAppSettingsRouter);
 // Registered before the tenants router: that router's capability middleware is
 // mounted on "/" and would otherwise gate the entitlement- and quota-only paths.
 adminRouter.route("/", platformEntitlementsRouter);

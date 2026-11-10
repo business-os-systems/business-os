@@ -13,7 +13,7 @@ import { hasPlatformCapability } from "@/lib/capability";
  * entries when those slices land.
  */
 
-export type AppRecordNavItemId = "overview";
+export type AppRecordNavItemId = "overview" | "settings";
 
 export type AppRecordIconKey = AppRecordNavItemId;
 
@@ -52,6 +52,13 @@ export const APP_RECORD_NAV_GROUPS: readonly AppRecordNavGroup[] = [
         label: "Overview",
         segment: APP_RECORD_OVERVIEW_SEGMENT,
         icon: "overview",
+        capabilities: PLATFORM_APPS_READ_CAPABILITIES,
+      },
+      {
+        id: "settings",
+        label: "Settings",
+        segment: "settings",
+        icon: "settings",
         capabilities: PLATFORM_APPS_READ_CAPABILITIES,
       },
     ],

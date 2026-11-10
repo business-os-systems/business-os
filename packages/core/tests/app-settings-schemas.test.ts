@@ -27,6 +27,16 @@ describe("app settings registry (T090)", () => {
     expect(getAppSettingsDefinition("not-a-registered-app")).toBeNull();
   });
 
+  it("declares a scope and a schema default for every field", () => {
+    for (const field of websiteBuilderDefinition().fields) {
+      expect(["app", "tenant"]).toContain(field.scope);
+      expect(field.defaultValue).toBeDefined();
+      expect(validateAppSettings(websiteBuilderDefinition(), {
+        [field.key]: field.defaultValue,
+      }).success).toBe(true);
+    }
+  });
+
   it("keeps configuration keys disjoint from install metadata", () => {
     for (const appId of Object.keys(APP_MANIFESTS)) {
       const definition = getAppSettingsDefinition(appId);

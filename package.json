@@ -26,6 +26,7 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "test:coverage": "turbo run coverage --concurrency=1",
+    "verify:diff": "git fetch origin dev && pnpm turbo run coverage --filter='[origin/dev]' --concurrency=1 && node tooling/quality/diff-coverage.mjs --base origin/dev",
     "test:rules": "node --test tooling/eslint-rules/*.test.mjs",
     "knip": "knip",
     "knip:report": "knip --no-exit-code",

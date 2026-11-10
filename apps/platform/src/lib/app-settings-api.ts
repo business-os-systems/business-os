@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   settingsFieldDefinitionSchema,
+  settingsValueSourceSchema,
   type SettingsFieldDefinition,
 } from "@suite/core";
 import { IDEMPOTENCY_HEADER, platformFetch, readSuccessData } from "./api";
@@ -15,6 +16,8 @@ export const appSettingsViewSchema = z.object({
   appId: z.string().min(1).max(64),
   schema: z.object({ fields: z.array(settingsFieldDefinitionSchema) }),
   values: z.record(z.unknown()),
+  effectiveValues: z.record(z.unknown()),
+  sources: z.record(settingsValueSourceSchema),
   staleFields: z.array(staleFieldSchema),
   version: z.string().min(1).max(64),
 });

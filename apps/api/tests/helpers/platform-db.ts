@@ -19,6 +19,7 @@ export const PLATFORM_SCHEMA_TABLES = [
   "platform.lifecycle_events",
   "platform.quotas",
   "platform.app_overrides",
+  "platform.app_settings_defaults",
   "platform.impersonation_sessions",
   "platform.audit_events",
   "platform.outbox_events",

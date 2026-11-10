@@ -24,6 +24,7 @@ const MOUNT_PREFIXES: Readonly<Record<string, string>> = {
   "operator-passkeys": "/operator-passkeys",
   catalogs: "/catalogs",
   catalog: "/catalog",
+  "app-settings": "/apps",
   auth: "/auth",
 };
 
@@ -85,6 +86,8 @@ const AUTH_ROUTES = "tests/platform-auth-routes.test.ts";
 const CATALOGS = "tests/contract/platform/catalogs.test.ts";
 const ENTITLEMENTS = "tests/contract/platform/entitlements.test.ts";
 const DENIAL_MATRIX = "tests/integration/platform/denial-matrix.test.ts";
+const APP_SETTINGS_DEFAULTS =
+  "tests/integration/platform/app-settings-defaults.test.ts";
 const IMPERSONATION = "tests/integration/platform/impersonation.test.ts";
 const OPERATOR_ENROLMENT =
   "tests/integration/platform/operator-enrolment.test.ts";
@@ -107,6 +110,8 @@ const DENIAL_COVERAGE: Readonly<Record<string, string>> = {
   "GET /auth/me": AUTH_ROUTES,
   "POST /auth/logout": AUTH_ROUTES,
   "POST /auth/step-up/verify": "tests/integration/platform/step-up.test.ts",
+  "GET /apps/{appId}/settings": APP_SETTINGS_DEFAULTS,
+  "PATCH /apps/{appId}/settings": APP_SETTINGS_DEFAULTS,
   "GET /catalogs": CATALOGS,
   "POST /catalogs/{category}/values": CATALOGS,
   "PATCH /catalogs/{category}/values/{code}":

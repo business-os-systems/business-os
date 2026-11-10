@@ -60,6 +60,8 @@ const settingsViewSchema = z
     appId: z.string().min(1),
     schema: z.object({ fields: z.array(settingsFieldSchema) }).strict(),
     values: z.record(z.unknown()),
+    effectiveValues: z.record(z.unknown()),
+    sources: z.record(z.enum(["tenant", "app", "schema"])),
     staleFields: z.array(
       z.object({ name: z.string(), reason: z.string() }).strict()
     ),
@@ -191,6 +193,14 @@ it.skipIf(!enabled)("keeps the settings schema and values contract", async () =>
   const keys = body.data.schema.fields.map((field) => field.key);
   expect(keys).toEqual(["customDomainEnabled", "defaultLocale"]);
   expect(body.data.values).toEqual({});
+  expect(body.data.effectiveValues).toEqual({
+    customDomainEnabled: false,
+    defaultLocale: "en",
+  });
+  expect(body.data.sources).toEqual({
+    customDomainEnabled: "schema",
+    defaultLocale: "schema",
+  });
   expect(body.data.staleFields).toEqual([]);
 });
 
