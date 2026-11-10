@@ -16,6 +16,8 @@ import {
   type TenantSummary,
 } from "../src/lib/tenant-api";
 import { toMessage } from "../src/lib/error-message";
+
+const CAPABILITY_DENIED = "Capability denied.";
 import { resolveFleetState } from "../src/app/(platform)/tenants/page";
 import { formatDate, formatDateTime, UNAVAILABLE } from "../src/lib/format";
 
@@ -93,9 +95,9 @@ describe("Tenant fleet table", () => {
     const html = renderTable([], {
       kind: "error",
       title: "Unable to load tenants",
-      message: "Capability denied.",
+      message: CAPABILITY_DENIED,
     });
-    expect(html).toContain("Capability denied.");
+    expect(html).toContain(CAPABILITY_DENIED);
     expect(html).not.toContain("<table");
   });
 
@@ -210,10 +212,10 @@ describe("Platform formatting helpers", () => {
 describe("Tenant fleet state and quota summary", () => {
   it("maps loading, error and ready without consulting stale rows", () => {
     expect(resolveFleetState(true, null, 0)).toEqual({ kind: "loading" });
-    expect(resolveFleetState(false, "Capability denied.", 0)).toEqual({
+    expect(resolveFleetState(false, CAPABILITY_DENIED, 0)).toEqual({
       kind: "error",
       title: "Unable to load tenants",
-      message: "Capability denied.",
+      message: CAPABILITY_DENIED,
     });
     expect(resolveFleetState(false, null, 2)).toEqual({ kind: "ready" });
   });

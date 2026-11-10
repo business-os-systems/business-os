@@ -89,7 +89,7 @@ describe("tenant fleet page", () => {
     if (!(trigger instanceof HTMLButtonElement)) throw new Error("No app filter");
     act(() => trigger.click());
     const option = Array.from(container.querySelectorAll('[role="option"]')).find(
-      (candidate) => candidate.textContent?.includes("Website Builder"),
+      (candidate) => candidate.textContent.includes("Website Builder"),
     );
     if (!(option instanceof HTMLElement)) throw new Error("No app option");
     act(() => option.click());
