@@ -253,6 +253,25 @@ describe("@suite/auth - Platform control session", () => {
     );
   });
 
+  it("refuses to touch a session after its stored idle window expired", async () => {
+    const { prisma } = createFakePrisma();
+    const now = new Date("2026-10-26T10:00:00.000Z");
+    const issued = await issueControlSession({
+      prisma,
+      secret: SECRET,
+      operatorId: OPERATOR_ID,
+      now,
+    });
+
+    const touched = await touchControlSession({
+      prisma,
+      sessionId: issued.sessionId,
+      now: new Date(now.getTime() + (CONTROL_SESSION_IDLE_SECONDS + 60) * 1000),
+    });
+
+    expect(touched).toBe(false);
+  });
+
   it("keeps an active session valid past the signed idle claim", async () => {
     const { prisma } = createFakePrisma();
     const now = new Date("2026-10-26T10:00:00.000Z");
