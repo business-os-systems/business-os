@@ -38,7 +38,7 @@ const LODGING: AppManifest = {
 
 let container: HTMLElement;
 let root: Root;
-const fetchMock = vi.fn();
+const fetchMock = vi.fn<typeof fetch>();
 
 beforeEach(() => {
   groups.current = { recommended: [UNIVERSAL], additional: [LODGING] };
