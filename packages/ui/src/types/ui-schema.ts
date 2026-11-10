@@ -202,12 +202,19 @@ export interface TableActionHandler<T extends object> {
   onClick: (row: T) => void | Promise<void>;
 }
 
-export interface TableActionVerification<T extends object> {
-  requiresConfirmation?: boolean;
-  confirmationTitle?: string;
-  confirmationMessage?: string;
-  dangerVerificationSlug?: (row: T) => string;
-}
+/**
+ * Confirmation is one discriminated contract, not a bag of optional fields.
+ * Absent means the action runs immediately; `confirm` asks once; `typed`
+ * requires the caller to type the row's phrase.
+ */
+export type TableActionVerification<T extends object> =
+  | { readonly kind: "confirm"; readonly title: string; readonly message: string }
+  | {
+      readonly kind: "typed";
+      readonly title: string;
+      readonly message: string;
+      readonly expectedPhrase: (row: T) => string;
+    };
 
 export interface TableActionPredicate<T extends object = Record<string, unknown>> {
   isVisible?: (row: T) => boolean;
@@ -218,8 +225,9 @@ export interface TableActionConfig<T extends object = Record<string, unknown>>
     TableActionPresentation<T>,
     TableActionAuthorization,
     TableActionHandler<T>,
-    TableActionVerification<T>,
-    TableActionPredicate<T> {}
+    TableActionPredicate<T> {
+  readonly verification?: TableActionVerification<T>;
+}
 
 export interface TableEmptyStateConfig {
   title: string;

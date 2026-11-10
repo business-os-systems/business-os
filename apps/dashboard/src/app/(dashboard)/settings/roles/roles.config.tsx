@@ -173,6 +173,12 @@ export function createRoleTableConfig(
         permission: PERMISSIONS.CORE.ROLES_MANAGE,
         renderIcon: () => <TrashIcon className="h-3.5 w-3.5 text-danger" />,
         isVisible: (role) => !role.isSystem,
+        verification: {
+          kind: "typed",
+          title: "Delete role",
+          message: "This permanently deletes the custom role.",
+          expectedPhrase: (role) => role.name,
+        },
         onClick: (role) => handlers.onDeleteRole(role),
       },
     ],
