@@ -40,6 +40,7 @@ export interface TenantRecord {
     readonly name: string;
     readonly slug: string;
     readonly status: OrgStatus;
+    readonly timezone: string;
     readonly createdAt: string;
   };
   readonly counts: {
@@ -96,6 +97,7 @@ export async function getTenantRecord(
       name: overview.name,
       slug: overview.slug,
       status: overview.status as OrgStatus,
+      timezone: overview.timezone,
       createdAt: overview.createdAt.toISOString(),
     },
     counts: {

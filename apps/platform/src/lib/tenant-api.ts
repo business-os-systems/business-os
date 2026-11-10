@@ -105,6 +105,7 @@ export const tenantRecordSchema = z.object({
     name: shortTextSchema,
     slug: shortTextSchema,
     status: tenantStatusSchema,
+    timezone: z.string().min(1).max(64),
     createdAt: timestampSchema,
   }),
   counts: z.object({

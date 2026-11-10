@@ -3172,9 +3172,6 @@
     },
     "security/detect-unsafe-regex": {
       "count": 1
-    },
-    "sonarjs/cognitive-complexity": {
-      "count": 1
     }
   },
   "packages/core/src/clock/index.ts": {

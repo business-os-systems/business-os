@@ -11,6 +11,7 @@ export interface TenantOverviewRow {
   readonly branchCount: number;
   readonly memberCount: number;
   readonly installedAppIds: string[];
+  readonly timezone: string;
   readonly asOf: Date;
 }
 
@@ -33,7 +34,7 @@ export interface TenantListFilters extends TenantFilter {
 
 const OVERVIEW_COLUMNS = Prisma.sql`
   "id", "name", "slug", "status", "createdAt",
-  "branchCount", "memberCount", "installedAppIds",
+  "branchCount", "memberCount", "installedAppIds", "timezone",
   now() AS "asOf"
 `;
 
