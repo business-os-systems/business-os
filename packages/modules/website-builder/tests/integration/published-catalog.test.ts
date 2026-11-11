@@ -18,6 +18,16 @@ const TEMPLATE_SLUG = "wt368-template-" + RUN;
 const ACTOR = "usr_wt368_actor";
 const BRANCH_TIMEZONE = "Europe/Berlin";
 
+function requireHostRoot(): string {
+  const hostRoot = getHostModelConfig().tenantRootDomain;
+  if (hostRoot === null) {
+    throw new Error(
+      "DOMAIN_ROOT must be configured for website-builder integration tests (CI exports localhost).",
+    );
+  }
+  return hostRoot;
+}
+
 const PUBLISHED_BLUEPRINT = {
   schemaVersion: "2026-03",
   pages: [
@@ -225,7 +235,7 @@ describe.skipIf(!enabled)("Site provisioning host and tenancy (FR-117, CT-8)", (
         idempotencyKey: "idem-wt368-host-" + RUN,
       }),
     );
-    const hostRoot = getHostModelConfig().tenantRootDomain;
+    const hostRoot = requireHostRoot();
     const content = await prisma.cmsPageContent.findFirst({
       where: { organizationId: ORG, pageId: result.homePage.id },
     });
@@ -239,7 +249,7 @@ describe.skipIf(!enabled)("Site provisioning host and tenancy (FR-117, CT-8)", (
         where: { organizationId: ORG, siteId: result.site.id, isPrimary: true },
       }),
     ).toMatchObject({
-      hostname: slug + "." + (hostRoot ?? ""),
+      hostname: slug + "." + hostRoot,
       isSubdomain: true,
     });
   });
@@ -369,7 +379,7 @@ describe.skipIf(!enabled)("SiteService reads (T139)", () => {
     const summary = sites.find((site) => site.id === created.site.id);
     expect(summary).toMatchObject({
       slug,
-      primaryDomain: slug + "." + (getHostModelConfig().tenantRootDomain ?? ""),
+      primaryDomain: slug + "." + requireHostRoot(),
     });
     expect((await service.getSite(ORG, created.site.id))?.id).toBe(created.site.id);
   });

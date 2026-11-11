@@ -16,6 +16,16 @@ const ACTOR = "usr_wt371_actor";
 const TEMPLATE_SLUG = "wt371-template-" + RUN;
 const BRANCH_TIMEZONE = "America/New_York";
 
+function requireHostRoot(): string {
+  const hostRoot = getHostModelConfig().tenantRootDomain;
+  if (hostRoot === null) {
+    throw new Error(
+      "DOMAIN_ROOT must be configured to exercise the site host model (CI exports localhost).",
+    );
+  }
+  return hostRoot;
+}
+
 const HERO_SECTION = {
   id: "sec_wt371_hero",
   name: "Hero",
@@ -89,11 +99,7 @@ beforeAll(async () => {
   if (!enabled) {
     return;
   }
-  if (getHostModelConfig().tenantRootDomain === null) {
-    throw new Error(
-      "DOMAIN_ROOT must be configured to exercise the site host model (CI exports localhost).",
-    );
-  }
+  requireHostRoot();
   await cleanup();
   await prisma.organization.create({
     data: { id: ORG, name: "WT-371 tenant", slug: "wt371-" + RUN },
@@ -193,7 +199,7 @@ describe.skipIf(!enabled)("create a site from a published catalog template", () 
   it("stamps the primary host from the declared host root and the tenant branch timezone", async () => {
     const slug = "wt371-host-" + RUN;
     const result = await createSite(createInput(slug, "idem-wt371-host-" + RUN));
-    const hostRoot = getHostModelConfig().tenantRootDomain ?? "";
+    const hostRoot = requireHostRoot();
 
     expect(result.site.timezone).toBe(BRANCH_TIMEZONE);
     const domains = await prisma.cmsDomain.findMany({
