@@ -11,6 +11,7 @@ import {
   GlobeIcon,
 } from "@suite/ui/icons";
 import type { PreviewHeaderProps, PreviewDevice } from "./types";
+import { websiteBuilderStudioHref } from "@/components/layout/website-builder-nav.config";
 import { workspacePath } from "@/lib/workspace-paths";
 
 const DEVICE_BUTTONS: {
@@ -88,7 +89,7 @@ export function PreviewHeader({
 
       {/* Right: Switch to Studio Editor */}
       <div className="flex items-center gap-2">
-        <Link href={workspacePath(`/sites/${siteId}/studio/${pageId}`)}>
+        <Link href={websiteBuilderStudioHref(siteId, pageId)}>
           <Button
             type="button"
             size="sm"

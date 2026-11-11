@@ -34,6 +34,7 @@ const CONFIG: MediaConfig = {
   publicBaseUrl: "https://cdn.example.com/media",
   maxBytes: 1_048_576,
   urlTtlSeconds: 900,
+  checksumMode: "provider",
 };
 
 const ACTOR_USER = "usr_media_integration";
@@ -66,18 +67,21 @@ async function createOrganization(label: string): Promise<string> {
   return organization.id;
 }
 
-async function uploadAsset(input: {
-  readonly organizationId: string;
-  readonly label: string;
-  readonly sizeBytes?: number;
-  readonly mimeType?: MediaAllowedMimeType;
-}): Promise<Awaited<ReturnType<MediaService["finalizeUpload"]>>> {
+async function uploadAssetWith(
+  target: MediaService,
+  input: {
+    readonly organizationId: string;
+    readonly label: string;
+    readonly sizeBytes?: number;
+    readonly mimeType?: MediaAllowedMimeType;
+  }
+): Promise<Awaited<ReturnType<MediaService["finalizeUpload"]>>> {
   const sizeBytes = input.sizeBytes ?? 1_024;
   const checksum = checksumFor(input.label);
   const fileName = `${input.label}.png`;
   const mimeType = input.mimeType ?? "image/png";
   const tenant = actor(input.organizationId);
-  const intent = await service.createUploadIntent(tenant, {
+  const intent = await target.createUploadIntent(tenant, {
     fileName,
     mimeType,
     sizeBytes,
@@ -90,12 +94,21 @@ async function uploadAsset(input: {
     checksumHex: checksum,
     fileName,
   });
-  return service.finalizeUpload(tenant, {
+  return target.finalizeUpload(tenant, {
     storageKey: intent.storageKey,
     checksum,
     width: 800,
     height: 600,
   });
+}
+
+function uploadAsset(input: {
+  readonly organizationId: string;
+  readonly label: string;
+  readonly sizeBytes?: number;
+  readonly mimeType?: MediaAllowedMimeType;
+}): Promise<Awaited<ReturnType<MediaService["finalizeUpload"]>>> {
+  return uploadAssetWith(service, input);
 }
 
 async function setStorageQuota(
@@ -208,6 +221,34 @@ describe.skipIf(!enabled)("shared media library (real PostgreSQL)", () => {
     expect(count).toBe(1);
     expect(await storageUsage(organizationId)).toBe(2_048n);
     expect(storage.objectCount()).toBeGreaterThan(0);
+  });
+
+});
+
+describe.skipIf(!enabled)("shared media library: checksum modes", () => {
+  it("refuses a repeated checksum the provider never verified", async () => {
+    const organizationId = await createOrganization("metadata-dedupe");
+    const metadataService = createMediaService({
+      storage,
+      config: { ...CONFIG, checksumMode: "metadata" },
+    });
+
+    await uploadAssetWith(metadataService, {
+      organizationId,
+      label: "metadata",
+      sizeBytes: 2_048,
+    });
+
+    await expect(
+      uploadAssetWith(metadataService, {
+        organizationId,
+        label: "metadata",
+        sizeBytes: 2_048,
+      })
+    ).rejects.toMatchObject({ code: "MEDIA_CHECKSUM_MISMATCH" });
+    expect(
+      await prisma.mediaAsset.count({ where: { organizationId } })
+    ).toBe(1);
   });
 
 });

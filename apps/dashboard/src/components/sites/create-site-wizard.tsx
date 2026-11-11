@@ -4,7 +4,7 @@ import React, { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Badge, Button } from "@suite/ui";
 import { ConfigFormRenderer } from "@/components/config-renderers/config-form-renderer";
-import { workspacePath } from "@/lib/workspace-paths";
+import { websiteBuilderStudioHref } from "@/components/layout/website-builder-nav.config";
 import {
   CmsApiError,
   createSiteRequest,
@@ -250,7 +250,7 @@ function useSiteSubmission(draft: SiteWizardValues) {
         { title: draft.title, slug: draft.slug, templateId: templateId.length === 0 ? null : templateId },
         idempotencyKey
       );
-      router.push(workspacePath("/sites/" + result.site.id + "/studio/" + result.homePage.id));
+      router.push(websiteBuilderStudioHref(result.site.id, result.homePage.id));
     } catch (error: unknown) {
       if (error instanceof CmsApiError) {
         setProblem(error.problem.detail);

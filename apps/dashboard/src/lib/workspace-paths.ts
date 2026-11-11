@@ -10,7 +10,7 @@ export const WORKSPACE_ROOT = "/dashboard";
 const WORKSPACE_ROOT_PREFIX = WORKSPACE_ROOT + "/";
 
 /** Workspace roots that lived at the root before the /dashboard move. */
-export const LEGACY_WORKSPACE_ROOTS = ["/settings", "/sites"] as const;
+export const LEGACY_WORKSPACE_ROOTS = ["/settings"] as const;
 
 export const AUTHENTICATION_PATHS = [
   "/login",

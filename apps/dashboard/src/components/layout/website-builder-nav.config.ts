@@ -1,4 +1,5 @@
 import { PERMISSIONS, hasPermission } from "@suite/core";
+import { WORKSPACE_ROOT, workspacePath } from "@/lib/workspace-paths";
 import type { NavIconKey } from "./icon-registry";
 
 /**
@@ -17,22 +18,31 @@ export const WEBSITE_BUILDER_APP_NAME = "Website Builder" as const;
 export const WEBSITE_BUILDER_APP_ICON: NavIconKey = "sites";
 
 export const WEBSITE_BUILDER_HUB_ROOT = "/websites" as const;
-export const WEBSITE_BUILDER_LEGACY_ROOT = "/sites" as const;
+/**
+ * Route root of the site surfaces (create, onboarding, studio). It carries no
+ * legacy meaning: the browser address is always the workspace path below.
+ */
+export const WEBSITE_BUILDER_SITES_ROUTE_ROOT = "/sites" as const;
 
 export const WEBSITE_BUILDER_BACK_LINK = {
   label: "Back to workspace",
-  href: "/dashboard",
+  href: WORKSPACE_ROOT,
 } as const;
 
-export const WEBSITE_BUILDER_CREATE_SITE_HREF = "/sites/onboarding" as const;
-export const WEBSITE_BUILDER_STUDIO_SEGMENT = "editor" as const;
+export const WEBSITE_BUILDER_CREATE_SITE_HREF = workspacePath("/sites/onboarding");
+/** The App Router route is `(studio)/sites/[siteId]/studio/[pageId]`. */
+export const WEBSITE_BUILDER_STUDIO_SEGMENT = "studio" as const;
 
 /**
- * The studio is a route of this application, so its path is declared once. A
- * later studio-layout change updates this constant instead of every caller.
+ * The studio is a route of this application, so its path is declared once. The
+ * workspace root is applied here too: the browser address is
+ * `/dashboard/sites/*`, while bare `/sites/*` is the App Router root that the
+ * rewrite serves behind it.
  */
 export function websiteBuilderStudioHref(siteId: string, pageId: string): string {
-  return `${WEBSITE_BUILDER_LEGACY_ROOT}/${encodeURIComponent(siteId)}/${WEBSITE_BUILDER_STUDIO_SEGMENT}/${encodeURIComponent(pageId)}`;
+  return workspacePath(
+    `${WEBSITE_BUILDER_SITES_ROUTE_ROOT}/${encodeURIComponent(siteId)}/${WEBSITE_BUILDER_STUDIO_SEGMENT}/${encodeURIComponent(pageId)}`
+  );
 }
 
 export type WebsiteBuilderDestinationId = "overview" | "inquiries" | "settings";
@@ -122,8 +132,9 @@ function isPathWithin(pathname: string, root: string): boolean {
 }
 
 /**
- * True for the /websites hub and the legacy /sites surfaces that belong to the
- * same application, so the shell collapses the workspace rail consistently.
+ * True for the /websites hub and the workspace site surfaces (create,
+ * onboarding, studio), so the shell collapses the workspace rail consistently.
+ * Bare /sites is not matched: it is not a workspace address.
  */
 export function isWebsiteBuilderAppRoute(
   pathname: string | null | undefined
@@ -131,7 +142,7 @@ export function isWebsiteBuilderAppRoute(
   const path = pathname ?? "";
   return (
     isPathWithin(path, WEBSITE_BUILDER_HUB_ROOT) ||
-    isPathWithin(path, WEBSITE_BUILDER_LEGACY_ROOT)
+    isPathWithin(path, workspacePath(WEBSITE_BUILDER_SITES_ROUTE_ROOT))
   );
 }
 

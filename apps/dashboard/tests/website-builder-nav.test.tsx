@@ -20,6 +20,7 @@ import {
   WEBSITE_BUILDER_NAV_GROUPS,
   isWebsiteBuilderAppRoute,
   visibleWebsiteBuilderNavGroups,
+  websiteBuilderStudioHref,
 } from "@/components/layout/website-builder-nav.config";
 
 const ALL_CAPABILITIES = [
@@ -49,13 +50,20 @@ describe("Website Builder navigation configuration", () => {
     ]);
   });
 
-  it("recognizes the hub and the legacy sites surfaces", () => {
+  it("recognizes the hub and the workspace site surfaces", () => {
     expect(isWebsiteBuilderAppRoute("/websites")).toBe(true);
     expect(isWebsiteBuilderAppRoute("/websites/settings")).toBe(true);
-    expect(isWebsiteBuilderAppRoute("/sites")).toBe(true);
-    expect(isWebsiteBuilderAppRoute("/sites/site_1/editor/page_1")).toBe(true);
+    expect(isWebsiteBuilderAppRoute("/sites")).toBe(false);
+    expect(isWebsiteBuilderAppRoute("/dashboard/sites/new")).toBe(true);
+    expect(isWebsiteBuilderAppRoute("/dashboard/sites/site_1/studio/page_1")).toBe(true);
     expect(isWebsiteBuilderAppRoute("/dashboard")).toBe(false);
     expect(isWebsiteBuilderAppRoute("/websites-other")).toBe(false);
+  });
+
+  it("links to the studio route under the workspace root", () => {
+    expect(websiteBuilderStudioHref("site_1", "page_1")).toBe(
+      "/dashboard/sites/site_1/studio/page_1"
+    );
   });
 
   it("hides every destination when permissions are missing or empty", () => {

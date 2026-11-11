@@ -15,7 +15,9 @@ import { RELEASE_GATE_DASHBOARD_PORT } from "./tests/e2e/helpers/release-gate-po
 
 const CONFIG_DIR = dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = resolve(CONFIG_DIR, "../..");
-const WEB_PORT = 3003;
+// Local runs may point the gate at a free port so a dev/prebuilt storefront on
+// 3003 is not reused against the real API instead of the fixture API.
+const WEB_PORT = Number(process.env.E2E_WEB_PORT ?? "3003");
 const DASHBOARD_PORT = RELEASE_GATE_DASHBOARD_PORT;
 const FIXTURE_PORT = 4310;
 const TENANT_HOST = "acme.localhost";

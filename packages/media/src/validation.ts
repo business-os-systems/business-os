@@ -8,6 +8,7 @@ import {
   type MediaAllowedMimeType,
 } from "./constants.js";
 import { createMediaError } from "./errors.js";
+import type { MediaChecksumMode } from "./env.js";
 import type { StorageObjectHead } from "./storage/adapter.js";
 
 export interface UploadIntentInput {
@@ -198,13 +199,25 @@ function assertStoredSize(sizeBytes: number, maxBytes: number): void {
   );
 }
 
-function assertChecksumEvidence(head: StorageObjectHead): void {
-  if (head.checksumHex !== null || head.checksumSha256Base64 !== null) {
+function assertChecksumEvidence(
+  head: StorageObjectHead,
+  checksumMode: MediaChecksumMode
+): void {
+  // Provider mode must see the provider's own SHA-256. Falling back to the
+  // signed metadata alone would let a provider that ignored the header (for
+  // example R2, which has no full-object checksum) pass as verified.
+  const hasEvidence =
+    checksumMode === "provider"
+      ? head.checksumSha256Base64 !== null
+      : head.checksumHex !== null;
+  if (hasEvidence) {
     return;
   }
   throw createMediaError(
     "MEDIA_CHECKSUM_MISMATCH",
-    "The stored object carries no checksum metadata, so its integrity cannot be verified.",
+    checksumMode === "provider"
+      ? "The storage provider returned no SHA-256 checksum, so the uploaded bytes cannot be verified."
+      : "The stored object carries no checksum metadata, so its integrity cannot be verified.",
     [{ name: "storageKey", reason: "Re-upload the file with its checksum headers." }]
   );
 }
@@ -238,8 +251,9 @@ function assertStoredChecksum(input: {
   readonly head: StorageObjectHead;
   readonly checksum: string;
   readonly expectedChecksumBase64: string;
+  readonly checksumMode: MediaChecksumMode;
 }): void {
-  assertChecksumEvidence(input.head);
+  assertChecksumEvidence(input.head, input.checksumMode);
   assertChecksumValues(input);
 }
 
@@ -252,8 +266,10 @@ export function verifyUploadedObject(input: {
   readonly declared: FinalizeUploadInput;
   readonly maxBytes: number;
   readonly expectedChecksumBase64: string;
+  readonly checksumMode: MediaChecksumMode;
 }): VerifiedUpload {
-  const { head, declared, maxBytes, expectedChecksumBase64 } = input;
+  const { head, declared, maxBytes, expectedChecksumBase64, checksumMode } =
+    input;
   assertStoredSize(head.sizeBytes, maxBytes);
   assertAllowedMimeType(head.mimeType);
   assertValidChecksum(declared.checksum);
@@ -261,6 +277,7 @@ export function verifyUploadedObject(input: {
     head,
     checksum: declared.checksum,
     expectedChecksumBase64,
+    checksumMode,
   });
   return {
     fileName: normalizeFileName(head.fileName ?? fileNameFromKey(declared.storageKey)),

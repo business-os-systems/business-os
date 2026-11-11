@@ -31,6 +31,48 @@ services:
       timeout: 5s
       retries: 5
 
+  # Local object storage for the shared media library. Upstream MinIO no longer
+  # publishes images to Docker Hub (the repository returns 404 and dl.min.io
+  # returns 410), so this pins the last published build from the Bitnami legacy
+  # namespace. Local development only; deployed environments use Cloudflare R2.
+  # The app's dev keys double as the local MinIO superuser; deployed buckets use
+  # a bucket-scoped R2 token instead.
+  minio:
+    image: bitnamilegacy/minio:2025.7.23-debian-12-r5
+    container_name: business_os_minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MEDIA_S3_ACCESS_KEY_ID:?MEDIA_S3_ACCESS_KEY_ID must be set in the root .env}
+      MINIO_ROOT_PASSWORD: ${MEDIA_S3_SECRET_ACCESS_KEY:?MEDIA_S3_SECRET_ACCESS_KEY must be set in the root .env}
+      # The browser sends the presigned PUT from the dashboard origin.
+      MINIO_API_CORS_ALLOW_ORIGIN: ${DASHBOARD_URL:?DASHBOARD_URL must be set in the root .env}
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - minio_data:/data
+
+  # Creates the media bucket once and grants anonymous download on the whole
+  # bucket, so delivered images resolve. Uploads still require the signed URL;
+  # an object is readable by its key once it exists.
+  minio-init:
+    image: bitnamilegacy/minio-client:2025.7.21-debian-12-r3
+    container_name: business_os_minio_init
+    depends_on:
+      - minio
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        until mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"; do sleep 2; done
+        mc mb --ignore-existing "local/$$MEDIA_BUCKET"
+        mc anonymous set download "local/$$MEDIA_BUCKET"
+    environment:
+      MINIO_ROOT_USER: ${MEDIA_S3_ACCESS_KEY_ID:?MEDIA_S3_ACCESS_KEY_ID must be set in the root .env}
+      MINIO_ROOT_PASSWORD: ${MEDIA_S3_SECRET_ACCESS_KEY:?MEDIA_S3_SECRET_ACCESS_KEY must be set in the root .env}
+      MEDIA_BUCKET: ${MEDIA_BUCKET:?MEDIA_BUCKET must be set in the root .env}
+    restart: "no"
+
 volumes:
   postgres_data:
   redis_data:
+  minio_data:

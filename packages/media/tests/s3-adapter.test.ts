@@ -11,6 +11,7 @@ const CONFIG: MediaConfig = {
   publicBaseUrl: "https://cdn.example.com/business-os-media",
   maxBytes: 10_485_760,
   urlTtlSeconds: 900,
+  checksumMode: "provider",
 };
 
 const CHECKSUM = "a".repeat(64);
@@ -46,6 +47,29 @@ describe("S3-compatible storage adapter", () => {
     expect(presigned.requiredHeaders["Content-Length"]).toBe("1024");
     expect(presigned.requiredHeaders["x-amz-meta-checksum"]).toBe(CHECKSUM);
     expect(Promise.resolve(presigned.expiresAt)).toBeTruthy();
+  });
+
+  it("omits the provider checksum header in metadata mode for R2", async () => {
+    const adapter = createS3StorageAdapter({
+      ...CONFIG,
+      checksumMode: "metadata",
+    });
+    const presigned = await adapter.createUploadUrl({
+      storageKey: "media/org_1/2026/01/abc.png",
+      mimeType: "image/png",
+      sizeBytes: 1_024,
+      checksumHex: CHECKSUM,
+      fileName: "room photo.png",
+    });
+
+    const url = new URL(presigned.uploadUrl);
+    const signedHeaders = decodeURIComponent(
+      url.searchParams.get("X-Amz-SignedHeaders") ?? ""
+    );
+    expect(signedHeaders).not.toContain("x-amz-checksum-sha256");
+    expect(signedHeaders).toContain("x-amz-meta-checksum");
+    expect(presigned.requiredHeaders["x-amz-checksum-sha256"]).toBeUndefined();
+    expect(presigned.requiredHeaders["x-amz-meta-checksum"]).toBe(CHECKSUM);
   });
 
   it("derives a stable public URL for a stored key", () => {

@@ -1,1 +1,8 @@
-{}
+{
+  "packages/media/src/assets/asset-service.ts": {
+    "lines": [168, 195, 196, 197, 198, 199, 200, 201, 247, 392, 414, 448, 473],
+    "owner": "website-builder (media)",
+    "expires": "2027-01-31",
+    "reason": "Executed by apps/api/tests/integration/media/media-library.test.ts (provider dedupe and metadata collision). The API coverage project does not attribute instrumented workspace-package sources and packages/media has no database harness. Remove when the media integration suite runs under the media package."
+  }
+}

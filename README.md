@@ -55,26 +55,70 @@ npm run dev
 pnpm dev
 ```
 
+### 4. Test Against Prebuilt Servers (no compile-on-navigation)
+
+`next dev` compiles each route the first time it is opened, so navigating while
+testing triggers a build. For QA and manual testing, serve the production build
+instead — every route is compiled once, up front, and navigation never blocks:
+
+```bash
+docker compose up -d postgres redis minio minio-init   # once per machine
+pnpm db:migrate                                        # after every pull that adds a migration
+pnpm build                                             # typecheck + Next.js production builds
+pnpm start                                             # serve on 4000 / 3001 / 3002 / 3003
+```
+
+`pnpm serve` runs the build and start steps in sequence. After changing code,
+re-run `pnpm build` (Turbo caches unchanged packages) and restart the affected
+server. This is a local QA lane: the dashboard, platform and storefront serve
+their production builds, while the API runs through `tsx` because the workspace
+packages export TypeScript sources. Deployed environments build and run from
+their own container images.
+
+`pnpm start` refuses to boot while the database schema is behind the
+repository: the first line runs `pnpm db:migrate:status` and prints the pending
+migrations instead of letting the API fail later with a masked 500. Both that
+check and `pnpm db:migrate` read the connection from `packages/db/.env` (or the
+process environment), so declare `DATABASE_URL` there once.
+
+**Object storage (local).** The media library writes through a presigned S3 URL.
+The `minio` service listens on `9000` (console `9001`) and `minio-init` creates
+the `business-os-media` bucket with anonymous read for delivered assets; uploads
+stay private and arrive only through the signed URL. Credentials come from
+`MEDIA_S3_*` in the root `.env`.
+
+**Cloudflare R2.** The same adapter serves R2: set
+`MEDIA_S3_ENDPOINT=https://<ACCOUNT_ID>.r2.cloudflarestorage.com`,
+`MEDIA_S3_REGION=auto`, `MEDIA_PUBLIC_BASE_URL` to the bucket's public URL, and
+`MEDIA_S3_CHECKSUM_MODE=metadata` (R2 has no full-object SHA-256). Add a bucket
+CORS policy for the dashboard origin; the exact policy is in the release runbook
+(`specs/010-website-builder/runbook.md`).
+
 ---
 
 ## 📋 Simple Commands Reference
 
-| What you want to do                   | npm Command                    | pnpm Command                | URL / Port              |
-| :------------------------------------ | :----------------------------- | :-------------------------- | :---------------------- |
-| **Start Website Builder & Dashboard** | `npm run dev:dashboard`        | `pnpm dev:dashboard`        | `http://localhost:3001` |
-| **Start Backend API Gateway**         | `npm run dev:api`              | `pnpm dev:api`              | `http://localhost:4000` |
-| **Start All Dev Servers**             | `npm run dev`                  | `pnpm dev`                  | Both 3001 & 4000        |
-| **Build Dashboard for Production**    | `npm run build:dashboard`      | `pnpm build:dashboard`      | —                       |
-| **Build Backend API for Production**  | `npm run build:api`            | `pnpm build:api`            | —                       |
-| **Build Entire Monorepo**             | `npm run build`                | `pnpm build`                | —                       |
-| **Run Dashboard Unit & E2E Tests**    | `npm run test:dashboard`       | `pnpm test:dashboard`       | Vitest (40 tests)       |
-| **Run Website Builder Module Tests**  | `npm run test:website-builder` | `pnpm test:website-builder` | Vitest (36 tests)       |
-| **Run Backend API Tests**             | `npm run test:api`             | `pnpm test:api`             | Vitest                  |
-| **Run All Monorepo Tests**            | `npm run test`                 | `pnpm test`                 | All packages            |
-| **Generate Prisma Database Client**   | `npm run db:generate`          | `pnpm db:generate`          | —                       |
-| **Open Prisma Database Studio**       | `npm run db:studio`            | `pnpm db:studio`            | `http://localhost:5555` |
-| **Run Monorepo Typecheck**            | `npm run typecheck`            | `pnpm typecheck`            | TypeScript Strict       |
-| **Run Monorepo Linting**              | `npm run lint`                 | `pnpm lint`                 | ESLint                  |
+| What you want to do                   | npm Command                    | pnpm Command                | URL / Port                |
+| :------------------------------------ | :----------------------------- | :-------------------------- | :------------------------ |
+| **Start Website Builder & Dashboard** | `npm run dev:dashboard`        | `pnpm dev:dashboard`        | `http://localhost:3001`   |
+| **Start Backend API Gateway**         | `npm run dev:api`              | `pnpm dev:api`              | `http://localhost:4000`   |
+| **Start All Dev Servers**             | `npm run dev`                  | `pnpm dev`                  | Both 3001 & 4000          |
+| **Build Dashboard for Production**    | `npm run build:dashboard`      | `pnpm build:dashboard`      | —                         |
+| **Build Backend API for Production**  | `npm run build:api`            | `pnpm build:api`            | —                         |
+| **Build Entire Monorepo**             | `npm run build`                | `pnpm build`                | —                         |
+| **Serve Prebuilt Apps (all four)**    | `npm run start`                | `pnpm start`                | 4000 / 3001 / 3002 / 3003 |
+| **Build Then Serve Prebuilt Apps**    | `npm run serve`                | `pnpm serve`                | 4000 / 3001 / 3002 / 3003 |
+| **Serve One Prebuilt App**            | `npm run start:platform`       | `pnpm start:platform`       | see app row above         |
+| **Run Dashboard Unit & E2E Tests**    | `npm run test:dashboard`       | `pnpm test:dashboard`       | Vitest (40 tests)         |
+| **Run Website Builder Module Tests**  | `npm run test:website-builder` | `pnpm test:website-builder` | Vitest (36 tests)         |
+| **Run Backend API Tests**             | `npm run test:api`             | `pnpm test:api`             | Vitest                    |
+| **Run All Monorepo Tests**            | `npm run test`                 | `pnpm test`                 | All packages              |
+| **Generate Prisma Database Client**   | `npm run db:generate`          | `pnpm db:generate`          | —                         |
+| **Apply Pending Migrations**          | `npm run db:migrate`           | `pnpm db:migrate`           | —                         |
+| **Check Migration Head**              | `npm run db:migrate:status`    | `pnpm db:migrate:status`    | —                         |
+| **Open Prisma Database Studio**       | `npm run db:studio`            | `pnpm db:studio`            | `http://localhost:5555`   |
+| **Run Monorepo Typecheck**            | `npm run typecheck`            | `pnpm typecheck`            | TypeScript Strict         |
+| **Run Monorepo Linting**              | `npm run lint`                 | `pnpm lint`                 | ESLint                    |
 
 ---
 
@@ -91,7 +135,7 @@ Once you run `npm run dev:dashboard` (or `pnpm dev:dashboard`), open `http://loc
 3. **Page Explorer:** `http://localhost:3001/sites/site_riverview_main/pages`  
    View all pages under a site (`/`, `/menu`, `/about`, `/reservations`) and click "Open Visual Studio".
 
-4. **Visual Studio Editor:** `http://localhost:3001/sites/site_riverview_main/editor/page_home`  
+4. **Visual Studio Editor:** `http://localhost:3001/dashboard/sites/site_riverview_main/studio/page_home`  
    The core interactive visual builder:
    - **Visual Canvas:** Click any section or block (Hero, Features, Pricing, Testimonials, CTA) to select it with live blue selection bounds.
    - **Block Tree (Left Drawer):** Inspect section/block hierarchy and add new blocks with one click.

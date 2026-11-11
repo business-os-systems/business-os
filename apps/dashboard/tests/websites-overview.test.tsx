@@ -79,7 +79,7 @@ describe("Website Builder overview populated and error states", () => {
     expect(screen.getByText("Live")).toBeTruthy();
     expect(screen.getByText("6 pages")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Open studio" }).getAttribute("href")).toBe(
-      "/sites/site_1/editor/page_home"
+      "/dashboard/sites/site_1/studio/page_home"
     );
   });
 
@@ -142,6 +142,6 @@ describe("Website Builder overview pagination and actions", () => {
     }
     fireEvent.click(createButton);
 
-    expect(navigation.push).toHaveBeenCalledWith("/sites/onboarding");
+    expect(navigation.push).toHaveBeenCalledWith("/dashboard/sites/onboarding");
   });
 });
