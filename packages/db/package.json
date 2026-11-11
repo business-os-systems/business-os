@@ -22,6 +22,7 @@
     "db:migrate:deploy": "prisma migrate deploy --schema=prisma/schema",
     "db:seed": "tsx src/seed.ts",
     "db:seed:catalogs": "tsx src/seed-platform-catalogs.ts",
+    "db:seed:starter-catalog": "tsx src/seed-starter-catalog.ts",
     "db:studio": "prisma studio --schema=prisma/schema",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
