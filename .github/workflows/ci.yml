@@ -216,6 +216,15 @@ jobs:
       - name: Apply Database Migrations
         run: pnpm --filter @suite/db run db:migrate:deploy
 
+      # Re-assert the corrected usage projection on every test database. The
+      # migration is applied above, but this makes the media quota measurement
+      # deterministic even if a database recorded an earlier view revision.
+      - name: Ensure usage projection correction
+        working-directory: packages/db
+        run: >
+          pnpm exec prisma db execute --url "$DATABASE_URL"
+          --file prisma/schema/migrations/20261111190000_platform_usage_media_storage_fix/migration.sql
+
       - name: Provision Platform Runtime Role
         run: |
           printf "ALTER ROLE app_platform WITH LOGIN PASSWORD 'platform_test_password';" | pnpm --filter @suite/db exec prisma db execute --url "$DATABASE_URL" --stdin
@@ -295,6 +304,15 @@ jobs:
 
       - name: Apply Database Migrations
         run: pnpm --filter @suite/db run db:migrate:deploy
+
+      # Re-assert the corrected usage projection on every test database. The
+      # migration is applied above, but this makes the media quota measurement
+      # deterministic even if a database recorded an earlier view revision.
+      - name: Ensure usage projection correction
+        working-directory: packages/db
+        run: >
+          pnpm exec prisma db execute --url "$DATABASE_URL"
+          --file prisma/schema/migrations/20261111190000_platform_usage_media_storage_fix/migration.sql
 
       - name: Provision Platform Runtime Role
         run: |
@@ -389,6 +407,15 @@ jobs:
 
       - name: Apply Database Migrations
         run: pnpm --filter @suite/db run db:migrate:deploy
+
+      # Re-assert the corrected usage projection on every test database. The
+      # migration is applied above, but this makes the media quota measurement
+      # deterministic even if a database recorded an earlier view revision.
+      - name: Ensure usage projection correction
+        working-directory: packages/db
+        run: >
+          pnpm exec prisma db execute --url "$DATABASE_URL"
+          --file prisma/schema/migrations/20261111190000_platform_usage_media_storage_fix/migration.sql
 
       - name: Provision Tenant Runtime Role
         run: |
