@@ -18,13 +18,27 @@ const PLATFORM_TABLES = [
   ...parsePrismaModels(join(PRISMA_DIR, "feature-flags.prisma")),
 ].map((model) => model.table);
 
+const CMS_TABLES = parsePrismaModels(join(PRISMA_DIR, "cms.prisma")).map(
+  (model) => model.table,
+);
+
 describe("platform retention declarations", () => {
-  it("declares a policy for every Platform-owned table", () => {
+  it("declares a policy for every Platform-owned and cms table", () => {
     const policyTables = new Set<string>(PLATFORM_RETENTION.map((policy) => policy.table));
-    for (const table of PLATFORM_TABLES) {
+    for (const table of [...PLATFORM_TABLES, ...CMS_TABLES]) {
       expect(policyTables.has(table), `Missing retention policy: ${table}`).toBe(true);
     }
     expect(policyTables.size).toBe(PLATFORM_RETENTION.length);
+  });
+
+  it("declares a cms retention window with a non-retain disposition for personal data", () => {
+    for (const table of CMS_TABLES) {
+      const policy = getPlatformRetentionPolicy(table);
+      expect(policy.enforcedBy.trim().length, table).toBeGreaterThan(0);
+      if (policy.personalData) {
+        expect(policy.disposition, table).not.toBe("retain");
+      }
+    }
   });
 
   it("gives every policy a retention window, basis and enforcement path", () => {
@@ -49,6 +63,17 @@ describe("platform retention declarations", () => {
     const policy = getPlatformRetentionPolicy("audit_events");
     expect(policy.disposition).toBe("archive_then_delete");
     expect(policy.personalData).toBe(true);
+  });
+
+  it("declares retention for the shared media tables (T022, OP-6)", () => {
+    const assets = getPlatformRetentionPolicy("media_assets");
+    expect(assets.disposition).toBe("delete");
+    expect(assets.personalData).toBe(true);
+    expect(assets.enforcedBy).toContain("DELETE /api/v1/media/assets/{id}");
+
+    const usages = getPlatformRetentionPolicy("media_usages");
+    expect(usages.disposition).toBe("delete");
+    expect(usages.personalData).toBe(false);
   });
 });
 

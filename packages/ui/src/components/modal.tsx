@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useId, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "../lib/utils.js";
 import { Button } from "./button.js";
@@ -99,6 +99,8 @@ export function Modal({
 }: ModalProps) {
   const [isMounted, setIsMounted] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  const descriptionId = useId();
 
   useEffect(() => {
     setIsMounted(true);
@@ -134,6 +136,8 @@ export function Modal({
     <div
       role="dialog"
       aria-modal="true"
+      aria-labelledby={title ? titleId : undefined}
+      aria-describedby={description ? descriptionId : undefined}
       className={cn(
         "fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md overflow-y-auto animate-in fade-in duration-200",
         overlayClassName,
@@ -152,23 +156,23 @@ export function Modal({
           className,
         )}
       >
-        {(title || showCloseButton) && (
-          <div className="flex items-start justify-between gap-4 pb-2.5 border-b border-border-hairline">
+        {(title || showCloseButton) ? <div className="flex items-start justify-between gap-4 pb-2.5 border-b border-border-hairline">
             <div className="flex flex-col min-w-0 pr-2">
-              {title && (
-                <h2 className="text-base sm:text-lg font-bold text-text truncate">
+              {title ? <h2
+                  id={titleId}
+                  className="text-base sm:text-lg font-bold text-text truncate"
+                >
                   {title}
-                </h2>
-              )}
-              {description && (
-                <p className="text-xs text-text-muted mt-0.5 leading-relaxed">
+                </h2> : null}
+              {description ? <p
+                  id={descriptionId}
+                  className="text-xs text-text-muted mt-0.5 leading-relaxed"
+                >
                   {description}
-                </p>
-              )}
+                </p> : null}
             </div>
 
-            {showCloseButton && (
-              <Button
+            {showCloseButton ? <Button
                 type="button"
                 variant="ghost"
                 size="icon"
@@ -177,10 +181,8 @@ export function Modal({
                 className="h-7 w-7 p-1 text-text-muted hover:text-text hover:bg-surface-muted rounded-lg shrink-0"
               >
                 <XIcon className="h-4 w-4 stroke-[2.5]" />
-              </Button>
-            )}
-          </div>
-        )}
+              </Button> : null}
+          </div> : null}
 
         <div
           className={cn(
@@ -191,11 +193,9 @@ export function Modal({
           {children}
         </div>
 
-        {footer && (
-          <div className="pt-2.5 sm:pt-3 border-t border-border-hairline flex items-center justify-end gap-2.5">
+        {footer ? <div className="pt-2.5 sm:pt-3 border-t border-border-hairline flex items-center justify-end gap-2.5">
             {footer}
-          </div>
-        )}
+          </div> : null}
       </div>
     </div>
   );

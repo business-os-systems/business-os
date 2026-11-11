@@ -1,5 +1,6 @@
 import type { NavigationConfig, NavItemConfig } from "@suite/ui";
 import { PERMISSIONS } from "@suite/core";
+import { workspacePath } from "@/lib/workspace-paths";
 
 /**
  * Base Navigation Configuration (Platform Core Anchors Only)
@@ -19,12 +20,20 @@ export const baseNavigationConfig: NavigationConfig = {
       icon: "home",
       description: "Executive control overview and modular app launcher",
     },
+    {
+      id: "media",
+      name: "Media",
+      href: "/media",
+      icon: "media",
+      description: "Shared workspace media library used by every application",
+      permission: PERMISSIONS.MEDIA.READ,
+    },
   ],
   bottomItems: [
     {
       id: "settings",
       name: "Settings",
-      href: "/settings/general",
+      href: workspacePath("/settings/general"),
       icon: "settings",
       isBottomPinned: true,
       description: "Organization profile, branches, team members, and roles",

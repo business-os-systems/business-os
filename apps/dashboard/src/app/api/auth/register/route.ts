@@ -7,7 +7,6 @@ import {
   encodeSessionPayload,
 } from "@/lib/auth-constants";
 import { validatePasswordComplexity } from "@suite/auth/password";
-import { isProduction } from "@/lib/env";
 import { resolveRequestOrigin } from "@/lib/origin";
 import { problemResponse, successResponse, zodProblemResponse } from "@/lib/api-response";
 import { verifyBotChallenge } from "@/services/bot-defense.service";
@@ -50,7 +49,7 @@ async function buildCreatedAccountResponse(user: CreatedAccountDto): Promise<Nex
   });
 
   const token = await signSessionToken(rawPayload);
-  const cookieOptions = createSessionCookieOptions(isProduction, false);
+  const cookieOptions = createSessionCookieOptions(false);
   const response = successResponse(
     {
       success: true,

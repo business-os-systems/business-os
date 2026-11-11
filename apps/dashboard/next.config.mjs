@@ -5,6 +5,7 @@ const nextConfig = {
   reactStrictMode: true,
   transpilePackages: [
     "@suite/website-builder",
+    "@suite/media",
     "@suite/ui",
     "@suite/auth",
     "@suite/core",
@@ -111,18 +112,27 @@ const nextConfig = {
   },
   async rewrites() {
     const apiUrl = process.env.API_URL;
-    if (!apiUrl) {
-      return [];
-    }
+    // The workspace lives at /dashboard/* while auth and API stay at the root.
+    // /dashboard itself keeps its own page; deeper addresses are the same
+    // routes the app already declares, addressed under the workspace root.
+    const workspaceRewrites = [
+      {
+        source: "/dashboard/:path+",
+        destination: "/:path+",
+      },
+    ];
+    const apiFallback = apiUrl
+      ? [
+          {
+            source: "/api/v1/:path*",
+            destination: `${apiUrl}/api/v1/:path*`,
+          },
+        ]
+      : [];
     return {
       beforeFiles: [],
-      afterFiles: [],
-      fallback: [
-        {
-          source: "/api/v1/:path*",
-          destination: `${apiUrl}/api/v1/:path*`,
-        },
-      ],
+      afterFiles: workspaceRewrites,
+      fallback: apiFallback,
     };
   },
 };

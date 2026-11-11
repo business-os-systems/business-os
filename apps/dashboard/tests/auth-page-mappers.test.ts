@@ -173,7 +173,7 @@ describe("login destination resolver", () => {
   it("falls back to the dispatcher route", () => {
     expect(
       resolveLoginDestination({ user: { permissions: ["pos:orders:create"] } }, null)
-    ).toBe("/pos");
+    ).toBe("/dashboard/pos");
   });
 
   it("falls back to the dashboard when nothing else resolves", () => {

@@ -3,13 +3,14 @@ import { SUPPORT_SESSION_TENANT_ACTOR_PREFIX } from "@suite/core";
 import type { TableColumnConfig, TableConfig } from "@suite/ui";
 import type { SupportSessionHistoryItem } from "@/lib/support-session-client";
 import { EndSupportSessionButton } from "./end-support-session-button";
+import { workspacePath } from "@/lib/workspace-paths";
 
 /** One API page per request; older pages are reached through the returned cursor (CT-5). */
 export const SUPPORT_HISTORY_PAGE_SIZE = 20;
 
 /** Page and pagination copy, so neither the page nor the table hardcodes strings. */
 /** The tenant security surface that owns the support-session history. */
-export const SUPPORT_HISTORY_PATH = "/settings/security";
+export const SUPPORT_HISTORY_PATH = workspacePath("/settings/security");
 
 export const SUPPORT_HISTORY_COPY = {
   pageTitle: "Security",

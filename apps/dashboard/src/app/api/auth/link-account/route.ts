@@ -8,7 +8,6 @@ import {
   SESSION_COOKIE_NAME,
   verifyAccountLinkingTicket,
 } from "@suite/auth";
-import { isProduction } from "@/lib/env";
 import { resolvePostLoginRoute } from "@/lib/route-dispatcher";
 import { problemResponse, zodProblemResponse } from "@/lib/problem-response";
 import {
@@ -133,7 +132,7 @@ async function buildLinkedResponse(context: AccountLinkContext): Promise<NextRes
     message: "OAuth account successfully linked.",
     redirectUrl,
   });
-  const cookieOptions = createSessionCookieOptions(isProduction, false);
+  const cookieOptions = createSessionCookieOptions(false);
   response.cookies.set({
     name: SESSION_COOKIE_NAME,
     value: sessionToken,

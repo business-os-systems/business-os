@@ -109,7 +109,7 @@ export function ThemeToggle() {
       onClick={handleCycleTheme}
       className="h-8 px-2 gap-1.5 text-xs text-text-muted hover:text-text hover:bg-surface-hover rounded-DEFAULT border border-transparent hover:border-border transition-colors"
       title={`Theme: ${meta.title} — Click to switch`}
-      aria-label={`Current theme is ${theme}. Click to change.`}
+      aria-label={`Current theme is ${meta.label} (${theme}). Click to change.`}
     >
       <Icon className={`w-4 h-4 ${meta.iconClass}`} />
       <span className="hidden lg:inline text-[11px] font-medium">

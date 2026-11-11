@@ -1,17 +1,29 @@
 import React from "react";
 import { Button } from "@suite/ui";
-import type { NavbarBlockProps, BlockStyleTokens } from "../../ast/types.js";
+import type {
+  NavbarBlockProps,
+  BlockStyleTokens,
+  MediaAssetMap,
+} from "../../ast/types.js";
+import { resolveMediaImage } from "../../render/media-resolution.js";
 
 export interface NavbarBlockComponentProps {
   props: NavbarBlockProps;
   styles?: BlockStyleTokens;
+  media?: MediaAssetMap;
 }
 
-export function NavbarBlock({ props, styles }: NavbarBlockComponentProps) {
+export function NavbarBlock({ props, styles, media }: NavbarBlockComponentProps) {
   const containerStyle: React.CSSProperties = {
     backgroundColor: styles?.backgroundColor || "#ffffff",
     color: styles?.textColor || "#0f172a",
   };
+  const logo = resolveMediaImage({
+    reference: props.logo,
+    legacyUrl: props.logoUrl,
+    legacyAlt: props.logoText,
+    media,
+  });
 
   return (
     <header
@@ -21,13 +33,15 @@ export function NavbarBlock({ props, styles }: NavbarBlockComponentProps) {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          {props.logoUrl ? (
+          {logo === null ? null : (
             <img
-              src={props.logoUrl}
-              alt={props.logoText || "Logo"}
+              src={logo.url}
+              alt={logo.alt ?? "Logo"}
+              width={logo.width ?? undefined}
+              height={logo.height ?? undefined}
               className="h-8 w-auto"
             />
-          ) : null}
+          )}
           {props.logoText ? (
             <span className="font-bold font-heading text-lg tracking-tight text-on-surface">
               {props.logoText}

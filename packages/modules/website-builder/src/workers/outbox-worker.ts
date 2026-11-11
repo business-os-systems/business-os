@@ -20,7 +20,8 @@ export const EVENT_DISPATCHERS: Record<string, IEventDispatcher> = {
     dispatch: () => ["edge_cdn_cache_purge"],
   },
   "cms.form.submitted": {
-    dispatch: () => ["crm_lead_pipeline", "notification_dispatcher"],
+    // FR-138: release one records the lead and never sends a message.
+    dispatch: () => ["crm_lead_pipeline"],
   },
   "cms.domain.verified": {
     dispatch: () => ["ssl_cert_provisioner"],

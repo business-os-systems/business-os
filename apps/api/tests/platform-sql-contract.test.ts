@@ -28,6 +28,8 @@ const SQL_FILES = [
   "../../packages/db/prisma/schema/migrations/20261107151000_platform_app_installation_counts/migration.sql",
   "../../packages/db/prisma/schema/migrations/20261107152000_platform_quota_gate_types/migration.sql",
   "../../packages/db/prisma/schema/migrations/20261110140000_platform_tenant_audit_chain/migration.sql",
+  "../../packages/db/prisma/schema/migrations/20261111020000_media_library/migration.sql",
+  "../../packages/db/prisma/schema/migrations/20261111021000_media_storage_quota/migration.sql",
   "../../deploy/platform/reseal-audit-chain.sql",
 ].map((relativePath) => resolve(process.cwd(), relativePath));
 

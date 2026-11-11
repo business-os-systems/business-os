@@ -7,7 +7,6 @@ import {
   SESSION_COOKIE_NAME,
   ForbiddenError,
 } from "@suite/auth";
-import { isProduction } from "@/lib/env";
 import { getAuthenticatedSession } from "@/lib/session-helper";
 import { problemResponse, successResponse, zodProblemResponse } from "@/lib/api-response";
 import { switchBranchSession } from "@/services/session-context.service";
@@ -72,11 +71,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       })
     );
 
-    const cookieOptions = createSessionCookieOptions(
-      isProduction,
-      !isEphemeral,
-      remainingSeconds
-    );
+    const cookieOptions = createSessionCookieOptions(!isEphemeral, remainingSeconds);
     const response = successResponse({
       success: true,
       activeBranchId: branchContext.activeBranchId,

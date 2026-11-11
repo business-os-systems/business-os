@@ -1,5 +1,7 @@
 # Business OS (Composable Business Operating System)
+
 ## Venture-Backed Modular Operating System for Modern Physical & Digital Businesses
+
 ### Scalable Architecture: Hotellerie, F&B Dining, Retail & Services
 
 [![CI](https://github.com/business-os-systems/business-os/actions/workflows/ci.yml/badge.svg)](https://github.com/business-os-systems/business-os/actions/workflows/ci.yml)
@@ -14,12 +16,15 @@
 All commands are simple and work directly with either **`npm run <command>`** or **`pnpm <command>`** from the root folder.
 
 ### 1. Start the Website Builder & Admin Dashboard (Port 3001)
+
 To start the visual website builder and admin dashboard:
+
 ```bash
 npm run dev:dashboard
 # or
 pnpm dev:dashboard
 ```
+
 👉 **Open in browser:** **[http://localhost:3001](http://localhost:3001)**
 
 > **💡 Note:** The dashboard integrates directly with PostgreSQL database services and API endpoints. Create sites, manage pages in the Studio canvas, inspect properties, and test responsive preview sandboxes with full tenant isolation.
@@ -27,18 +32,23 @@ pnpm dev:dashboard
 ---
 
 ### 2. Start the Backend API Gateway (Port 4000)
+
 To start the backend API server:
+
 ```bash
 npm run dev:api
 # or
 pnpm dev:api
 ```
+
 👉 **Interactive API Docs (OpenAPI / Scalar):** **[http://localhost:4000/reference](http://localhost:4000/reference)**
 
 ---
 
 ### 3. Start Both Dashboard and API Together
+
 To run all applications concurrently in a single terminal:
+
 ```bash
 npm run dev
 # or
@@ -49,22 +59,22 @@ pnpm dev
 
 ## 📋 Simple Commands Reference
 
-| What you want to do | npm Command | pnpm Command | URL / Port |
-| :--- | :--- | :--- | :--- |
-| **Start Website Builder & Dashboard** | `npm run dev:dashboard` | `pnpm dev:dashboard` | `http://localhost:3001` |
-| **Start Backend API Gateway** | `npm run dev:api` | `pnpm dev:api` | `http://localhost:4000` |
-| **Start All Dev Servers** | `npm run dev` | `pnpm dev` | Both 3001 & 4000 |
-| **Build Dashboard for Production** | `npm run build:dashboard` | `pnpm build:dashboard` | — |
-| **Build Backend API for Production** | `npm run build:api` | `pnpm build:api` | — |
-| **Build Entire Monorepo** | `npm run build` | `pnpm build` | — |
-| **Run Dashboard Unit & E2E Tests** | `npm run test:dashboard` | `pnpm test:dashboard` | Vitest (40 tests) |
-| **Run Website Builder Module Tests** | `npm run test:website-builder` | `pnpm test:website-builder` | Vitest (36 tests) |
-| **Run Backend API Tests** | `npm run test:api` | `pnpm test:api` | Vitest |
-| **Run All Monorepo Tests** | `npm run test` | `pnpm test` | All packages |
-| **Generate Prisma Database Client** | `npm run db:generate` | `pnpm db:generate` | — |
-| **Open Prisma Database Studio** | `npm run db:studio` | `pnpm db:studio` | `http://localhost:5555` |
-| **Run Monorepo Typecheck** | `npm run typecheck` | `pnpm typecheck` | TypeScript Strict |
-| **Run Monorepo Linting** | `npm run lint` | `pnpm lint` | ESLint |
+| What you want to do                   | npm Command                    | pnpm Command                | URL / Port              |
+| :------------------------------------ | :----------------------------- | :-------------------------- | :---------------------- |
+| **Start Website Builder & Dashboard** | `npm run dev:dashboard`        | `pnpm dev:dashboard`        | `http://localhost:3001` |
+| **Start Backend API Gateway**         | `npm run dev:api`              | `pnpm dev:api`              | `http://localhost:4000` |
+| **Start All Dev Servers**             | `npm run dev`                  | `pnpm dev`                  | Both 3001 & 4000        |
+| **Build Dashboard for Production**    | `npm run build:dashboard`      | `pnpm build:dashboard`      | —                       |
+| **Build Backend API for Production**  | `npm run build:api`            | `pnpm build:api`            | —                       |
+| **Build Entire Monorepo**             | `npm run build`                | `pnpm build`                | —                       |
+| **Run Dashboard Unit & E2E Tests**    | `npm run test:dashboard`       | `pnpm test:dashboard`       | Vitest (40 tests)       |
+| **Run Website Builder Module Tests**  | `npm run test:website-builder` | `pnpm test:website-builder` | Vitest (36 tests)       |
+| **Run Backend API Tests**             | `npm run test:api`             | `pnpm test:api`             | Vitest                  |
+| **Run All Monorepo Tests**            | `npm run test`                 | `pnpm test`                 | All packages            |
+| **Generate Prisma Database Client**   | `npm run db:generate`          | `pnpm db:generate`          | —                       |
+| **Open Prisma Database Studio**       | `npm run db:studio`            | `pnpm db:studio`            | `http://localhost:5555` |
+| **Run Monorepo Typecheck**            | `npm run typecheck`            | `pnpm typecheck`            | TypeScript Strict       |
+| **Run Monorepo Linting**              | `npm run lint`                 | `pnpm lint`                 | ESLint                  |
 
 ---
 
@@ -76,7 +86,7 @@ Once you run `npm run dev:dashboard` (or `pnpm dev:dashboard`), open `http://loc
    High-level overview showing active sites, system metrics, and quick action buttons.
 
 2. **Sites Explorer:** `http://localhost:3001/sites`  
-   View your sites (e.g. *Riverview Bistro Flagship*, *Cafe Terrace & Wine Bar*), manage domains, and create new sites.
+   View your sites (e.g. _Riverview Bistro Flagship_, _Cafe Terrace & Wine Bar_), manage domains, and create new sites.
 
 3. **Page Explorer:** `http://localhost:3001/sites/site_riverview_main/pages`  
    View all pages under a site (`/`, `/menu`, `/about`, `/reservations`) and click "Open Visual Studio".
@@ -130,7 +140,7 @@ business-os/
 │   │                                      # • Central Lucide icon facade (@suite/ui/icons)
 │   │
 │   ├── db/                                # Database layer with Prisma v6
-│   │                                      # • Multi-tenant schemas (core.prisma, website-builder.prisma)
+│   │                                      # • Multi-schema layout (core.prisma, cms.prisma, platform.prisma, reference.prisma)
 │   │                                      # • Prisma Client singleton & tenant isolation extensions
 │   │
 │   ├── auth/                              # Authentication layer (Better-Auth, session handling, PIN overrides)
@@ -169,6 +179,7 @@ business-os/
 - **pnpm:** `>= 9.0.0` (Install with: `npm install -g pnpm`)
 
 ### First-Time Setup:
+
 ```bash
 # 1. Install dependencies
 pnpm install
@@ -181,4 +192,5 @@ npm run dev:dashboard
 ---
 
 ## 📜 Engineering Standards
+
 This repository adheres to strict enterprise specifications documented in [`ENTERPRISE_ENGINEERING_STANDARDS_AND_PHILOSOPHY.md`](file:///home/rohit-bahuguna/RB/Composable_Business_Operating_System/00-master-tracker/ENTERPRISE_ENGINEERING_STANDARDS_AND_PHILOSOPHY.md).

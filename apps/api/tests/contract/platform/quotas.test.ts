@@ -139,7 +139,7 @@ it.skipIf(!enabled)("keeps the quota item contract with usage and version", asyn
   expect(item?.version).toMatch(/^\d{4}-\d{2}-\d{2}T/);
 });
 
-it.skipIf(!enabled)("keeps the unmeasurable quota envelope", async () => {
+it.skipIf(!enabled)("keeps the measured storage quota envelope", async () => {
   const organizationId = await createTenant("storage");
 
   const response = await send({
@@ -163,8 +163,8 @@ it.skipIf(!enabled)("keeps the unmeasurable quota envelope", async () => {
   const item = body.data.items[0];
   expect(item?.limitValue).toBe("1024");
   expect(item?.unit).toBe("bytes");
-  expect(item?.currentValue).toBeNull();
-  expect(item?.isMeasurable).toBe(false);
+  expect(item?.currentValue).toBe("0");
+  expect(item?.isMeasurable).toBe(true);
   expect(item?.isOverLimit).toBe(false);
   expect(item?.asOf).toMatch(/^\d{4}-\d{2}-\d{2}T/);
 });

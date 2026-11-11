@@ -1,72 +1,85 @@
 import React from "react";
-import type { BlockAst } from "../../ast/types.js";
-import { renderBlockComponent } from "../../render/section-renderer.js";
+import type { BlockType } from "../../ast/types.js";
 
-export interface CanvasBlockWrapperProps {
-  block: BlockAst;
-  isSelected: boolean;
-  isHovered: boolean;
-  onSelect: (blockId: string, block: BlockAst) => void;
-  onHover: (blockId: string | null) => void;
+type BlockOutlineState = "selected" | "hovered" | "resting";
+
+const BLOCK_OUTLINE_CLASSES = {
+  selected: "ring-2 ring-focus-ring ring-offset-1 shadow-sm",
+  hovered: "ring-1 ring-border-strong ring-offset-1",
+  resting: "ring-0",
+} as const satisfies Record<BlockOutlineState, string>;
+
+const BLOCK_BADGE_CLASSES = {
+  selected: "bg-action text-on-action",
+  hovered: "bg-action-tint text-action border border-border",
+} as const satisfies Record<"selected" | "hovered", string>;
+
+function outlineState(isSelected: boolean, isHovered: boolean): BlockOutlineState {
+  if (isSelected) {
+    return "selected";
+  }
+  return isHovered ? "hovered" : "resting";
 }
 
-export function CanvasBlockWrapper({
-  block,
-  isSelected,
-  isHovered,
-  onSelect,
-  onHover,
-}: CanvasBlockWrapperProps) {
-  const handleClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onSelect(block.id, block);
-  };
+export interface CanvasBlockWrapperProps {
+  readonly blockId: string;
+  readonly blockType: BlockType;
+  readonly isSelected: boolean;
+  readonly isHovered: boolean;
+  readonly readOnly: boolean;
+  readonly onSelect: (blockId: string) => void;
+  readonly onHover: (blockId: string | null) => void;
+  readonly children: React.ReactNode;
+}
 
-  const handleMouseEnter = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onHover(block.id);
-  };
+function handleBlockKeyDown(
+  event: React.KeyboardEvent,
+  onSelect: () => void
+): void {
+  if (event.key !== "Enter" && event.key !== " ") {
+    return;
+  }
+  event.preventDefault();
+  onSelect();
+}
 
-  const handleMouseLeave = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onHover(null);
-  };
-
-  // State-driven outline styles
-  const outlineClass = isSelected
-    ? "ring-2 ring-primary ring-offset-1 shadow-sm"
-    : isHovered
-    ? "ring-1 ring-primary-container ring-offset-1"
-    : "ring-0";
-
+/**
+ * Selection shell around one production block. The visual outline is paired
+ * with `aria-current` and keyboard activation so selection is not pointer-only.
+ */
+export function CanvasBlockWrapper(props: CanvasBlockWrapperProps) {
+  const state = outlineState(props.isSelected, props.isHovered);
+  const badgeVisible = props.isSelected || props.isHovered;
   return (
     <div
-      role="region"
-      aria-label={`Block ${block.type} (${block.id})`}
-      data-canvas-block-id={block.id}
-      data-canvas-block-type={block.type}
-      data-selected={isSelected ? "true" : undefined}
-      data-hovered={isHovered ? "true" : undefined}
-      onClick={handleClick}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      className={`relative group transition-all duration-150 cursor-pointer ${outlineClass}`}
+      role="group"
+      tabIndex={props.readOnly ? -1 : 0}
+      aria-label={"Select " + props.blockType + " block"}
+      aria-current={props.isSelected ? "true" : undefined}
+      data-canvas-block-id={props.blockId}
+      data-canvas-block-type={props.blockType}
+      data-selected={props.isSelected ? "true" : undefined}
+      data-hovered={props.isHovered ? "true" : undefined}
+      onClick={(event) => {
+        event.stopPropagation();
+        props.onSelect(props.blockId);
+      }}
+      onKeyDown={(event) => handleBlockKeyDown(event, () => props.onSelect(props.blockId))}
+      onMouseEnter={() => props.onHover(props.blockId)}
+      onMouseLeave={() => props.onHover(null)}
+      className={"group relative rounded-sm transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring " + BLOCK_OUTLINE_CLASSES[state]}
     >
-      {/* Selection / Hover Indicator Badge */}
-      {(isSelected || isHovered) && (
-        <div
-          className={`absolute -top-6 left-2 z-30 px-2 py-0.5 text-[11px] font-medium font-mono uppercase tracking-wider rounded-t shadow-sm pointer-events-none ${
-            isSelected
-              ? "bg-primary text-white"
-              : "bg-surface-brand-tint text-primary border border-outline-variant"
-          }`}
+      {badgeVisible ? (
+        <span
+          className={
+            "pointer-events-none absolute -top-6 left-2 z-30 rounded-t px-2 py-0.5 font-mono text-[11px] font-medium uppercase tracking-wider shadow-sm " +
+            BLOCK_BADGE_CLASSES[props.isSelected ? "selected" : "hovered"]
+          }
         >
-          {block.type}
-        </div>
-      )}
-
-      {/* Render the inner block component */}
-      {renderBlockComponent(block, true)}
+          {props.blockType}
+        </span>
+      ) : null}
+      {props.children}
     </div>
   );
 }

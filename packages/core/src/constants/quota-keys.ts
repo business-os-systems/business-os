@@ -4,8 +4,8 @@
  * Keys are namespaced by the owning application so a limit can never collide
  * across modules. The database stores the key verbatim; the usage view
  * (platform.v_tenant_usage) measures only the keys that have a real source.
- * Storage is declared but not measurable until metering exists, so the view
- * reports its consumption as unavailable rather than zero.
+ * Storage is measured from media_assets now that the shared media library
+ * deduplicates bytes per tenant (FR-052, FR-122).
  */
 
 export const QUOTA_KEYS = {
@@ -31,7 +31,7 @@ export const QUOTA_RESOURCE_DEFINITIONS: Record<
   QuotaResourceDefinition
 > = {
   "cms.pages": { label: "Pages", unit: "count", measurable: true },
-  "media.storage": { label: "Storage", unit: "bytes", measurable: false },
+  "media.storage": { label: "Storage", unit: "bytes", measurable: true },
   "cms.custom_domains": {
     label: "Custom domains",
     unit: "count",

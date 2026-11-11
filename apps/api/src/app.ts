@@ -27,6 +27,11 @@ import {
   platformAuthRouter,
   referenceRouter,
   supportSessionsRouter,
+  createCmsRouter,
+  createMediaRouter,
+  createPublicInquiryRouter,
+  createStorefrontRouter,
+  abuseRouter,
 } from "./routes/index.js";
 import {
   assertProductionConfiguration,
@@ -39,13 +44,9 @@ import {
   createEdgeAdmissionMiddleware,
 } from "./middleware/edge-admission.js";
 import { getEdgeAudience, getEdgeTeamDomain } from "./lib/platform-env.js";
-import { createWebsiteBuilderRoutes } from "@suite/website-builder/routes";
-import {
-  PageService,
-  SiteService,
-} from "@suite/website-builder/services";
-import { tenantQuotaGuard } from "./services/admin/quota-guard.service.js";
+import { assertMediaConfiguration } from "@suite/media";
 import { metricsRegistry } from "./telemetry.js";
+import { abuseContactLinkMiddleware } from "./middleware/abuse-contact-link.js";
 
 /** Tenant-plane prefixes that require a session and a non-blocked workspace. */
 const TENANT_DATA_PREFIXES = [
@@ -53,6 +54,8 @@ const TENANT_DATA_PREFIXES = [
   "/api/v1/branches",
   "/api/v1/audit-logs",
   "/api/v1/support-sessions",
+  "/api/v1/cms",
+  "/api/v1/media",
 ] as const;
 
 export interface AppOptions {
@@ -66,6 +69,10 @@ export interface AppOptions {
 export function createApp(options: AppOptions = {}) {
   // Every HTTP entrypoint constructs the app, so the production guard lives here.
   assertProductionConfiguration();
+  if (isProduction) {
+    // A production boot must not come up able to issue placeholder signatures.
+    assertMediaConfiguration();
+  }
 
   const app = new OpenAPIHono();
 
@@ -100,13 +107,26 @@ export function createApp(options: AppOptions = {}) {
   });
 
   // 4. Mount Core & Module Sub-Routers
+
+  // Public storefront responses carry the published abuse contact, including
+  // holding and GONE responses. Registered before the storefront routes so the
+  // middleware runs for every request in that prefix.
+  app.use("/api/v1/storefront/*", abuseContactLinkMiddleware());
+
+  // Public storefront intake. It sits before every tenant guard because a
+  // visitor has no session; the published site id is the only input and the
+  // service resolves its workspace through a security-definer helper.
+  app.route("/api/v1/storefront/forms", createPublicInquiryRouter());
+  app.route("/api/v1/storefront", createStorefrontRouter());
+  app.route("/api/v1/abuse", abuseRouter);
+
   app.route("/api/v1/system", systemRouter);
   app.route("/api/v1/auth", authRouter);
 
   // Tenant operational routes: requireAuth, then the suspension gate. One list
   // so a new tenant router cannot be added to one pass and forgotten in the
-  // other. /api/v1/cms is NOT covered yet - its router has no auth middleware
-  // at all and needs its own security slice (see #222 review, SCR-002).
+  // other. /api/v1/cms sits inside this pipeline; its routes additionally
+  // enforce cms:sites:* and cms:pages:* (contract cms-admin, SCR-002).
   const tenantAccessGuard = createTenantAccessGuard({ prisma, redis });
   for (const prefix of TENANT_DATA_PREFIXES) {
     app.use(`${prefix}/*`, requireAuth());
@@ -121,13 +141,8 @@ export function createApp(options: AppOptions = {}) {
   app.route("/api/v1/branches", branchesRouter);
   app.route("/api/v1/audit-logs", auditLogsRouter);
   app.route("/api/v1/support-sessions", supportSessionsRouter);
-  app.route(
-    "/api/v1/cms",
-    createWebsiteBuilderRoutes(
-      PageService.withQuotaGuard(tenantQuotaGuard),
-      SiteService.withQuotaGuard(tenantQuotaGuard)
-    )
-  );
+  app.route("/api/v1/cms", createCmsRouter());
+  app.route("/api/v1/media", createMediaRouter());
 
   // FR-069: when enforced, the origin verifies the Cloudflare Access
   // assertion itself; the /auth mount is covered before the admin router.

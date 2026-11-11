@@ -169,16 +169,19 @@ export async function assertQuotaAvailable(
 }
 
 /**
- * The tenant write points that may consume a measured quota. Storage is
- * deliberately absent: it is not metered, so it is never enforced (FR-091).
- * This is the single allowlist; the default guard used by tenant services is
- * the allowlist adapter so a composition cannot silently bypass it.
+ * The tenant write points that may consume a measured quota. Storage is the
+ * media finalise path: a create is charged the uploaded bytes, while a
+ * checksum duplicate returns the existing asset and is charged nothing
+ * (FR-052, FR-122). This is the single allowlist; the default guard used by
+ * tenant services is the allowlist adapter so a composition cannot silently
+ * bypass it.
  */
 export const TENANT_WRITE_QUOTA_KEYS = {
   PAGE: QUOTA_KEYS.PAGES,
   CUSTOM_DOMAIN: QUOTA_KEYS.CUSTOM_DOMAINS,
   BRANCH: QUOTA_KEYS.BRANCHES,
   MEMBER: QUOTA_KEYS.MEMBERS,
+  STORAGE: QUOTA_KEYS.STORAGE,
 } as const;
 
 const TENANT_WRITE_KEY_SET: ReadonlySet<string> = new Set(

@@ -22,6 +22,9 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
+const DASHBOARD_URL = "http://localhost:3000/dashboard";
+const DASHBOARD_SITES_PATH = "/dashboard/sites";
+
 describe("Platform Auth Gate & Login Route (@suite/dashboard)", () => {
   describe("LoginPage Component", () => {
     it("renders the login card with brand identity and credentials form", () => {
@@ -219,14 +222,14 @@ describe("Platform Auth Gate & Login Route (@suite/dashboard)", () => {
           onboardingStatus: "COMPLETED",
           assignedAppCodes: ["pos"],
         })
-      ).toBe("/pos");
+      ).toBe("/dashboard/pos");
 
       expect(
         resolvePostLoginRoute({
           onboardingStatus: "COMPLETED",
           permissions: ["cms:edit_page", "cms:publish_page"],
         })
-      ).toBe("/sites");
+      ).toBe(DASHBOARD_SITES_PATH);
     });
 
     it("allows registering dynamic modular app routes via registerAppRoute", async () => {
@@ -280,13 +283,13 @@ describe("Platform Auth Gate & Login Route (@suite/dashboard)", () => {
     });
 
     it("configures cookie maxAge appropriately based on keepSignedIn flag", () => {
-      const ephemeral = createSessionCookieOptions(false, false);
+      const ephemeral = createSessionCookieOptions(false);
       expect(ephemeral.maxAge).toBe(86400);
 
-      const persistent = createSessionCookieOptions(false, true);
+      const persistent = createSessionCookieOptions(true);
       expect(persistent.maxAge).toBe(2592000);
 
-      const custom = createSessionCookieOptions(false, false, 3600);
+      const custom = createSessionCookieOptions(false, 3600);
       expect(custom.maxAge).toBe(3600);
     });
   });
@@ -456,7 +459,7 @@ describe("Platform Auth Gate & Login Route (@suite/dashboard)", () => {
       const { middleware } = await import("../src/middleware");
       const { NextRequest } = await import("next/server");
 
-      const req = new NextRequest("http://localhost:3000/dashboard");
+      const req = new NextRequest(DASHBOARD_URL);
       const res = await middleware(req);
 
       expect(res.status).toBe(307);
@@ -509,7 +512,7 @@ describe("Platform Auth Gate & Login Route (@suite/dashboard)", () => {
       const res = await middleware(req);
 
       expect(res.status).toBe(307);
-      expect(res.headers.get("location")).toBe("http://localhost:3000/dashboard");
+      expect(res.headers.get("location")).toBe(DASHBOARD_URL);
     });
 
     it("Rule 1 (Guest Guard): redirects authenticated user with IN_PROGRESS onboarding away from /login to /onboarding/step-N", async () => {
@@ -559,7 +562,7 @@ describe("Platform Auth Gate & Login Route (@suite/dashboard)", () => {
         })
       );
 
-      const req = new NextRequest("http://localhost:3000/dashboard", {
+      const req = new NextRequest(DASHBOARD_URL, {
         headers: { cookie: `${SESSION_COOKIE_NAME}=${token}` },
       });
       const res = await middleware(req);
@@ -621,7 +624,7 @@ describe("Platform Auth Gate & Login Route (@suite/dashboard)", () => {
       const res = await middleware(req);
 
       expect(res.status).toBe(307);
-      expect(res.headers.get("location")).toBe("http://localhost:3000/dashboard");
+      expect(res.headers.get("location")).toBe(DASHBOARD_URL);
     });
 
     it("rejects expired session tokens and redirects to /login", async () => {
@@ -655,7 +658,7 @@ describe("Platform Auth Gate & Login Route (@suite/dashboard)", () => {
       expect(isSessionPayloadExpired(decoded!)).toBe(true);
 
       // Middleware resolution must reject and redirect to login
-      const req = new NextRequest("http://localhost:3000/dashboard", {
+      const req = new NextRequest(DASHBOARD_URL, {
         headers: { cookie: `${SESSION_COOKIE_NAME}=${expiredToken}` },
       });
       const res = await middleware(req);
@@ -738,8 +741,8 @@ describe("Platform Auth Gate & Login Route (@suite/dashboard)", () => {
     const { sanitizeRedirect } = await import("../src/app/(auth)/login/page");
 
     it("allows valid relative local redirect path when onboarding is completed", () => {
-      expect(sanitizeRedirect("/sites", "COMPLETED")).toBe("/sites");
-      expect(sanitizeRedirect("/pos?table=1", "COMPLETED")).toBe("/pos?table=1");
+      expect(sanitizeRedirect("/dashboard/sites", "COMPLETED")).toBe(DASHBOARD_SITES_PATH);
+      expect(sanitizeRedirect("/dashboard/pos?table=1", "COMPLETED")).toBe("/dashboard/pos?table=1");
     });
 
     it("rejects protocol-relative double-slash URLs", () => {
@@ -758,8 +761,7 @@ describe("Platform Auth Gate & Login Route (@suite/dashboard)", () => {
     });
 
     it("ignores redirect query parameter when onboarding is IN_PROGRESS", () => {
-      expect(sanitizeRedirect("/sites", "IN_PROGRESS")).toBeNull();
+      expect(sanitizeRedirect("/dashboard/sites", "IN_PROGRESS")).toBeNull();
     });
   });
 });
-

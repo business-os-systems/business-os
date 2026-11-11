@@ -7,7 +7,6 @@ import {
   createSessionCookieOptions,
   type SessionPayload,
 } from "@suite/auth";
-import { isProduction } from "@/lib/env";
 import { getAuthenticatedSession } from "@/lib/session-helper";
 import { problemResponse, successResponse } from "@/lib/api-response";
 import {
@@ -130,7 +129,7 @@ async function applySessionCookie(
   data: UpdateOrganizationDto
 ): Promise<void> {
   if (data.status === "ARCHIVED") {
-    const cookieOptions = createSessionCookieOptions(isProduction, true);
+    const cookieOptions = createSessionCookieOptions(true);
     response.cookies.delete(cookieOptions.name);
     return;
   }
@@ -144,7 +143,7 @@ async function applySessionCookie(
     timestamp: Date.now(),
   });
   const tokenJwt = await signSessionToken(updatedPayload);
-  const cookieOptions = createSessionCookieOptions(isProduction, true);
+  const cookieOptions = createSessionCookieOptions(true);
   response.cookies.set({
     name: cookieOptions.name,
     value: tokenJwt,

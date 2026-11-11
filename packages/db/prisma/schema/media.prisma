@@ -1,0 +1,88 @@
+// ==============================================================================
+// SHARED MEDIA LIBRARY (@suite/media)
+// Every table lives in the public schema under the "media" owner and is
+// namespaced with "media_". Tenant isolation is a scalar organizationId plus
+// row-level security keyed on app.current_organization_id. No reverse relation
+// is added to Organization or any other core model (core immutability law).
+// ==============================================================================
+
+enum MediaAssetKind {
+  IMAGE
+
+  @@schema("public")
+}
+
+enum MediaAssetStatus {
+  ACTIVE
+  ARCHIVED
+
+  @@schema("public")
+}
+
+enum MediaUsageStatus {
+  DRAFT
+  PUBLISHED
+
+  @@schema("public")
+}
+
+model MediaAsset {
+  id             String           @id @default(cuid())
+  organizationId String
+
+  kind           MediaAssetKind   @default(IMAGE)
+  fileName       String           @db.VarChar(255)
+  mimeType       String           @db.VarChar(100)
+  sizeBytes      Int
+  checksum       String           @db.VarChar(64)
+  width          Int?
+  height         Int?
+
+  storageKey     String           @unique @db.VarChar(512)
+  publicUrl      String           @db.Text
+
+  status         MediaAssetStatus @default(ACTIVE)
+  createdBy      String           @db.VarChar(191)
+
+  createdAt      DateTime         @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime         @updatedAt @db.Timestamptz(6)
+  archivedAt     DateTime?        @db.Timestamptz(6)
+
+  usages         MediaUsage[]
+
+  // Identical bytes are one asset per tenant; finalise returns the existing row.
+  @@unique([organizationId, checksum])
+  @@index([organizationId, status, createdAt])
+  @@index([organizationId, kind, status])
+  @@index([organizationId, fileName])
+  @@map("media_assets")
+
+  @@schema("public")
+}
+
+model MediaUsage {
+  id             String           @id @default(cuid())
+  organizationId String
+
+  assetId        String
+  asset          MediaAsset       @relation(fields: [assetId], references: [id], onDelete: Restrict)
+
+  // The application that references the asset; never a copy of the file.
+  appId          String           @db.VarChar(64)
+  resourceType   String           @db.VarChar(64)
+  resourceId     String           @db.VarChar(128)
+  // Empty string when the resource has no sub-entity; keeps the unique key total.
+  subKey         String           @default("") @db.VarChar(64)
+
+  status         MediaUsageStatus @default(DRAFT)
+
+  createdAt      DateTime         @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime         @updatedAt @db.Timestamptz(6)
+
+  @@unique([assetId, appId, resourceType, resourceId, subKey])
+  @@index([organizationId, assetId, status])
+  @@index([organizationId, appId, resourceType, resourceId])
+  @@map("media_usages")
+
+  @@schema("public")
+}

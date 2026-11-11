@@ -58,6 +58,21 @@ export function getMetricsAuthToken(): string {
   return requireEnvValue("METRICS_AUTH_TOKEN");
 }
 
+/**
+ * Salt for the one-way hashes stored on an inquiry (submitter and email).
+ * Hashing without a deployment secret would make the stored values reversible
+ * by a dictionary attack, so it is required and never defaulted (SCR-109).
+ */
+export function getGdprHmacSalt(): string {
+  return requireEnvValue("GDPR_HMAC_SALT_KEY");
+}
+
+/** Cloudflare Turnstile secret. Absent means the challenge cannot pass. */
+export function getTurnstileSecret(): string | null {
+  const value = process.env.TURNSTILE_SECRET_KEY?.trim();
+  return value === undefined || value.length === 0 ? null : value;
+}
+
 /** The API port; validated as a real TCP port instead of NaN at bind time. */
 export function getServerPort(): number {
   const raw = requireEnvValue("PORT");
@@ -168,4 +183,66 @@ export function assertProductionConfiguration(
       "TRUSTED_PROXY_IPS must list the reverse-proxy addresses in production. An empty list collapses every client into one rate-limit bucket."
     );
   }
+}
+
+// ==============================================================================
+// Abuse controls (FR-131 to FR-137). These live in the validated boundary so
+// feature code never reads process.env directly (P14).
+// ==============================================================================
+
+export const ABUSE_ENV_KEYS = {
+  CONTACT_EMAIL: "ABUSE_CONTACT_EMAIL",
+  PAGE_URL: "ABUSE_PAGE_URL",
+  REPUTATION_FEED_PATH: "ABUSE_REPUTATION_FEED_PATH",
+} as const;
+
+const EMAIL_SHAPE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+
+/** The monitored contact is required: an unset value fails closed. */
+export function getAbuseContactEmail(): string {
+  const value = process.env[ABUSE_ENV_KEYS.CONTACT_EMAIL]?.trim();
+  if (value === undefined || value.length === 0 || !EMAIL_SHAPE.test(value)) {
+    throw new Error(
+      ABUSE_ENV_KEYS.CONTACT_EMAIL +
+        " must hold a monitored email address; it is unset or invalid."
+    );
+  }
+  return value;
+}
+
+/**
+ * Absolute public URL of the abuse page. Optional, but when present it must be
+ * a clean http(s) URL with no embedded credentials so a Link header cannot leak
+ * a secret.
+ */
+export function getAbusePageUrl(): string | null {
+  const raw = process.env[ABUSE_ENV_KEYS.PAGE_URL]?.trim();
+  if (raw === undefined || raw.length === 0) {
+    return null;
+  }
+  let parsed: URL;
+  try {
+    parsed = new URL(raw);
+  } catch (error) {
+    throw new Error(ABUSE_ENV_KEYS.PAGE_URL + " must be an absolute URL.", {
+      cause: error,
+    });
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new Error(ABUSE_ENV_KEYS.PAGE_URL + " must use http or https.");
+  }
+  if (parsed.username !== "" || parsed.password !== "") {
+    throw new Error(ABUSE_ENV_KEYS.PAGE_URL + " must not embed credentials.");
+  }
+  const normalized = parsed.toString();
+  if (/[<>"\r\n]/.test(normalized)) {
+    throw new Error(ABUSE_ENV_KEYS.PAGE_URL + " contains characters that cannot be linked safely.");
+  }
+  return normalized;
+}
+
+/** Optional local feed path; absent means structural checks only. */
+export function getReputationFeedPath(): string | null {
+  const value = process.env[ABUSE_ENV_KEYS.REPUTATION_FEED_PATH]?.trim();
+  return value === undefined || value.length === 0 ? null : value;
 }

@@ -74,6 +74,50 @@ export const SectionStyleTokensSchema = BlockStyleTokensSchema.extend({
   backgroundSize: z.enum(["cover", "contain", "auto"]).optional(),
 }).strict();
 
+/**
+ * Media references are identity-first. The asset variant carries only the
+ * workspace asset id (plus an optional sub-key and alt text); no URL is copied
+ * into the AST. The url variant keeps blocks authored before the media library.
+ */
+const MediaAssetIdSchema = z
+  .string()
+  .min(1)
+  .max(64)
+  .regex(/^[A-Za-z0-9_-]+$/, "Asset ids contain letters, digits, hyphens and underscores only.");
+
+export const MediaReferenceSchema = z.discriminatedUnion("kind", [
+  z
+    .object({
+      kind: z.literal("asset"),
+      assetId: MediaAssetIdSchema,
+      subKey: z.string().max(64).optional(),
+      alt: z.string().max(200).optional(),
+    })
+    .strict(),
+  z.object({ kind: z.literal("url"), url: SafeUrlSchema }).strict(),
+]);
+
+const HttpMediaUrlSchema = z
+  .string()
+  .url()
+  .refine((value) => {
+    const protocol = new URL(value).protocol;
+    return protocol === "http:" || protocol === "https:";
+  }, "Media URLs must use the http or https scheme.");
+
+/** The render-time asset projection; URLs are server-issued, never AST data. */
+export const MediaAssetResolutionSchema = z
+  .object({
+    assetId: MediaAssetIdSchema,
+    url: HttpMediaUrlSchema,
+    fileName: z.string().min(1).max(255),
+    width: z.number().int().positive().nullable(),
+    height: z.number().int().positive().nullable(),
+  })
+  .strict();
+
+export const MediaAssetMapSchema = z.record(MediaAssetResolutionSchema);
+
 // 1. Hero Block Schema
 export const HeroBlockPropsSchema = z
   .object({
@@ -92,6 +136,7 @@ export const HeroBlockPropsSchema = z
         target: LinkTargetSchema,
       })
       .optional(),
+    image: MediaReferenceSchema.optional(),
     imageUrl: SafeUrlSchema.optional(),
     imageAlt: z.string().max(200).optional(),
     imagePosition: z.enum(["right", "left", "bottom", "background"]).optional(),
@@ -277,6 +322,7 @@ export const NavItemSchema: z.ZodType<NavItemType> = z.lazy(() =>
 
 export const NavbarBlockPropsSchema = z
   .object({
+    logo: MediaReferenceSchema.optional(),
     logoUrl: SafeUrlSchema.optional(),
     logoText: z.string().max(60).optional(),
     items: z.array(NavItemSchema).max(12),
@@ -319,6 +365,7 @@ export const FooterColumnSchema = z
 
 export const FooterBlockPropsSchema = z
   .object({
+    logo: MediaReferenceSchema.optional(),
     logoUrl: SafeUrlSchema.optional(),
     logoText: z.string().max(60).optional(),
     copyrightText: z.string().max(120).optional(),

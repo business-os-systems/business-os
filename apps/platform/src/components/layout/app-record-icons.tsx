@@ -1,5 +1,12 @@
 import type React from "react";
-import { HomeIcon, SettingsIcon, type IconProps } from "@suite/ui/icons";
+import {
+  HomeIcon,
+  LayersIcon,
+  PackageIcon,
+  SettingsIcon,
+  SparklesIcon,
+  type IconProps,
+} from "@suite/ui/icons";
 import type { AppRecordIconKey } from "./app-record-nav.config";
 
 export type AppRecordIconComponent = React.FC<IconProps>;
@@ -11,4 +18,7 @@ export type AppRecordIconComponent = React.FC<IconProps>;
 export const APP_RECORD_ICONS: Readonly<Record<AppRecordIconKey, AppRecordIconComponent>> = {
   overview: HomeIcon,
   settings: SettingsIcon,
+  sections: LayersIcon,
+  templates: PackageIcon,
+  themes: SparklesIcon,
 };

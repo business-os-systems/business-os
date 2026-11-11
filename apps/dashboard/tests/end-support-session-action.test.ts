@@ -64,7 +64,7 @@ describe("tenant support-session termination action", () => {
 
     expect(result).toEqual({ ok: true, detail: "" });
     expect(endMock).toHaveBeenCalledWith("ticket-1");
-    expect(revalidateMock).toHaveBeenCalledWith("/settings/security");
+    expect(revalidateMock).toHaveBeenCalledWith("/dashboard/settings/security");
   });
 
   it("returns the RFC 7807 detail for a refused termination", async () => {

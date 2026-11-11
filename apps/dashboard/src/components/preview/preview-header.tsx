@@ -11,12 +11,13 @@ import {
   GlobeIcon,
 } from "@suite/ui/icons";
 import type { PreviewHeaderProps, PreviewDevice } from "./types";
+import { workspacePath } from "@/lib/workspace-paths";
 
-const DEVICE_BUTTONS: Array<{
+const DEVICE_BUTTONS: {
   id: PreviewDevice;
   label: string;
   icon: React.ComponentType<{ className?: string; size?: number }>;
-}> = [
+}[] = [
   { id: "desktop", label: "Desktop", icon: MonitorIcon },
   { id: "tablet", label: "Tablet", icon: TabletIcon },
   { id: "mobile", label: "Mobile", icon: SmartphoneIcon },
@@ -34,7 +35,7 @@ export function PreviewHeader({
     <header className="h-14 border-b border-border bg-surface px-4 flex items-center justify-between text-text select-none z-30">
       {/* Left: Navigation & Preview Indicator */}
       <div className="flex items-center gap-3">
-        <Link href={`/sites/${siteId}/pages`}>
+        <Link href={workspacePath(`/sites/${siteId}/pages`)}>
           <Button
             variant="ghost"
             size="sm"
@@ -87,7 +88,7 @@ export function PreviewHeader({
 
       {/* Right: Switch to Studio Editor */}
       <div className="flex items-center gap-2">
-        <Link href={`/sites/${siteId}/editor/${pageId}`}>
+        <Link href={workspacePath(`/sites/${siteId}/studio/${pageId}`)}>
           <Button
             type="button"
             size="sm"

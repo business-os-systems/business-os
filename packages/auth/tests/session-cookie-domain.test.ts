@@ -1,40 +1,37 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { createSessionCookieOptions } from "../src/session/session-token.js";
+import { describe, expect, it } from "vitest";
+import {
+  createSessionCookieOptions,
+  DEFAULT_SESSION_COOKIE_NAME,
+} from "../src/session/session-token.js";
 
-describe("Session Cookie Domain Scoping (createSessionCookieOptions)", () => {
-  const originalEnv = process.env;
-
-  beforeEach(() => {
-    process.env = { ...originalEnv };
-    delete process.env.SESSION_COOKIE_DOMAIN;
-  });
-
-  afterEach(() => {
-    process.env = originalEnv;
-  });
-
-  it("omits domain attribute by default for host-only security", () => {
+/**
+ * FR-111: a tenant session is host-only. There is no configuration that can
+ * widen it to a parent domain; the cookie is __Host- prefixed and carries no
+ * Domain attribute in any environment.
+ */
+describe("Host-only session cookie scoping (createSessionCookieOptions)", () => {
+  it("never emits a Domain attribute and keeps every host-only attribute", () => {
     const options = createSessionCookieOptions(false);
+
     expect(options.domain).toBeUndefined();
+    expect(options.name).toBe(DEFAULT_SESSION_COOKIE_NAME);
+    expect(options.name.startsWith("__Host-")).toBe(true);
     expect(options.httpOnly).toBe(true);
-    expect(options.sameSite).toBe("strict");
-  });
-
-  it("applies SESSION_COOKIE_DOMAIN when configured for parent domain", () => {
-    process.env.SESSION_COOKIE_DOMAIN = ".rohitbahuguna.online";
-    const options = createSessionCookieOptions(true);
-    expect(options.domain).toBe(".rohitbahuguna.online");
     expect(options.secure).toBe(true);
+    expect(options.sameSite).toBe("lax");
+    expect(options.path).toBe("/");
   });
 
-  it("ignores domain if set to localhost to prevent browser cookie drops", () => {
-    process.env.SESSION_COOKIE_DOMAIN = "localhost";
-    const options = createSessionCookieOptions(false);
+  it("keeps every host-only attribute in production", () => {
+    const options = createSessionCookieOptions(true);
     expect(options.domain).toBeUndefined();
+    expect(options.secure).toBe(true);
+    expect(options.path).toBe("/");
   });
 
-  it("respects explicit domainOverride parameter", () => {
-    const options = createSessionCookieOptions(true, false, undefined, undefined, ".tenant.example.com");
-    expect(options.domain).toBe(".tenant.example.com");
+  it("honours an explicit max age without weakening the scope", () => {
+    const options = createSessionCookieOptions(false, 3600);
+    expect(options.maxAge).toBe(3600);
+    expect(options.domain).toBeUndefined();
   });
 });

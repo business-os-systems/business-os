@@ -164,9 +164,9 @@ function requireRegisteredQuotaKeys(
 }
 
 /**
- * FR-091: enforcement requires a measurable source. The SQL function keeps its
- * storage-specific guard as defence in depth; this rule is driven by the same
- * registry the usage view uses, so a future unmeasurable key is covered here.
+ * FR-091/FR-122: enforcement requires a measurable source. Storage is measured
+ * from media_assets now, so only a genuinely unmeasured key is refused; the
+ * rule is driven by the same registry the usage view uses.
  */
 function requireEnforceableQuotaItems(
   items: readonly UpdateQuotaItem[]

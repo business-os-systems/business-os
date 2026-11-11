@@ -1,0 +1,175 @@
+{
+  "title": "Northwind Studio",
+  "path": "/",
+  "ast": {
+    "version": 1,
+    "schemaVersion": "2026-03",
+    "meta": {
+      "title": "Northwind Studio",
+      "description": "Northwind Studio fixture page for release gates."
+    },
+    "sections": [
+      {
+        "id": "sec_nav",
+        "blocks": [
+          {
+            "id": "blk_navbar",
+            "type": "navbar",
+            "props": {
+              "logoText": "Northwind Studio",
+              "items": [
+                {
+                  "id": "nav_home",
+                  "label": "Home",
+                  "target": {
+                    "url": "/"
+                  }
+                },
+                {
+                  "id": "nav_about",
+                  "label": "About",
+                  "target": {
+                    "url": "/about"
+                  }
+                },
+                {
+                  "id": "nav_contact",
+                  "label": "Contact",
+                  "target": {
+                    "url": "/contact"
+                  }
+                }
+              ],
+              "ctaButton": {
+                "label": "Start a project",
+                "target": {
+                  "url": "/contact"
+                }
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": "sec_hero",
+        "blocks": [
+          {
+            "id": "blk_hero",
+            "type": "hero",
+            "props": {
+              "badge": "Independent design studio",
+              "headline": "Websites that earn their keep",
+              "subheadline": "We design and build fast, accessible sites for growing service businesses.",
+              "primaryCta": {
+                "label": "Start a project",
+                "target": {
+                  "url": "/contact"
+                }
+              },
+              "secondaryCta": {
+                "label": "Read about us",
+                "target": {
+                  "url": "/about"
+                }
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": "sec_features",
+        "blocks": [
+          {
+            "id": "blk_features",
+            "type": "features",
+            "props": {
+              "headline": "What we do",
+              "features": [
+                {
+                  "id": "feature_one",
+                  "title": "Brand and identity",
+                  "description": "A clear visual system that fits your business.",
+                  "link": {
+                    "url": "/about"
+                  }
+                },
+                {
+                  "id": "feature_two",
+                  "title": "Website design",
+                  "description": "Accessible pages that load quickly on a phone.",
+                  "link": {
+                    "url": "/about"
+                  }
+                },
+                {
+                  "id": "feature_three",
+                  "title": "Care and support",
+                  "description": "Small, steady improvements after launch.",
+                  "link": {
+                    "url": "/contact"
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "sec_footer",
+        "blocks": [
+          {
+            "id": "blk_footer",
+            "type": "footer",
+            "props": {
+              "logoText": "Northwind Studio",
+              "copyrightText": "© 2026 Northwind Studio",
+              "columns": [
+                {
+                  "id": "col_company",
+                  "title": "Company",
+                  "links": [
+                    {
+                      "id": "link_about",
+                      "label": "About",
+                      "target": {
+                        "url": "/about"
+                      }
+                    },
+                    {
+                      "id": "link_contact",
+                      "label": "Contact",
+                      "target": {
+                        "url": "/contact"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            "styles": {
+              "backgroundColor": "#FAF3EF",
+              "textColor": "#1E1B19"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "tokens": {
+    "colorBackground": "#FAF3EF",
+    "colorSurface": "#FFFFFF",
+    "colorText": "#1E1B19",
+    "colorTextMuted": "#6E625D",
+    "colorPrimary": "#A43A2B",
+    "colorPrimaryContrast": "#FFFFFF",
+    "colorAccent": "#0F766E",
+    "colorBorder": "#E9E2DE",
+    "fontHeading": "Inter, system-ui, sans-serif",
+    "fontBody": "Inter, system-ui, sans-serif",
+    "radiusSm": "0.375rem",
+    "radiusMd": "0.5rem",
+    "radiusLg": "0.75rem",
+    "shadowCard": "0 1px 2px rgba(30, 27, 25, 0.08)",
+    "spaceSection": "4rem"
+  }
+}

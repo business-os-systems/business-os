@@ -9,6 +9,7 @@ import { LayersIcon } from "@suite/ui/icons";
 import type { NavigationItem } from "./types";
 import { baseNavigationConfig } from "./navigation.config";
 import { getNavIcon } from "./icon-registry";
+import { isWorkspaceNavTargetActive } from "@/lib/workspace-paths";
 
 export interface SidebarNavProps {
   collapsed?: boolean;
@@ -22,18 +23,7 @@ export interface SidebarNavProps {
  * Avoids nested ternaries and fragile substring collisions.
  */
 export function isRouteActive(currentPath: string, itemHref: string): boolean {
-  const current = (currentPath.split("?")[0] ?? "").replace(/\/+$/, "") || "/";
-  const target = (itemHref.split("?")[0] ?? "").replace(/\/+$/, "") || "/";
-
-  if (target === "/" || target === "/dashboard") {
-    return current === "/" || current === "/dashboard";
-  }
-
-  if (target.startsWith("/settings")) {
-    return current.startsWith("/settings");
-  }
-
-  return current === target || current.startsWith(`${target}/`);
+  return isWorkspaceNavTargetActive(currentPath, itemHref);
 }
 
 export function SidebarNav({
@@ -89,11 +79,9 @@ export function SidebarNav({
         {!collapsed && (
           <div className="flex flex-1 items-center justify-between gap-1 overflow-hidden">
             <span className="truncate">{item.name}</span>
-            {item.badge && (
-              <span className="text-[10px] font-medium text-text-muted px-1.5 py-0.5 rounded bg-surface-muted border border-border shrink-0">
+            {item.badge ? <span className="text-[10px] font-medium text-text-muted px-1.5 py-0.5 rounded bg-surface-muted border border-border shrink-0">
                 {item.badge}
-              </span>
-            )}
+              </span> : null}
           </div>
         )}
       </Link>

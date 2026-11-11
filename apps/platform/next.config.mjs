@@ -1,7 +1,7 @@
 /** @type {import("next").NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  transpilePackages: ["@suite/core", "@suite/ui"],
+  transpilePackages: ["@suite/core", "@suite/ui", "@suite/website-builder"],
   typescript: {
     ignoreBuildErrors: false,
   },

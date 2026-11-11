@@ -103,6 +103,70 @@ describe("AST Page & Section Component Renderer", () => {
     expect(visitorHtml).not.toContain("Unsupported or custom block type");
   });
 
+  it("resolves a media identity to its public URL at render time", () => {
+    const assetId = "ma_render_1";
+    const ast: PageAst = {
+      version: 1,
+      schemaVersion: "2026-03",
+      sections: [
+        {
+          id: "sec_media",
+          blocks: [
+            {
+              id: "b_media_hero",
+              type: "hero",
+              props: { headline: "Resolved hero", image: { kind: "asset", assetId } },
+            },
+          ],
+        },
+      ],
+    };
+
+    const html = renderToString(
+      <AstRenderer
+        ast={ast}
+        media={{
+          [assetId]: {
+            assetId,
+            url: "https://cdn.example.com/media/hero.png",
+            fileName: "hero.png",
+            width: 800,
+            height: 600,
+          },
+        }}
+      />
+    );
+
+    expect(html).toContain('src="https://cdn.example.com/media/hero.png"');
+    expect(html).toContain('alt="hero.png"');
+    expect(html).toContain('width="800"');
+  });
+
+  it("omits an unresolved asset instead of rendering a stale URL", () => {
+    const ast: PageAst = {
+      version: 1,
+      schemaVersion: "2026-03",
+      sections: [
+        {
+          id: "sec_missing_media",
+          blocks: [
+            {
+              id: "b_missing_hero",
+              type: "hero",
+              props: {
+                headline: "Missing hero",
+                image: { kind: "asset", assetId: "ma_missing" },
+              },
+            },
+          ],
+        },
+      ],
+    };
+
+    const html = renderToString(<AstRenderer ast={ast} />);
+    expect(html).not.toContain("<img");
+  });
+
   it("renders empty state placeholder when ast is empty", () => {
     const emptyAst = null as unknown as PageAst;
     const html = renderToString(<AstRenderer ast={emptyAst} />);

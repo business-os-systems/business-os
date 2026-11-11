@@ -54,7 +54,7 @@ describe("installed apps query", () => {
         title: "Website Builder & Headless CMS",
         code: "App 01",
         description: "Visual canvas studio.",
-        href: "/sites",
+        href: "/dashboard/sites",
         iconName: "sites",
         permission: "cms:sites:read",
         version: "1.0.0",

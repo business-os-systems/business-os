@@ -21,6 +21,7 @@ import {
   ArrowRightIcon,
   LayersIcon,
 } from "@suite/ui/icons";
+import { workspacePath } from "@/lib/workspace-paths";
 
 export interface StarterTemplateItem {
   id: string;
@@ -141,7 +142,7 @@ export default function SiteOnboardingWizard() {
       const siteId = data.site.id;
       const pageId = data.homePage.id;
       setTimeout(() => {
-        router.push(`/sites/${siteId}/editor/${pageId}`);
+        router.push(workspacePath(`/sites/${siteId}/studio/${pageId}`));
       }, 1000);
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : "Provisioning failed");
@@ -170,11 +171,9 @@ export default function SiteOnboardingWizard() {
         </div>
       </div>
 
-      {errorMsg && (
-        <div className="mb-6 rounded-lg border border-danger/30 bg-danger/10 p-4 text-sm text-danger">
+      {errorMsg ? <div className="mb-6 rounded-lg border border-danger/30 bg-danger/10 p-4 text-sm text-danger">
           {errorMsg}
-        </div>
-      )}
+        </div> : null}
 
       {/* STEP 1: Website Name & Subdomain */}
       {step === 1 && (
@@ -222,9 +221,7 @@ export default function SiteOnboardingWizard() {
 
               {/* Real-time Subdomain Status & Phonetic Fallbacks */}
               <div className="mt-2 text-xs">
-                {isCheckingSubdomain && (
-                  <span className="text-text-muted">Checking availability...</span>
-                )}
+                {isCheckingSubdomain ? <span className="text-text-muted">Checking availability...</span> : null}
                 {!isCheckingSubdomain && isSubdomainAvailable === true && (
                   <span className="text-success font-medium flex items-center gap-1">
                     <CheckIcon className="h-3.5 w-3.5" /> Subdomain is available!

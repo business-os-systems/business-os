@@ -1,16 +1,13 @@
 import { prisma, type InstalledApp } from "@suite/db";
 import {
-  PERMISSIONS,
   TENANT_STATUS,
   isBlockingTenantStatus,
   type BlockingTenantStatus,
 } from "@suite/core";
-import {
-  getUserRolePermissions,
-  listUserTenants,
-  type SessionPayload,
-} from "@suite/auth";
+import { listUserTenants, type SessionPayload } from "@suite/auth";
+import { resolveEffectivePermissions } from "./effective-permissions.service";
 import type { TenantContext } from "@/components/layout/types";
+import { workspacePath } from "@/lib/workspace-paths";
 
 
 
@@ -85,24 +82,7 @@ export async function getDashboardTenantContext(
   const effectiveOrgName = dbOrg?.name ?? session.organizationName;
   const blockedStatus = resolveBlockedStatus(dbOrg?.status);
 
-  let userPermissions: readonly string[] = session.permissions ?? [];
-
-  if (
-    userPermissions.length === 0 ||
-    (!userPermissions.includes(PERMISSIONS.CORE.ORGANIZATION_READ) &&
-      !userPermissions.includes(PERMISSIONS.WILDCARD))
-  ) {
-    const dbPermissions = await getUserRolePermissions(
-      prisma,
-      session.userId,
-      session.organizationId,
-      session.activeBranchId
-    );
-
-    if (dbPermissions.length > 0) {
-      userPermissions = dbPermissions;
-    }
-  }
+  const userPermissions = await resolveEffectivePermissions(session);
 
   const tenant: TenantContext = {
 
@@ -127,7 +107,7 @@ export async function getDashboardTenantContext(
     return {
       id: record.appId,
       name: title,
-      href: (settings.href as string) || `/${record.appId}`,
+      href: workspacePath((settings.href as string) || `/${record.appId}`),
       icon: (settings.iconName as string) || record.appId,
       badge: (settings.code as string) || undefined,
       description: (settings.description as string) || "",

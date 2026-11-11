@@ -25,9 +25,7 @@ loadPlatformTestEnv();
 function requireControlPlaneOrigin(): string {
   const value = process.env.CONTROL_PLANE_ORIGIN;
   if (value === undefined) {
-    throw new Error(
-      "CONTROL_PLANE_ORIGIN must be declared before running the denial matrix",
-    );
+    throw new Error("CONTROL_PLANE_ORIGIN must be declared before running the denial matrix");
   }
   return value;
 }
@@ -84,8 +82,7 @@ const ROUTERS = {
  * cookie cleared rather than a 401, so a stale browser does not trap the user.
  */
 type AnonymousOutcome =
-  | { readonly status: 401; readonly code: string }
-  | { readonly status: 204; readonly code: null };
+  { readonly status: 401; readonly code: string } | { readonly status: 204; readonly code: null };
 
 interface ProtectedRoute {
   readonly id: string;
@@ -344,11 +341,12 @@ const CAPABILITY_ENFORCEMENT = {
   "platform:apps:read":
     "P-01 (#340), enforced by GET /catalog and the Platform application record (entitlement managers retain read)",
   "platform:apps:author":
-    "P-02 (#341), enforced by PATCH /apps/:appId/settings and the settings defaults panel",
+    "P-02 (#341) settings defaults and P-03 (#342) catalog author routes",
+  "platform:apps:publish":
+    "P-03 (#342), enforced by the website-builder catalog publish and lifecycle routes",
   "platform:tenants:read": "P-11 (#220)",
   "platform:tenants:lifecycle": "P-13 (#222), enforced by the lifecycle routes",
-  "platform:quotas:manage":
-    "P-21 (#230), enforced by the quota routes",
+  "platform:quotas:manage": "P-21 (#230), enforced by the quota routes",
   "platform:entitlements:manage":
     "P-20 (#229), enforced by the entitlement and app-settings routes",
   "platform:operators:manage": "P-17 (#226)",
@@ -390,18 +388,14 @@ describe("Platform denial matrix", () => {
       expect(response.status).toBe(route.anonymous.status);
 
       if (route.anonymous.status === 401) {
-        expect(response.headers.get("content-type")).toContain(
-          "application/problem+json",
-        );
+        expect(response.headers.get("content-type")).toContain("application/problem+json");
         const body = (await response.json()) as { type: string; code: string };
         expect(body.code).toBe(route.anonymous.code);
         expect(body.type).toMatch(/^\/errors\//);
       }
 
       if (route.anonymous.status === 204) {
-        expect(response.headers.get("set-cookie")).toContain(
-          `${CONTROL_SESSION_COOKIE_NAME}=`,
-        );
+        expect(response.headers.get("set-cookie")).toContain(`${CONTROL_SESSION_COOKIE_NAME}=`);
       }
     });
   }
@@ -413,9 +407,7 @@ describe("Platform denial matrix", () => {
     });
 
     expect(response.status).toBe(401);
-    expect(response.headers.get("content-type")).toContain(
-      "application/problem+json",
-    );
+    expect(response.headers.get("content-type")).toContain("application/problem+json");
   });
 
   it("rejects a GET that presents neither Origin nor Sec-Fetch-Site", async () => {

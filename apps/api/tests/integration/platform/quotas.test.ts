@@ -287,7 +287,7 @@ it.skipIf(!enabled)("applies an idempotent quota retry exactly once", async () =
   expect(audits).toBe(1);
 });
 
-it.skipIf(!enabled)("refuses to enforce unmeasurable storage (FR-091)", async () => {
+it.skipIf(!enabled)("measures and enforces storage (FR-052, FR-122)", async () => {
   const organizationId = await createTenant("storage");
 
   const enforced = await putQuotas(organizationId, [
@@ -298,28 +298,15 @@ it.skipIf(!enabled)("refuses to enforce unmeasurable storage (FR-091)", async ()
       expectedVersion: null,
     },
   ]);
-  expect(enforced.status).toBe(422);
-  expect((await parseProblem(enforced)).code).toBe(
-    PLATFORM_ERROR_CODE.VALIDATION_FAILED
-  );
-
-  const recorded = await putQuotas(organizationId, [
-    {
-      resourceKey: "media.storage",
-      limitValue: "1024",
-      isEnforced: false,
-      expectedVersion: null,
-    },
-  ]);
-  expect(recorded.status).toBe(200);
+  expect(enforced.status).toBe(200);
 
   const storage = (await readQuotas(organizationId))[0];
   expect(storage).toMatchObject({
     resourceKey: "media.storage",
     unit: "bytes",
-    currentValue: null,
-    isMeasurable: false,
-    isEnforced: false,
+    currentValue: "0",
+    isMeasurable: true,
+    isEnforced: true,
   });
 });
 

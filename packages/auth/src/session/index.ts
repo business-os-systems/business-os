@@ -58,3 +58,16 @@ export {
   type PermissionExtractionOptions,
 } from "./permissions.js";
 
+
+export {
+  TENANT_SESSION_COOKIE_NAME,
+  TENANT_SESSION_COOKIE_PATH,
+  createTenantSessionCookieOptions,
+  applyTenantSessionCookie,
+  clearTenantSessionCookie,
+  isTenantSessionHostBound,
+  readTenantHostClaim,
+  type HostOnlySessionCookieOptions,
+  type TenantSessionSameSite,
+  type SerializedCookieSink,
+} from "../session-cookie.js";

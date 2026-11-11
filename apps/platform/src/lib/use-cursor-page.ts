@@ -107,6 +107,7 @@ export function useCursorPage<T>(
     isAppending,
     error: firstPage.error,
     setError,
+    setItems,
     reload: firstPage.reload,
     loadMore,
   };

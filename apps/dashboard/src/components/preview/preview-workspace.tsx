@@ -39,6 +39,8 @@ export function PreviewWorkspace({
   pageId,
   pageTitle = "Untitled Page",
   initialAst,
+  media,
+  tokens = null,
 }: PreviewWorkspaceProps) {
   const [device, setDevice] = useState<PreviewDevice>("desktop");
 
@@ -75,8 +77,8 @@ export function PreviewWorkspace({
             </div>
           )}
 
-          {initialAst && initialAst.sections && initialAst.sections.length > 0 ? (
-            <AstRenderer ast={initialAst} isEditor={false} />
+          {initialAst?.sections && initialAst.sections.length > 0 ? (
+            <AstRenderer ast={initialAst} isEditor={false} media={media} tokens={tokens} />
           ) : (
             <div className="flex flex-col items-center justify-center p-16 text-center text-text-muted">
               <p className="text-sm font-medium text-text-secondary">No page content to preview</p>

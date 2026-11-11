@@ -1,3 +1,4 @@
+export { abuseRouter } from "./abuse.js";
 export { healthRouter } from "./health.js";
 export { systemRouter } from "./system.js";
 export { authRouter } from "./auth.js";
@@ -8,3 +9,6 @@ export { adminRouter } from "./admin/index.js";
 export { platformAuthRouter } from "./admin/auth.js";
 export { referenceRouter } from "./reference.js";
 export { supportSessionsRouter } from "./support-sessions.js";
+export { createCmsRouter, createPublicInquiryRouter } from "./cms/index.js";
+export { createMediaRouter } from "./media.js";
+export { createStorefrontRouter } from "./storefront/index.js";

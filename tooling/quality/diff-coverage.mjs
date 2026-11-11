@@ -43,6 +43,11 @@ const CONFIG_FILE =
 const DOTFILE = /(^|\/)\.[^/]+$/;
 const DECLARATION_FILE = /\.d\.ts$/;
 const CI_TOOLING = /^tooling\//;
+// Next.js server components, route handlers and browser-only modules cannot be
+// rendered by Vitest; the Playwright release gates exercise them in a real
+// browser (a11y, keyboard paths and performance budgets). Their Vitest suites
+// still run, they are simply not part of the line-coverage diff.
+const NEXT_WEB_SURFACE = /^apps\/web\/src\//;
 
 const HUNK_HEADER = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/;
 const UNSAFE_BASE_REF = /[\s~^:?*\[\]\\]|\.\./;
@@ -71,6 +76,7 @@ export function isIgnoredPath(filePath) {
     DOTFILE.test(filePath) ||
     DECLARATION_FILE.test(filePath) ||
     CI_TOOLING.test(filePath) ||
+    NEXT_WEB_SURFACE.test(filePath) ||
     filePath.startsWith(".github/")
   );
 }

@@ -48,25 +48,61 @@ function toFullPath(prefix: string, suffix: string): string {
   return prefix === "/" ? suffix : prefix + suffix;
 }
 
+/**
+ * A route module may own more than one mount prefix. An explicit
+ * "// @adminMount <prefix>" marker starts a new segment; routes before the
+ * first marker use the file's default prefix.
+ */
+const MOUNT_MARKER = /@adminMount\s+(\S+)\s*\n/g;
+
+interface RouteSegment {
+  readonly prefix: string;
+  readonly body: string;
+}
+
+function routeSegments(source: string, fallback: string): readonly RouteSegment[] {
+  const segments: RouteSegment[] = [];
+  let cursor = 0;
+  let prefix = fallback;
+  let marker: RegExpExecArray | null;
+  MOUNT_MARKER.lastIndex = 0;
+  while ((marker = MOUNT_MARKER.exec(source)) !== null) {
+    segments.push({ prefix, body: source.slice(cursor, marker.index) });
+    prefix = marker[1] ?? fallback;
+    cursor = marker.index + marker[0].length;
+  }
+  segments.push({ prefix, body: source.slice(cursor) });
+  return segments;
+}
+
+const ROUTE_PATTERN = /method:\s*"(get|post|put|patch|delete)",[\s\S]{0,160}?path:\s*"([^"]+)"/g;
+
+function routesInSegment(segment: RouteSegment): readonly AdminRoute[] {
+  const routes: AdminRoute[] = [];
+  ROUTE_PATTERN.lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = ROUTE_PATTERN.exec(segment.body)) !== null) {
+    const method = match[1];
+    const suffix = match[2];
+    if (method === undefined || suffix === undefined) continue;
+    routes.push({
+      method: method.toUpperCase(),
+      path: toFullPath(segment.prefix, suffix),
+    });
+  }
+  return routes;
+}
+
 /** Parses every createRoute({ method, path }) in the admin route modules. */
 export function readAdminRoutes(): readonly AdminRoute[] {
   const routes: AdminRoute[] = [];
-  const pattern =
-    /method:\s*"(get|post|put|patch|delete)",[\s\S]{0,160}?path:\s*"([^"]+)"/g;
 
   for (const file of readdirSync(ROUTES_DIR)) {
     if (!isRouteModule(file)) continue;
     const source = readFileSync(path.join(ROUTES_DIR, file), "utf8");
-    const prefix = MOUNT_PREFIXES[file.replace(".ts", "")] ?? "/";
-    let match: RegExpExecArray | null;
-    while ((match = pattern.exec(source)) !== null) {
-      const method = match[1];
-      const suffix = match[2];
-      if (method === undefined || suffix === undefined) continue;
-      routes.push({
-        method: method.toUpperCase(),
-        path: toFullPath(prefix, suffix),
-      });
+    const fallback = MOUNT_PREFIXES[file.replace(".ts", "")] ?? "/";
+    for (const segment of routeSegments(source, fallback)) {
+      routes.push(...routesInSegment(segment));
     }
   }
 
@@ -89,13 +125,13 @@ const DENIAL_MATRIX = "tests/integration/platform/denial-matrix.test.ts";
 const APP_SETTINGS_DEFAULTS =
   "tests/integration/platform/app-settings-defaults.test.ts";
 const IMPERSONATION = "tests/integration/platform/impersonation.test.ts";
-const OPERATOR_ENROLMENT =
-  "tests/integration/platform/operator-enrolment.test.ts";
-const OPERATOR_ADD_PASSKEY =
-  "tests/integration/platform/operator-add-passkey.test.ts";
+const OPERATOR_ENROLMENT = "tests/integration/platform/operator-enrolment.test.ts";
+const OPERATOR_ADD_PASSKEY = "tests/integration/platform/operator-add-passkey.test.ts";
 const AUDIT = "tests/contract/platform/audit.test.ts";
 const QUOTAS = "tests/contract/platform/quotas.test.ts";
 const TENANT_PII = "tests/integration/platform/tenant-pii.test.ts";
+const CATALOG_DENIAL = "tests/security/catalog-denial.test.ts";
+const SITE_TAKEDOWN = "tests/integration/platform/site-takedown.test.ts";
 
 const DENIAL_COVERAGE: Readonly<Record<string, string>> = {
   "GET /": ENTITLEMENTS,
@@ -114,62 +150,55 @@ const DENIAL_COVERAGE: Readonly<Record<string, string>> = {
   "PATCH /apps/{appId}/settings": APP_SETTINGS_DEFAULTS,
   "GET /catalogs": CATALOGS,
   "POST /catalogs/{category}/values": CATALOGS,
-  "PATCH /catalogs/{category}/values/{code}":
-    CATALOGS,
-  "GET /tenants/{orgId}/entitlements":
-    ENTITLEMENTS,
-  "PUT /tenants/{orgId}/entitlements":
-    ENTITLEMENTS,
-  "GET /tenants/{orgId}/apps/{appId}/settings":
-    ENTITLEMENTS,
-  "PUT /tenants/{orgId}/apps/{appId}/settings":
-    ENTITLEMENTS,
+  "PATCH /catalogs/{category}/values/{code}": CATALOGS,
+  "GET /tenants/{orgId}/entitlements": ENTITLEMENTS,
+  "PUT /tenants/{orgId}/entitlements": ENTITLEMENTS,
+  "GET /tenants/{orgId}/apps/{appId}/settings": ENTITLEMENTS,
+  "PUT /tenants/{orgId}/apps/{appId}/settings": ENTITLEMENTS,
   "GET /flags": DENIAL_MATRIX,
   "POST /flags": DENIAL_MATRIX,
   "PATCH /flags/{key}": DENIAL_MATRIX,
   "POST /impersonation": IMPERSONATION,
-  "DELETE /impersonation/{ticketId}":
-    IMPERSONATION,
-  "GET /impersonation/active":
-    IMPERSONATION,
-  "POST /tenants/{orgId}/suspend":
-    DENIAL_MATRIX,
-  "POST /tenants/{orgId}/restore":
-    DENIAL_MATRIX,
-  "POST /tenants/{orgId}/archive":
-    DENIAL_MATRIX,
-  "POST /operator-passkeys/enrolment/options":
-    OPERATOR_ENROLMENT,
-  "POST /operator-passkeys/enrolment/verify":
-    OPERATOR_ENROLMENT,
-  "POST /operator-passkeys/enrolment/token":
-    OPERATOR_ADD_PASSKEY,
-  "POST /operator-passkeys/enrolment/add/options":
-    OPERATOR_ADD_PASSKEY,
-  "POST /operator-passkeys/enrolment/add/verify":
-    OPERATOR_ADD_PASSKEY,
+  "DELETE /impersonation/{ticketId}": IMPERSONATION,
+  "GET /impersonation/active": IMPERSONATION,
+  "POST /tenants/{orgId}/suspend": DENIAL_MATRIX,
+  "POST /tenants/{orgId}/restore": DENIAL_MATRIX,
+  "POST /tenants/{orgId}/archive": DENIAL_MATRIX,
+  "POST /operator-passkeys/enrolment/options": OPERATOR_ENROLMENT,
+  "POST /operator-passkeys/enrolment/verify": OPERATOR_ENROLMENT,
+  "POST /operator-passkeys/enrolment/token": OPERATOR_ADD_PASSKEY,
+  "POST /operator-passkeys/enrolment/add/options": OPERATOR_ADD_PASSKEY,
+  "POST /operator-passkeys/enrolment/add/verify": OPERATOR_ADD_PASSKEY,
   "GET /operators": DENIAL_MATRIX,
   "POST /operators": DENIAL_MATRIX,
-  "PATCH /operators/{operatorId}":
-    DENIAL_MATRIX,
-  "PATCH /operators/{operatorId}/capabilities":
-    DENIAL_MATRIX,
-  "GET /operators/{operatorId}/sessions":
-    DENIAL_MATRIX,
-  "DELETE /operators/{operatorId}/sessions/{sessionId}":
-    DENIAL_MATRIX,
+  "PATCH /operators/{operatorId}": DENIAL_MATRIX,
+  "PATCH /operators/{operatorId}/capabilities": DENIAL_MATRIX,
+  "GET /operators/{operatorId}/sessions": DENIAL_MATRIX,
+  "DELETE /operators/{operatorId}/sessions/{sessionId}": DENIAL_MATRIX,
   "GET /tenants/{orgId}/quotas": QUOTAS,
   "PUT /tenants/{orgId}/quotas": QUOTAS,
   "GET /system/health": DENIAL_MATRIX,
   "GET /system/queues": DENIAL_MATRIX,
-  "GET /tenants/{orgId}/pii":
-    TENANT_PII,
+  "GET /tenants/{orgId}/pii": TENANT_PII,
   "GET /tenants": DENIAL_MATRIX,
   "GET /tenants/{orgId}": DENIAL_MATRIX,
+  "GET /tenants/{orgId}/sites": SITE_TAKEDOWN,
+  "POST /tenants/{orgId}/sites/{siteId}/suspend": SITE_TAKEDOWN,
+  "POST /tenants/{orgId}/sites/{siteId}/restore": SITE_TAKEDOWN,
+  "GET /apps/website-builder/items": CATALOG_DENIAL,
+  "POST /apps/website-builder/items": CATALOG_DENIAL,
+  "GET /apps/website-builder/items/{id}": CATALOG_DENIAL,
+  "PATCH /apps/website-builder/items/{id}": CATALOG_DENIAL,
+  "POST /apps/website-builder/items/{id}/versions": CATALOG_DENIAL,
+  "GET /apps/website-builder/items/{id}/versions": CATALOG_DENIAL,
+  "POST /apps/website-builder/items/{id}/preview": CATALOG_DENIAL,
+  "POST /apps/website-builder/items/{id}/publish": CATALOG_DENIAL,
+  "POST /apps/website-builder/items/{id}/deprecate": CATALOG_DENIAL,
+  "POST /apps/website-builder/items/{id}/disable": CATALOG_DENIAL,
+  "POST /apps/website-builder/items/{id}/retire": CATALOG_DENIAL,
 };
 
-const DENIAL_MARKER =
-  /CAPABILITY_DENIED|AUTH_REQUIRED|UNAUTHORIZED|\b403\b|\b401\b/;
+const DENIAL_MARKER = /CAPABILITY_DENIED|AUTH_REQUIRED|UNAUTHORIZED|\b403\b|\b401\b/;
 
 describe("admin route denial coverage (CT-2, T152)", () => {
   it("maps every admin route to a denial suite", () => {
@@ -183,9 +212,7 @@ describe("admin route denial coverage (CT-2, T152)", () => {
     for (const [route, testFile] of Object.entries(DENIAL_COVERAGE)) {
       const absolute = path.join(API_ROOT, testFile);
       expect(existsSync(absolute), route + " -> " + testFile).toBe(true);
-      expect(readFileSync(absolute, "utf8"), route + " -> " + testFile).toMatch(
-        DENIAL_MARKER,
-      );
+      expect(readFileSync(absolute, "utf8"), route + " -> " + testFile).toMatch(DENIAL_MARKER);
     }
   });
 });

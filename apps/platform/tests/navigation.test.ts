@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { PLATFORM_CAPABILITIES, PLATFORM_CAPABILITY_CODES } from "@suite/core";
+import {
+  PLATFORM_APPS_READ_CAPABILITIES,
+  PLATFORM_CAPABILITIES,
+  PLATFORM_CAPABILITY_CODES,
+} from "@suite/core";
 import {
   PLATFORM_NAV_ITEMS,
   canAccessPath,
@@ -56,13 +60,14 @@ describe("Platform path gating", () => {
     expect(requiredCapabilitiesForPath("/tenants/org_1/settings")).toEqual([
       TENANTS_READ,
     ]);
+    // Authors and publishers may read the record they act on (P-01/CT-1), so
+    // the app destinations resolve to the canonical read-grant list.
     expect(requiredCapabilitiesForPath("/apps/website-builder")).toEqual([
-      APPS_READ,
-      ENTITLEMENTS_MANAGE,
+      ...PLATFORM_APPS_READ_CAPABILITIES,
     ]);
     expect(
       requiredCapabilitiesForPath("/apps/website-builder/overview")
-    ).toEqual([APPS_READ, ENTITLEMENTS_MANAGE]);
+    ).toEqual([...PLATFORM_APPS_READ_CAPABILITIES]);
     expect(requiredCapabilitiesForPath("/not-a-destination")).toEqual([]);
   });
 

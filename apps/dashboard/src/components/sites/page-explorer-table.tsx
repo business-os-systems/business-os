@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Badge, Button } from "@suite/ui";
 import { PlusIcon, EyeIcon, ArrowRightIcon } from "@suite/ui/icons";
 import type { PageSummary } from "./types";
+import { workspacePath } from "@/lib/workspace-paths";
 
 interface PageExplorerTableProps {
   siteId: string;
@@ -35,8 +36,7 @@ export function PageExplorerTable({
             Create and edit AST-driven landing pages, hero layouts, and subpaths.
           </p>
         </div>
-        {onCreatePage && (
-          <Button
+        {onCreatePage ? <Button
             variant="default"
             size="sm"
             onClick={onCreatePage}
@@ -44,8 +44,7 @@ export function PageExplorerTable({
           >
             <PlusIcon className="w-4 h-4" />
             New Page
-          </Button>
-        )}
+          </Button> : null}
       </div>
 
       {pages.length === 0 ? (
@@ -57,8 +56,7 @@ export function PageExplorerTable({
           <p className="mt-1.5 text-xs text-text-secondary max-w-sm mx-auto">
             This website does not have any pages created yet. Create a Home landing page or subpath to begin authoring in the Visual Studio.
           </p>
-          {onCreatePage && (
-            <div className="mt-6">
+          {onCreatePage ? <div className="mt-6">
               <Button
                 variant="default"
                 size="sm"
@@ -68,8 +66,7 @@ export function PageExplorerTable({
                 <PlusIcon className="w-4 h-4" />
                 Create First Page
               </Button>
-            </div>
-          )}
+            </div> : null}
         </div>
       ) : (
         <div className="rounded-xl border border-border bg-surface overflow-hidden shadow-sm">
@@ -90,11 +87,9 @@ export function PageExplorerTable({
                   <td className="py-3.5 px-4 font-semibold text-text">
                     <div className="flex items-center gap-2">
                       <span>{page.name}</span>
-                      {page.isHome && (
-                        <Badge variant="tertiary" className="text-[10px]">
+                      {page.isHome ? <Badge variant="tertiary" className="text-[10px]">
                           Home
-                        </Badge>
-                      )}
+                        </Badge> : null}
                     </div>
                   </td>
                   <td className="py-3.5 px-4 font-mono text-xs text-text">
@@ -113,7 +108,7 @@ export function PageExplorerTable({
                   </td>
                   <td className="py-3.5 px-4 text-right">
                     <div className="inline-flex items-center gap-2">
-                      <Link href={`/sites/${siteId}/preview/${page.id}`}>
+                      <Link href={workspacePath(`/sites/${siteId}/preview/${page.id}`)}>
                         <Button
                           variant="outline"
                           size="sm"
@@ -123,7 +118,7 @@ export function PageExplorerTable({
                           Preview
                         </Button>
                       </Link>
-                      <Link href={`/sites/${siteId}/editor/${page.id}`}>
+                      <Link href={workspacePath(`/sites/${siteId}/studio/${page.id}`)}>
                         <Button
                           variant="default"
                           size="sm"

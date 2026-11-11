@@ -83,13 +83,13 @@ describe("Session Lifecycle & Expiration Verification (@suite/auth)", () => {
   });
 
   it("generates cookie options with correct maxAge for ephemeral vs persistent sessions", () => {
-    const ephemeralOpts = createSessionCookieOptions(false, false);
+    const ephemeralOpts = createSessionCookieOptions(false);
     expect(ephemeralOpts.maxAge).toBe(SESSION_EPHEMERAL_MAX_AGE_SECONDS);
 
-    const persistentOpts = createSessionCookieOptions(false, true);
+    const persistentOpts = createSessionCookieOptions(true);
     expect(persistentOpts.maxAge).toBe(SESSION_PERSISTENT_MAX_AGE_SECONDS);
 
-    const customOpts = createSessionCookieOptions(false, false, 3600);
+    const customOpts = createSessionCookieOptions(false, 3600);
     expect(customOpts.maxAge).toBe(3600);
   });
 });

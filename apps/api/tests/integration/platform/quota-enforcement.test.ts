@@ -126,6 +126,9 @@ afterAll(async () => {
     await fixture.ownerPrisma.branch.deleteMany({
       where: { organizationId: { in: organizationIds } },
     });
+    await fixture.ownerPrisma.mediaAsset.deleteMany({
+      where: { organizationId: { in: organizationIds } },
+    });
     await fixture.ownerPrisma.cmsPage.deleteMany({
       where: { organizationId: { in: organizationIds } },
     });
@@ -260,27 +263,44 @@ it.skipIf(!enabled)("does not charge a custom-domain seat for the auto-provision
   });
 });
 
-it.skipIf(!enabled)("never enforces the unmeasurable storage resource (FR-091)", async () => {
-  const organizationId = await createTenant("storage");
-  await setQuota(organizationId, QUOTA_KEYS.STORAGE, 0n, false);
-
-  const availability = await readQuota(organizationId, QUOTA_KEYS.STORAGE);
-  expect(availability).toMatchObject({
-    allowed: true,
-    currentValue: null,
-    isMeasurable: false,
-    isEnforced: false,
-  });
-
-  await expect(
-    fixture.ownerPrisma.$transaction((tx) =>
-      assertQuotaAvailable(tx, {
+it.skipIf(!enabled)(
+  "measures storage once and enforces the shared allowance (FR-052, FR-122)",
+  async () => {
+    const organizationId = await createTenant("storage");
+    await setQuota(organizationId, QUOTA_KEYS.STORAGE, 1024n, true);
+    await fixture.ownerPrisma.mediaAsset.create({
+      data: {
         organizationId,
-        resourceKey: QUOTA_KEYS.STORAGE,
-      })
-    )
-  ).resolves.toBeUndefined();
-});
+        fileName: "photo.png",
+        mimeType: "image/png",
+        sizeBytes: 512,
+        checksum: "a".repeat(64),
+        storageKey: `media/${organizationId}/2026/01/photo.png`,
+        publicUrl: `https://media.example/${organizationId}/photo.png`,
+        createdBy: operatorId,
+      },
+    });
+
+    const availability = await readQuota(organizationId, QUOTA_KEYS.STORAGE);
+    expect(availability).toMatchObject({
+      allowed: true,
+      currentValue: 512n,
+      isMeasurable: true,
+      isEnforced: true,
+      isOverLimit: false,
+    });
+
+    await expect(
+      fixture.ownerPrisma.$transaction((tx) =>
+        assertQuotaAvailable(tx, {
+          organizationId,
+          resourceKey: QUOTA_KEYS.STORAGE,
+          delta: 600,
+        })
+      )
+    ).rejects.toBeInstanceOf(QuotaExceededError);
+  }
+);
 
 it.skipIf(!enabled || TENANT_URL === undefined)(
   "lets the tenant identity call the gate but not read platform.quotas",

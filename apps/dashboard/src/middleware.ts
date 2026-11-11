@@ -2,18 +2,45 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import {
   SESSION_COOKIE_NAME,
+  SESSION_EPHEMERAL_MAX_AGE_SECONDS,
+  SESSION_PERSISTENT_MAX_AGE_SECONDS,
+  createTenantSessionCookieOptions,
   verifySessionToken,
   decodeSessionPayload,
   encodeSessionPayload,
   signSessionToken,
-  createSessionCookieOptions,
   isSessionPayloadExpired,
   isSessionPayloadIdleTimedOut,
   type SessionPayload,
 } from "@/lib/auth-constants";
-import { isProduction } from "@/lib/env";
+import { isTenantSessionHostBound } from "@suite/auth/session-cookie";
+import { readRequestHostname } from "@/lib/tenant-host";
+import {
+  isAuthenticationPath,
+  isLegacyWorkspacePath,
+  isLoginPath,
+  workspacePath,
+} from "@/lib/workspace-paths";
 
 const STATIC_ASSET_REGEX = /\.(ico|png|jpg|jpeg|svg|css|js|woff|woff2|ttf|eot)$/i;
+const ROLLING_REFRESH_INTERVAL_MS = 60 * 60 * 1000;
+const ALLOWED_AUTHENTICATED_PATHS = [
+  "/choose-tenant",
+  "/reset-password",
+  "/invite",
+  "/verify-expired",
+] as const;
+const CORRELATION_HEADERS = ["x-correlation-id", "x-request-id", "traceparent"] as const;
+
+function readFirstHeader(request: NextRequest, names: readonly string[]): string | null {
+  for (const name of names) {
+    const value = request.headers.get(name);
+    if (value !== null && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+  return null;
+}
 
 function isBypassRoute(pathname: string): boolean {
   return (
@@ -25,24 +52,6 @@ function isBypassRoute(pathname: string): boolean {
   );
 }
 
-function isAuthenticationRoute(pathname: string): boolean {
-  return (
-    pathname.startsWith("/login") ||
-    pathname.startsWith("/signup") ||
-    pathname.startsWith("/forgot-password") ||
-    pathname.startsWith("/reset-password") ||
-    pathname.startsWith("/link-account")
-  );
-}
-
-function isInvitationRoute(pathname: string): boolean {
-  return pathname.startsWith("/invite");
-}
-
-function isVerificationRecoveryRoute(pathname: string): boolean {
-  return pathname.startsWith("/verify-expired");
-}
-
 async function resolveSessionPayload(request: NextRequest): Promise<SessionPayload | null> {
   const sessionToken = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   if (!sessionToken) return null;
@@ -51,28 +60,30 @@ async function resolveSessionPayload(request: NextRequest): Promise<SessionPaylo
   if (!isValidSession) return null;
 
   const payload = decodeSessionPayload(sessionToken);
-  if (
-    !payload ||
-    isSessionPayloadExpired(payload) ||
-    isSessionPayloadIdleTimedOut(payload)
-  ) {
+  if (!payload || isSessionPayloadExpired(payload) || isSessionPayloadIdleTimedOut(payload)) {
     return null;
   }
 
   return payload;
 }
 
+function clearSessionCookie(response: NextResponse): void {
+  response.cookies.delete(SESSION_COOKIE_NAME);
+}
+
+function isSessionFromAnotherHost(
+  payload: SessionPayload,
+  requestHostname: string | null
+): boolean {
+  return !isTenantSessionHostBound(payload.tenantHost, requestHostname);
+}
 
 function handleUnauthenticatedGate(
   request: NextRequest,
   pathname: string,
   search: string
 ): NextResponse {
-  if (
-    isAuthenticationRoute(pathname) ||
-    isInvitationRoute(pathname) ||
-    isVerificationRecoveryRoute(pathname)
-  ) {
+  if (isAuthenticationPath(pathname)) {
     return NextResponse.next();
   }
 
@@ -89,11 +100,25 @@ function handleUnauthenticatedGate(
   }
 
   const loginUrl = new URL("/login", request.url);
-  const target = `${pathname}${search}`;
-  if (target && target !== "/") {
+  const target = pathname + search;
+  if (target !== "/") {
     loginUrl.searchParams.set("redirect", target);
   }
   return NextResponse.redirect(loginUrl);
+}
+
+function resolveLandingPath(payload: SessionPayload): string {
+  if (payload.onboardingStatus !== "COMPLETED") {
+    const step =
+      payload.currentOnboardingStep && payload.currentOnboardingStep > 0
+        ? payload.currentOnboardingStep
+        : 1;
+    return "/onboarding/step-" + String(step);
+  }
+  if (payload.organizationId) {
+    return "/dashboard";
+  }
+  return "/choose-tenant";
 }
 
 async function handleAuthenticatedGate(
@@ -101,81 +126,46 @@ async function handleAuthenticatedGate(
   payload: SessionPayload,
   pathname: string
 ): Promise<NextResponse> {
-  if (isInvitationRoute(pathname) || isVerificationRecoveryRoute(pathname)) {
-    return createAuthenticatedResponse(request, payload);
+  if (ALLOWED_AUTHENTICATED_PATHS.some((prefix) => pathname.startsWith(prefix))) {
+    return await createAuthenticatedResponse(request, payload);
   }
 
-  // Multi-tenancy disambiguation: Allow workspace selection route for authenticated users
-  if (pathname.startsWith("/choose-tenant")) {
-    return createAuthenticatedResponse(request, payload);
-  }
-
-  // Allow password reset flow even for authenticated sessions (Task T015)
-  if (pathname.startsWith("/reset-password")) {
-    return createAuthenticatedResponse(request, payload);
-  }
-
-  const isAuthRoute = isAuthenticationRoute(pathname);
-  const isOnboardingComplete = payload.onboardingStatus === "COMPLETED";
-  const isOnboardingIncomplete = !isOnboardingComplete;
-  const currentStep =
-    payload.currentOnboardingStep && payload.currentOnboardingStep > 0
-      ? payload.currentOnboardingStep
-      : 1;
-  const onboardingStepPath = `/onboarding/step-${currentStep}`;
-
-  if (isAuthRoute) {
-    if (
-      pathname.startsWith("/login") &&
-      request.nextUrl.searchParams.get("notice") === "archived"
-    ) {
+  if (isAuthenticationPath(pathname)) {
+    if (isLoginPath(pathname) && request.nextUrl.searchParams.get("notice") === "archived") {
       const response = NextResponse.next();
-      const cookieOptions = createSessionCookieOptions(isProduction, true);
-      response.cookies.delete(cookieOptions.name);
+      clearSessionCookie(response);
       return response;
     }
-
-    const destinationUrl = new URL(
-      isOnboardingIncomplete
-        ? onboardingStepPath
-        : payload.organizationId
-        ? "/dashboard"
-        : "/choose-tenant",
-      request.url
-    );
-    return NextResponse.redirect(destinationUrl);
+    return NextResponse.redirect(new URL(resolveLandingPath(payload), request.url));
   }
 
   if (pathname === "/") {
-    const destinationUrl = new URL(
-      isOnboardingIncomplete
-        ? onboardingStepPath
-        : payload.organizationId
-        ? "/dashboard"
-        : "/choose-tenant",
-      request.url
-    );
-    return NextResponse.redirect(destinationUrl);
+    return NextResponse.redirect(new URL(resolveLandingPath(payload), request.url));
   }
 
-  if (isOnboardingIncomplete) {
-    if (!pathname.startsWith("/onboarding") && !pathname.startsWith("/api/")) {
-      const onboardingUrl = new URL(onboardingStepPath, request.url);
-      return NextResponse.redirect(onboardingUrl);
+  return await enforceOnboardingGate(request, payload, pathname);
+}
+
+async function enforceOnboardingGate(
+  request: NextRequest,
+  payload: SessionPayload,
+  pathname: string
+): Promise<NextResponse> {
+  const isApiPath = pathname.startsWith("/api/");
+  const isOnboardingPath = pathname.startsWith("/onboarding");
+
+  if (payload.onboardingStatus !== "COMPLETED") {
+    if (!isOnboardingPath && !isApiPath) {
+      return NextResponse.redirect(new URL(resolveLandingPath(payload), request.url));
     }
-  } else if (pathname.startsWith("/onboarding")) {
-    const destinationUrl = new URL(
-      payload.organizationId ? "/dashboard" : "/choose-tenant",
-      request.url
-    );
-    return NextResponse.redirect(destinationUrl);
-  } else if (!payload.organizationId && !pathname.startsWith("/api/")) {
-    // Multi-tenant disambiguation (SPEC-05): redirect completed onboarding users with no active workspace to /choose-tenant
-    const chooseTenantUrl = new URL("/choose-tenant", request.url);
-    return NextResponse.redirect(chooseTenantUrl);
+    return await createAuthenticatedResponse(request, payload);
   }
 
-  return createAuthenticatedResponse(request, payload);
+  if (isOnboardingPath || (!payload.organizationId && !isApiPath)) {
+    return NextResponse.redirect(new URL(resolveLandingPath(payload), request.url));
+  }
+
+  return await createAuthenticatedResponse(request, payload);
 }
 
 async function createAuthenticatedResponse(
@@ -183,8 +173,6 @@ async function createAuthenticatedResponse(
   payload: SessionPayload
 ): Promise<NextResponse> {
   const requestHeaders = new Headers(request.headers);
-
-  // Strip client-supplied internal headers to prevent header injection
   const internalContextHeaders = [
     "x-tenant-id",
     "x-organization-id",
@@ -218,87 +206,79 @@ async function createAuthenticatedResponse(
   if (payload.activeBranchName) {
     requestHeaders.set("x-branch-name", encodeURIComponent(payload.activeBranchName));
   }
-  requestHeaders.set(
-    "x-onboarding-status",
-    payload.onboardingStatus || (payload.organizationId ? "COMPLETED" : "IN_PROGRESS")
-  );
-  const response = NextResponse.next({
-    request: {
-      headers: requestHeaders,
-    },
-  });
+  const onboardingStatus =
+    payload.onboardingStatus ?? (payload.organizationId ? "COMPLETED" : "IN_PROGRESS");
+  requestHeaders.set("x-onboarding-status", onboardingStatus);
 
-  response.headers.set(
-    "x-onboarding-status",
-    payload.onboardingStatus || (payload.organizationId ? "COMPLETED" : "IN_PROGRESS")
-  );
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
+  response.headers.set("x-onboarding-status", onboardingStatus);
   if (payload.organizationId) {
     response.headers.set("x-tenant-id", payload.organizationId);
   }
 
-  // SPEC-03: Rolling session sliding window: refresh session cookie maxAge on active requests if > 1 hour elapsed
-  const ONE_HOUR_MS = 60 * 60 * 1000;
-  const elapsedMs = Date.now() - (payload.timestamp || 0);
-  if (elapsedMs > ONE_HOUR_MS) {
-    const isKeepSignedIn = !payload.isEphemeral;
-    const refreshedPayload: SessionPayload = {
-      ...payload,
-      timestamp: Date.now(),
-    };
-    const refreshedToken = await signSessionToken(encodeSessionPayload(refreshedPayload));
-    const cookieOptions = createSessionCookieOptions(isProduction, isKeepSignedIn);
-    response.cookies.set({
-      name: SESSION_COOKIE_NAME,
-      value: refreshedToken,
-      httpOnly: cookieOptions.httpOnly,
-      secure: cookieOptions.secure,
-      sameSite: cookieOptions.sameSite,
-      maxAge: cookieOptions.maxAge,
-      path: cookieOptions.path,
-    });
-  }
-
+  await refreshRollingSession(response, payload);
   return response;
 }
 
-function applySecurityHeaders(response: NextResponse, correlationId?: string): NextResponse {
+async function refreshRollingSession(
+  response: NextResponse,
+  payload: SessionPayload
+): Promise<void> {
+  const elapsedMs = Date.now() - payload.timestamp;
+  if (elapsedMs <= ROLLING_REFRESH_INTERVAL_MS) {
+    return;
+  }
+  const refreshedPayload: SessionPayload = { ...payload, timestamp: Date.now() };
+  const refreshedToken = await signSessionToken(encodeSessionPayload(refreshedPayload));
+  const maxAgeSeconds = payload.isEphemeral
+    ? SESSION_EPHEMERAL_MAX_AGE_SECONDS
+    : SESSION_PERSISTENT_MAX_AGE_SECONDS;
+  const cookieOptions = createTenantSessionCookieOptions(maxAgeSeconds);
+  response.cookies.set({ ...cookieOptions, value: refreshedToken });
+}
+
+function applySecurityHeaders(response: NextResponse, correlationId: string): NextResponse {
   response.headers.set("X-Frame-Options", "DENY");
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   response.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
   response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
-
-  // Issue 55: Distributed tracing and correlation ID propagation across Dashboard and API
-  if (correlationId) {
-    response.headers.set("x-correlation-id", correlationId);
-    response.headers.set("x-request-id", correlationId);
-  }
-
+  response.headers.set("x-correlation-id", correlationId);
+  response.headers.set("x-request-id", correlationId);
   return response;
 }
 
-export async function middleware(request: NextRequest): Promise<NextResponse> {
-  const correlationId =
-    request.headers.get("x-correlation-id")?.trim() ||
-    request.headers.get("x-request-id")?.trim() ||
-    request.headers.get("traceparent")?.trim() ||
-    `trace_${crypto.randomUUID()}`;
+function resolveCorrelationId(request: NextRequest): string {
+  return readFirstHeader(request, CORRELATION_HEADERS) ?? "trace_" + crypto.randomUUID();
+}
 
+export async function middleware(request: NextRequest): Promise<NextResponse> {
+  const correlationId = resolveCorrelationId(request);
   const { pathname, search } = request.nextUrl;
 
-  let response: NextResponse;
-  if (isBypassRoute(pathname)) {
-    response = NextResponse.next();
-  } else {
-    const payload = await resolveSessionPayload(request);
-
-    if (!payload) {
-      response = handleUnauthenticatedGate(request, pathname, search);
-    } else {
-      response = await handleAuthenticatedGate(request, payload, pathname);
-    }
+  if (isLegacyWorkspacePath(pathname)) {
+    const canonicalUrl = new URL(workspacePath(pathname) + search, request.url);
+    return applySecurityHeaders(NextResponse.redirect(canonicalUrl, 308), correlationId);
   }
 
+  if (isBypassRoute(pathname)) {
+    return applySecurityHeaders(NextResponse.next(), correlationId);
+  }
+
+  const requestHostname = readRequestHostname(request);
+  const payload = await resolveSessionPayload(request);
+  const isCrossHostSession =
+    payload !== null && isSessionFromAnotherHost(payload, requestHostname);
+
+  if (payload === null || isCrossHostSession) {
+    const response = handleUnauthenticatedGate(request, pathname, search);
+    if (isCrossHostSession) {
+      clearSessionCookie(response);
+    }
+    return applySecurityHeaders(response, correlationId);
+  }
+
+  const response = await handleAuthenticatedGate(request, payload, pathname);
   return applySecurityHeaders(response, correlationId);
 }
 

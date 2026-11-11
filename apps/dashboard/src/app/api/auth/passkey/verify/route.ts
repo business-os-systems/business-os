@@ -1,12 +1,12 @@
 import { z } from "zod";
 import type { NextResponse } from "next/server";
 import {
-  SESSION_COOKIE_NAME,
-  createSessionCookieOptions,
+  SESSION_EPHEMERAL_MAX_AGE_SECONDS,
+  createTenantSessionCookieOptions,
   signSessionToken,
   encodeSessionPayload,
 } from "@/lib/auth-constants";
-import { isProduction } from "@/lib/env";
+import { bindSessionToRequestHost, readRequestHostname } from "@/lib/tenant-host";
 import { resolvePostLoginRoute } from "@/lib/route-dispatcher";
 import { problemResponse, successResponse, zodProblemResponse } from "@/lib/api-response";
 import { verifyBotChallenge } from "@/services/bot-defense.service";
@@ -26,7 +26,8 @@ const PasskeyVerifySchema = z.object({
 });
 
 async function buildPasskeyResponse(
-  context: PasskeyLoginContext
+  context: PasskeyLoginContext,
+  requestHostname: string | null
 ): Promise<NextResponse> {
   const redirectUrl = context.hasMultipleWorkspaces
     ? "/choose-tenant"
@@ -36,8 +37,8 @@ async function buildPasskeyResponse(
         currentOnboardingStep: context.currentOnboardingStep,
       });
 
-  const token = await signSessionToken(
-    encodeSessionPayload({
+  const sessionPayload = bindSessionToRequestHost(
+    {
       userId: context.userId,
       email: context.email,
       organizationId: context.organizationId,
@@ -51,9 +52,13 @@ async function buildPasskeyResponse(
       timestamp: Date.now(),
       onboardingStatus: context.onboardingStatus,
       currentOnboardingStep: context.currentOnboardingStep,
-    })
+    },
+    requestHostname
   );
-  const cookieOptions = createSessionCookieOptions(isProduction, true);
+  const token = await signSessionToken(encodeSessionPayload(sessionPayload));
+  const cookieOptions = createTenantSessionCookieOptions(
+    SESSION_EPHEMERAL_MAX_AGE_SECONDS
+  );
 
   const response = successResponse({
     success: true,
@@ -73,15 +78,7 @@ async function buildPasskeyResponse(
     },
   });
 
-  response.cookies.set({
-    name: SESSION_COOKIE_NAME,
-    value: token,
-    httpOnly: cookieOptions.httpOnly,
-    secure: cookieOptions.secure,
-    sameSite: cookieOptions.sameSite,
-    path: cookieOptions.path,
-    maxAge: cookieOptions.maxAge,
-  });
+  response.cookies.set({ ...cookieOptions, value: token });
   return response;
 }
 
@@ -125,7 +122,10 @@ export async function POST(request: Request) {
       });
     }
 
-    const response = await buildPasskeyResponse(result.context);
+    const response = await buildPasskeyResponse(
+      result.context,
+      readRequestHostname(request)
+    );
     await recordPasskeyAudit(result.passkey, result.context, request);
     return response;
   } catch (error) {

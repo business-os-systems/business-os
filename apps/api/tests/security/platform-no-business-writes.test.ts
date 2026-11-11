@@ -7,12 +7,7 @@ interface ExposedRoute {
   readonly path: string;
 }
 
-const WRITE_METHODS: ReadonlySet<string> = new Set([
-  "POST",
-  "PUT",
-  "PATCH",
-  "DELETE",
-]);
+const WRITE_METHODS: ReadonlySet<string> = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
 /**
  * Hono 4 merges composed child routes into the parent `routes` table, so
@@ -28,6 +23,10 @@ interface PermittedWrite {
   readonly path: string;
   readonly reason: string;
 }
+
+const WEBSITE_BUILDER_AUTHORING = "global website-builder catalog authoring";
+const WEBSITE_BUILDER_PUBLISHING = "global website-builder catalog publishing";
+const WEBSITE_BUILDER_LIFECYCLE = "global website-builder catalog lifecycle";
 
 const PERMITTED_WRITES: readonly PermittedWrite[] = [
   { method: "POST", path: "/bootstrap/options", reason: "operator bootstrap" },
@@ -45,6 +44,10 @@ const PERMITTED_WRITES: readonly PermittedWrite[] = [
   { method: "POST", path: "/tenants/:orgId/suspend", reason: "tenant lifecycle" },
   { method: "POST", path: "/tenants/:orgId/restore", reason: "tenant lifecycle" },
   { method: "POST", path: "/tenants/:orgId/archive", reason: "tenant lifecycle" },
+  // Site takedown/restore mutates the site delivery status through the audited
+  // definer function; it is an operator abuse-control action, not tenant data.
+  { method: "POST", path: "/tenants/:orgId/sites/:siteId/suspend", reason: "site takedown" },
+  { method: "POST", path: "/tenants/:orgId/sites/:siteId/restore", reason: "site restore" },
   // Entitlements and app settings are platform-governed installation metadata.
   // Both writes go through narrow audited definer functions; Platform never
   // gains a grant on the public tenant tables.
@@ -86,6 +89,49 @@ const PERMITTED_WRITES: readonly PermittedWrite[] = [
     method: "PATCH",
     path: "/catalogs/:category/values/:code",
     reason: "reference catalog governance",
+  },
+  // The Website Builder catalog is platform-authored global content (scope
+  // GLOBAL); it is not tenant business data. Every write is audited and the
+  // Platform role never receives DELETE on the catalog tables (FR-004).
+  {
+    method: "POST",
+    path: "/apps/website-builder/items",
+    reason: WEBSITE_BUILDER_AUTHORING,
+  },
+  {
+    method: "PATCH",
+    path: "/apps/website-builder/items/:id",
+    reason: WEBSITE_BUILDER_AUTHORING,
+  },
+  {
+    method: "POST",
+    path: "/apps/website-builder/items/:id/versions",
+    reason: WEBSITE_BUILDER_AUTHORING,
+  },
+  {
+    method: "POST",
+    path: "/apps/website-builder/items/:id/preview",
+    reason: WEBSITE_BUILDER_AUTHORING,
+  },
+  {
+    method: "POST",
+    path: "/apps/website-builder/items/:id/publish",
+    reason: WEBSITE_BUILDER_PUBLISHING,
+  },
+  {
+    method: "POST",
+    path: "/apps/website-builder/items/:id/deprecate",
+    reason: WEBSITE_BUILDER_LIFECYCLE,
+  },
+  {
+    method: "POST",
+    path: "/apps/website-builder/items/:id/disable",
+    reason: WEBSITE_BUILDER_LIFECYCLE,
+  },
+  {
+    method: "POST",
+    path: "/apps/website-builder/items/:id/retire",
+    reason: WEBSITE_BUILDER_LIFECYCLE,
   },
   { method: "POST", path: "/operators", reason: "operator invitation" },
   { method: "PATCH", path: "/operators/:operatorId", reason: "operator governance" },
@@ -144,11 +190,7 @@ interface ForbiddenWritePattern {
   readonly path: RegExp;
 }
 
-const TENANT_RECORD_WRITES: ReadonlySet<string> = new Set([
-  "PUT",
-  "PATCH",
-  "DELETE",
-]);
+const TENANT_RECORD_WRITES: ReadonlySet<string> = new Set(["PUT", "PATCH", "DELETE"]);
 
 const FORBIDDEN_WRITE_PATTERNS: readonly ForbiddenWritePattern[] = [
   {
@@ -180,9 +222,7 @@ function exposedWriteRoutes(): readonly ExposedRoute[] {
 
   // Hono records one entry per handler, so a validated route repeats once per
   // validator. Collapse the entries into distinct method/path pairs.
-  const distinct = new Map(
-    routes.map((route) => [`${route.method} ${route.path}`, route]),
-  );
+  const distinct = new Map(routes.map((route) => [`${route.method} ${route.path}`, route]));
   return [...distinct.values()];
 }
 
@@ -191,8 +231,7 @@ describe("Platform admin write surface", () => {
     const unexpected = exposedWriteRoutes().filter(
       (route) =>
         !PERMITTED_WRITES.some(
-          (permitted) =>
-            permitted.method === route.method && permitted.path === route.path,
+          (permitted) => permitted.method === route.method && permitted.path === route.path,
         ),
     );
 
@@ -206,10 +245,7 @@ describe("Platform admin write surface", () => {
     const routes = exposedWriteRoutes();
     const missing = PERMITTED_WRITES.filter(
       (permitted) =>
-        !routes.some(
-          (route) =>
-            route.method === permitted.method && route.path === permitted.path,
-        ),
+        !routes.some((route) => route.method === permitted.method && route.path === permitted.path),
     );
 
     expect(

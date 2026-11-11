@@ -24,12 +24,12 @@ describe("Live Full-Screen Preview & Viewport Sandbox (@suite/dashboard)", () =>
       );
 
       expect(html).toContain("Exit Preview");
-      expect(html).toContain("href=\"/sites/site_riverview/pages\"");
+      expect(html).toContain("href=\"/dashboard/sites/site_riverview/pages\"");
       expect(html).toContain("site_riverview");
       expect(html).toContain("Tasting Menu Showcase");
       expect(html).toContain("Live Preview");
       expect(html).toContain("Edit in Studio");
-      expect(html).toContain("href=\"/sites/site_riverview/editor/page_home\"");
+      expect(html).toContain("href=\"/dashboard/sites/site_riverview/studio/page_home\"");
     });
 
     it("renders device simulation toggle buttons", () => {

@@ -1,5 +1,6 @@
 import type { SettingsCategoryConfig, SettingsGroupConfig } from "@suite/ui";
 import { PERMISSIONS } from "@suite/core";
+import { workspacePath } from "@/lib/workspace-paths";
 
 /**
  * Declarative Settings Groups Configuration Schema
@@ -21,7 +22,7 @@ export const settingsGroupsConfig: SettingsGroupConfig[] = [
         id: "general",
         label: "General",
         description: "Organization legal profile, primary currency, and statutory jurisdiction",
-        href: "/settings/general",
+        href: workspacePath("/settings/general"),
         icon: "building",
         permission: PERMISSIONS.SETTINGS.ORGANIZATION_VIEW,
       },
@@ -29,7 +30,7 @@ export const settingsGroupsConfig: SettingsGroupConfig[] = [
         id: "branches",
         label: "Branches",
         description: "Operational facilities, homestays, outlets, and physical sites",
-        href: "/settings/branches",
+        href: workspacePath("/settings/branches"),
         icon: "branches",
         permission: PERMISSIONS.SETTINGS.BRANCHES_VIEW,
       },
@@ -37,7 +38,7 @@ export const settingsGroupsConfig: SettingsGroupConfig[] = [
         id: "addresses",
         label: "Addresses",
         description: "Operational facilities, postal directory, and geospatial map coordinates",
-        href: "/settings/addresses",
+        href: workspacePath("/settings/addresses"),
         icon: "addresses",
         permission: PERMISSIONS.SETTINGS.ORGANIZATION_VIEW,
       },
@@ -51,7 +52,7 @@ export const settingsGroupsConfig: SettingsGroupConfig[] = [
         id: "members",
         label: "Members",
         description: "Active team directory, multi-channel invitations, and user access",
-        href: "/settings/members",
+        href: workspacePath("/settings/members"),
         icon: "users",
         permission: PERMISSIONS.SETTINGS.MEMBERS_VIEW,
       },
@@ -59,7 +60,7 @@ export const settingsGroupsConfig: SettingsGroupConfig[] = [
         id: "roles",
         label: "Roles & Permissions",
         description: "Access control policies, custom roles catalog, and capabilities matrix",
-        href: "/settings/roles",
+        href: workspacePath("/settings/roles"),
         icon: "shield",
         permission: PERMISSIONS.SETTINGS.ROLES_VIEW,
       },
@@ -67,7 +68,7 @@ export const settingsGroupsConfig: SettingsGroupConfig[] = [
         id: "security",
         label: "Security",
         description: "Support-session history and read-only operator access to this workspace",
-        href: "/settings/security",
+        href: workspacePath("/settings/security"),
         icon: "shield",
         permission: PERMISSIONS.SETTINGS.ORGANIZATION_VIEW,
       },
@@ -78,7 +79,7 @@ export const settingsGroupsConfig: SettingsGroupConfig[] = [
 export const settingsCategoriesConfig: SettingsCategoryConfig[] =
   settingsGroupsConfig.flatMap((group) => group.items);
 
-export const SETTINGS_HUB_ROOT = "/settings";
+export const SETTINGS_HUB_ROOT = workspacePath("/settings");
 
 /**
  * Declaratively determines if a given pathname belongs to the Core Settings Hub.

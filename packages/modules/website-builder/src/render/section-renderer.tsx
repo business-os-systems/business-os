@@ -1,5 +1,5 @@
 import React from "react";
-import type { SectionAst, BlockAst } from "../ast/types.js";
+import type { SectionAst, BlockAst, MediaAssetMap } from "../ast/types.js";
 import {
   HeroBlock,
   FeaturesBlock,
@@ -14,18 +14,25 @@ import {
 export interface SectionRendererProps {
   section: SectionAst;
   isEditor?: boolean;
+  /** Server-resolved asset URLs; absent references render no image. */
+  media?: MediaAssetMap;
+}
+
+export interface BlockRenderOptions {
+  readonly isEditor?: boolean;
+  readonly media?: MediaAssetMap;
 }
 
 // ---------------------------------------------------------------------------
 // Block Renderer Dispatch Table
 // ---------------------------------------------------------------------------
 
-type BlockRendererFn = (block: BlockAst) => React.ReactNode;
+type BlockRendererFn = (block: BlockAst, media?: MediaAssetMap) => React.ReactNode;
 
 const BLOCK_COMPONENTS: Record<string, BlockRendererFn> = {
-  hero: (block) => {
+  hero: (block, media) => {
     const b = block as Extract<BlockAst, { type: "hero" }>;
-    return <HeroBlock key={b.id} props={b.props} styles={b.styles} />;
+    return <HeroBlock key={b.id} props={b.props} styles={b.styles} media={media} />;
   },
   features: (block) => {
     const b = block as Extract<BlockAst, { type: "features" }>;
@@ -47,13 +54,13 @@ const BLOCK_COMPONENTS: Record<string, BlockRendererFn> = {
     const b = block as Extract<BlockAst, { type: "rich-text" }>;
     return <RichTextBlock key={b.id} props={b.props} styles={b.styles} />;
   },
-  navbar: (block) => {
+  navbar: (block, media) => {
     const b = block as Extract<BlockAst, { type: "navbar" }>;
-    return <NavbarBlock key={b.id} props={b.props} styles={b.styles} />;
+    return <NavbarBlock key={b.id} props={b.props} styles={b.styles} media={media} />;
   },
-  footer: (block) => {
+  footer: (block, media) => {
     const b = block as Extract<BlockAst, { type: "footer" }>;
-    return <FooterBlock key={b.id} props={b.props} styles={b.styles} />;
+    return <FooterBlock key={b.id} props={b.props} styles={b.styles} media={media} />;
   },
 };
 
@@ -70,13 +77,16 @@ const MAX_WIDTH_CLASS_MAP: Record<NonNullable<SectionAst["styles"]>["maxWidth"] 
   full: "max-w-full",
 };
 
-export function renderBlockComponent(block: BlockAst, isEditor?: boolean): React.ReactNode {
+export function renderBlockComponent(
+  block: BlockAst,
+  options: BlockRenderOptions = {}
+): React.ReactNode {
   const renderer = BLOCK_COMPONENTS[block.type];
   if (renderer) {
-    return renderer(block);
+    return renderer(block, options.media);
   }
 
-  if (isEditor) {
+  if (options.isEditor) {
     const unknownBlock = block as { id?: string; type?: string };
     return (
       <div
@@ -100,7 +110,11 @@ function resolveVisibilityClasses(visibility?: SectionRendererProps["section"]["
   return classes.join(" ");
 }
 
-export function SectionRenderer({ section, isEditor = false }: SectionRendererProps) {
+export function SectionRenderer({
+  section,
+  isEditor = false,
+  media,
+}: SectionRendererProps) {
   const { visibility, styles, blocks } = section;
 
   // Responsive visibility utility classes
@@ -133,7 +147,7 @@ export function SectionRenderer({ section, isEditor = false }: SectionRendererPr
       ) : null}
 
       <div className={`relative mx-auto w-full ${maxWidthClass}`}>
-        {blocks.map((block) => renderBlockComponent(block, isEditor))}
+        {blocks.map((block) => renderBlockComponent(block, { isEditor, media }))}
       </div>
     </section>
   );

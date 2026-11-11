@@ -81,6 +81,19 @@ export {
 } from "./session/index.js";
 
 export {
+  TENANT_SESSION_COOKIE_NAME,
+  TENANT_SESSION_COOKIE_PATH,
+  createTenantSessionCookieOptions,
+  applyTenantSessionCookie,
+  clearTenantSessionCookie,
+  isTenantSessionHostBound,
+  readTenantHostClaim,
+  type HostOnlySessionCookieOptions,
+  type TenantSessionSameSite,
+  type SerializedCookieSink,
+} from "./session-cookie.js";
+
+export {
   getUserRolePermissions,
   invalidateUserPermissionsCache,
 } from "./session/role-permissions.js";

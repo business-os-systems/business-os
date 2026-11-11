@@ -193,11 +193,11 @@ describe.skipIf(!enabled)("Platform audited functions (T016)", () => {
   describe("database boundary (DB-2 / XV.2)", () => {
     it("grants EXECUTE to app_platform only, never to app_tenant or PUBLIC", async () => {
       const rows = await ownerPrisma.$queryRaw<
-        Array<{
+        {
           proname: string;
           platformAllowed: boolean;
           tenantAllowed: boolean;
-        }>
+        }[]
       >(Prisma.sql`
         SELECT
           p.proname,
@@ -266,7 +266,7 @@ describe.skipIf(!enabled)("Platform audited functions (T016)", () => {
     });
 
     it("creates no PUBLIC EXECUTE grant on the public functions", async () => {
-      const rows = await ownerPrisma.$queryRaw<Array<{ proname: string }>>(
+      const rows = await ownerPrisma.$queryRaw<{ proname: string }[]>(
         Prisma.sql`
           SELECT p.proname
           FROM pg_proc p
@@ -322,7 +322,7 @@ describe.skipIf(!enabled)("Platform audited functions (T016)", () => {
         expect(rows[0]?.toStatus).toBe("SUSPENDED");
 
         const events = await tx.$queryRaw<
-          Array<{ fromStatus: string; toStatus: string }>
+          { fromStatus: string; toStatus: string }[]
         >(
           Prisma.sql`SELECT "fromStatus", "toStatus" FROM platform.lifecycle_events WHERE "organizationId" = ${orgId}`,
         );
@@ -331,7 +331,7 @@ describe.skipIf(!enabled)("Platform audited functions (T016)", () => {
         ]);
 
         const audits = await tx.$queryRaw<
-          Array<{ action: string; reason: string }>
+          { action: string; reason: string }[]
         >(
           Prisma.sql`SELECT "action", "reason" FROM platform.audit_events WHERE "organizationId" = ${orgId} AND "action" = ${PLATFORM_AUDIT_ACTIONS.TENANT_STATUS_CHANGED}`,
         );
@@ -342,7 +342,7 @@ describe.skipIf(!enabled)("Platform audited functions (T016)", () => {
           },
         ]);
 
-        const overview = await tx.$queryRaw<Array<{ status: string }>>(
+        const overview = await tx.$queryRaw<{ status: string }[]>(
           Prisma.sql`SELECT "status" FROM platform."v_tenant_overview" WHERE "id" = ${orgId}`,
         );
         expect(overview[0]?.status).toBe("SUSPENDED");
@@ -437,7 +437,7 @@ describe.skipIf(!enabled)("Platform audited functions (T016)", () => {
         );
 
         const audits = await tx.$queryRaw<
-          Array<{ before: unknown; after: unknown; requestId: string }>
+          { before: unknown; after: unknown; requestId: string }[]
         >(
           Prisma.sql`SELECT "before", "after", "requestId" FROM platform.audit_events WHERE "organizationId" = ${orgId} AND "action" = ${PLATFORM_AUDIT_ACTIONS.TENANT_QUOTA_SET}`,
         );
@@ -549,8 +549,8 @@ describe.skipIf(!enabled)("Platform audited functions (T016)", () => {
         const storage = rows.find(
           (row) => row.resourceKey === QUOTA_KEYS.STORAGE,
         );
-        expect(storage?.currentValue).toBeNull();
-        expect(storage?.isMeasurable).toBe(false);
+        expect(storage?.currentValue).toBe(0n);
+        expect(storage?.isMeasurable).toBe(true);
         expect(storage?.unit).toBe("bytes");
       });
     });
@@ -606,12 +606,12 @@ describe.skipIf(!enabled)("Platform audited functions (T016)", () => {
       });
 
       await withOwnerRollback(async (tx) => {
-        const rows = await tx.$queryRaw<Array<{ isEnabled: boolean }>>(
+        const rows = await tx.$queryRaw<{ isEnabled: boolean }[]>(
           Prisma.sql`SELECT * FROM platform.fn_set_entitlement(${orgId}, ${"website-builder"}, ${false}, ${actorId}, ${"req-ent-1"})`,
         );
         expect(rows[0]?.isEnabled).toBe(false);
 
-        const audits = await tx.$queryRaw<Array<{ action: string }>>(
+        const audits = await tx.$queryRaw<{ action: string }[]>(
           Prisma.sql`SELECT "action" FROM platform.audit_events WHERE "organizationId" = ${orgId} AND "action" = ${PLATFORM_AUDIT_ACTIONS.TENANT_ENTITLEMENT_SET}`,
         );
         expect(audits).toHaveLength(1);
@@ -669,13 +669,13 @@ describe.skipIf(!enabled)("Platform audited functions (T016)", () => {
       });
 
       await withOwnerRollback(async (tx) => {
-        const rows = await tx.$queryRaw<Array<{ settings: unknown }>>(
+        const rows = await tx.$queryRaw<{ settings: unknown }[]>(
           Prisma.sql`SELECT * FROM platform.fn_set_app_setting(${orgId}, ${"website-builder"}, ${JSON.stringify({ theme: "dark" })}::jsonb, ${actorId}, ${"req-setting-1"})`,
         );
         expect(rows[0]?.settings).toMatchObject({ theme: "dark" });
 
         const audits = await tx.$queryRaw<
-          Array<{ after: unknown; before: unknown }>
+          { after: unknown; before: unknown }[]
         >(
           Prisma.sql`SELECT "before", "after" FROM platform.audit_events WHERE "organizationId" = ${orgId} AND "action" = ${PLATFORM_AUDIT_ACTIONS.TENANT_APP_SETTING_SET}`,
         );
@@ -731,7 +731,7 @@ describe.skipIf(!enabled)("Platform audited functions (T016)", () => {
         expect(rows[0]?.name).toBe("Pii Member");
 
         const audits = await tx.$queryRaw<
-          Array<{ action: string; reason: string }>
+          { action: string; reason: string }[]
         >(
           Prisma.sql`SELECT "action", "reason" FROM platform.audit_events WHERE "organizationId" = ${orgId} AND "action" = ${PLATFORM_AUDIT_ACTIONS.TENANT_PII_READ}`,
         );
@@ -805,7 +805,7 @@ describe.skipIf(!enabled)("Platform audited functions (T016)", () => {
         expect(rows[0]?.firstBrokenId).toBeNull();
 
         const audits = await tx.$queryRaw<
-          Array<{ action: string; after: unknown }>
+          { action: string; after: unknown }[]
         >(
           Prisma.sql`SELECT "action", "after" FROM platform.audit_events WHERE "action" = ${PLATFORM_AUDIT_ACTIONS.AUDIT_CHAIN_VERIFIED}`,
         );
@@ -840,7 +840,7 @@ describe.skipIf(!enabled)("Platform audited functions (T016)", () => {
           occurredAt: sameMoment,
         });
 
-        const distinct = await tx.$queryRaw<Array<{ count: bigint }>>(
+        const distinct = await tx.$queryRaw<{ count: bigint }[]>(
           Prisma.sql`SELECT count(DISTINCT "occurredAt")::bigint AS count FROM platform.audit_events`,
         );
         expect(distinct[0]?.count).toBe(2n);

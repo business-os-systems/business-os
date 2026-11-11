@@ -10,16 +10,23 @@ import { hasPlatformCapability } from "@/lib/capability";
  * Every destination is declared here and rendered as a route. Adding a panel is
  * a config edit; no component knows the list by name. The record currently has
  * one reading destination; settings and the content catalog append their own
- * entries when those slices land.
+ * catalogs declare their destinations here, and the preview route is reachable
+ * by item id without becoming a menu entry.
  */
 
-export type AppRecordNavItemId = "overview" | "settings";
+export type AppRecordNavItemId =
+  | "overview"
+  | "settings"
+  | "sections"
+  | "templates"
+  | "themes";
 
 export type AppRecordIconKey = AppRecordNavItemId;
 
 export const APP_RECORD_ROUTE_PREFIX = "/apps";
 
 export const APP_RECORD_OVERVIEW_SEGMENT = "overview";
+export const APP_RECORD_PREVIEW_SEGMENT = "preview";
 
 const APP_RECORD_ID_PATTERN = /^[a-z0-9][a-z0-9_-]*$/;
 
@@ -63,10 +70,41 @@ export const APP_RECORD_NAV_GROUPS: readonly AppRecordNavGroup[] = [
       },
     ],
   },
+  {
+    id: "catalog",
+    label: "Content catalog",
+    items: [
+      {
+        id: "sections",
+        label: "Sections",
+        segment: "sections",
+        icon: "sections",
+        capabilities: PLATFORM_APPS_READ_CAPABILITIES,
+      },
+      {
+        id: "templates",
+        label: "Templates",
+        segment: "templates",
+        icon: "templates",
+        capabilities: PLATFORM_APPS_READ_CAPABILITIES,
+      },
+      {
+        id: "themes",
+        label: "Themes",
+        segment: "themes",
+        icon: "themes",
+        capabilities: PLATFORM_APPS_READ_CAPABILITIES,
+      },
+    ],
+  },
 ];
 
 export function appRecordHref(appId: string, segment: string): string {
   return `${APP_RECORD_ROUTE_PREFIX}/${encodeURIComponent(appId)}/${segment}`;
+}
+
+export function appRecordPreviewHref(appId: string, itemId: string): string {
+  return `${appRecordHref(appId, APP_RECORD_PREVIEW_SEGMENT)}/${encodeURIComponent(itemId)}`;
 }
 
 /** Hub routes are /apps/<id> and every destination below it, never /apps. */
@@ -94,19 +132,34 @@ export function appRecordIdFromPathname(pathname: string): string | null {
  * The shell uses it so an unconfigured sub-path is denied, not merely unknown
  * to the menu (H-3.2, H-3.13).
  */
-export function isAppRecordKnownDestination(pathname: string): boolean {
-  const recordRoot = /^\/apps\/[^/]+\/?$/.exec(pathname);
-  if (recordRoot !== null) {
-    return true;
-  }
-  const destination = /^\/apps\/[^/]+\/([^/]+)\/?$/.exec(pathname);
-  if (destination === null) {
+function matchId(match: RegExpExecArray | null, index: number): string | null {
+  const value = match?.[index];
+  return value !== undefined && isAppRecordId(value) ? value : null;
+}
+
+function isDeclaredDestination(appId: string | null, segment: string | undefined): boolean {
+  if (appId === null || segment === undefined) {
     return false;
   }
-  const segment = destination[1];
   return APP_RECORD_NAV_GROUPS.some((group) =>
     group.items.some((item) => item.segment === segment),
   );
+}
+
+export function isAppRecordKnownDestination(pathname: string): boolean {
+  const recordRoot = /^\/apps\/([^/]+)\/?$/.exec(pathname);
+  if (recordRoot !== null) {
+    return matchId(recordRoot, 1) !== null;
+  }
+  const destination = /^\/apps\/([^/]+)\/([^/]+)\/?$/.exec(pathname);
+  if (destination !== null) {
+    return isDeclaredDestination(matchId(destination, 1), destination[2]);
+  }
+  const preview = /^\/apps\/([^/]+)\/preview\/([^/]+)\/?$/.exec(pathname);
+  if (preview === null) {
+    return false;
+  }
+  return matchId(preview, 1) !== null && matchId(preview, 2) !== null;
 }
 
 /**

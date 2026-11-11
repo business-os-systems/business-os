@@ -132,7 +132,7 @@ describe("Principle VIII: Pure Capability Authorization & Zero Static Role Check
     // Installed apps should load metadata directly from PostgreSQL settings
     expect(result.installedApps).toHaveLength(1);
     expect(result.installedApps[0]!.name).toBe("Website Builder & Headless CMS");
-    expect(result.installedApps[0]!.href).toBe("/sites");
+    expect(result.installedApps[0]!.href).toBe("/dashboard/sites");
     expect(result.installedApps[0]!.permission).toBe("cms:sites:read");
     expect(result.installedApps[0]!.description).toBe("Visual canvas studio and storefront delivery.");
   });

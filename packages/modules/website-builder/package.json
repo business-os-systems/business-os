@@ -26,6 +26,16 @@
       "import": "./src/services/index.ts",
       "default": "./src/services/index.ts"
     },
+    "./audit": {
+      "types": "./src/audit/index.ts",
+      "import": "./src/audit/index.ts",
+      "default": "./src/audit/index.ts"
+    },
+    "./inquiries": {
+      "types": "./src/inquiries/index.ts",
+      "import": "./src/inquiries/index.ts",
+      "default": "./src/inquiries/index.ts"
+    },
     "./routes": {
       "types": "./src/routes/index.ts",
       "import": "./src/routes/index.ts",
@@ -46,10 +56,20 @@
       "import": "./src/ast/index.ts",
       "default": "./src/ast/index.ts"
     },
+    "./paths": {
+      "types": "./src/paths/page-paths.ts",
+      "import": "./src/paths/page-paths.ts",
+      "default": "./src/paths/page-paths.ts"
+    },
     "./render": {
       "types": "./src/render/index.ts",
       "import": "./src/render/index.ts",
       "default": "./src/render/index.ts"
+    },
+    "./appearance": {
+      "types": "./src/appearance/index.ts",
+      "import": "./src/appearance/index.ts",
+      "default": "./src/appearance/index.ts"
     }
   },
   "scripts": {
@@ -62,6 +82,7 @@
     "@hono/zod-openapi": "^0.18.4",
     "@suite/core": "workspace:*",
     "@suite/db": "workspace:*",
+    "@suite/media": "workspace:*",
     "@suite/ui": "workspace:*",
     "hono": "^4.7.0",
     "isomorphic-dompurify": "^4.5.0",

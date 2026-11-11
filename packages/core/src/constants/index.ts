@@ -73,3 +73,19 @@ export {
   type QuotaUnit,
   type QuotaResourceDefinition,
 } from "./quota-keys.js";
+
+export {
+  RESERVED_HOST_LABELS,
+  RESERVED_PATH_PREFIXES,
+  NON_STOREFRONT_PATH_PREFIXES,
+  SITE_METADATA_PATHS,
+  ROBOTS_DISALLOWED_PATHS,
+  normalizeHostname,
+  normalizePathname,
+  getTenantHostLabel,
+  isReservedHostLabel,
+  isReservedPath,
+  isNonStorefrontPath,
+  isSiteMetadataPath,
+  type ReservedHostLabel,
+} from "./reserved.js";
