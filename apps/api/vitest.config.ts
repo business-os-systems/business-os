@@ -1,10 +1,9 @@
 import { defineConfig } from "vitest/config";
 
 /**
- * Database integration suites share one PostgreSQL database and several of
- * them truncate platform tables between tests. Running files in parallel makes
- * those resets race with other suites (the CI symptom was a quota read that
- * returned no media row). File-serial execution keeps each suite isolated.
+ * Database integration suites share one PostgreSQL database. The catalog,
+ * media and quota suites create rows that other suites' pagination/usage
+ * assertions can observe, so files run serially to keep each suite isolated.
  */
 export default defineConfig({
   test: {
