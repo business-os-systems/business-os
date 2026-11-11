@@ -87,6 +87,13 @@ model CmsSite {
   themeId         String?
   theme           CmsTheme?      @relation(fields: [themeId], references: [id], onDelete: SetNull)
 
+  // Lifecycle retention (FR-097): an inactive site is flagged for deletion and
+  // stays intact until an authorised operator explicitly confirms removal. No
+  // timer may ever delete site content; the confirmation records who approved it.
+  deletionFlaggedAt   DateTime?  @db.Timestamptz(6)
+  deletionConfirmedAt DateTime?  @db.Timestamptz(6)
+  deletionConfirmedBy String?    @db.VarChar(191)
+
   createdAt       DateTime       @default(now()) @db.Timestamptz(6)
   updatedAt       DateTime       @updatedAt @db.Timestamptz(6)
 
@@ -109,6 +116,7 @@ model CmsSite {
   @@unique([organizationId, idempotencyKey])
   @@unique([id, organizationId]) // Target for composite foreign keys
   @@index([organizationId, status])
+  @@index([deletionFlaggedAt])
   @@index([branchId])
   @@map("cms_sites")
 

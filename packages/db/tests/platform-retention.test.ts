@@ -96,4 +96,20 @@ describe("platform retention enforcement", () => {
   it("fails loudly for a table without a retention policy", () => {
     expect(() => getPlatformRetentionPolicy("missing_table")).toThrow(UnknownRetentionPolicyError);
   });
+
+  it("declares the site deletion lifecycle and the page version prune path", () => {
+    const sites = getPlatformRetentionPolicy("cms_sites");
+    expect(sites.basis).toContain("flagged for deletion");
+    expect(sites.enforcedBy).toContain("human-confirmed removal");
+
+    const versions = getPlatformRetentionPolicy("cms_page_versions");
+    expect(versions.enforcedBy).toContain("newest 30");
+
+    expect(
+      existsSync(join(REPO_ROOT, "apps/api/src/jobs/version-retention.ts")),
+    ).toBe(true);
+    expect(
+      existsSync(join(REPO_ROOT, "apps/api/src/jobs/site-deletion-flag.ts")),
+    ).toBe(true);
+  });
 });

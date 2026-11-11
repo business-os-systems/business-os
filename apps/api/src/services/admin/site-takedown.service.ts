@@ -96,7 +96,8 @@ function requireReason(reason: string): string {
   return trimmed;
 }
 
-function readStatus(value: string): CmsSiteStatus {
+/** Reads a CMS site status from a database row, refusing an unknown value. */
+export function readStatus(value: string): CmsSiteStatus {
   const status = CMS_SITE_STATUSES.find((candidate) => candidate === value);
   if (status === undefined) {
     throw new ValidationError("The site returned an unknown status.", undefined, {

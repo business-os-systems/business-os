@@ -9,6 +9,10 @@ import {
 } from "@suite/website-builder/ast";
 import { normalizePagePath } from "@suite/website-builder/services";
 import {
+  DOMAIN_OPERATIONS,
+  measureDomainOperation,
+} from "../admin/domain-metrics.service.js";
+import {
   STOREFRONT_DOMAIN_STATUS,
   STOREFRONT_PAGE_STATUS,
   STOREFRONT_SITE_STATUS,
@@ -217,22 +221,26 @@ async function readPageInTenant(
 /** Anonymous, published-only reads for the storefront delivery surface. */
 export const storefrontReadService: StorefrontReadService = {
   async resolveHost(host) {
-    const locator = await locateSite(host);
-    if (locator === null) {
-      return { kind: "not_found" };
-    }
-    return resolveInTenant(locator);
+    return measureDomainOperation(DOMAIN_OPERATIONS.DELIVERY, { surface: "site" }, async () => {
+      const locator = await locateSite(host);
+      if (locator === null) {
+        return { kind: "not_found" };
+      }
+      return resolveInTenant(locator);
+    });
   },
 
   async readPage(input) {
-    const path = normalizeStorefrontPath(input.path);
-    if (path === null) {
-      return { kind: "not_found" };
-    }
-    const locator = await locateSite(input.host);
-    if (locator === null) {
-      return { kind: "not_found" };
-    }
-    return readPageInTenant(locator, path);
+    return measureDomainOperation(DOMAIN_OPERATIONS.DELIVERY, { surface: "page" }, async () => {
+      const path = normalizeStorefrontPath(input.path);
+      if (path === null) {
+        return { kind: "not_found" };
+      }
+      const locator = await locateSite(input.host);
+      if (locator === null) {
+        return { kind: "not_found" };
+      }
+      return readPageInTenant(locator, path);
+    });
   },
 };

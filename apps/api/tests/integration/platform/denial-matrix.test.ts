@@ -17,6 +17,7 @@ import { platformSystemRouter } from "../../../src/routes/admin/system.js";
 import { tenantAdminRouter } from "../../../src/routes/admin/tenants.js";
 import { tenantPiiRouter } from "../../../src/routes/admin/tenant-pii.js";
 import { tenantLifecycleRouter } from "../../../src/routes/admin/lifecycle.js";
+import { siteDeletionRouter } from "../../../src/routes/admin/site-deletion.js";
 import { globalErrorHandler } from "../../../src/middleware/error-handler.js";
 import { loadPlatformTestEnv } from "../../helpers/platform-env.js";
 
@@ -49,6 +50,7 @@ platformAppSettingsRouter.onError(globalErrorHandler);
 tenantAdminRouter.onError(globalErrorHandler);
 tenantPiiRouter.onError(globalErrorHandler);
 tenantLifecycleRouter.onError(globalErrorHandler);
+siteDeletionRouter.onError(globalErrorHandler);
 
 type RouterKey =
   | "platform-auth"
@@ -61,7 +63,8 @@ type RouterKey =
   | "admin-app-settings"
   | "admin-tenants"
   | "admin-tenant-pii"
-  | "admin-tenant-lifecycle";
+  | "admin-tenant-lifecycle"
+  | "admin-site-deletion";
 
 const ROUTERS = {
   "platform-auth": platformAuthRouter,
@@ -75,6 +78,7 @@ const ROUTERS = {
   "admin-tenants": tenantAdminRouter,
   "admin-tenant-pii": tenantPiiRouter,
   "admin-tenant-lifecycle": tenantLifecycleRouter,
+  "admin-site-deletion": siteDeletionRouter,
 } as const;
 
 /**
@@ -239,6 +243,22 @@ const PROTECTED_ROUTES: readonly ProtectedRoute[] = [
     method: "POST",
     path: "/tenants/tenant_denial_probe/archive",
     router: "admin-tenant-lifecycle",
+    anonymous: { status: 401, code: PLATFORM_ERROR_CODE.AUTH_REQUIRED },
+    originGuarded: true,
+  },
+  {
+    id: "admin-sites/flagged-for-deletion",
+    method: "GET",
+    path: "/tenants/tenant_denial_probe/sites/flagged",
+    router: "admin-site-deletion",
+    anonymous: { status: 401, code: PLATFORM_ERROR_CODE.AUTH_REQUIRED },
+    originGuarded: true,
+  },
+  {
+    id: "admin-sites/confirm-deletion",
+    method: "POST",
+    path: "/tenants/tenant_denial_probe/sites/site_denial_probe/confirm-deletion",
+    router: "admin-site-deletion",
     anonymous: { status: 401, code: PLATFORM_ERROR_CODE.AUTH_REQUIRED },
     originGuarded: true,
   },

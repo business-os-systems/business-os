@@ -1,4 +1,4 @@
-import { Prisma, withTenantContext } from "@suite/db";
+import { Prisma, prisma, withTenantContext } from "@suite/db";
 import { ConflictError, NotFoundError } from "@suite/core/errors";
 import { logger } from "@suite/logger";
 import { resolveMediaAssets, type MediaAssetResolutionMap } from "@suite/media";
@@ -14,7 +14,12 @@ import {
   CMS_CONFLICT_DRAFT_LABEL,
 } from "@suite/website-builder/audit";
 import type { PageContent } from "./contract.js";
+import {
+  DOMAIN_OPERATIONS,
+  measureDomainOperationSafely,
+} from "../admin/domain-metrics.service.js";
 import { syncPageMediaUsages } from "./media-usage-sync.js";
+import { prunePageVersions } from "./version-retention.js";
 
 const EMPTY_PAGE_AST: PageAst = { version: 1, schemaVersion: "2026-03", sections: [] };
 
@@ -316,8 +321,25 @@ export async function getPageContent(input: PageScope): Promise<PageContent> {
  * save retains the submitted draft in immutable version history, writes the
  * audit row, and reports a conflict without touching the newer content.
  */
+/**
+ * A stale save retains the losing draft as a checkpoint. The checkpoint grows
+ * history, so the same request prunes the page afterwards as the schema owner;
+ * a prune failure is recorded without rejecting the save the editor already
+ * lost (FR-033, FR-065).
+ */
+async function pruneAfterCheckpoint(
+  organizationId: string,
+  pageId: string
+): Promise<void> {
+  await measureDomainOperationSafely(
+    DOMAIN_OPERATIONS.VERSION_RETENTION,
+    { organizationId, pageId },
+    () => prunePageVersions({ organizationId, pageId, client: prisma })
+  );
+}
+
 export async function savePageDraft(input: SavePageDraftInput): Promise<SaveDraftOutcome> {
-  return withTenantContext(input.organizationId, async (tx) => {
+  const outcome: SaveDraftOutcome = await withTenantContext(input.organizationId, async (tx) => {
     const page = await lockPage(tx, input);
     if (page.revision !== input.expectedRevision) {
       const retainedVersion = await retainLosingDraft({ tx, input, page });
@@ -348,4 +370,8 @@ export async function savePageDraft(input: SavePageDraftInput): Promise<SaveDraf
     }
     return { kind: "saved", content: await applyDraftUpdate({ tx, input, page }) };
   });
+  if (outcome.kind === "conflict") {
+    await pruneAfterCheckpoint(input.organizationId, input.pageId);
+  }
+  return outcome;
 }

@@ -12,6 +12,10 @@ import {
 } from "@suite/website-builder/inquiries";
 import { getTurnstileSecret, isProduction } from "../../lib/env.js";
 import {
+  DOMAIN_OPERATIONS,
+  measureDomainOperation,
+} from "../admin/domain-metrics.service.js";
+import {
   assertInquiryPayloadWithinCap,
   assertNoSensitiveFieldNames,
   hashEmailIfPresent,
@@ -113,30 +117,36 @@ function retentionDeadline(now: Date): Date {
 export async function ingestPublicSubmission(
   input: PublicSubmissionInput
 ): Promise<PublicSubmissionResult> {
-  assertInquiryPayloadWithinCap(input.payload);
-  assertNoSensitiveFieldNames(input.payload);
-  const organizationId = await resolvePublicSiteOrganization(input.siteId);
-  if (organizationId === null) {
-    throw new NotFoundError("The requested site is not available.", { code: "NOT_FOUND" });
-  }
-  const spam = await assessBotVerdict(input);
-  const contact = extractContactFields(input.payload);
-  const result = await createInquiry({
-    organizationId,
-    siteId: input.siteId,
-    blockId: input.blockId,
-    idempotencyKey: input.idempotencyKey,
-    payload: input.payload,
-    attachments: [...input.attachments],
-    status: spam.status,
-    spamVerdict: spam.verdict,
-    emailHash: hashEmailIfPresent(contact.email),
-    submitterHash: hashSubmitterIdentity(input.clientIp, input.userAgent),
-    retentionExpiresAt: retentionDeadline(new Date()),
-  });
-  return {
-    inquiryId: result.record.id,
-    receivedAt: result.record.createdAt.toISOString(),
-    duplicate: result.isDuplicate,
-  };
+  return measureDomainOperation(
+    DOMAIN_OPERATIONS.FORM_INGESTION,
+    { siteId: input.siteId, blockId: input.blockId },
+    async () => {
+      assertInquiryPayloadWithinCap(input.payload);
+      assertNoSensitiveFieldNames(input.payload);
+      const organizationId = await resolvePublicSiteOrganization(input.siteId);
+      if (organizationId === null) {
+        throw new NotFoundError("The requested site is not available.", { code: "NOT_FOUND" });
+      }
+      const spam = await assessBotVerdict(input);
+      const contact = extractContactFields(input.payload);
+      const result = await createInquiry({
+        organizationId,
+        siteId: input.siteId,
+        blockId: input.blockId,
+        idempotencyKey: input.idempotencyKey,
+        payload: input.payload,
+        attachments: [...input.attachments],
+        status: spam.status,
+        spamVerdict: spam.verdict,
+        emailHash: hashEmailIfPresent(contact.email),
+        submitterHash: hashSubmitterIdentity(input.clientIp, input.userAgent),
+        retentionExpiresAt: retentionDeadline(new Date()),
+      });
+      return {
+        inquiryId: result.record.id,
+        receivedAt: result.record.createdAt.toISOString(),
+        duplicate: result.isDuplicate,
+      };
+    }
+  );
 }
