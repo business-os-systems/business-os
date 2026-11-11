@@ -48,7 +48,13 @@ export function ReviewPreview({ page, media, device, viewMode }: ReviewPreviewPr
     return <EmptyPreview message="This page content cannot be rendered" />;
   }
   return (
-    <div className="flex flex-1 justify-center overflow-auto bg-surface-sunken p-6" data-review-device={device}>
+    <div
+      className="flex flex-1 justify-center overflow-auto bg-surface-sunken p-6"
+      data-review-device={device}
+      role="region"
+      aria-label="Page preview"
+      tabIndex={0}
+    >
       <div
         className="shrink-0 overflow-hidden rounded-lg border border-border bg-surface shadow-sm"
         style={{ width: viewport.width }}

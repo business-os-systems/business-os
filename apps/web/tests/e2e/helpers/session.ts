@@ -6,10 +6,12 @@ import {
   type SessionPayload,
 } from "@suite/auth";
 import { PERMISSIONS } from "@suite/core";
+import { RELEASE_GATE_DASHBOARD_PORT } from "./release-gate-ports";
 
 /** A tenant session that is valid only for the local release-gate host. */
 export const RELEASE_GATE_HOST = "acme.localhost";
-export const DASHBOARD_ORIGIN = "http://" + RELEASE_GATE_HOST + ":3001";
+export const DASHBOARD_ORIGIN =
+  "http://" + RELEASE_GATE_HOST + ":" + String(RELEASE_GATE_DASHBOARD_PORT);
 export const FIXTURE_ORGANIZATION_ID = "org_release_gates";
 
 const RELEASE_GATE_PERMISSIONS: readonly string[] = [

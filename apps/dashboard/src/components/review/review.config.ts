@@ -35,7 +35,7 @@ export interface ReviewPageState {
 }
 
 export const REVIEW_PAGE_STATE = {
-  pending: { label: "Pending changes", className: "text-warning" },
+  pending: { label: "Pending changes", className: "text-warning-text" },
   live: { label: "Already live", className: "text-success" },
   notLive: { label: "Not live yet", className: "text-text-secondary" },
 } as const satisfies Record<string, ReviewPageState>;

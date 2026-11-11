@@ -59,7 +59,7 @@ test("storefront contact page stays inside its page budget", async ({ page }) =>
 
 test("holding page stays inside its page budget", async ({ page }) => {
   await captureStorefront(page, "storefront-not-found", "/unpublished-page", async () => {
-    await expect(page.getByRole("heading", { name: "This website is not available right now." })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Website unavailable" })).toBeVisible();
   });
 });
 

@@ -26,13 +26,15 @@ export function InquiryFilterBar({
           { label: filter.allLabel, value: "" },
           ...filter.options,
         ];
+        const selectedLabel =
+          options.find((option) => option.value === selected)?.label ?? filter.label;
         return (
           <div key={filter.id} className="w-48 space-y-1">
             <span className="text-[11px] font-semibold uppercase tracking-wide text-text-muted">
               {filter.label}
             </span>
             <Select
-              aria-label={filter.label}
+              aria-label={filter.label + ": " + selectedLabel}
               value={selected}
               options={options}
               onChange={(value) => onChange(filter.id, value.length === 0 ? null : value)}

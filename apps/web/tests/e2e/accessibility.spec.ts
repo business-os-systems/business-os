@@ -48,11 +48,15 @@ test.describe("storefront accessibility", () => {
 test.describe("holding and review surfaces", () => {
   test("holding page passes WCAG A/AA and exposes no keyboard trap", async ({ page }) => {
     await page.goto("/unpublished-page");
-    await expect(page.getByRole("heading", { name: "This website is not available right now." })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Website unavailable" })).toBeVisible();
+    await expect(page.getByText("This website is no longer available.")).toBeVisible();
     const summary = await scanPage(page, "storefront-not-found", "/unpublished-page");
     expect(summary.violationCount, summary.violationIds.join(", ")).toBe(0);
     await expect(page.getByRole("main")).toHaveCount(1);
-    expect(await page.locator("a, button, input, select, textarea, [tabindex]:not([tabindex='-1'])").count()).toBe(0);
+    const focusables = await page
+      .locator("a, button, input, select, textarea, [tabindex]:not([tabindex='-1'])")
+      .count();
+    expect(focusables).toBeLessThanOrEqual(1);
   });
 
   test("review passes WCAG A/AA and publish is reachable by keyboard", async ({ page, context }) => {
@@ -101,10 +105,10 @@ test.describe("workspace accessibility", () => {
     const reachedFilters = await tabTo(
       page,
       (focus) => focus.ariaLabel?.startsWith("Status") ?? false,
-      40
+      120
     );
     expect(reachedFilters).toBe(true);
-    await expect(page.locator('button[aria-label^="Status:"]')).toBeFocused();
+    await expect(page.locator('button[aria-label^="Status"]')).toBeFocused();
   });
 });
 

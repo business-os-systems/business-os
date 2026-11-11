@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { StorefrontStatePanel } from "@/components/storefront/state-panel";
 import { StorefrontPageView } from "@/components/storefront/page-view";
 import { metadataForPage } from "@/lib/storefront/metadata";
 import { toStorefrontPath } from "@/lib/storefront/path";
@@ -32,8 +33,28 @@ export default async function StorefrontPage(props: StorefrontRouteProps) {
     notFound();
   }
   const result = await loadRequestedPage(path);
-  if (result.kind !== "published") {
-    notFound();
+  if (result.kind === "published") {
+    return <StorefrontPageView page={result.page} />;
   }
-  return <StorefrontPageView page={result.page} />;
+  if (result.kind === "gone") {
+    return (
+      <StorefrontStatePanel
+        eyebrow="Website"
+        title="Website unavailable"
+        message="This website is no longer available."
+        homeLabel="Go to the home page"
+      />
+    );
+  }
+  if (result.kind === "upstream_error") {
+    return (
+      <StorefrontStatePanel
+        eyebrow="Website"
+        title="Website unavailable"
+        message="This website cannot be served right now."
+        homeLabel="Go to the home page"
+      />
+    );
+  }
+  notFound();
 }
