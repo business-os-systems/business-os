@@ -2,6 +2,10 @@ import { z } from "zod";
 import { prisma, withTenantContext, type Prisma } from "@suite/db";
 import { logger } from "@suite/logger";
 import { FeatureFlagClient } from "@suite/flags";
+import {
+  publishedDefinitionKey,
+  readPublishedDefinitions,
+} from "@suite/website-builder/services";
 import { resolveCatalogTargeting } from "../admin/catalog-targeting.js";
 import { catalogTargetingSchema, type CatalogItemStatus } from "../admin/app-catalog.contract.js";
 import { catalogSectionDefinitionValidationSchema, type CatalogSection } from "./contract.js";
@@ -15,7 +19,6 @@ interface CatalogRow {
   readonly slug: string;
   readonly category: string;
   readonly industries: string[];
-  readonly definition: unknown;
   readonly previewRef: string | null;
   readonly flagKey: string | null;
   readonly targeting: unknown;
@@ -67,8 +70,8 @@ function isVisibleToTenant(row: CatalogRow, context: VisibilityContext): boolean
   );
 }
 
-function toCatalogSection(row: CatalogRow): CatalogSection | null {
-  const definition = catalogSectionDefinitionValidationSchema.safeParse(row.definition);
+function toCatalogSection(row: CatalogRow, rawDefinition: unknown): CatalogSection | null {
+  const definition = catalogSectionDefinitionValidationSchema.safeParse(rawDefinition);
   if (!definition.success) {
     logger.warn({ itemId: row.id, issues: definition.error.issues.slice(0, 3) }, "Skipping a catalog section with an invalid definition");
     return null;
@@ -85,55 +88,66 @@ function toCatalogSection(row: CatalogRow): CatalogSection | null {
   };
 }
 
-function queryCatalogRows(organizationId: string): Promise<CatalogRow[]> {
-  return withTenantContext(organizationId, (tx: Prisma.TransactionClient) =>
-    tx.cmsCatalogItem.findMany({
-      where: {
-        kind: "SECTION",
-        status: "ACTIVE",
-        OR: [
-          { scope: "GLOBAL", organizationId: null },
-          { scope: "TENANT", organizationId },
-        ],
-      },
-      orderBy: [{ category: "asc" }, { name: "asc" }, { id: "asc" }],
-      take: MAX_SECTION_ROWS,
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        category: true,
-        industries: true,
-        definition: true,
-        previewRef: true,
-        flagKey: true,
-        targeting: true,
-        status: true,
-        currentVersion: true,
-      },
-    })
-  );
+function queryCatalogRows(
+  tx: Prisma.TransactionClient,
+  organizationId: string
+): Promise<CatalogRow[]> {
+  return tx.cmsCatalogItem.findMany({
+    where: {
+      kind: "SECTION",
+      status: "ACTIVE",
+      OR: [
+        { scope: "GLOBAL", organizationId: null },
+        { scope: "TENANT", organizationId },
+      ],
+    },
+    orderBy: [{ category: "asc" }, { name: "asc" }, { id: "asc" }],
+    take: MAX_SECTION_ROWS,
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      category: true,
+      industries: true,
+      previewRef: true,
+      flagKey: true,
+      targeting: true,
+      status: true,
+      currentVersion: true,
+    },
+  });
 }
 
 /**
  * Lists only ACTIVE sections the tenant may see: global sections plus this
  * workspace's own rows, then resolved through the shared targeting resolver
- * (FR-008, FR-022). Malformed, flagged-off or untargeted rows never reach the
- * drawer, and an unresolvable flag fails closed.
+ * (FR-008, FR-022). The definition comes from the immutable published version
+ * the item's currentVersion names, so an unpublished edit of an active section
+ * is invisible until it is published (FR-012). Malformed, flagged-off or
+ * untargeted rows never reach the drawer, and an unresolvable flag fails closed.
  */
 export async function listTenantCatalogSections(input: {
   readonly organizationId: string;
   readonly limit: number;
 }): Promise<readonly CatalogSection[]> {
-  const [industries, rows] = await Promise.all([
+  const [industries, catalog] = await Promise.all([
     readTenantIndustries(input.organizationId),
-    queryCatalogRows(input.organizationId),
+    withTenantContext(input.organizationId, async (tx) => {
+      const rows = await queryCatalogRows(tx, input.organizationId);
+      const definitions = await readPublishedDefinitions(tx, rows);
+      return { rows, definitions };
+    }),
   ]);
-  const flagStates = await readFlagStates(rows, input.organizationId);
+  const flagStates = await readFlagStates(catalog.rows, input.organizationId);
   const context: VisibilityContext = { organizationId: input.organizationId, industries, flagStates };
-  return rows
+  return catalog.rows
     .filter((row) => row.currentVersion > 0 && isVisibleToTenant(row, context))
-    .map(toCatalogSection)
+    .map((row) => {
+      const definition = catalog.definitions.get(
+        publishedDefinitionKey(row.id, row.currentVersion)
+      );
+      return definition === undefined ? null : toCatalogSection(row, definition);
+    })
     .filter((section): section is CatalogSection => section !== null)
     .slice(0, input.limit);
 }

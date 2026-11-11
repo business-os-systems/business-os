@@ -15,6 +15,7 @@ import { DEFAULT_APPEARANCE_TOKENS } from "../appearance/tokens.js";
 import { CMS_AUDIT_ACTIONS, CMS_AUDIT_ENTITY_TYPES } from "../audit/actions.js";
 import { writeCmsAudit } from "./cms-audit.js";
 import { isUniqueConstraintViolation } from "./prisma-unique.js";
+import { publishedDefinitionKey, readPublishedDefinitions } from "./published-catalog.js";
 import { assertPagePathAllowed, normalizeSiteSlug } from "../paths/page-paths.js";
 
 export {
@@ -185,13 +186,23 @@ async function resolveTemplate(
         { scope: "TENANT", organizationId: request.organizationId },
       ],
     },
+    select: { id: true, currentVersion: true },
   });
   if (template === null) {
     throw new NotFoundError("The requested template is not published or is not available to this workspace.", {
       code: "NOT_FOUND",
     });
   }
-  const parsed = TemplateBlueprintSchema.safeParse(template.definition);
+  const published = await readPublishedDefinitions(tx, [template]);
+  const definition = published.get(
+    publishedDefinitionKey(template.id, template.currentVersion)
+  );
+  if (definition === undefined) {
+    throw new NotFoundError("The requested template has no published version available to this workspace.", {
+      code: "NOT_FOUND",
+    });
+  }
+  const parsed = TemplateBlueprintSchema.safeParse(definition);
   if (!parsed.success) {
     throw new ValidationError(
       "The published template has an invalid page blueprint.",

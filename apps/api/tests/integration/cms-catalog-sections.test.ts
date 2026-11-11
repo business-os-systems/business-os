@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { prisma, type Prisma } from "@suite/db";
+import { prisma, withTenantContext, type Prisma } from "@suite/db";
+import { readPublishedDefinitions } from "@suite/website-builder/services";
 import { listTenantCatalogSections } from "../../src/services/cms/catalog-section.service.js";
 
 const enabled = Boolean(process.env.DATABASE_URL && process.env.TENANT_DATABASE_URL);
@@ -33,27 +34,54 @@ interface ItemInput {
   readonly industries?: string[];
   readonly currentVersion?: number;
   readonly definition?: Prisma.InputJsonValue;
+  readonly publishedDefinition?: Prisma.InputJsonValue;
+  readonly writePublishedVersion?: boolean;
 }
 
-function createItem(input: ItemInput) {
-  const scope = input.scope ?? "GLOBAL";
-  return prisma.cmsCatalogItem.create({
+function buildItemData(input: ItemInput): Prisma.CmsCatalogItemCreateInput {
+  const industries = input.industries ?? [];
+  return {
+    kind: "SECTION",
+    scope: input.scope ?? "GLOBAL",
+    organizationId: input.organizationId === undefined ? null : input.organizationId,
+    name: input.name,
+    slug: SLUG_PREFIX + "-" + input.slug,
+    category: input.industries?.[0] ?? "hospitality",
+    industries,
+    definition: input.definition ?? definition(input.name),
+    status: input.status ?? "ACTIVE",
+    targeting: input.targeting ?? {},
+    currentVersion: input.currentVersion ?? 1,
+    createdBy: "usr_catalog",
+    updatedBy: "usr_catalog",
+  };
+}
+
+function writePublishedVersion(input: ItemInput, itemId: string): Promise<unknown> {
+  return prisma.cmsCatalogItemVersion.create({
     data: {
-      kind: "SECTION",
-      scope,
-      organizationId: input.organizationId === undefined ? null : input.organizationId,
-      name: input.name,
-      slug: SLUG_PREFIX + "-" + input.slug,
-      category: input.industries?.[0] ?? "hospitality",
-      industries: input.industries ?? [],
-      definition: input.definition ?? definition(input.name),
-      status: input.status ?? "ACTIVE",
-      targeting: input.targeting ?? {},
-      currentVersion: input.currentVersion ?? 1,
+      itemId,
+      version: input.currentVersion ?? 1,
+      definition: input.publishedDefinition ?? input.definition ?? definition(input.name),
+      status: "ACTIVE",
+      publishedAt: new Date(),
+      publishedBy: "usr_catalog",
       createdBy: "usr_catalog",
-      updatedBy: "usr_catalog",
     },
   });
+}
+
+/**
+ * Creates a catalog item the way the admin service does: the item row carries
+ * the working draft and currentVersion > 0 always has an immutable published
+ * version row behind it.
+ */
+async function createItem(input: ItemInput) {
+  const item = await prisma.cmsCatalogItem.create({ data: buildItemData(input) });
+  if ((input.currentVersion ?? 1) > 0 && input.writePublishedVersion !== false) {
+    await writePublishedVersion(input, item.id);
+  }
+  return item;
 }
 
 beforeAll(async () => {
@@ -74,7 +102,7 @@ afterAll(async () => {
 });
 
 describe.skipIf(!enabled)("Tenant-visible section catalog (FR-008, FR-022)", () => {
-  it("lists active global and own-tenant sections resolved for this tenant", async () => {
+  beforeAll(async () => {
     await createItem({ slug: "global", name: "Global hero" });
     await createItem({ slug: "allow-a", name: "Allowed for A", targeting: { orgAllowlist: [ORG_A] } });
     await createItem({ slug: "allow-b", name: "Allowed for B", targeting: { orgAllowlist: [ORG_B] } });
@@ -91,7 +119,9 @@ describe.skipIf(!enabled)("Tenant-visible section catalog (FR-008, FR-022)", () 
       name: "Broken definition",
       definition: { schemaVersion: "2026-03", block: { id: "x", type: "unknown", props: {} } },
     });
+  });
 
+  it("lists active global and own-tenant sections resolved for this tenant", async () => {
     const sections = await listTenantCatalogSections({ organizationId: ORG_A, limit: 100 });
     const names = sections.map((section) => section.name);
 
@@ -128,5 +158,83 @@ describe.skipIf(!enabled)("Tenant-visible section catalog (FR-008, FR-022)", () 
     expect(sections).toHaveLength(2);
     const categories = sections.map((section) => section.category);
     expect([...categories].sort()).toEqual(categories);
+  });
+});
+
+describe.skipIf(!enabled)("Unpublished catalog edits stay invisible (FR-012)", () => {
+  it("hides an unpublished edit of an active section", async () => {
+    const item = await createItem({
+      slug: "draft-edit",
+      name: "Edited section",
+      publishedDefinition: definition("Published headline"),
+    });
+    await prisma.cmsCatalogItem.update({
+      where: { id: item.id },
+      data: { definition: definition("Unpublished headline"), draftVersion: 2 },
+    });
+
+    const sections = await listTenantCatalogSections({ organizationId: ORG_A, limit: 100 });
+    const section = sections.find((candidate) => candidate.id === item.id);
+
+    expect(section?.definition.block.props).toMatchObject({ headline: "Published headline" });
+    expect(section?.currentVersion).toBe(1);
+  });
+
+  it("omits an active section that has no published version row", async () => {
+    const item = await createItem({
+      slug: "missing-version",
+      name: "Unbacked section",
+      writePublishedVersion: false,
+    });
+
+    const sections = await listTenantCatalogSections({ organizationId: ORG_A, limit: 100 });
+
+    expect(sections.some((section) => section.id === item.id)).toBe(false);
+  });
+
+  it("resolves no definitions when there are no rows to read", async () => {
+    const definitions = await withTenantContext(ORG_A, (tx) => readPublishedDefinitions(tx, []));
+
+    expect(definitions.size).toBe(0);
+  });
+});
+
+describe.skipIf(!enabled)("Publishing swaps the visible definition (FR-005)", () => {
+  it("serves the new definition once the draft is published and keeps the old version", async () => {
+    const item = await createItem({
+      slug: "publish-edit",
+      name: "Publishable section",
+      publishedDefinition: definition("First headline"),
+      definition: definition("Second headline"),
+    });
+    await prisma.$transaction([
+      prisma.cmsCatalogItemVersion.create({
+        data: {
+          itemId: item.id,
+          version: 2,
+          definition: definition("Second headline"),
+          status: "ACTIVE",
+          publishedAt: new Date(),
+          publishedBy: "usr_catalog",
+          createdBy: "usr_catalog",
+        },
+      }),
+      prisma.cmsCatalogItem.update({
+        where: { id: item.id },
+        data: { currentVersion: 2, draftVersion: null },
+      }),
+    ]);
+
+    const sections = await listTenantCatalogSections({ organizationId: ORG_A, limit: 100 });
+    const section = sections.find((candidate) => candidate.id === item.id);
+    const versions = await prisma.cmsCatalogItemVersion.findMany({
+      where: { itemId: item.id },
+      orderBy: { version: "asc" },
+      select: { version: true },
+    });
+
+    expect(section?.definition.block.props).toMatchObject({ headline: "Second headline" });
+    expect(section?.currentVersion).toBe(2);
+    expect(versions.map((version) => version.version)).toEqual([1, 2]);
   });
 });

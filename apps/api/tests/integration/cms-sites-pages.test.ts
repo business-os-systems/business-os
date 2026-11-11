@@ -31,6 +31,9 @@ async function cleanup(): Promise<void> {
   await prisma.cmsPageVersion.deleteMany({ where: { organizationId: { in: orgs } } });
   await prisma.cmsPage.deleteMany({ where: { organizationId: { in: orgs } } });
   await prisma.cmsSite.deleteMany({ where: { organizationId: { in: orgs } } });
+  await prisma.cmsCatalogItemVersion.deleteMany({
+    where: { item: { slug: { startsWith: TEMPLATE_SLUG } } },
+  });
   await prisma.cmsCatalogItem.deleteMany({ where: { slug: { startsWith: TEMPLATE_SLUG } } });
   await prisma.organization.deleteMany({ where: { id: { in: orgs } } });
 }
@@ -41,14 +44,25 @@ async function createTenant(id: string, label: string): Promise<void> {
   });
 }
 
-async function createPublishedTemplate() {
-  return prisma.cmsCatalogItem.create({
+const DRAFT_BLUEPRINT = {
+  schemaVersion: "2026-03",
+  pages: [
+    { version: 1, schemaVersion: "2026-03", meta: { title: "Draft landing" }, sections: [] },
+  ],
+};
+
+/**
+ * The item row carries the working draft and currentVersion names the
+ * immutable published version row, exactly as the admin publish path writes it.
+ */
+async function createPublishedTemplate(slug = TEMPLATE_SLUG) {
+  const item = await prisma.cmsCatalogItem.create({
     data: {
       kind: "TEMPLATE",
       scope: "GLOBAL",
       organizationId: null,
       name: "T-04 template",
-      slug: TEMPLATE_SLUG,
+      slug,
       category: "hospitality",
       industries: ["hospitality"],
       definition: BLUEPRINT,
@@ -58,6 +72,18 @@ async function createPublishedTemplate() {
       updatedBy: ACTOR,
     },
   });
+  await prisma.cmsCatalogItemVersion.create({
+    data: {
+      itemId: item.id,
+      version: 1,
+      definition: BLUEPRINT,
+      status: "ACTIVE",
+      publishedAt: new Date(),
+      publishedBy: ACTOR,
+      createdBy: ACTOR,
+    },
+  });
+  return item;
 }
 
 function createInput(overrides: {
@@ -258,5 +284,61 @@ describe.skipIf(!enabled)("CMS site pagination", () => {
     });
     const ids = [...first.items, ...second.items].map((site) => site.id);
     expect(new Set(ids).size).toBe(ids.length);
+  });
+});
+
+describe.skipIf(!enabled)("Template published version (FR-012, FR-005)", () => {
+  it("provisions from the published template version, never an unpublished draft", async () => {
+    await prisma.cmsCatalogItem.update({
+      where: { id: templateId },
+      data: { definition: DRAFT_BLUEPRINT, draftVersion: 2 },
+    });
+
+    const result = await createSite(
+      createInput({ slug: "template-draft-" + RUN, templateId, idempotencyKey: "idem-draft-" + RUN })
+    );
+    const pages = await listPages({
+      organizationId: ORG_A,
+      siteId: result.site.id,
+      limit: 100,
+    });
+
+    expect(result.pageCount).toBe(2);
+    expect(pages.items.map((page) => page.path).sort()).toEqual(["/", "/about-us"]);
+    expect(pages.items.some((page) => page.title === "Draft landing")).toBe(false);
+
+    await prisma.cmsCatalogItem.update({
+      where: { id: templateId },
+      data: { definition: BLUEPRINT, draftVersion: null },
+    });
+  });
+
+  it("refuses a template whose published version row is missing", async () => {
+    const unbacked = await prisma.cmsCatalogItem.create({
+      data: {
+        kind: "TEMPLATE",
+        scope: "GLOBAL",
+        organizationId: null,
+        name: "Unbacked template",
+        slug: TEMPLATE_SLUG + "-unbacked",
+        category: "hospitality",
+        industries: ["hospitality"],
+        definition: BLUEPRINT,
+        status: "ACTIVE",
+        currentVersion: 1,
+        createdBy: ACTOR,
+        updatedBy: ACTOR,
+      },
+    });
+
+    await expect(
+      createSite(
+        createInput({
+          slug: "template-unbacked-" + RUN,
+          templateId: unbacked.id,
+          idempotencyKey: "idem-unbacked-" + RUN,
+        })
+      )
+    ).rejects.toBeInstanceOf(NotFoundError);
   });
 });

@@ -17,4 +17,5 @@ export * from "./cms-audit.js";
 export * from "./storefront-service.js";
 export * from "./page-service.js";
 export * from "./prisma-unique.js";
+export * from "./published-catalog.js";
 export * from "./site-service.js";
