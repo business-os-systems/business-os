@@ -32,6 +32,18 @@ export const APPEARANCE_TOKEN_KEYS = [
 
 export type AppearanceTokenKey = (typeof APPEARANCE_TOKEN_KEYS)[number];
 
+/** The colour subset a block may use as an operator-authored override. */
+export const APPEARANCE_COLOR_TOKEN_KEYS = [
+  "colorBackground",
+  "colorSurface",
+  "colorText",
+  "colorTextMuted",
+  "colorPrimary",
+  "colorPrimaryContrast",
+  "colorAccent",
+  "colorBorder",
+] as const satisfies readonly AppearanceTokenKey[];
+
 export type AppearanceTokens = Readonly<Record<AppearanceTokenKey, string>>;
 
 /** A mutable partial edit accepted from the appearance panel. */

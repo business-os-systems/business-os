@@ -1,6 +1,12 @@
 import React, { useState } from "react";
 import { ChevronDownIcon } from "@suite/ui/icons";
 import type { FaqBlockProps, BlockStyleTokens } from "../../ast/types.js";
+import {
+  BLOCK_COLORS,
+  BLOCK_FONTS,
+  BLOCK_RADII,
+  resolveSectionStyle,
+} from "./block-tokens.js";
 
 export interface FaqBlockComponentProps {
   props: FaqBlockProps;
@@ -17,33 +23,27 @@ export function FaqBlock({ props, styles }: FaqBlockComponentProps) {
     }));
   };
 
-  const paddingStyle: React.CSSProperties = {
-    paddingTop:
-      styles?.paddingTop !== undefined ? `${styles.paddingTop}px` : "64px",
-    paddingBottom:
-      styles?.paddingBottom !== undefined
-        ? `${styles.paddingBottom}px`
-        : "64px",
-    backgroundColor: styles?.backgroundColor,
-    color: styles?.textColor,
-  };
+  const sectionStyle = resolveSectionStyle(styles);
 
   return (
     <section
       data-block-type="faq"
-      style={paddingStyle}
-      className={`w-full px-4 sm:px-6 lg:px-8 ${styles?.customClassName ?? ""}`}
+      style={sectionStyle}
+      className="w-full px-4 sm:px-6 lg:px-8"
     >
       <div className="max-w-4xl mx-auto">
         {props.headline || props.subheadline ? (
           <div className="text-center mb-12">
             {props.headline ? (
-              <h2 className="text-3xl font-bold font-heading tracking-tight text-on-surface sm:text-4xl">
+              <h2
+                className="text-3xl font-bold tracking-tight sm:text-4xl"
+                style={{ fontFamily: BLOCK_FONTS.heading, color: BLOCK_COLORS.text }}
+              >
                 {props.headline}
               </h2>
             ) : null}
             {props.subheadline ? (
-              <p className="mt-4 text-lg text-on-surface-variant">
+              <p className="mt-4 text-lg" style={{ color: BLOCK_COLORS.textMuted }}>
                 {props.subheadline}
               </p>
             ) : null}
@@ -56,14 +56,20 @@ export function FaqBlock({ props, styles }: FaqBlockComponentProps) {
             return (
               <div
                 key={item.id}
-                className="rounded-lg border border-hairline bg-surface-container-lowest overflow-hidden transition-colors"
+                className="border overflow-hidden transition-colors"
+                style={{
+                  backgroundColor: BLOCK_COLORS.surface,
+                  borderColor: BLOCK_COLORS.border,
+                  borderRadius: BLOCK_RADII.md,
+                }}
               >
                 <button
                   type="button"
                   onClick={() => toggleItem(item.id)}
-                  className="w-full flex justify-between items-center px-6 py-4 text-left font-semibold text-on-surface hover:bg-surface-container-low focus:outline-none"
+                  className="w-full flex justify-between items-center px-6 py-4 text-left font-semibold hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                  style={{ color: BLOCK_COLORS.text, outlineColor: BLOCK_COLORS.primary }}
                 >
-                  <span className="text-base sm:text-lg font-heading">
+                  <span className="text-base sm:text-lg" style={{ fontFamily: BLOCK_FONTS.heading }}>
                     {item.question}
                   </span>
                   <span
@@ -76,7 +82,10 @@ export function FaqBlock({ props, styles }: FaqBlockComponentProps) {
                 </button>
 
                 {isOpen ? (
-                  <div className="px-6 pb-4 pt-1 text-on-surface-variant text-sm sm:text-base border-t border-hairline leading-relaxed">
+                  <div
+                    className="px-6 pb-4 pt-1 text-sm sm:text-base border-t leading-relaxed"
+                    style={{ color: BLOCK_COLORS.textMuted, borderColor: BLOCK_COLORS.border }}
+                  >
                     {item.answer}
                   </div>
                 ) : null}
