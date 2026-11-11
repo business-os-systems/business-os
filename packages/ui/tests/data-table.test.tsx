@@ -152,7 +152,7 @@ describe("shared ConfigTableRenderer rendering", () => {
     expect(html).toContain("Flagship Riverside Cafe");
   });
 
-  it("renders the caller toolbar", () => {
+  it("renders the caller toolbar with card padding", () => {
     const html = renderToString(
       <ConfigTableRenderer
         config={config}
@@ -162,6 +162,10 @@ describe("shared ConfigTableRenderer rendering", () => {
       />,
     );
     expect(html).toContain("Filters");
+    const toolbarIndex = html.indexOf("Filters");
+    const wrapperStart = html.lastIndexOf("<div", toolbarIndex);
+    const wrapperTag = html.slice(wrapperStart, html.indexOf(">", wrapperStart));
+    expect(wrapperTag).toContain("p-4");
   });
 
 });

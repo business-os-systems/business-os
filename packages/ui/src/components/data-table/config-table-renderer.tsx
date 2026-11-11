@@ -547,7 +547,7 @@ function TableToolbar({
 }) {
   if (toolbar === undefined) return null;
   return (
-    <div className="sticky top-0 z-20 border-b border-border bg-surface">
+    <div className="sticky top-0 z-20 border-b border-border bg-surface p-4">
       {toolbar}
     </div>
   );
