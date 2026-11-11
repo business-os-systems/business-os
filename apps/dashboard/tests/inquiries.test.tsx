@@ -142,7 +142,7 @@ describe("Inquiries list", () => {
     mockWorkspaceFetch();
     render(<InquiriesWorkspace canRevealPii={false} />);
     await screen.findByText(PREVIEW);
-    const statusFilter = screen.getAllByRole("button", { name: "Status" })[0];
+    const statusFilter = screen.getAllByRole("button", { name: /^Status/ })[0];
     if (statusFilter === undefined) {
       throw new Error("The status filter is not rendered.");
     }

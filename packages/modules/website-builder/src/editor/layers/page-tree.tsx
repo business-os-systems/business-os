@@ -180,7 +180,6 @@ function PageTreeRowLabel(props: {
       data-page-tree-button={props.node.id}
       onClick={props.onSelect}
       className="flex min-w-0 flex-1 items-center gap-1.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-      aria-label={"Open page " + props.node.title + " at " + props.node.path}
     >
       {props.node.children.length > 0 ? (
         <ChevronDownIcon size={13} className="shrink-0 text-text-muted" />

@@ -2,6 +2,7 @@ import { defineConfig } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { RELEASE_GATE_DASHBOARD_PORT } from "./tests/e2e/helpers/release-gate-ports";
 
 /**
  * Release-gate runner (T124/T125/T129).
@@ -15,7 +16,7 @@ import { fileURLToPath } from "node:url";
 const CONFIG_DIR = dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = resolve(CONFIG_DIR, "../..");
 const WEB_PORT = 3003;
-const DASHBOARD_PORT = 3001;
+const DASHBOARD_PORT = RELEASE_GATE_DASHBOARD_PORT;
 const FIXTURE_PORT = 4310;
 const TENANT_HOST = "acme.localhost";
 const SCRATCH_TENANT_DATABASE_URL =
@@ -86,7 +87,7 @@ export default defineConfig({
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     launchOptions: {
-      args: ["--host-resolver-rules=MAP " + TENANT_HOST + " 127.0.0.1"],
+      args: ["--host-resolver-rules=MAP " + TENANT_HOST + " 127.0.0.1, MAP suspended.localhost 127.0.0.1"],
     },
   },
   projects: [
@@ -114,7 +115,9 @@ export default defineConfig({
       }),
     },
     {
-      command: "pnpm exec tsx ../../tooling/quality/e2e/setup-release-gates.ts && pnpm --filter @suite/dashboard dev",
+      command:
+        "pnpm --filter @suite/dashboard exec next dev -p " +
+        String(DASHBOARD_PORT),
       port: DASHBOARD_PORT,
       reuseExistingServer: process.env.CI === undefined,
       timeout: 240_000,
