@@ -8,11 +8,22 @@ import {
   writeCmsAudit,
 } from "@suite/website-builder/services";
 import { CMS_AUDIT_ACTIONS, CMS_AUDIT_ENTITY_TYPES } from "@suite/website-builder/audit";
-import type { CmsList, CmsPageRecord, CreatePageBody, UpdatePageBody } from "./contract.js";
+import type {
+  ArchivePageBody,
+  CmsList,
+  CmsPageRecord,
+  CmsRedirectRecord,
+  CreatePageBody,
+  ReorderPageBody,
+  UpdatePageBody,
+} from "./contract.js";
 import { removePageMediaUsages } from "./media-usage-sync.js";
 
 const MAX_ANCESTOR_DEPTH = 100;
 const CURSOR_PATTERN = /^[A-Za-z0-9_-]+$/;
+const PAGE_NOT_FOUND_DETAIL = "The requested page was not found.";
+const PAGE_VERSION_CONFLICT_DETAIL =
+  "The page changed since it was loaded. Reload and try again.";
 const pageCursorSchema = z
   .object({
     orderIndex: z.number().int(),
@@ -475,7 +486,7 @@ async function applyPageUpdate(
     },
   });
   if (updated.count === 0) {
-    throw new ConflictError("The page changed since it was loaded. Reload and try again.", {
+    throw new ConflictError(PAGE_VERSION_CONFLICT_DETAIL, {
       code: "VERSION_CONFLICT",
     });
   }
@@ -507,7 +518,7 @@ export async function updatePage(input: UpdatePageInput): Promise<CmsPageRecord>
       }
       await lockSite(tx, input.organizationId, current.siteId);
       if (current.revision !== input.body.expectedRevision) {
-        throw new ConflictError("The page changed since it was loaded. Reload and try again.", {
+        throw new ConflictError(PAGE_VERSION_CONFLICT_DETAIL, {
           code: "VERSION_CONFLICT",
         });
       }
@@ -595,5 +606,393 @@ export async function deletePage(input: {
       changes: { title: current.title, path: current.slug },
     });
     return { deleted: true as const };
+  });
+}
+
+/** Canonical page status values used by the tree mutations (cms_pages.status). */
+const PAGE_STATUS = {
+  DRAFT: "DRAFT",
+  ARCHIVED: "ARCHIVED",
+} as const;
+
+const DUPLICATE_PATH_MAX_ATTEMPTS = 50;
+const PAGE_TITLE_MAX_LENGTH = 160;
+const COPY_SUFFIX = " (copy)";
+
+function pageNotFound(): NotFoundError {
+  return new NotFoundError(PAGE_NOT_FOUND_DETAIL, { code: "NOT_FOUND" });
+}
+
+interface PageMutationInput {
+  readonly organizationId: string;
+  readonly pageId: string;
+  readonly actorUserId: string;
+}
+
+async function findPageOrThrow(
+  tx: Prisma.TransactionClient,
+  input: PageMutationInput
+): Promise<CmsPage> {
+  const page = await tx.cmsPage.findFirst({
+    where: { id: input.pageId, organizationId: input.organizationId },
+  });
+  if (page === null) {
+    throw pageNotFound();
+  }
+  return page;
+}
+
+function assertCurrentRevision(current: { revision: number }, expectedRevision: number): void {
+  if (current.revision !== expectedRevision) {
+    throw new ConflictError(PAGE_VERSION_CONFLICT_DETAIL, { code: "VERSION_CONFLICT" });
+  }
+}
+
+async function findReorderNeighbor(
+  tx: Prisma.TransactionClient,
+  input: ReorderPageInput,
+  current: CmsPage
+): Promise<CmsPage | null> {
+  const movingUp = input.body.direction === "up";
+  return tx.cmsPage.findFirst({
+    where: {
+      organizationId: input.organizationId,
+      siteId: current.siteId,
+      parentId: current.parentId,
+      status: { not: PAGE_STATUS.ARCHIVED },
+      id: { not: current.id },
+      orderIndex: movingUp ? { lt: current.orderIndex } : { gt: current.orderIndex },
+    },
+    orderBy: movingUp ? { orderIndex: "desc" } : { orderIndex: "asc" },
+  });
+}
+
+interface ReorderPageInput extends PageMutationInput {
+  readonly body: ReorderPageBody;
+}
+
+async function swapPageOrder(
+  tx: Prisma.TransactionClient,
+  input: ReorderPageInput,
+  current: CmsPage,
+  neighbor: CmsPage
+): Promise<CmsPage> {
+  await tx.cmsPage.update({
+    where: { id_organizationId: { id: current.id, organizationId: input.organizationId } },
+    data: { orderIndex: neighbor.orderIndex, revision: { increment: 1 } },
+  });
+  await tx.cmsPage.update({
+    where: { id_organizationId: { id: neighbor.id, organizationId: input.organizationId } },
+    data: { orderIndex: current.orderIndex, revision: { increment: 1 } },
+  });
+  const moved = await tx.cmsPage.findFirstOrThrow({
+    where: { id: current.id, organizationId: input.organizationId },
+  });
+  await writeCmsAudit(tx, {
+    organizationId: input.organizationId,
+    siteId: current.siteId,
+    action: CMS_AUDIT_ACTIONS.PAGE_MOVED,
+    entityType: CMS_AUDIT_ENTITY_TYPES.PAGE,
+    entityId: current.id,
+    actorUserId: input.actorUserId,
+    changes: {
+      reason: "REORDER",
+      direction: input.body.direction,
+      beforeOrderIndex: current.orderIndex,
+      afterOrderIndex: neighbor.orderIndex,
+      neighborPageId: neighbor.id,
+    },
+  });
+  return moved;
+}
+
+async function reorderPageTx(
+  tx: Prisma.TransactionClient,
+  input: ReorderPageInput
+): Promise<CmsPageRecord> {
+  const current = await findPageOrThrow(tx, input);
+  await lockSite(tx, input.organizationId, current.siteId);
+  assertCurrentRevision(current, input.body.expectedRevision);
+  if (current.status === PAGE_STATUS.ARCHIVED) {
+    throw new ConflictError("An archived page cannot be reordered.", {
+      code: "PAGE_TREE_PROTECTED",
+    });
+  }
+  const neighbor = await findReorderNeighbor(tx, input, current);
+  return neighbor === null ? mapPage(current) : mapPage(await swapPageOrder(tx, input, current, neighbor));
+}
+
+/**
+ * Moves a page one slot among its non-archived siblings. The site row is locked
+ * so two reorders cannot interleave, and both revisions advance so a stale
+ * rename still loses to the reorder (CT-3).
+ */
+export async function reorderPage(input: ReorderPageInput): Promise<CmsPageRecord> {
+  try {
+    return await withTenantContext(input.organizationId, (tx) => reorderPageTx(tx, input));
+  } catch (error: unknown) {
+    throw mapPageWriteFailure(error);
+  }
+}
+
+async function nextDuplicatePath(
+  tx: Prisma.TransactionClient,
+  input: { organizationId: string; siteId: string; source: CmsPage }
+): Promise<string> {
+  const base = input.source.isHomePage ? "/home" : input.source.slug;
+  const rows = await tx.cmsPage.findMany({
+    where: {
+      organizationId: input.organizationId,
+      siteId: input.siteId,
+      slug: { startsWith: base + "-copy" },
+    },
+    select: { slug: true },
+  });
+  const taken = new Set(rows.map((row) => row.slug));
+  for (let attempt = 1; attempt <= DUPLICATE_PATH_MAX_ATTEMPTS; attempt += 1) {
+    const candidate = attempt === 1 ? base + "-copy" : base + "-copy-" + String(attempt);
+    if (!taken.has(candidate)) {
+      return candidate;
+    }
+  }
+  throw new ConflictError("This page has been duplicated too many times. Rename the copies first.", {
+    code: "PAGE_PATH_CONFLICT",
+  });
+}
+
+function duplicateTitle(title: string): string {
+  return title.slice(0, PAGE_TITLE_MAX_LENGTH - COPY_SUFFIX.length) + COPY_SUFFIX;
+}
+
+async function duplicatePageTx(
+  tx: Prisma.TransactionClient,
+  input: PageMutationInput
+): Promise<CmsPageRecord> {
+  const source = await tx.cmsPage.findFirst({
+    where: { id: input.pageId, organizationId: input.organizationId },
+    include: { content: { select: { draftAst: true } } },
+  });
+  if (source === null) {
+    throw pageNotFound();
+  }
+  await lockSite(tx, input.organizationId, source.siteId);
+  const path = await nextDuplicatePath(tx, {
+    organizationId: input.organizationId,
+    siteId: source.siteId,
+    source,
+  });
+  await tx.cmsPage.updateMany({
+    where: {
+      organizationId: input.organizationId,
+      siteId: source.siteId,
+      parentId: source.parentId,
+      orderIndex: { gte: source.orderIndex + 1 },
+    },
+    data: { orderIndex: { increment: 1 } },
+  });
+  const created = await tx.cmsPage.create({
+    data: {
+      organizationId: input.organizationId,
+      siteId: source.siteId,
+      parentId: source.parentId,
+      title: duplicateTitle(source.title),
+      slug: path,
+      isHomePage: false,
+      orderIndex: source.orderIndex + 1,
+      status: PAGE_STATUS.DRAFT,
+      revision: 1,
+      content: { create: { draftAst: source.content?.draftAst ?? emptyPageAst() } },
+    },
+  });
+  await writeCmsAudit(tx, {
+    organizationId: input.organizationId,
+    siteId: source.siteId,
+    action: CMS_AUDIT_ACTIONS.PAGE_CREATED,
+    entityType: CMS_AUDIT_ENTITY_TYPES.PAGE,
+    entityId: created.id,
+    actorUserId: input.actorUserId,
+    changes: {
+      sourcePageId: source.id,
+      title: created.title,
+      path: created.slug,
+      parentId: created.parentId,
+    },
+  });
+  return mapPage(created);
+}
+
+/**
+ * Duplicates a page beside its source: the same parent, the next tree slot, a
+ * unique copy address and a copy of the draft content. The copy is never a home
+ * page and never inherits a published status (FR-020, FR-080).
+ */
+export async function duplicatePage(input: PageMutationInput): Promise<CmsPageRecord> {
+  try {
+    return await withTenantContext(input.organizationId, (tx) => duplicatePageTx(tx, input));
+  } catch (error: unknown) {
+    throw mapPageWriteFailure(error);
+  }
+}
+
+interface ArchivePageInput extends PageMutationInput {
+  readonly body: ArchivePageBody;
+}
+
+async function assertArchiveable(
+  tx: Prisma.TransactionClient,
+  input: ArchivePageInput,
+  current: CmsPage
+): Promise<void> {
+  if (current.isHomePage) {
+    throw new ConflictError("The home page cannot be archived.", {
+      code: "PAGE_TREE_PROTECTED",
+    });
+  }
+  if (current.status === PAGE_STATUS.ARCHIVED) {
+    throw new ConflictError("This page is already archived.", {
+      code: "PAGE_TREE_PROTECTED",
+    });
+  }
+  const livePages = await tx.cmsPage.count({
+    where: {
+      organizationId: input.organizationId,
+      siteId: current.siteId,
+      status: { not: PAGE_STATUS.ARCHIVED },
+    },
+  });
+  if (livePages <= 1) {
+    throw new ConflictError("A site must keep at least one live page.", {
+      code: "PAGE_TREE_PROTECTED",
+    });
+  }
+  const liveChildren = await tx.cmsPage.count({
+    where: {
+      organizationId: input.organizationId,
+      siteId: current.siteId,
+      parentId: current.id,
+      status: { not: PAGE_STATUS.ARCHIVED },
+    },
+  });
+  if (liveChildren > 0) {
+    throw new ConflictError("Move or archive the child pages first.", {
+      code: "PAGE_TREE_PROTECTED",
+    });
+  }
+}
+
+async function archivePageTx(
+  tx: Prisma.TransactionClient,
+  input: ArchivePageInput
+): Promise<CmsPageRecord> {
+  const current = await findPageOrThrow(tx, input);
+  await lockSite(tx, input.organizationId, current.siteId);
+  assertCurrentRevision(current, input.body.expectedRevision);
+  await assertArchiveable(tx, input, current);
+  const archived = await tx.cmsPage.update({
+    where: { id_organizationId: { id: current.id, organizationId: input.organizationId } },
+    data: { status: PAGE_STATUS.ARCHIVED, revision: { increment: 1 } },
+  });
+  await writeCmsAudit(tx, {
+    organizationId: input.organizationId,
+    siteId: current.siteId,
+    action: CMS_AUDIT_ACTIONS.PAGE_DELETED,
+    entityType: CMS_AUDIT_ENTITY_TYPES.PAGE,
+    entityId: current.id,
+    actorUserId: input.actorUserId,
+    changes: {
+      archived: true,
+      title: current.title,
+      path: current.slug,
+      previousStatus: current.status,
+    },
+  });
+  return mapPage(archived);
+}
+
+/**
+ * Archives a page: its content, address and position are retained, but the
+ * storefront and the editor tree stop treating it as live. The home page, the
+ * last live page and a parent with live children are refused so a site never
+ * loses its entry point or orphans a branch (FR-020).
+ */
+export async function archivePage(input: ArchivePageInput): Promise<CmsPageRecord> {
+  return withTenantContext(input.organizationId, (tx) => archivePageTx(tx, input));
+}
+
+const redirectCursorSchema = z
+  .object({ createdAt: z.string().datetime(), id: z.string().min(1).max(64) })
+  .strict();
+
+type RedirectCursor = z.infer<typeof redirectCursorSchema>;
+
+function encodeRedirectCursor(row: { createdAt: Date; id: string }): string {
+  return Buffer.from(
+    JSON.stringify({ createdAt: row.createdAt.toISOString(), id: row.id }),
+    "utf8"
+  ).toString("base64url");
+}
+
+function decodeRedirectCursor(raw: string): RedirectCursor {
+  if (!CURSOR_PATTERN.test(raw)) {
+    throw invalidCursor();
+  }
+  try {
+    const parsed: unknown = JSON.parse(Buffer.from(raw, "base64url").toString("utf8"));
+    const result = redirectCursorSchema.safeParse(parsed);
+    if (result.success) {
+      return result.data;
+    }
+  } catch (error: unknown) {
+    throw invalidCursor(error);
+  }
+  throw invalidCursor();
+}
+
+/** Lists the permanent redirects page moves created, newest first (FR-082). */
+export async function listRedirects(input: {
+  readonly organizationId: string;
+  readonly siteId: string;
+  readonly cursor?: string;
+  readonly limit: number;
+}): Promise<CmsList<CmsRedirectRecord>> {
+  const cursor = input.cursor === undefined ? null : decodeRedirectCursor(input.cursor);
+  return withTenantContext(input.organizationId, async (tx) => {
+    const site = await tx.cmsSite.findFirst({
+      where: { id: input.siteId, organizationId: input.organizationId },
+      select: { id: true },
+    });
+    if (site === null) {
+      throw new NotFoundError("The requested site was not found.", { code: "NOT_FOUND" });
+    }
+    const where =
+      cursor === null
+        ? { organizationId: input.organizationId, siteId: input.siteId }
+        : {
+            organizationId: input.organizationId,
+            siteId: input.siteId,
+            OR: [
+              { createdAt: { lt: new Date(cursor.createdAt) } },
+              { createdAt: new Date(cursor.createdAt), id: { lt: cursor.id } },
+            ],
+          };
+    const rows = await tx.cmsUrlRedirect.findMany({
+      where,
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: input.limit + 1,
+    });
+    const items = rows.slice(0, input.limit);
+    const last = items[items.length - 1];
+    return {
+      items: items.map((row) => ({
+        id: row.id,
+        siteId: row.siteId,
+        sourcePath: row.sourcePath,
+        targetPath: row.targetUrl,
+        type: row.type,
+        createdAt: row.createdAt.toISOString(),
+      })),
+      nextCursor:
+        rows.length > input.limit && last !== undefined ? encodeRedirectCursor(last) : null,
+    };
   });
 }

@@ -40,7 +40,6 @@ function renderCanvas(input: {
       selection={input.selection ?? NO_SELECTION}
       readOnly={input.readOnly ?? false}
       onSelect={vi.fn()}
-      onDeviceChange={vi.fn()}
       onZoomChange={vi.fn()}
       onOpenCatalog={vi.fn()}
     />

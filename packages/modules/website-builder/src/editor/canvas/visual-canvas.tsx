@@ -143,12 +143,7 @@ export function VisualCanvas(props: VisualCanvasProps) {
   };
   return (
     <div role="region" aria-label="Canvas" className="flex h-full min-w-0 flex-1 flex-col bg-surface-sunken">
-      <ViewportToolbar
-        device={props.device}
-        zoom={props.zoom}
-        onDeviceChange={props.onDeviceChange}
-        onZoomChange={props.onZoomChange}
-      />
+
       <div className="relative flex-1 overflow-auto p-6" onClick={clearSelection} data-canvas-workspace="true">
         <div
           data-viewport-device={props.device}
@@ -157,8 +152,9 @@ export function VisualCanvas(props: VisualCanvasProps) {
           className="mx-auto my-4 flex min-h-[600px] origin-top flex-col overflow-hidden rounded-lg border border-border bg-surface shadow-lg"
           onClick={(event) => event.stopPropagation()}
         >
-          <div className="flex items-center justify-between border-b border-border bg-surface-muted px-3 py-1.5 font-mono text-[11px] text-text-muted">
+          <div className="flex items-center justify-between gap-2 border-b border-border bg-surface-muted px-3 py-1 font-mono text-[11px] text-text-muted">
             <span>{viewport.label}</span>
+            <ViewportToolbar zoom={props.zoom} onZoomChange={props.onZoomChange} />
             <span>Scale: {Math.round(props.zoom * 100)}%</span>
           </div>
           <main style={pageStyle(props.ast)} className="flex min-h-full w-full flex-1 flex-col">

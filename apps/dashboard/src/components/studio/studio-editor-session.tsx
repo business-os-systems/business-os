@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
-import { Button } from "@suite/ui";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   createMediaApiClient,
   type MediaAssetView,
@@ -16,7 +15,6 @@ import {
   selectedSectionId,
   useEditorAutosave,
   VisualCanvas,
-  type AutosaveStatus,
   type MediaPickerControls,
   type PageContentSnapshot,
 } from "@suite/website-builder/editor";
@@ -27,9 +25,8 @@ import type {
   SectionAst,
 } from "@suite/website-builder/ast";
 import { createDraftTransport } from "@/lib/api/cms-editor-client";
-import { AutosaveIndicator } from "./autosave-indicator";
 import { StudioSiteLinks } from "./studio-site-links";
-import type { StudioEditorProps } from "./studio-editor-props";
+import type { StudioEditorProps, StudioEditorToolbar } from "./studio-editor-props";
 import {
   useAstMutations,
   useCanvasViewState,
@@ -38,56 +35,20 @@ import {
 } from "./use-studio-editor-state";
 import { useCatalogSections } from "./use-catalog-sections";
 
-const SAVEABLE_STATUSES: ReadonlySet<AutosaveStatus> = new Set(["dirty", "offline", "error"]);
-
 interface SessionProps extends StudioEditorProps {
   readonly content: PageContentSnapshot;
 }
 
-interface TopBarProps {
-  readonly page: StudioEditorProps["page"];
-  readonly status: AutosaveStatus;
-  readonly revision: number;
-  readonly error: string | null;
-  readonly canWrite: boolean;
-  readonly onSaveNow: () => void;
-  readonly onOpenDrawer: () => void;
-}
-
-function EditorTopBar(props: TopBarProps) {
-  const canSaveNow = props.canWrite && SAVEABLE_STATUSES.has(props.status);
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-surface px-4 py-1.5">
-      <div className="min-w-0">
-        <p className="truncate text-xs font-semibold text-text">{props.page.title}</p>
-        <p className="truncate font-mono text-[10px] text-text-muted">{props.page.path}</p>
-      </div>
-      <div className="flex items-center gap-3">
-        <AutosaveIndicator
-          status={props.status}
-          revision={props.revision}
-          error={props.error}
-          canSaveNow={canSaveNow}
-          onSaveNow={props.onSaveNow}
-        />
-        <Button type="button" size="sm" disabled={!props.canWrite} onClick={props.onOpenDrawer}>
-          Add section
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-interface CanvasPaneProps extends TopBarProps {
+interface CanvasPaneProps {
   readonly ast: PageAst;
   readonly view: CanvasViewState;
   readonly media: MediaAssetMap;
+  readonly canWrite: boolean;
 }
 
 function EditorCanvasPane(props: CanvasPaneProps) {
   return (
     <main className="flex min-w-0 flex-1 flex-col">
-      <EditorTopBar {...props} />
       <VisualCanvas
         ast={props.ast}
         device={props.view.device}
@@ -95,7 +56,6 @@ function EditorCanvasPane(props: CanvasPaneProps) {
         selection={props.view.selection}
         readOnly={!props.canWrite}
         onSelect={props.view.setSelection}
-        onDeviceChange={props.view.setDevice}
         onZoomChange={props.view.setZoom}
         onOpenCatalog={props.view.openDrawer}
         media={props.media}
@@ -111,6 +71,7 @@ interface InspectorRailProps {
   readonly media: MediaPickerControls;
   readonly mutations: AstMutations;
   readonly siteId: string;
+  readonly userPermissions: readonly string[];
 }
 
 function EditorInspectorRail(props: InspectorRailProps) {
@@ -127,7 +88,9 @@ function EditorInspectorRail(props: InspectorRailProps) {
       onMoveSection={props.mutations.moveSectionById}
       onDuplicateSection={props.mutations.duplicateActiveSection}
       onDeleteSection={props.mutations.deleteSectionById}
-      footer={<StudioSiteLinks siteId={props.siteId} />}
+      footer={
+        <StudioSiteLinks siteId={props.siteId} userPermissions={props.userPermissions} />
+      }
     />
   );
 }
@@ -234,7 +197,12 @@ function useStudioEditorState(props: SessionProps) {
     authorName: props.currentUserName,
   });
   const catalog = useCatalogSections();
-  const view = useCanvasViewState();
+  const view = useCanvasViewState({
+    device: props.device,
+    zoom: props.zoom,
+    setDevice: props.onDeviceChange,
+    setZoom: props.onZoomChange,
+  });
   const ast = autosave.state.ast;
   const section =
     ast.sections.find((entry) => entry.id === selectedSectionId(view.selection)) ?? null;
@@ -253,6 +221,33 @@ function useStudioEditorState(props: SessionProps) {
   return { autosave, catalog, view, ast, section, block, mutations };
 }
 
+/**
+ * Publishes the save loop to the shell-owned top bar. The callbacks stay stable
+ * while the data behind them stays current, so the bar re-renders only when the
+ * save status actually changes (FR-101).
+ */
+function useToolbarPublisher(props: {
+  readonly state: ReturnType<typeof useStudioEditorState>;
+  readonly onToolbarChange: (toolbar: StudioEditorToolbar) => void;
+}): void {
+  const { autosave, view } = props.state;
+  const { onToolbarChange } = props;
+  const saveNowRef = useRef<() => void>(() => undefined);
+  const openDrawerRef = useRef<() => void>(() => undefined);
+  saveNowRef.current = () => {
+    void autosave.flushSave();
+  };
+  openDrawerRef.current = view.openDrawer;
+  const onSaveNow = useCallback(() => saveNowRef.current(), []);
+  const onAddSection = useCallback(() => openDrawerRef.current(), []);
+  const status = autosave.state.status;
+  const revision = autosave.state.revision;
+  const error = autosave.state.error;
+  useEffect(() => {
+    onToolbarChange({ status, revision, error, onSaveNow, onAddSection });
+  }, [error, onAddSection, onSaveNow, onToolbarChange, revision, status]);
+}
+
 export function StudioEditorSession(props: SessionProps) {
   const state = useStudioEditorState(props);
   const media = useStudioMedia(
@@ -260,18 +255,13 @@ export function StudioEditorSession(props: SessionProps) {
     state.autosave.state.media,
     props.userPermissions
   );
+  useToolbarPublisher({ state, onToolbarChange: props.onToolbarChange });
   return (
     <>
       <EditorCanvasPane
-        page={props.page}
         ast={state.ast}
         view={state.view}
-        status={state.autosave.state.status}
-        revision={state.autosave.state.revision}
-        error={state.autosave.state.error}
         canWrite={props.canWrite}
-        onSaveNow={() => void state.autosave.flushSave()}
-        onOpenDrawer={state.view.openDrawer}
         media={media.assets}
       />
       <EditorInspectorRail
@@ -281,6 +271,7 @@ export function StudioEditorSession(props: SessionProps) {
         media={media.controls}
         mutations={state.mutations}
         siteId={props.site.id}
+        userPermissions={props.userPermissions}
       />
       <EditorOverlays
         view={state.view}

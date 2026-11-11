@@ -29,7 +29,11 @@ function StudioState(props: { readonly children: React.ReactNode }) {
  * the home page instead of showing an empty studio (FR-079).
  */
 export function StudioWorkspace(props: StudioWorkspaceProps) {
-  const data = useStudioData({ siteId: props.siteId, pageId: props.pageId });
+  const data = useStudioData({
+    siteId: props.siteId,
+    pageId: props.pageId,
+    userId: props.currentUserId,
+  });
   const actions = useStudioActions({
     siteId: props.siteId,
     pageId: props.pageId,
@@ -59,6 +63,7 @@ export function StudioWorkspace(props: StudioWorkspaceProps) {
   return (
     <StudioShell
       site={{ ...data.site, pagesCount: data.pages.length }}
+      sites={data.sites}
       pages={data.pages}
       activePage={activePage}
       canWrite={props.canWrite}
@@ -68,7 +73,10 @@ export function StudioWorkspace(props: StudioWorkspaceProps) {
       onSelectPage={actions.selectPage}
       onCreatePage={actions.createPage}
       onRenamePage={actions.renamePage}
-      onDeletePage={actions.removePage}
+      onReorderPage={actions.reorderPage}
+      onDuplicatePage={actions.duplicatePage}
+      onArchivePage={actions.archivePage}
+      onSwitchSite={actions.switchSite}
     />
   );
 }

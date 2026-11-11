@@ -13,6 +13,35 @@ export interface PageTreeNode extends PageTreePage {
   readonly children: PageTreeNode[];
 }
 
+/** A page is either live in the tree or retained as an archived row. */
+export const PAGE_TREE_STATUS = {
+  DRAFT: "DRAFT",
+  PUBLISHED: "PUBLISHED",
+  ARCHIVED: "ARCHIVED",
+} as const;
+
+export function isArchivedPage(page: PageTreePage): boolean {
+  return page.status === PAGE_TREE_STATUS.ARCHIVED;
+}
+
+export interface PageSiblingPosition {
+  readonly canMoveUp: boolean;
+  readonly canMoveDown: boolean;
+}
+
+/** Position among live siblings; archived rows never take a reorder slot. */
+export function siblingPosition(
+  page: PageTreePage,
+  siblings: readonly PageTreePage[]
+): PageSiblingPosition {
+  const live = siblings.filter((sibling) => !isArchivedPage(sibling));
+  const index = live.findIndex((sibling) => sibling.id === page.id);
+  return {
+    canMoveUp: index > 0,
+    canMoveDown: index >= 0 && index < live.length - 1,
+  };
+}
+
 const MAX_TREE_DEPTH = 100;
 
 function createsCycle(

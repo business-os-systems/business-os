@@ -21,7 +21,11 @@ function EditorState(props: { readonly children: React.ReactNode }) {
   );
 }
 
-function EditorLoading(props: { readonly siteId: string; readonly message: string }) {
+function EditorLoading(props: {
+  readonly siteId: string;
+  readonly message: string;
+  readonly userPermissions: readonly string[];
+}) {
   return (
     <>
       <EditorState>{props.message}</EditorState>
@@ -33,7 +37,7 @@ function EditorLoading(props: { readonly siteId: string; readonly message: strin
         <h2 className="text-[11px] font-semibold uppercase tracking-wider text-text-secondary">Inspector</h2>
         <p className="mt-2 text-xs text-text-muted">Select a block on the canvas to edit it.</p>
         <div className="mt-auto border-t border-border pt-3">
-          <StudioSiteLinks siteId={props.siteId} />
+          <StudioSiteLinks siteId={props.siteId} userPermissions={props.userPermissions} />
         </div>
       </aside>
     </>
@@ -50,7 +54,13 @@ export function StudioEditor(props: StudioEditorProps) {
   }, []);
 
   if (!isMounted || pageContent.state.kind === "loading") {
-    return <EditorLoading siteId={props.site.id} message="Loading the editor..." />;
+    return (
+      <EditorLoading
+        siteId={props.site.id}
+        message="Loading the editor..."
+        userPermissions={props.userPermissions}
+      />
+    );
   }
   if (pageContent.state.kind === "error") {
     return (

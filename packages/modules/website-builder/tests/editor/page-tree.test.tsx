@@ -50,7 +50,9 @@ function renderTree(activePageId: string, canWrite = true): string {
       onSelectPage={vi.fn()}
       onCreatePage={noop}
       onRenamePage={noop}
-      onDeletePage={noop}
+      onReorderPage={noop}
+      onDuplicatePage={noop}
+      onArchivePage={noop}
     />
   );
 }
@@ -70,14 +72,18 @@ describe("Page tree panel (T065)", () => {
     expect(html).toContain("3 pages");
   });
 
-  it("offers add, rename and delete controls with the home page protected", () => {
+  it("offers reorder, duplicate, add, rename and archive controls with the home page protected", () => {
     const html = renderTree("page_home");
     expect(html).toContain("Add page");
     expect(html).toContain('aria-label="Rename Home"');
-    expect(html).toContain('aria-label="Delete Home"');
-    expect(html).toContain('aria-label="Delete About Us"');
+    expect(html).toContain('aria-label="Archive Home"');
+    expect(html).toContain('aria-label="Archive About Us"');
+    expect(html).toContain('aria-label="Duplicate About Us"');
+    expect(html).toContain('aria-label="Move About Us up"');
+    expect(html).toContain('aria-label="Move About Us down"');
     expect(html).toContain('aria-label="Add page inside About Us"');
-    expect(html).toMatch(/aria-label="Delete Home"[^>]*disabled/);
+    expect(html).toMatch(/aria-label="Archive Home"[^>]*disabled/);
+    expect(html).toMatch(/aria-label="Move Home up"[^>]*disabled/);
   });
 
   it("hides write controls for a read-only session", () => {
@@ -85,7 +91,9 @@ describe("Page tree panel (T065)", () => {
     expect(html).not.toContain("Add page");
     expect(html).not.toContain('aria-label="Rename Home"');
   });
+});
 
+describe("Page tree navigation and validation (T065)", () => {
   it("renders a genuine empty state", () => {
     const html = renderToString(
       <PageTree
@@ -94,7 +102,9 @@ describe("Page tree panel (T065)", () => {
         onSelectPage={vi.fn()}
         onCreatePage={noop}
         onRenamePage={noop}
-        onDeletePage={noop}
+        onReorderPage={noop}
+        onDuplicatePage={noop}
+        onArchivePage={noop}
       />
     );
     expect(html).toContain("This site has no pages yet.");

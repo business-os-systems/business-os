@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import React from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { StudioEditor } from "../src/components/studio/studio-editor";
+import { StudioShell } from "../src/components/studio/studio-shell";
 import type { CmsPageDto, CmsSiteDto } from "../src/lib/api/site-client";
 import type { PageAst } from "@suite/website-builder/ast";
 
@@ -123,15 +123,26 @@ function createFetchMock(state: ServerState) {
   });
 }
 
+const noop = vi.fn(() => Promise.resolve());
+
 function renderEditor(): void {
   render(
-    <StudioEditor
+    <StudioShell
       site={SITE}
-      page={PAGE}
+      sites={[SITE]}
+      pages={[PAGE]}
+      activePage={PAGE}
       canWrite
       userPermissions={[]}
       currentUserId="usr_me"
       currentUserName="Rohit"
+      onSelectPage={vi.fn()}
+      onCreatePage={noop}
+      onRenamePage={noop}
+      onReorderPage={noop}
+      onDuplicatePage={noop}
+      onArchivePage={noop}
+      onSwitchSite={vi.fn()}
     />
   );
 }
