@@ -1,4 +1,15 @@
-import type { BlockType } from "@suite/website-builder/ast";
+import { z } from "zod";
+import {
+  FaqBlockPropsSchema,
+  FeaturesBlockPropsSchema,
+  FooterBlockPropsSchema,
+  FormBlockPropsSchema,
+  HeroBlockPropsSchema,
+  NavbarBlockPropsSchema,
+  PricingBlockPropsSchema,
+  RichTextBlockPropsSchema,
+  type BlockType,
+} from "@suite/website-builder/ast";
 import { BLOCK_BLUEPRINTS } from "@suite/website-builder/editor";
 import { CATALOG_BLOCK_TYPES, CATALOG_CONTRACT_VERSION } from "@/lib/catalog-schema";
 import type { CatalogItemKind } from "@/lib/catalog-api";
@@ -7,7 +18,9 @@ import { readPath } from "@/lib/catalog-paths";
 /**
  * The declarative catalog form schema. Every control is declared here and
  * rendered through the shared ConfigFormRenderer; no screen hand-writes an
- * input. The same draft object backs the JSON tab (FR-147, FR-148).
+ * input. A section's fields are generated from the production props schema of
+ * its declared section type, so the editor and the AST validator cannot drift
+ * (FR-147). The same draft object backs the JSON tab (FR-148).
  */
 
 export interface CatalogFormOption {
@@ -22,8 +35,16 @@ interface CatalogFormFieldIdentity {
   readonly required: boolean;
 }
 
+const NULLABLE_TEXT_CONTROL = "nullable-text" as const;
+
 export interface CatalogTextFormField extends CatalogFormFieldIdentity {
-  readonly control: "text" | "textarea" | "list" | "nullable-text";
+  readonly control:
+    | "text"
+    | "textarea"
+    | "list"
+    | typeof NULLABLE_TEXT_CONTROL
+    | "number"
+    | "boolean";
 }
 
 export interface CatalogSelectFormField extends CatalogFormFieldIdentity {
@@ -33,29 +54,332 @@ export interface CatalogSelectFormField extends CatalogFormFieldIdentity {
 
 export type CatalogFormField = CatalogTextFormField | CatalogSelectFormField;
 
-const HEADLINE = "Headline";
-const SUBHEADLINE = "Subheadline";
-const HEADLINE_DESCRIPTION = "The main heading rendered at the top of this section.";
-const SUBHEADLINE_DESCRIPTION = "Supporting copy rendered beneath the headline.";
-const OPTIONAL_HINT = "Leave blank to omit this property from the preset.";
+const PROPS_PATH = "definition.block.props";
+const MAX_TEXTAREA_LENGTH = 200;
+const DECLARED_BY_SECTION_TYPE = "declared by the section type.";
 
-interface BlockPropFieldInput {
-  readonly path: string;
-  readonly label: string;
-  readonly control: CatalogTextFormField["control"];
-  readonly required: boolean;
-  readonly description: string;
+const FIELD_ACRONYMS: Readonly<Record<string, string>> = {
+  url: "URL",
+  cta: "CTA",
+  html: "HTML",
+  id: "ID",
+  faq: "FAQ",
+  seo: "SEO",
+};
+
+/** Turns a declared property name into its operator-facing label. */
+function humanizeSegment(segment: string): string {
+  return segment
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .split(" ")
+    .filter((word) => word.length > 0)
+    .map((word) => {
+      const acronym = FIELD_ACRONYMS[word.toLowerCase()];
+      if (acronym !== undefined) {
+        return acronym;
+      }
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join(" ");
 }
 
-function blockPropField(input: BlockPropFieldInput): CatalogTextFormField {
-  return {
-    control: input.control,
-    path: `definition.block.props.${input.path}`,
-    label: input.label,
-    description: input.description,
+/** Narrows a Zod schema value without trusting an unchecked cast. */
+function toSchema(value: unknown): z.ZodTypeAny | null {
+  return value instanceof z.ZodType ? value : null;
+}
+
+/** Removes optional/nullable/default/effects wrappers without guessing. */
+function unwrapSchema(value: unknown): z.ZodTypeAny | null {
+  let current = toSchema(value);
+  while (current !== null) {
+    if (current instanceof z.ZodOptional || current instanceof z.ZodNullable) {
+      current = toSchema(current.unwrap());
+      continue;
+    }
+    if (current instanceof z.ZodDefault) {
+      current = toSchema(current.removeDefault());
+      continue;
+    }
+    if (current instanceof z.ZodEffects) {
+      current = toSchema(current.innerType());
+      continue;
+    }
+    return current;
+  }
+  return null;
+}
+
+function isDeclaredOptional(value: unknown): boolean {
+  const schema = toSchema(value);
+  if (schema === null) {
+    return false;
+  }
+  if (schema instanceof z.ZodOptional || schema instanceof z.ZodDefault) {
+    return true;
+  }
+  if (schema instanceof z.ZodEffects) {
+    return isDeclaredOptional(schema.innerType());
+  }
+  return false;
+}
+
+function isDeclaredNullable(value: unknown): boolean {
+  const schema = toSchema(value);
+  if (schema === null) {
+    return false;
+  }
+  if (schema instanceof z.ZodNullable) {
+    return true;
+  }
+  if (schema instanceof z.ZodOptional) {
+    return isDeclaredNullable(schema.unwrap());
+  }
+  if (schema instanceof z.ZodDefault) {
+    return isDeclaredNullable(schema.removeDefault());
+  }
+  if (schema instanceof z.ZodEffects) {
+    return isDeclaredNullable(schema.innerType());
+  }
+  return false;
+}
+
+function literalValue(value: unknown): string | number | null {
+  const schema = unwrapSchema(value);
+  if (!(schema instanceof z.ZodLiteral)) {
+    return null;
+  }
+  const literal: unknown = schema.value;
+  if (typeof literal === "string" || typeof literal === "number") {
+    return literal;
+  }
+  return null;
+}
+
+function enumOptions(value: unknown): readonly string[] | null {
+  const schema = toSchema(value);
+  if (schema === null || !(schema instanceof z.ZodEnum)) {
+    return null;
+  }
+  const options: unknown = schema.options;
+  if (!Array.isArray(options)) {
+    return null;
+  }
+  const values: string[] = [];
+  for (const option of options) {
+    if (typeof option !== "string") {
+      return null;
+    }
+    values.push(option);
+  }
+  return values;
+}
+
+function unionLiteralValues(value: unknown): readonly (string | number)[] | null {
+  const schema = toSchema(value);
+  if (schema === null || !(schema instanceof z.ZodUnion)) {
+    return null;
+  }
+  const options: unknown = schema.options;
+  if (!Array.isArray(options)) {
+    return null;
+  }
+  const values: (string | number)[] = [];
+  for (const option of options) {
+    const literal = literalValue(option);
+    if (literal === null) {
+      return null;
+    }
+    values.push(literal);
+  }
+  return values;
+}
+
+/** Select options come from the declared enum or literal union, never a copy. */
+function selectOptionsFor(value: unknown): readonly CatalogFormOption[] | null {
+  const enumValues = enumOptions(value);
+  if (enumValues !== null) {
+    return enumValues.map((option) => ({ value: option, label: humanizeSegment(option) }));
+  }
+  const literalValues = unionLiteralValues(value);
+  if (literalValues === null) {
+    return null;
+  }
+  return literalValues.map((literal) => {
+    const text = String(literal);
+    return { value: text, label: humanizeSegment(text) };
+  });
+}
+
+function textControl(
+  schema: z.ZodString,
+  nullable: boolean,
+): typeof NULLABLE_TEXT_CONTROL | "textarea" | "text" {
+  if (nullable) {
+    return NULLABLE_TEXT_CONTROL;
+  }
+  if (schema.maxLength !== null && schema.maxLength > MAX_TEXTAREA_LENGTH) {
+    return "textarea";
+  }
+  return "text";
+}
+
+function textDescription(schema: z.ZodString): string {
+  if (schema.maxLength !== null) {
+    return "Up to " + schema.maxLength + " characters " + DECLARED_BY_SECTION_TYPE;
+  }
+  return "A text value " + DECLARED_BY_SECTION_TYPE;
+}
+
+function fieldDescription(
+  schema: z.ZodTypeAny,
+  control: CatalogTextFormField["control"] | "select",
+): string {
+  if (schema.description !== undefined) {
+    return schema.description;
+  }
+  switch (control) {
+    case "number":
+      return "A number " + DECLARED_BY_SECTION_TYPE;
+    case "boolean":
+      return "A true or false value " + DECLARED_BY_SECTION_TYPE;
+    case "select":
+      return "One of the values this section type declares.";
+    case "list":
+      return "A comma-separated list of values.";
+    case "textarea":
+    case "text":
+    case NULLABLE_TEXT_CONTROL:
+      return schema instanceof z.ZodString
+        ? textDescription(schema)
+        : "A value " + DECLARED_BY_SECTION_TYPE;
+  }
+}
+
+interface LeafInput {
+  readonly segment: string;
+  readonly schema: z.ZodTypeAny;
+  readonly path: readonly string[];
+  readonly required: boolean;
+  readonly nullable: boolean;
+}
+
+function leafField(input: LeafInput): CatalogFormField | null {
+  const identity = {
+    path: input.path.join("."),
+    label: humanizeSegment(input.segment),
     required: input.required,
   };
+  if (input.schema instanceof z.ZodString) {
+    const control = textControl(input.schema, input.nullable);
+    return { ...identity, control, description: fieldDescription(input.schema, control) };
+  }
+  if (input.schema instanceof z.ZodNumber) {
+    return { ...identity, control: "number", description: fieldDescription(input.schema, "number") };
+  }
+  if (input.schema instanceof z.ZodBoolean) {
+    return { ...identity, control: "boolean", description: fieldDescription(input.schema, "boolean") };
+  }
+  const options = selectOptionsFor(input.schema);
+  if (options !== null) {
+    return {
+      ...identity,
+      control: "select",
+      options,
+      description: fieldDescription(input.schema, "select"),
+    };
+  }
+  return null;
 }
+
+interface SchemaFieldsInput {
+  readonly segment: string;
+  readonly schema: unknown;
+  readonly parentPath: readonly string[];
+  readonly required: boolean;
+}
+
+function stringListField(input: {
+  readonly segment: string;
+  readonly schema: z.ZodString;
+  readonly path: readonly string[];
+  readonly required: boolean;
+}): CatalogFormField {
+  return {
+    path: input.path.join("."),
+    label: humanizeSegment(input.segment),
+    description: fieldDescription(input.schema, "list"),
+    required: input.required,
+    control: "list",
+  };
+}
+
+function shapeEntries(value: unknown): readonly (readonly [string, z.ZodTypeAny])[] {
+  const schema = toSchema(value);
+  if (schema === null || !(schema instanceof z.ZodObject)) {
+    return [];
+  }
+  const shape: unknown = schema.shape;
+  if (typeof shape !== "object" || shape === null) {
+    return [];
+  }
+  return Object.entries(shape).flatMap(([key, child]) => {
+    const childSchema = toSchema(child);
+    return childSchema === null ? [] : [[key, childSchema] as const];
+  });
+}
+
+function fieldsForSchema(input: SchemaFieldsInput): readonly CatalogFormField[] {
+  const schema = unwrapSchema(input.schema);
+  if (schema === null) {
+    return [];
+  }
+  const path = [...input.parentPath, input.segment];
+  const required = input.required && !isDeclaredOptional(input.schema);
+  const nullable = isDeclaredNullable(input.schema);
+  const leaf = leafField({ segment: input.segment, schema, path, required, nullable });
+  if (leaf !== null) {
+    return [leaf];
+  }
+  if (schema instanceof z.ZodArray) {
+    const element = unwrapSchema(schema.element);
+    if (!(element instanceof z.ZodString)) {
+      return [];
+    }
+    return [stringListField({ segment: input.segment, schema: element, path, required })];
+  }
+  return shapeEntries(schema).flatMap(([key, child]) =>
+    fieldsForSchema({ segment: key, schema: child, parentPath: path, required }),
+  );
+}
+
+/**
+ * Generates the section-specific fields from the section type's declared props
+ * schema. Exported so a test can prove a newly declared property appears without
+ * a parallel field map (FR-147).
+ */
+export function catalogFormFieldsFromPropsSchema(
+  schema: unknown,
+): readonly CatalogFormField[] {
+  const props = unwrapSchema(schema);
+  if (props === null) {
+    return [];
+  }
+  return shapeEntries(props).flatMap(([key, child]) =>
+    fieldsForSchema({ segment: key, schema: child, parentPath: PROPS_PATH.split("."), required: true }),
+  );
+}
+
+const BLOCK_PROP_SCHEMAS = {
+  hero: HeroBlockPropsSchema,
+  features: FeaturesBlockPropsSchema,
+  pricing: PricingBlockPropsSchema,
+  form: FormBlockPropsSchema,
+  faq: FaqBlockPropsSchema,
+  "rich-text": RichTextBlockPropsSchema,
+  navbar: NavbarBlockPropsSchema,
+  footer: FooterBlockPropsSchema,
+} as const satisfies Record<BlockType, z.ZodTypeAny>;
 
 const METADATA_FIELDS: readonly CatalogFormField[] = [
   {
@@ -150,165 +474,6 @@ const BLOCK_TYPE_FIELD: CatalogFormField = {
   })),
 };
 
-const BLOCK_PROP_FIELDS = {
-  hero: [
-    blockPropField({
-      path: "headline",
-      label: HEADLINE,
-      control: "text",
-      required: true,
-      description: HEADLINE_DESCRIPTION,
-    }),
-    blockPropField({
-      path: "subheadline",
-      label: SUBHEADLINE,
-      control: "textarea",
-      required: false,
-      description: SUBHEADLINE_DESCRIPTION,
-    }),
-    blockPropField({
-      path: "badge",
-      label: "Badge",
-      control: "text",
-      required: false,
-      description: OPTIONAL_HINT,
-    }),
-    blockPropField({
-      path: "primaryCta.label",
-      label: "Primary action",
-      control: "text",
-      required: false,
-      description: "Label of the primary call to action.",
-    }),
-    blockPropField({
-      path: "primaryCta.target.url",
-      label: "Primary action link",
-      control: "text",
-      required: false,
-      description: "Relative path or https, mailto or tel address.",
-    }),
-    blockPropField({
-      path: "imageUrl",
-      label: "Image address",
-      control: "text",
-      required: false,
-      description: "Relative path or https image address.",
-    }),
-  ],
-  features: [
-    blockPropField({
-      path: "headline",
-      label: HEADLINE,
-      control: "text",
-      required: false,
-      description: HEADLINE_DESCRIPTION,
-    }),
-    blockPropField({
-      path: "subheadline",
-      label: SUBHEADLINE,
-      control: "textarea",
-      required: false,
-      description: SUBHEADLINE_DESCRIPTION,
-    }),
-  ],
-  pricing: [
-    blockPropField({
-      path: "headline",
-      label: HEADLINE,
-      control: "text",
-      required: false,
-      description: HEADLINE_DESCRIPTION,
-    }),
-    blockPropField({
-      path: "subheadline",
-      label: SUBHEADLINE,
-      control: "textarea",
-      required: false,
-      description: SUBHEADLINE_DESCRIPTION,
-    }),
-  ],
-  form: [
-    blockPropField({
-      path: "headline",
-      label: HEADLINE,
-      control: "text",
-      required: false,
-      description: HEADLINE_DESCRIPTION,
-    }),
-    blockPropField({
-      path: "subheadline",
-      label: SUBHEADLINE,
-      control: "textarea",
-      required: false,
-      description: SUBHEADLINE_DESCRIPTION,
-    }),
-    blockPropField({
-      path: "submitButtonText",
-      label: "Submit label",
-      control: "text",
-      required: false,
-      description: "Label on the form submit button.",
-    }),
-  ],
-  faq: [
-    blockPropField({
-      path: "headline",
-      label: HEADLINE,
-      control: "text",
-      required: false,
-      description: HEADLINE_DESCRIPTION,
-    }),
-    blockPropField({
-      path: "subheadline",
-      label: SUBHEADLINE,
-      control: "textarea",
-      required: false,
-      description: SUBHEADLINE_DESCRIPTION,
-    }),
-  ],
-  "rich-text": [
-    blockPropField({
-      path: "contentHtml",
-      label: "Content",
-      control: "textarea",
-      required: true,
-      description: "Sanitised rich-text content.",
-    }),
-  ],
-  navbar: [
-    blockPropField({
-      path: "logoText",
-      label: "Logo text",
-      control: "text",
-      required: false,
-      description: "Text wordmark shown when no logo image is set.",
-    }),
-    blockPropField({
-      path: "logoUrl",
-      label: "Logo image",
-      control: "text",
-      required: false,
-      description: "Relative path or https logo address.",
-    }),
-  ],
-  footer: [
-    blockPropField({
-      path: "logoText",
-      label: "Logo text",
-      control: "text",
-      required: false,
-      description: "Text wordmark shown in the footer.",
-    }),
-    blockPropField({
-      path: "copyrightText",
-      label: "Copyright",
-      control: "text",
-      required: false,
-      description: "Copyright line rendered at the base of the footer.",
-    }),
-  ],
-} as const satisfies Record<BlockType, readonly CatalogFormField[]>;
-
 const SECTION_FORM_FIELDS: readonly CatalogFormField[] = [
   DEFINITION_VERSION_FIELD,
   BLOCK_TYPE_FIELD,
@@ -328,7 +493,11 @@ export function catalogFormFields(
   if (blockType === null) {
     return [...METADATA_FIELDS, ...SECTION_FORM_FIELDS];
   }
-  return [...METADATA_FIELDS, ...SECTION_FORM_FIELDS, ...BLOCK_PROP_FIELDS[blockType]];
+  return [
+    ...METADATA_FIELDS,
+    ...SECTION_FORM_FIELDS,
+    ...catalogFormFieldsFromPropsSchema(BLOCK_PROP_SCHEMAS[blockType]),
+  ];
 }
 
 /** Reads a draft value into the string control the shared renderer expects. */
@@ -343,6 +512,9 @@ export function fieldText(field: CatalogFormField, draft: unknown): string {
   if (typeof raw === "number") {
     return String(raw);
   }
+  if (typeof raw === "boolean") {
+    return String(raw);
+  }
   return "";
 }
 
@@ -354,9 +526,16 @@ export function fieldValue(field: CatalogFormField, input: string): unknown {
       .map((entry) => entry.trim())
       .filter((entry) => entry.length > 0);
   }
-  if (field.control === "nullable-text") {
+  if (field.control === NULLABLE_TEXT_CONTROL) {
     const trimmed = input.trim();
     return trimmed === "" ? null : trimmed;
+  }
+  if (field.control === "number") {
+    const parsed = Number(input);
+    return Number.isFinite(parsed) ? parsed : input;
+  }
+  if (field.control === "boolean") {
+    return input === "true";
   }
   return input;
 }
