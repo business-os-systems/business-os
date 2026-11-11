@@ -11,6 +11,7 @@ import {
 } from "./inquiries.config";
 import { InquiryFilterBar } from "./inquiry-filters";
 import { InquiryDetailDrawer } from "./inquiry-detail";
+import { InquiryExportButton } from "./inquiry-export-button";
 import type { InquiryStatus, InquirySummary } from "./inquiries.contract";
 import { useInquiryList, type InquiryListState } from "./use-inquiry-list";
 
@@ -104,11 +105,14 @@ export function InquiriesWorkspace({ canRevealPii }: { readonly canRevealPii: bo
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-text">Inquiries</h1>
-        <p className="mt-1 text-sm text-text-secondary">
-          Every enquiry captured by this workspace&apos;s websites. Contact details stay hidden until revealed.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-text">Inquiries</h1>
+          <p className="mt-1 text-sm text-text-secondary">
+            Every enquiry captured by this workspace&apos;s websites. Contact details stay hidden until revealed.
+          </p>
+        </div>
+        {canRevealPii ? <InquiryExportButton filters={list.filters} /> : null}
       </div>
       <InquiryFilterBar filters={filters} values={list.filters} onChange={onFilterChange} />
       <InquiryListBody

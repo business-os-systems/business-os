@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
 import { renderToString } from "react-dom/server";
 import { PERMISSIONS } from "@suite/core";
 
@@ -97,9 +97,27 @@ describe("Website Builder navigation configuration", () => {
   });
 });
 
+function stubUnreadCount(count: number): void {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ count }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      })
+    )
+  );
+}
+
 describe("WebsiteBuilderNav rendering", () => {
   beforeEach(() => {
     navigation.pathname = "/websites";
+    stubUnreadCount(0);
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
   });
 
   it("renders the hub destinations and marks the active route", () => {
@@ -109,7 +127,7 @@ describe("WebsiteBuilderNav rendering", () => {
       "/websites"
     );
     expect(
-      screen.getByRole("link", { name: "Inquiries" }).getAttribute("href")
+      screen.getByRole("link", { name: /^Inquiries/ }).getAttribute("href")
     ).toBe("/websites/inquiries");
     expect(
       screen.getByRole("link", { name: "Settings" }).getAttribute("href")
@@ -129,7 +147,7 @@ describe("WebsiteBuilderNav rendering", () => {
       />
     );
 
-    expect(screen.queryByRole("link", { name: "Inquiries" })).toBeNull();
+    expect(screen.queryByRole("link", { name: /^Inquiries/ })).toBeNull();
     expect(screen.queryByRole("link", { name: "Settings" })).toBeNull();
     expect(screen.getByRole("link", { name: "Overview" })).toBeTruthy();
   });
@@ -138,7 +156,7 @@ describe("WebsiteBuilderNav rendering", () => {
     render(<WebsiteBuilderNav userPermissions={[]} />);
 
     expect(screen.queryByRole("link", { name: "Overview" })).toBeNull();
-    expect(screen.queryByRole("link", { name: "Inquiries" })).toBeNull();
+    expect(screen.queryByRole("link", { name: /^Inquiries/ })).toBeNull();
     expect(screen.queryByRole("link", { name: "Settings" })).toBeNull();
     expect(
       screen.getByRole("link", { name: WEBSITE_BUILDER_BACK_LINK.label })

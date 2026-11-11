@@ -52,6 +52,13 @@ export type WebsiteBuilderDenialReason =
   | "capability_denied"
   | "entitlements_unavailable";
 
+/**
+ * A badge is a declared destination concern, not something the shell guesses.
+ * The renderer resolves it through an exhaustive registry so a future count has
+ * one home.
+ */
+export type WebsiteBuilderNavBadgeKind = "inquiry-unread-count";
+
 export interface WebsiteBuilderNavItem {
   readonly id: WebsiteBuilderDestinationId;
   readonly label: string;
@@ -59,6 +66,7 @@ export interface WebsiteBuilderNavItem {
   readonly icon: NavIconKey;
   readonly match: WebsiteBuilderNavMatch;
   readonly capabilities: readonly string[];
+  readonly badge?: WebsiteBuilderNavBadgeKind;
 }
 
 export interface WebsiteBuilderNavGroup {
@@ -87,6 +95,7 @@ export const WEBSITE_BUILDER_NAV_GROUPS: readonly WebsiteBuilderNavGroup[] = [
         icon: "inquiries",
         match: "prefix",
         capabilities: [PERMISSIONS.WEBSITE_BUILDER.LEADS_READ],
+        badge: "inquiry-unread-count",
       },
     ],
   },

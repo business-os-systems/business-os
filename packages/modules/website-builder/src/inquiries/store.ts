@@ -5,9 +5,11 @@ import { ConflictError, NotFoundError, ValidationError } from "@suite/core/error
 import { writeCmsAudit } from "../services/cms-audit.js";
 import { CMS_AUDIT_ACTIONS, CMS_AUDIT_ENTITY_TYPES } from "../audit/actions.js";
 import {
+  assertInquiryExportWithinCap,
   canTransitionInquiryStatus,
   CMS_INQUIRY_ERROR,
   CMS_INQUIRY_EVENT_TYPE,
+  INQUIRY_EXPORT_MAX_ROWS,
   INQUIRY_SPAM_VERDICT,
   isInquiryStatus,
   type InquiryPayload,
@@ -430,6 +432,100 @@ export async function countUnreadInquiries(organizationId: string): Promise<numb
   return withTenantContext(organizationId, (tx) =>
     tx.cmsInquiry.count({ where: { organizationId, status: "NEW" } })
   );
+}
+
+export interface InquiryExportQuery {
+  readonly organizationId: string;
+  readonly siteId?: string;
+  readonly status?: InquiryStatus;
+  readonly actorUserId: string;
+}
+
+interface SiteExportCount {
+  readonly siteId: string;
+  readonly count: number;
+}
+
+interface InquiryExportRecords {
+  readonly rows: readonly InquiryRecord[];
+}
+
+function countBySite(rows: readonly InquiryRecord[]): SiteExportCount[] {
+  const counts = new Map<string, number>();
+  for (const row of rows) {
+    counts.set(row.siteId, (counts.get(row.siteId) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([siteId, count]) => ({ siteId, count }))
+    .sort((left, right) => left.siteId.localeCompare(right.siteId));
+}
+
+interface ExportAuditWrite {
+  readonly tx: Prisma.TransactionClient;
+  readonly query: InquiryExportQuery;
+  readonly siteCounts: readonly SiteExportCount[];
+}
+
+async function writeExportAudits({
+  tx,
+  query,
+  siteCounts,
+}: ExportAuditWrite): Promise<void> {
+  await Promise.all(
+    siteCounts.map((siteCount) =>
+      writeCmsAudit(tx, {
+        organizationId: query.organizationId,
+        siteId: siteCount.siteId,
+        action: CMS_AUDIT_ACTIONS.INQUIRY_EXPORTED,
+        entityType: CMS_AUDIT_ENTITY_TYPES.SITE,
+        entityId: siteCount.siteId,
+        actorUserId: query.actorUserId,
+        changes: {
+          exportedCount: siteCount.count,
+          siteFiltered: query.siteId !== undefined,
+          statusFilter: query.status ?? null,
+        },
+      })
+    )
+  );
+}
+
+/**
+ * Reads the rows for a PII export and writes its audit rows in the same
+ * transaction, so personal data is never returned without a record (FR-048).
+ * Retention-expired rows are excluded even before the purge job reaches them
+ * (FR-049). The cap fails loudly instead of truncating silently.
+ */
+function buildExportWhere(query: InquiryExportQuery): Prisma.CmsInquiryWhereInput {
+  return {
+    organizationId: query.organizationId,
+    ...(query.siteId === undefined ? {} : { siteId: query.siteId }),
+    ...(query.status === undefined ? {} : { status: query.status }),
+    retentionExpiresAt: { gt: new Date() },
+  };
+}
+
+async function loadExportRecords(
+  tx: Prisma.TransactionClient,
+  query: InquiryExportQuery
+): Promise<readonly InquiryRecord[]> {
+  const rows = await tx.cmsInquiry.findMany({
+    where: buildExportWhere(query),
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: INQUIRY_EXPORT_MAX_ROWS + 1,
+  });
+  assertInquiryExportWithinCap(rows.length);
+  return rows.map(mapInquiry);
+}
+
+export async function readInquiriesForExport(
+  query: InquiryExportQuery
+): Promise<InquiryExportRecords> {
+  return withTenantContext(query.organizationId, async (tx) => {
+    const records = await loadExportRecords(tx, query);
+    await writeExportAudits({ tx, query, siteCounts: countBySite(records) });
+    return { rows: records };
+  });
 }
 
 function conflictTransition(from: InquiryStatus, to: InquiryStatus): ConflictError {

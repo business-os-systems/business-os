@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { PLATFORM_ERROR_CODE } from "@suite/core";
+import { ValidationError } from "@suite/core/errors";
 
 /**
  * Inquiry policy: the values that make a captured enquiry behave the same in
@@ -73,6 +75,20 @@ export const INQUIRY_PAYLOAD_MAX_BYTES = 65_536;
 
 /** Cursor pagination hard cap (CT-5). */
 export const INQUIRY_LIMIT = { default: 20, max: 100 } as const;
+
+/** A synchronous export cap so one request cannot exhaust the API process. */
+export const INQUIRY_EXPORT_MAX_ROWS = 10_000;
+
+export function assertInquiryExportWithinCap(rowCount: number): void {
+  if (rowCount <= INQUIRY_EXPORT_MAX_ROWS) {
+    return;
+  }
+  throw new ValidationError(
+    `The inquiry export is limited to ${INQUIRY_EXPORT_MAX_ROWS} rows. Narrow the filters.`,
+    [{ name: "filters", reason: "The filtered result exceeds the export cap." }],
+    { code: PLATFORM_ERROR_CODE.VALIDATION_FAILED }
+  );
+}
 
 /** The contact values that require cms:leads:pii to read (FR-048). */
 export const INQUIRY_CONTACT_FIELDS = ["name", "email", "phone"] as const;
