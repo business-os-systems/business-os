@@ -48,3 +48,4 @@ export {
   readTenantActor,
   type TenantActor,
 } from "./tenant-capability.js";
+export { createWebsiteBuilderInstallationGuard } from "./website-builder-installation.js";
