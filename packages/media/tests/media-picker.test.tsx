@@ -273,6 +273,9 @@ async function selectFile(input: HTMLInputElement, file: File): Promise<void> {
 
     const fileInput = document.querySelector<HTMLInputElement>("input[type=file]");
     if (fileInput === null) throw new Error("File input missing.");
+    const label = fileInput.closest("label");
+    expect(label?.textContent).toContain("Choose image");
+    expect(label?.textContent).toContain("Accepted types: image/jpeg");
     const file = new File(["hello"], "new.png", { type: "image/png" });
     await selectFile(fileInput, file);
 

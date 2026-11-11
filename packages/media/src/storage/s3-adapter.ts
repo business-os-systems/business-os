@@ -78,17 +78,44 @@ function toStorageHead(output: HeadObjectCommandOutput): StorageObjectHead {
 
 function integrityHeaders(
   request: PresignedUploadRequest,
-  checksumBase64: string
+  checksumBase64: string,
+  providerChecksum: boolean
 ): Record<string, string> {
   return {
     "Content-Type": request.mimeType,
     "Content-Length": String(request.sizeBytes),
-    "x-amz-checksum-sha256": checksumBase64,
+    ...(providerChecksum ? { "x-amz-checksum-sha256": checksumBase64 } : {}),
     [`x-amz-meta-${CHECKSUM_METADATA_KEY}`]: request.checksumHex,
     [`x-amz-meta-${FILE_NAME_METADATA_KEY}`]: encodeURIComponent(
       request.fileName
     ),
   };
+}
+
+const SIGNED_INTEGRITY_HEADERS = [
+  "content-type",
+  "content-length",
+  "x-amz-checksum-sha256",
+  `x-amz-meta-${CHECKSUM_METADATA_KEY}`,
+  `x-amz-meta-${FILE_NAME_METADATA_KEY}`,
+] as const;
+
+const UNHOISTABLE_INTEGRITY_HEADERS = [
+  "content-length",
+  "x-amz-checksum-sha256",
+  `x-amz-meta-${CHECKSUM_METADATA_KEY}`,
+  `x-amz-meta-${FILE_NAME_METADATA_KEY}`,
+] as const;
+
+function filterIntegrityHeaders(
+  providerChecksum: boolean,
+  headers: readonly string[]
+): Set<string> {
+  return new Set(
+    headers.filter(
+      (header) => providerChecksum || header !== "x-amz-checksum-sha256"
+    )
+  );
 }
 
 async function signUpload(
@@ -97,12 +124,15 @@ async function signUpload(
   request: PresignedUploadRequest
 ): Promise<PresignedUpload> {
   const checksumBase64 = hexToBase64(request.checksumHex);
+  const providerChecksum = config.checksumMode === "provider";
   const command = new PutObjectCommand({
     Bucket: config.bucket,
     Key: request.storageKey,
     ContentType: request.mimeType,
     ContentLength: request.sizeBytes,
-    ChecksumSHA256: checksumBase64,
+    // R2 does not implement full-object SHA-256 checksums, so metadata mode
+    // omits this header and relies on the signed metadata value instead.
+    ...(providerChecksum ? { ChecksumSHA256: checksumBase64 } : {}),
     Metadata: {
       [CHECKSUM_METADATA_KEY]: request.checksumHex,
       [FILE_NAME_METADATA_KEY]: encodeURIComponent(request.fileName),
@@ -114,22 +144,17 @@ async function signUpload(
       expiresIn: config.urlTtlSeconds,
       // Sign the integrity headers too: the provider rejects an upload that
       // changes the type, checksum or original name declared at intent time.
-      signableHeaders: new Set([
-        "content-type",
-        "content-length",
-        "x-amz-checksum-sha256",
-        `x-amz-meta-${CHECKSUM_METADATA_KEY}`,
-        `x-amz-meta-${FILE_NAME_METADATA_KEY}`,
-      ]),
+      signableHeaders: filterIntegrityHeaders(
+        providerChecksum,
+        SIGNED_INTEGRITY_HEADERS
+      ),
       // Keeping these in the signed header list prevents the presigner from
       // hoisting them into the query string, where the provider would not
       // verify the uploaded bytes against the declared checksum.
-      unhoistableHeaders: new Set([
-        "content-length",
-        "x-amz-checksum-sha256",
-        `x-amz-meta-${CHECKSUM_METADATA_KEY}`,
-        `x-amz-meta-${FILE_NAME_METADATA_KEY}`,
-      ]),
+      unhoistableHeaders: filterIntegrityHeaders(
+        providerChecksum,
+        UNHOISTABLE_INTEGRITY_HEADERS
+      ),
     });
   } catch (error) {
     throw storageUnavailable(error);
@@ -139,7 +164,11 @@ async function signUpload(
     expiresAt: new Date(
       Date.now() + config.urlTtlSeconds * 1000
     ).toISOString(),
-    requiredHeaders: integrityHeaders(request, checksumBase64),
+    requiredHeaders: integrityHeaders(
+      request,
+      checksumBase64,
+      providerChecksum
+    ),
   };
 }
 

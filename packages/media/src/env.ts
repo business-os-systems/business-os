@@ -2,9 +2,23 @@ import { isTemplateSecret } from "@suite/core";
 import { MEDIA_LIMITS } from "./constants.js";
 
 /**
- * Typed media configuration (Env-First Pre-Declaration Law). Every key is
- * required; there is no inline fallback, so a missing variable fails before a
- * presigned URL can be issued.
+ * Where the SHA-256 checksum is enforced.
+ *
+ * - `provider`: sign the full-object SHA-256 header, so the storage provider
+ *   refuses bytes that do not match the declared checksum (S3, MinIO).
+ * - `metadata`: sign only the checksum metadata. Required by Cloudflare R2,
+ *   whose S3 API does not implement full-object SHA-256 checksums; finalise
+ *   still re-checks size, type and the signed metadata value.
+ */
+export const MEDIA_CHECKSUM_MODES = ["provider", "metadata"] as const;
+export type MediaChecksumMode = (typeof MEDIA_CHECKSUM_MODES)[number];
+
+/**
+ * Typed media configuration (Env-First Pre-Declaration Law). Every storage key
+ * is required; there is no inline fallback, so a missing variable fails before
+ * a presigned URL can be issued. `MEDIA_S3_CHECKSUM_MODE` is the one declared
+ * exception: it defaults to `provider` when unset and is documented in the env
+ * examples with the R2 trade-off.
  */
 export interface MediaConfig {
   readonly bucket: string;
@@ -15,6 +29,24 @@ export interface MediaConfig {
   readonly publicBaseUrl: string;
   readonly maxBytes: number;
   readonly urlTtlSeconds: number;
+  readonly checksumMode: MediaChecksumMode;
+}
+
+function isChecksumMode(value: string): value is MediaChecksumMode {
+  return MEDIA_CHECKSUM_MODES.some((mode) => mode === value);
+}
+
+function readChecksumMode(env: NodeJS.ProcessEnv): MediaChecksumMode {
+  const raw = env.MEDIA_S3_CHECKSUM_MODE?.trim();
+  if (raw === undefined || raw.length === 0) {
+    return "provider";
+  }
+  if (!isChecksumMode(raw)) {
+    throw new Error(
+      `MEDIA_S3_CHECKSUM_MODE must be one of ${MEDIA_CHECKSUM_MODES.join(", ")}; received "${raw}".`
+    );
+  }
+  return raw;
 }
 
 function requireEnvValue(
@@ -82,6 +114,7 @@ export function readMediaConfig(
       "MEDIA_URL_TTL_SECONDS",
       MEDIA_LIMITS.MAX_URL_TTL_SECONDS
     ),
+    checksumMode: readChecksumMode(env),
   };
 }
 

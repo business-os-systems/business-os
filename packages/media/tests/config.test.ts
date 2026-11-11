@@ -40,6 +40,28 @@ describe("media configuration", () => {
     ).toThrow(/MEDIA_URL_TTL_SECONDS/);
   });
 
+  it("defaults the checksum mode to provider enforcement", () => {
+    expect(readMediaConfig({ ...COMPLETE_ENV }).checksumMode).toBe("provider");
+  });
+
+  it("accepts metadata-only checksums for providers without full-object SHA-256", () => {
+    expect(
+      readMediaConfig({
+        ...COMPLETE_ENV,
+        MEDIA_S3_CHECKSUM_MODE: "metadata",
+      }).checksumMode
+    ).toBe("metadata");
+  });
+
+  it("rejects an unknown checksum mode instead of guessing", () => {
+    expect(() =>
+      readMediaConfig({
+        ...COMPLETE_ENV,
+        MEDIA_S3_CHECKSUM_MODE: "sometimes",
+      })
+    ).toThrow(/MEDIA_S3_CHECKSUM_MODE/);
+  });
+
   it("refuses a placeholder credential for a production boot", () => {
     expect(() =>
       assertMediaConfiguration({

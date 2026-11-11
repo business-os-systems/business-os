@@ -148,6 +148,7 @@ describe("media finalise verification", () => {
       declared: { storageKey: "media/org/2026/01/a.png", checksum: CHECKSUM },
       maxBytes: MAX_BYTES,
       expectedChecksumBase64: Buffer.from(CHECKSUM, "hex").toString("base64"),
+        checksumMode: "provider",
     });
     expect(verified.checksum).toBe(CHECKSUM);
     expect(verified.fileName).toBe("room.png");
@@ -161,6 +162,7 @@ describe("media finalise verification", () => {
         declared: { storageKey: "media/org/2026/01/a.png", checksum: CHECKSUM },
         maxBytes: MAX_BYTES,
         expectedChecksumBase64: Buffer.from(CHECKSUM, "hex").toString("base64"),
+        checksumMode: "provider",
       })
     );
     expect(error.code).toBe("MEDIA_CHECKSUM_MISMATCH");
@@ -175,10 +177,12 @@ describe("media finalise verification: checksum and name", () => {
         declared: { storageKey: "media/org/2026/01/a.png", checksum: CHECKSUM },
         maxBytes: MAX_BYTES,
         expectedChecksumBase64: Buffer.from(CHECKSUM, "hex").toString("base64"),
+        checksumMode: "provider",
       })
     );
     expect(error.code).toBe("MEDIA_CHECKSUM_MISMATCH");
   });
+
 
   it("normalizes the stored file name before it reaches the database", () => {
     const verified = verifyUploadedObject({
@@ -186,6 +190,7 @@ describe("media finalise verification: checksum and name", () => {
       declared: { storageKey: "media/org/2026/01/a.png", checksum: CHECKSUM },
       maxBytes: MAX_BYTES,
       expectedChecksumBase64: Buffer.from(CHECKSUM, "hex").toString("base64"),
+        checksumMode: "provider",
     });
     expect(verified.fileName).toBe("folder hero.png");
   });
@@ -197,8 +202,48 @@ describe("media finalise verification: checksum and name", () => {
         declared: { storageKey: "media/org/2026/01/a.png", checksum: CHECKSUM },
         maxBytes: MAX_BYTES,
         expectedChecksumBase64: Buffer.from(CHECKSUM, "hex").toString("base64"),
+        checksumMode: "provider",
       })
     );
     expect(error.code).toBe("MEDIA_SIZE_EXCEEDED");
+  });
+});
+
+describe("media finalise verification: checksum modes", () => {
+  it("refuses metadata-only evidence when provider verification is required", () => {
+    const error = captureError(() =>
+      verifyUploadedObject({
+        head: { ...HEAD, checksumSha256Base64: null },
+        declared: { storageKey: "media/org/2026/01/a.png", checksum: CHECKSUM },
+        maxBytes: MAX_BYTES,
+        expectedChecksumBase64: Buffer.from(CHECKSUM, "hex").toString("base64"),
+        checksumMode: "provider",
+      })
+    );
+    expect(error.code).toBe("MEDIA_CHECKSUM_MISMATCH");
+  });
+
+  it("accepts signed metadata evidence in metadata mode", () => {
+    const verified = verifyUploadedObject({
+      head: { ...HEAD, checksumSha256Base64: null },
+      declared: { storageKey: "media/org/2026/01/a.png", checksum: CHECKSUM },
+      maxBytes: MAX_BYTES,
+      expectedChecksumBase64: Buffer.from(CHECKSUM, "hex").toString("base64"),
+      checksumMode: "metadata",
+    });
+    expect(verified.checksum).toBe(CHECKSUM);
+  });
+
+  it("refuses metadata mode when no stored checksum metadata exists", () => {
+    const error = captureError(() =>
+      verifyUploadedObject({
+        head: { ...HEAD, checksumHex: null, checksumSha256Base64: null },
+        declared: { storageKey: "media/org/2026/01/a.png", checksum: CHECKSUM },
+        maxBytes: MAX_BYTES,
+        expectedChecksumBase64: Buffer.from(CHECKSUM, "hex").toString("base64"),
+        checksumMode: "metadata",
+      })
+    );
+    expect(error.code).toBe("MEDIA_CHECKSUM_MISMATCH");
   });
 });

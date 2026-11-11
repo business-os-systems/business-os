@@ -165,7 +165,11 @@ function buildAssetCreateInput(input: {
 async function findDuplicateAsset(
   tx: Prisma.TransactionClient,
   actor: MediaActor,
-  input: { readonly storageKey: string; readonly checksum: string }
+  input: {
+    readonly storageKey: string;
+    readonly checksum: string;
+    readonly allowChecksumMatch: boolean;
+  }
 ): Promise<{ asset: MediaAsset; discardUploadedObject: boolean } | null> {
   const byStorageKey = await tx.mediaAsset.findFirst({
     where: {
@@ -184,6 +188,16 @@ async function findDuplicateAsset(
   });
   if (byChecksum === null) {
     return null;
+  }
+  // Metadata mode cannot prove the uploaded bytes match the declared checksum
+  // (the provider never hashed them). Returning the existing row would hand the
+  // caller a different object's URL, so a repeated checksum is refused instead.
+  if (!input.allowChecksumMatch) {
+    throw createMediaError(
+      "MEDIA_CHECKSUM_MISMATCH",
+      "Another object already registered this checksum, so the upload cannot be deduplicated.",
+      [{ name: "checksum", reason: "Upload different bytes or use provider checksum mode." }]
+    );
   }
   return { asset: byChecksum, discardUploadedObject: true };
 }
@@ -224,11 +238,13 @@ async function finalizeInTransaction(
     readonly verified: VerifiedUpload;
     readonly storageKey: string;
     readonly storage: StorageAdapter;
+    readonly allowChecksumMatch: boolean;
   }
 ): Promise<FinalizeOutcome> {
   const duplicate = await findDuplicateAsset(tx, actor, {
     storageKey: input.storageKey,
     checksum: input.verified.checksum,
+    allowChecksumMatch: input.allowChecksumMatch,
   });
   if (duplicate !== null) {
     return {
@@ -373,6 +389,7 @@ async function verifyStoredUpload(
       declared: body,
       maxBytes: dependencies.config.maxBytes,
       expectedChecksumBase64: expectedChecksumBase64(body.checksum),
+      checksumMode: dependencies.config.checksumMode,
     });
   } catch (error) {
     await removeObjectLogged(
@@ -388,11 +405,13 @@ async function finalizeAfterRace(input: {
   readonly actor: MediaActor;
   readonly verified: VerifiedUpload;
   readonly storageKey: string;
+  readonly allowChecksumMatch: boolean;
 }): Promise<FinalizeOutcome> {
   return withTenantContext(input.actor.organizationId, async (tx) => {
     const duplicate = await findDuplicateAsset(tx, input.actor, {
       storageKey: input.storageKey,
       checksum: input.verified.checksum,
+      allowChecksumMatch: input.allowChecksumMatch,
     });
     if (duplicate === null) {
       throw createMediaError(
@@ -426,6 +445,7 @@ async function finalizeOrResolveDuplicate(
         verified: request.verified,
         storageKey: request.body.storageKey,
         storage: dependencies.storage,
+        allowChecksumMatch: dependencies.config.checksumMode === "provider",
       })
     );
   } catch (error) {
@@ -450,6 +470,7 @@ async function resolveAfterUniqueViolation(
       actor: request.actor,
       verified: request.verified,
       storageKey: request.body.storageKey,
+      allowChecksumMatch: dependencies.config.checksumMode === "provider",
     });
   } catch (raceError) {
     await removeObjectLogged(

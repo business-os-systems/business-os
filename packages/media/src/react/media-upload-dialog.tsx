@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useId, useState } from "react";
-import { Button, Input, Label, Modal } from "@suite/ui";
+import { Button, FileField, Modal } from "@suite/ui";
 import { MEDIA_ALLOWED_MIME_TYPES } from "../constants.js";
 import type { FinalizeUploadView } from "../contracts.js";
 import type { MediaClient } from "./media-client.js";
@@ -58,21 +58,15 @@ function UploadForm({
         onSubmit();
       }}
     >
-      <div className="space-y-1.5">
-        <Label htmlFor={inputId} size="md">
-          Image file
-        </Label>
-        <Input
-          id={inputId}
-          type="file"
-          accept={MEDIA_ALLOWED_MIME_TYPES.join(",")}
-          onChange={(event) => onFileChange(event.currentTarget.files?.[0] ?? null)}
-          disabled={isUploading}
-        />
-        <p className="text-xs text-text-muted">
-          Accepted types: {MEDIA_ALLOWED_MIME_TYPES.join(", ")}.
-        </p>
-      </div>
+      <FileField
+        id={inputId}
+        label="Image file"
+        accept={MEDIA_ALLOWED_MIME_TYPES.join(",")}
+        actionLabel="Choose image"
+        hint={`Accepted types: ${MEDIA_ALLOWED_MIME_TYPES.join(", ")}.`}
+        disabled={isUploading}
+        onChange={onFileChange}
+      />
       {file === null ? (
         <p className="text-xs text-text-secondary" role="status">
           No file selected yet.

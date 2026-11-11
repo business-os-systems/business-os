@@ -45,6 +45,7 @@ const CONFIG: MediaConfig = {
   publicBaseUrl: "https://cdn.example.com/media",
   maxBytes: 1_048_576,
   urlTtlSeconds: 900,
+  checksumMode: "provider",
 };
 
 function checksumFor(label: string): string {
