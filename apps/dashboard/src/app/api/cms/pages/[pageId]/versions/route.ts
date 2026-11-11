@@ -1,23 +1,27 @@
-import { NextResponse } from "next/server";
+import { NextRequest } from "next/server";
+import { PERMISSIONS } from "@suite/core";
 import { PageService } from "@suite/website-builder/services";
-import { resolveTenantContext } from "@/lib/tenant-context";
-import { problemResponse } from "@/lib/problem-response";
+import { authorizeCmsRequest } from "@/lib/cms-request-guard";
+import { problemResponse, successResponse } from "@/lib/problem-response";
 
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ pageId: string }> }
 ) {
+  const auth = await authorizeCmsRequest(
+    request,
+    PERMISSIONS.WEBSITE_BUILDER.PAGES_READ
+  );
+  if (auth.kind === "denied") {
+    return auth.response;
+  }
+
   try {
     const { pageId } = await params;
-    const tenantContext = await resolveTenantContext(request);
-    if (!tenantContext.ok) {
-      return tenantContext.response;
-    }
-
     const service = new PageService();
-    const versions = await service.listPageVersions(tenantContext.organizationId, pageId);
+    const versions = await service.listPageVersions(auth.session.organizationId, pageId);
 
-    return NextResponse.json({ versions }, { status: 200 });
+    return successResponse({ versions });
   } catch (err: unknown) {
     console.error("Error fetching CMS page versions:", err);
     return problemResponse({

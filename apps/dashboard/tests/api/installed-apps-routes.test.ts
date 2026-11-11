@@ -3,11 +3,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GET as listTenantApps } from "../../src/app/api/v1/installed-apps/route";
 import { GET as listOrganizationApps } from "../../src/app/api/v1/organizations/[orgId]/installed-apps/route";
 
-const tenantMocks = vi.hoisted(() => ({ resolveTenantContext: vi.fn() }));
 const sessionMocks = vi.hoisted(() => ({ getAuthenticatedSession: vi.fn() }));
 const serviceMocks = vi.hoisted(() => ({ listInstalledApps: vi.fn() }));
 
-vi.mock("@/lib/tenant-context", () => ({ resolveTenantContext: tenantMocks.resolveTenantContext }));
 vi.mock("@/lib/session-helper", () => ({
   getAuthenticatedSession: sessionMocks.getAuthenticatedSession,
 }));
@@ -39,7 +37,6 @@ function request(path: string): NextRequest {
 beforeEach(() => {
   vi.clearAllMocks();
   serviceMocks.listInstalledApps.mockResolvedValue([APP_ROW]);
-  tenantMocks.resolveTenantContext.mockResolvedValue({ ok: true, organizationId: "org_1" });
   sessionMocks.getAuthenticatedSession.mockResolvedValue({ ok: true, session: SESSION });
 });
 
@@ -55,8 +52,8 @@ describe("tenant installed-apps route", () => {
     expect(serviceMocks.listInstalledApps).toHaveBeenCalledWith("org_1");
   });
 
-  it("returns the tenant-context problem when the context is unavailable", async () => {
-    tenantMocks.resolveTenantContext.mockResolvedValue({
+  it("returns the session problem when no verified session resolves a tenant", async () => {
+    sessionMocks.getAuthenticatedSession.mockResolvedValue({
       ok: false,
       response: new Response("denied", { status: 403 }),
     });

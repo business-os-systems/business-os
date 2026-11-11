@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, beforeAll } from "vitest";
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { middleware } from "../src/middleware";
 import { GET as checkSlugGet } from "../src/app/api/v1/onboarding/check-slug/route";
 import { GET as checkSubdomainGet } from "../src/app/api/cms/subdomain/check/route";
@@ -24,6 +24,17 @@ vi.mock("@suite/db", () => {
   return { prisma: mockPrisma };
 });
 
+const sessionMocks = vi.hoisted(() => ({ getAuthenticatedSession: vi.fn() }));
+const accessMocks = vi.hoisted(() => ({ evaluateWebsiteBuilderAccess: vi.fn() }));
+
+vi.mock("@/lib/session-helper", () => ({
+  getAuthenticatedSession: sessionMocks.getAuthenticatedSession,
+}));
+
+vi.mock("@/lib/website-builder-access", () => ({
+  evaluateWebsiteBuilderAccess: accessMocks.evaluateWebsiteBuilderAccess,
+}));
+
 vi.mock("@suite/website-builder/services", () => {
   const mockPageService = {
     getPage: vi.fn(),
@@ -46,6 +57,14 @@ describe("Gateway API Boundary, Security Headers & Error Sanitization (Issue #17
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(checkRateLimit).mockResolvedValue({ allowed: true, retryAfter: 0 });
+    sessionMocks.getAuthenticatedSession.mockResolvedValue({
+      ok: true,
+      session: { userId: "usr_1", organizationId: "org_test_tenant" },
+    });
+    accessMocks.evaluateWebsiteBuilderAccess.mockResolvedValue({
+      kind: "granted",
+      permissions: ["cms:pages:write"],
+    });
   });
 
   describe("Security Headers Injection (Issue 29)", () => {
@@ -141,7 +160,21 @@ describe("Gateway API Boundary, Security Headers & Error Sanitization (Issue #17
   });
 
   describe("CMS Page Content AST Schema Boundary & Concurrency (Issue 40 & 45)", () => {
-    it("returns 401 when request has no authenticated session or tenant header", async () => {
+    it("returns 401 when the request carries no verified session", async () => {
+      sessionMocks.getAuthenticatedSession.mockResolvedValue({
+        ok: false,
+        response: NextResponse.json(
+          {
+            type: "/errors/unauthorized",
+            title: "Unauthorized",
+            status: 401,
+            detail: "Authentication session required.",
+            code: "UNAUTHORIZED",
+          },
+          { status: 401, headers: { "Content-Type": "application/problem+json" } }
+        ),
+      });
+
       const req = new NextRequest("http://localhost:3000/api/cms/pages/page_123/content", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -161,10 +194,7 @@ describe("Gateway API Boundary, Security Headers & Error Sanitization (Issue #17
     it("returns 422 INVALID_AST_PAYLOAD when draftAst fails structural schema validation", async () => {
       const req = new NextRequest("http://localhost:3000/api/cms/pages/page_123/content", {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "x-tenant-id": "org_test_tenant",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           expectedRevision: 1,
           draftAst: {
@@ -228,10 +258,7 @@ describe("Gateway API Boundary, Security Headers & Error Sanitization (Issue #17
 
       const req = new NextRequest("http://localhost:3000/api/cms/pages/page_123/content", {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "x-tenant-id": "org_test_tenant",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           expectedRevision: 1,
           draftAst: validPageAst,
@@ -269,10 +296,7 @@ describe("Gateway API Boundary, Security Headers & Error Sanitization (Issue #17
 
       const req = new NextRequest("http://localhost:3000/api/cms/pages/page_123/content", {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "x-tenant-id": "org_test_tenant",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           expectedRevision: 1,
           draftAst: validPageAst,
