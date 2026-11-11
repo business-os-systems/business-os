@@ -10,6 +10,13 @@ import {
 } from "@suite/ui";
 import { ShieldCheckIcon } from "@suite/ui/icons";
 import type { FormBlockProps, BlockStyleTokens } from "../../ast/types.js";
+import {
+  BLOCK_CARD_SHADOW,
+  BLOCK_COLORS,
+  BLOCK_FONTS,
+  BLOCK_RADII,
+  resolveSectionStyle,
+} from "./block-tokens.js";
 
 export interface FormBlockComponentProps {
   props: FormBlockProps;
@@ -27,16 +34,7 @@ export function FormBlock({
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const paddingStyle: React.CSSProperties = {
-    paddingTop:
-      styles?.paddingTop !== undefined ? `${styles.paddingTop}px` : "64px",
-    paddingBottom:
-      styles?.paddingBottom !== undefined
-        ? `${styles.paddingBottom}px`
-        : "64px",
-    backgroundColor: styles?.backgroundColor,
-    color: styles?.textColor,
-  };
+  const sectionStyle = resolveSectionStyle(styles);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,19 +64,31 @@ export function FormBlock({
   return (
     <section
       data-block-type="form"
-      style={paddingStyle}
-      className={`w-full px-4 sm:px-6 lg:px-8 ${styles?.customClassName || ""}`}
+      style={sectionStyle}
+      className="w-full px-4 sm:px-6 lg:px-8"
     >
       <div className="max-w-2xl mx-auto">
-        <Card className="shadow-lg border border-hairline">
+        <Card
+          className="border"
+          style={{
+            backgroundColor: BLOCK_COLORS.surface,
+            color: BLOCK_COLORS.text,
+            borderColor: BLOCK_COLORS.border,
+            borderRadius: BLOCK_RADII.md,
+            boxShadow: BLOCK_CARD_SHADOW,
+          }}
+        >
           <CardHeader className="text-center">
             {props.headline ? (
-              <CardTitle className="text-2xl sm:text-3xl font-bold font-heading">
+              <CardTitle
+                className="text-2xl sm:text-3xl font-bold"
+                style={{ fontFamily: BLOCK_FONTS.heading, color: BLOCK_COLORS.text }}
+              >
                 {props.headline}
               </CardTitle>
             ) : null}
             {props.subheadline ? (
-              <p className="text-sm text-on-surface-variant mt-2">
+              <p className="text-sm mt-2" style={{ color: BLOCK_COLORS.textMuted }}>
                 {props.subheadline}
               </p>
             ) : null}
@@ -87,13 +97,22 @@ export function FormBlock({
           <CardContent>
             {submitted ? (
               <div className="text-center py-8">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-secondary-container text-on-secondary-container mb-4">
+                <div
+                  className="mx-auto flex h-12 w-12 items-center justify-center rounded-full mb-4"
+                  style={{
+                    backgroundColor: BLOCK_COLORS.background,
+                    color: BLOCK_COLORS.accent,
+                  }}
+                >
                   <ShieldCheckIcon size={28} />
                 </div>
-                <h3 className="text-lg font-semibold font-heading text-on-surface">
+                <h3
+                  className="text-lg font-semibold"
+                  style={{ fontFamily: BLOCK_FONTS.heading, color: BLOCK_COLORS.text }}
+                >
                   Thank you!
                 </h3>
-                <p className="mt-2 text-sm text-on-surface-variant">
+                <p className="mt-2 text-sm" style={{ color: BLOCK_COLORS.textMuted }}>
                   {props.successMessage || "Your submission has been received."}
                 </p>
               </div>
@@ -103,11 +122,14 @@ export function FormBlock({
                   <div key={field.id} className="space-y-1">
                     <label
                       htmlFor={field.name}
-                      className="block text-sm font-medium text-on-surface"
+                      className="block text-sm font-medium"
+                      style={{ color: BLOCK_COLORS.text }}
                     >
                       {field.label}
                       {field.required ? (
-                        <span className="text-red-500 ml-1">*</span>
+                        <span className="ml-1" style={{ color: BLOCK_COLORS.primary }}>
+                          *
+                        </span>
                       ) : null}
                     </label>
 
@@ -143,7 +165,9 @@ export function FormBlock({
                 ))}
 
                 {error ? (
-                  <p className="text-sm text-red-600 font-medium">{error}</p>
+                  <p className="text-sm font-medium" style={{ color: BLOCK_COLORS.primary }}>
+                    {error}
+                  </p>
                 ) : null}
 
                 <Button

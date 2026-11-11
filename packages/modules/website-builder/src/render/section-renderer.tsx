@@ -1,6 +1,11 @@
 import React from "react";
 import type { SectionAst, BlockAst, MediaAssetMap } from "../ast/types.js";
 import {
+  BLOCK_COLORS,
+  BLOCK_SECTION_PADDING,
+  optionalColorToken,
+} from "../components/blocks/block-tokens.js";
+import {
   HeroBlock,
   FeaturesBlock,
   PricingBlock,
@@ -91,7 +96,7 @@ export function renderBlockComponent(
     return (
       <div
         key={unknownBlock.id ?? "unknown"}
-        className="p-4 my-2 border-2 border-dashed border-amber-400 bg-amber-50 text-amber-800 text-sm rounded-lg"
+        className="p-4 my-2 border-2 border-dashed border-warning bg-surface-muted text-warning-text text-sm rounded-lg"
       >
         Unsupported or custom block type: {unknownBlock.type ?? "unknown"}
       </div>
@@ -121,15 +126,19 @@ export function SectionRenderer({
   const visibilityClasses = resolveVisibilityClasses(visibility);
 
   // Container max-width mapped from dictionary table
-  const maxWidthClass = (styles?.maxWidth ? MAX_WIDTH_CLASS_MAP[styles.maxWidth] : undefined) ?? "max-w-full";
+  const maxWidthClass =
+    styles?.maxWidth === undefined ? "max-w-full" : MAX_WIDTH_CLASS_MAP[styles.maxWidth];
 
+  // Legacy pixel padding and literal colours stay stored but never render:
+  // only the site's spacing and colour tokens reach the published page.
+  const overlayColor = optionalColorToken(styles?.backgroundOverlayColor);
   const sectionStyle: React.CSSProperties = {
-    backgroundColor: styles?.backgroundColor,
+    ...BLOCK_SECTION_PADDING,
+    backgroundColor: optionalColorToken(styles?.backgroundColor) ?? BLOCK_COLORS.background,
+    borderColor: optionalColorToken(styles?.borderColor) ?? BLOCK_COLORS.border,
     backgroundImage: styles?.backgroundImageUrl ? `url(${styles.backgroundImageUrl})` : undefined,
     backgroundRepeat: styles?.backgroundRepeat ?? "no-repeat",
     backgroundSize: styles?.backgroundSize ?? "cover",
-    paddingTop: styles?.paddingTop !== undefined ? `${styles.paddingTop}px` : undefined,
-    paddingBottom: styles?.paddingBottom !== undefined ? `${styles.paddingBottom}px` : undefined,
   };
 
   return (
@@ -137,14 +146,14 @@ export function SectionRenderer({
       id={section.id}
       data-section-id={section.id}
       style={sectionStyle}
-      className={`relative w-full ${visibilityClasses} ${styles?.customClassName ?? ""}`}
+      className={`relative w-full ${visibilityClasses}`}
     >
-      {styles?.backgroundOverlayColor ? (
+      {overlayColor === undefined ? null : (
         <div
           className="absolute inset-0 pointer-events-none"
-          style={{ backgroundColor: styles.backgroundOverlayColor }}
+          style={{ backgroundColor: overlayColor }}
         />
-      ) : null}
+      )}
 
       <div className={`relative mx-auto w-full ${maxWidthClass}`}>
         {blocks.map((block) => renderBlockComponent(block, { isEditor, media }))}

@@ -8,6 +8,12 @@ import {
   resolveMediaImage,
   type ResolvedMediaImage,
 } from "../../render/media-resolution.js";
+import {
+  BLOCK_COLORS,
+  BLOCK_FONTS,
+  BLOCK_SECTION_PADDING,
+  resolveBlockSurface,
+} from "./block-tokens.js";
 
 export interface FooterBlockComponentProps {
   props: FooterBlockProps;
@@ -33,12 +39,15 @@ function FooterBrand(props: {
           />
         )}
         {props.logoText ? (
-          <span className="font-bold font-heading text-xl text-on-surface tracking-tight">
+          <span
+            className="font-bold text-xl tracking-tight"
+            style={{ fontFamily: BLOCK_FONTS.heading, color: BLOCK_COLORS.text }}
+          >
             {props.logoText}
           </span>
         ) : null}
       </div>
-      <p className="text-xs text-on-surface-variant">
+      <p className="text-xs" style={{ color: BLOCK_COLORS.textMuted }}>
         {props.copyrightText ||
           `© ${new Date().getFullYear()} All rights reserved.`}
       </p>
@@ -48,8 +57,13 @@ function FooterBrand(props: {
 
 export function FooterBlock({ props, styles, media }: FooterBlockComponentProps) {
   const containerStyle: React.CSSProperties = {
-    backgroundColor: styles?.backgroundColor ?? "#0f172a",
-    color: styles?.textColor ?? "#cbd5e1",
+    ...resolveBlockSurface(styles, {
+      background: BLOCK_COLORS.surface,
+      text: BLOCK_COLORS.textMuted,
+      border: BLOCK_COLORS.border,
+    }),
+    ...BLOCK_SECTION_PADDING,
+    fontFamily: BLOCK_FONTS.body,
   };
   const logo = resolveMediaImage({
     reference: props.logo,
@@ -62,7 +76,7 @@ export function FooterBlock({ props, styles, media }: FooterBlockComponentProps)
     <footer
       data-block-type="footer"
       style={containerStyle}
-      className={`w-full py-12 px-4 sm:px-6 lg:px-8 ${styles?.customClassName ?? ""}`}
+      className="w-full border-t px-4 sm:px-6 lg:px-8"
     >
       <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
         <FooterBrand
@@ -73,7 +87,10 @@ export function FooterBlock({ props, styles, media }: FooterBlockComponentProps)
 
         {props.columns.map((col) => (
           <div key={col.id} className="space-y-3">
-            <h4 className="text-sm font-semibold font-heading text-on-surface tracking-wider uppercase">
+            <h4
+              className="text-sm font-semibold tracking-wider uppercase"
+              style={{ fontFamily: BLOCK_FONTS.heading, color: BLOCK_COLORS.text }}
+            >
               {col.title}
             </h4>
             <ul className="space-y-2">
@@ -81,7 +98,8 @@ export function FooterBlock({ props, styles, media }: FooterBlockComponentProps)
                 <li key={link.id}>
                   <a
                     href={link.target.url}
-                    className="text-sm text-on-surface-variant hover:text-on-surface transition-colors"
+                    className="text-sm transition-opacity hover:opacity-80"
+                    style={{ color: BLOCK_COLORS.textMuted }}
                   >
                     {link.label}
                   </a>

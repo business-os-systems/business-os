@@ -1,6 +1,7 @@
 import React from "react";
 import DOMPurify from "isomorphic-dompurify";
 import type { RichTextBlockProps, BlockStyleTokens } from "../../ast/types.js";
+import { BLOCK_PROSE_VARIABLES, resolveSectionStyle } from "./block-tokens.js";
 
 export interface RichTextBlockComponentProps {
   props: RichTextBlockProps;
@@ -8,16 +9,7 @@ export interface RichTextBlockComponentProps {
 }
 
 export function RichTextBlock({ props, styles }: RichTextBlockComponentProps) {
-  const paddingStyle: React.CSSProperties = {
-    paddingTop:
-      styles?.paddingTop !== undefined ? `${styles.paddingTop}px` : "48px",
-    paddingBottom:
-      styles?.paddingBottom !== undefined
-        ? `${styles.paddingBottom}px`
-        : "48px",
-    backgroundColor: styles?.backgroundColor,
-    color: styles?.textColor,
-  };
+  const sectionStyle = resolveSectionStyle(styles);
 
   const sanitizedHtml = React.useMemo(() => {
     return DOMPurify.sanitize(props.contentHtml ?? "", {
@@ -29,11 +21,12 @@ export function RichTextBlock({ props, styles }: RichTextBlockComponentProps) {
   return (
     <section
       data-block-type="rich-text"
-      style={paddingStyle}
-      className={`w-full px-4 sm:px-6 lg:px-8 ${styles?.customClassName ?? ""}`}
+      style={sectionStyle}
+      className="w-full px-4 sm:px-6 lg:px-8"
     >
       <div
-        className="max-w-4xl mx-auto prose prose-slate sm:prose-lg leading-relaxed"
+        className="max-w-4xl mx-auto prose sm:prose-lg leading-relaxed"
+        style={BLOCK_PROSE_VARIABLES}
         dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
       />
     </section>
