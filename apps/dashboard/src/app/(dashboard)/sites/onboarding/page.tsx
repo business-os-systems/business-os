@@ -21,7 +21,7 @@ import {
   ArrowRightIcon,
   LayersIcon,
 } from "@suite/ui/icons";
-import { workspacePath } from "@/lib/workspace-paths";
+import { websiteBuilderStudioHref } from "@/components/layout/website-builder-nav.config";
 
 export interface StarterTemplateItem {
   id: string;
@@ -139,10 +139,10 @@ export default function SiteOnboardingWizard() {
       }
 
       // Transition smoothly into Studio Canvas
-      const siteId = data.site.id;
-      const pageId = data.homePage.id;
+      const siteId = String(data.site.id);
+      const pageId = String(data.homePage.id);
       setTimeout(() => {
-        router.push(workspacePath(`/sites/${siteId}/studio/${pageId}`));
+        router.push(websiteBuilderStudioHref(siteId, pageId));
       }, 1000);
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : "Provisioning failed");

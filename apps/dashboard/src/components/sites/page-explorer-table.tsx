@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Badge, Button } from "@suite/ui";
 import { PlusIcon, EyeIcon, ArrowRightIcon } from "@suite/ui/icons";
 import type { PageSummary } from "./types";
+import { websiteBuilderStudioHref } from "@/components/layout/website-builder-nav.config";
 import { workspacePath } from "@/lib/workspace-paths";
 
 interface PageExplorerTableProps {
@@ -118,7 +119,7 @@ export function PageExplorerTable({
                           Preview
                         </Button>
                       </Link>
-                      <Link href={workspacePath(`/sites/${siteId}/studio/${page.id}`)}>
+                      <Link href={websiteBuilderStudioHref(siteId, page.id)}>
                         <Button
                           variant="default"
                           size="sm"
