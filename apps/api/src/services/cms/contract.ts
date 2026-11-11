@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SITE_IDEMPOTENCY_KEY_PATTERN } from "@suite/website-builder/services";
 import {
   AppearanceTokenPatchSchema,
   BRAND_LOGO_URL_MAX_LENGTH,
@@ -18,8 +19,8 @@ export const CMS_TEMPLATE_LIMIT = { default: 50, max: 100 } as const;
 export const CMS_THEME_LIMIT = { default: 50, max: 100 } as const;
 export const CMS_VERSION_LIMIT = { default: 20, max: 50 } as const;
 
-/** Idempotency-Key format shared with the platform store (CT-4). */
-export const CMS_IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9._:-]{8,128}$/;
+/** Idempotency-Key format shared with every create-site surface (CT-4). */
+export const CMS_IDEMPOTENCY_KEY_PATTERN = SITE_IDEMPOTENCY_KEY_PATTERN;
 
 export const siteParamsSchema = z.object({
   siteId: z.string().trim().min(1).max(64),
@@ -85,6 +86,11 @@ export const restoreVersionBodySchema = z
   .object({ expectedRevision: z.number().int().positive() })
   .strict();
 
+/**
+ * Contract 2026-03 revision: creation accepts a published catalog templateId
+ * (or null for a blank home page); the legacy initialTemplate enum is gone
+ * (FR-017, FR-019).
+ */
 export const createSiteBodySchema = z
   .object({
     title: z.string().trim().min(1).max(120),

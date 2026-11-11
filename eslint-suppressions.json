@@ -801,32 +801,6 @@
       "count": 1
     }
   },
-  "apps/dashboard/src/app/(dashboard)/sites/onboarding/page.tsx": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 1
-    },
-    "@typescript-eslint/no-misused-promises": {
-      "count": 2
-    },
-    "@typescript-eslint/no-unsafe-argument": {
-      "count": 5
-    },
-    "@typescript-eslint/no-unsafe-assignment": {
-      "count": 3
-    },
-    "@typescript-eslint/no-unsafe-member-access": {
-      "count": 10
-    },
-    "@typescript-eslint/prefer-nullish-coalescing": {
-      "count": 1
-    },
-    "complexity": {
-      "count": 1
-    },
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
   "apps/dashboard/src/app/(editor)/sites/[siteId]/preview/[pageId]/page.tsx": {
     "@typescript-eslint/no-unnecessary-condition": {
       "count": 2
@@ -934,11 +908,6 @@
     }
   },
   "apps/dashboard/src/app/api/cms/sites/[siteId]/pages/route.ts": {
-    "@typescript-eslint/no-unsafe-assignment": {
-      "count": 1
-    }
-  },
-  "apps/dashboard/src/app/api/cms/sites/route.ts": {
     "@typescript-eslint/no-unsafe-assignment": {
       "count": 1
     }
@@ -3187,17 +3156,6 @@
     },
     "max-lines-per-function": {
       "count": 3
-    }
-  },
-  "packages/modules/website-builder/src/services/site-service.ts": {
-    "@typescript-eslint/no-unsafe-assignment": {
-      "count": 1
-    },
-    "@typescript-eslint/prefer-nullish-coalescing": {
-      "count": 1
-    },
-    "complexity": {
-      "count": 1
     }
   },
   "packages/modules/website-builder/src/services/storefront-service.ts": {

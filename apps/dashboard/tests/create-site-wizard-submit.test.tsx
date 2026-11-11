@@ -44,8 +44,15 @@ function jsonResponse(body: unknown, status: number): Promise<Response> {
     new Response(JSON.stringify(body), {
       status,
       headers: { "content-type": "application/json" },
-    })
+    }),
   );
+}
+
+function readJsonBody(body: BodyInit | null | undefined): unknown {
+  if (typeof body !== "string") {
+    throw new Error("Expected a JSON string request body.");
+  }
+  return JSON.parse(body);
 }
 
 afterEach(() => {
@@ -56,39 +63,32 @@ afterEach(() => {
 // jsdom does not implement requestSubmit on every version the suite uses.
 if (typeof HTMLFormElement.prototype.requestSubmit !== "function") {
   HTMLFormElement.prototype.requestSubmit = function requestSubmit(): void {
-    this.dispatchEvent(
-      new Event("submit", { bubbles: true, cancelable: true })
-    );
+    this.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
   };
 }
 
 it("opens the studio on the new home page after provisioning", async () => {
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(() =>
-      jsonResponse(
-        {
-          success: true,
-          data: {
-            site: SITE,
-            homePage: { id: "page_home", title: "Home", path: "/" },
-            pageCount: 1,
-            replayed: false,
-          },
-          requestId: "trace_wizard",
-          timestamp: NOW,
+  const fetchMock = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>();
+  fetchMock.mockImplementation(() =>
+    jsonResponse(
+      {
+        success: true,
+        data: {
+          site: SITE,
+          homePage: { id: "page_home", title: "Home", path: "/" },
+          pageCount: 1,
+          replayed: false,
         },
-        201
-      )
-    )
+        requestId: "trace_wizard",
+        timestamp: NOW,
+      },
+      201,
+    ),
   );
+  vi.stubGlobal("fetch", fetchMock);
 
   render(
-    <CreateSiteWizard
-      domainRoot="example.test"
-      templates={TEMPLATES}
-      templatesError={null}
-    />
+    <CreateSiteWizard domainRoot="example.test" templates={TEMPLATES} templatesError={null} />,
   );
 
   fireEvent.change(screen.getByLabelText(/Site name/), {
@@ -101,18 +101,27 @@ it("opens the studio on the new home page after provisioning", async () => {
   });
   fireEvent.click(screen.getByRole("button", { name: "Continue" }));
 
+  fireEvent.click(await screen.findByLabelText(/Template/));
+  fireEvent.click(screen.getByRole("option", { name: "Bistro starter (hospitality)" }));
+
   fireEvent.click(
-    await screen.findByRole("button", {
+    screen.getByRole("button", {
       name: "Create site and open studio",
-    })
+    }),
   );
 
   await waitFor(
     () => {
-      expect(push).toHaveBeenCalledWith(
-        "/dashboard/sites/site_river/studio/page_home"
-      );
+      expect(push).toHaveBeenCalledWith("/dashboard/sites/site_river/studio/page_home");
     },
-    { timeout: 3000 }
+    { timeout: 3000 },
   );
+
+  const [, request] = fetchMock.mock.calls[0] ?? [];
+  expect(new Headers(request?.headers).get("Idempotency-Key")).toEqual(expect.any(String));
+  expect(readJsonBody(request?.body)).toEqual({
+    title: "Riverview Bistro",
+    slug: "riverview-bistro",
+    templateId: "tpl_bistro",
+  });
 });

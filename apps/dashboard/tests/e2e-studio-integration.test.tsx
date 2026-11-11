@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { afterEach, describe, it, expect, vi, beforeEach } from "vitest";
 import React from "react";
 import { renderToString } from "react-dom/server";
 import LoginPage from "../src/app/(auth)/login/page";
@@ -31,6 +31,10 @@ vi.mock("next/navigation", () => ({
 describe("Automated E2E Integration Suite: Complete Authoring Lifecycle (@suite/dashboard)", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   describe("Lifecycle Step 0: Platform Auth Gate & Tenant Login", () => {
@@ -98,15 +102,14 @@ describe("Automated E2E Integration Suite: Complete Authoring Lifecycle (@suite/
     });
   });
 
-  describe("Lifecycle Step 2: Step-by-Step Site Onboarding Wizard", () => {
-    it("renders step 1 of 3 onboarding wizard with name and subdomain inputs", () => {
+  describe("Lifecycle Step 2: One Create-Site Surface", () => {
+    it("renders the config-driven wizard linked from the websites hub", () => {
+      vi.stubEnv("DOMAIN_ROOT", "localhost");
       const html = renderToString(<SiteOnboardingWizard />);
 
-      expect(html).toContain("Website Onboarding Wizard");
-      expect(html).toContain("Step 1 of 3");
-      expect(html).toContain("Name Your Website &amp; Subdomain");
-      expect(html).toContain(".business-os.site");
-      expect(html).toContain("Next: Starter Template");
+      expect(html).toContain("Create a website");
+      expect(html).toContain("Name the site");
+      expect(html).toContain("Continue");
     });
   });
 

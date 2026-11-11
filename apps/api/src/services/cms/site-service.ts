@@ -181,6 +181,8 @@ export async function createSite(input: {
     slug: input.body.slug,
     templateId: input.body.templateId ?? null,
     idempotencyKey: input.idempotencyKey,
+    primaryLocale: null,
+    brandName: null,
   });
 
   return {

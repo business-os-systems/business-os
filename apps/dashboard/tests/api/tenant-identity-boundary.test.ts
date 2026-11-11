@@ -15,6 +15,7 @@ const pageMocks = vi.hoisted(() => ({
   listPageVersions: vi.fn(),
 }));
 const appsMocks = vi.hoisted(() => ({ listInstalledApps: vi.fn() }));
+const siteMocks = vi.hoisted(() => ({ provisionSiteFromTemplate: vi.fn() }));
 
 vi.mock("@/lib/session-helper", () => ({
   getAuthenticatedSession: sessionMocks.getAuthenticatedSession,
@@ -24,6 +25,8 @@ vi.mock("@/lib/website-builder-access", () => ({
 }));
 vi.mock("@suite/website-builder/services", () => ({
   PageService: vi.fn(() => pageMocks),
+  provisionSiteFromTemplate: siteMocks.provisionSiteFromTemplate,
+  SITE_IDEMPOTENCY_KEY_PATTERN: /^[A-Za-z0-9._:-]{8,128}$/,
 }));
 vi.mock("@/services/installed-apps.service", () => ({
   listInstalledApps: appsMocks.listInstalledApps,
@@ -36,6 +39,7 @@ import {
   POST as createSitePage,
 } from "@/app/api/cms/sites/[siteId]/pages/route";
 import { GET as listInstalledApps } from "@/app/api/v1/installed-apps/route";
+import { POST as createSite } from "@/app/api/cms/sites/route";
 
 const SESSION = {
   userId: "usr_session_owner",
@@ -185,6 +189,48 @@ describe("no runtime code reads a tenant identity header", () => {
 
   it("keeps the shared tenant-context helper deleted", () => {
     expect(existsSync(path.join(SOURCE_ROOT, "lib", "tenant-context.ts"))).toBe(false);
+  });
+});
+
+describe("a forged tenant header cannot create a site", () => {
+  it("creates a site under the session organization, never the header", async () => {
+    siteMocks.provisionSiteFromTemplate.mockResolvedValue({
+      site: {
+        id: "site_boundary",
+        organizationId: "org_session",
+        title: "Boundary",
+        slug: "boundary",
+        status: "DRAFT",
+      },
+      homePage: { id: "page_boundary", title: "Home", slug: "/" },
+      pages: [],
+      replayed: false,
+    });
+
+    const response = await createSite(
+      request("/api/cms/sites", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "Idempotency-Key": "idem-boundary-1",
+          "x-tenant-id": "org_attacker",
+          "x-organization-id": "org_attacker",
+        },
+        body: JSON.stringify({
+          title: "Boundary",
+          slug: "boundary",
+          templateId: null,
+        }),
+      })
+    );
+
+    expect(response.status).toBe(201);
+    expect(siteMocks.provisionSiteFromTemplate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationId: "org_session",
+        actorUserId: "usr_session_owner",
+      })
+    );
   });
 });
 
