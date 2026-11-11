@@ -220,9 +220,6 @@
     }
   },
   "apps/api/tests/integration/platform/audited-functions.test.ts": {
-    "@typescript-eslint/array-type": {
-      "count": 13
-    },
     "max-lines-per-function": {
       "count": 7
     },
@@ -625,9 +622,6 @@
   "apps/dashboard/src/app/(dashboard)/settings/layout.tsx": {
     "@typescript-eslint/no-unnecessary-condition": {
       "count": 1
-    },
-    "react/jsx-no-leaked-render": {
-      "count": 1
     }
   },
   "apps/dashboard/src/app/(dashboard)/settings/members/components/member-add-modal.tsx": {
@@ -831,15 +825,9 @@
     },
     "max-lines-per-function": {
       "count": 1
-    },
-    "react/jsx-no-leaked-render": {
-      "count": 2
     }
   },
   "apps/dashboard/src/app/(editor)/sites/[siteId]/preview/[pageId]/page.tsx": {
-    "@typescript-eslint/dot-notation": {
-      "count": 2
-    },
     "@typescript-eslint/no-unnecessary-condition": {
       "count": 2
     }
@@ -1446,9 +1434,6 @@
     },
     "max-lines-per-function": {
       "count": 1
-    },
-    "react/jsx-no-leaked-render": {
-      "count": 1
     }
   },
   "apps/dashboard/src/components/layout/suspension-notice.tsx": {
@@ -1543,18 +1528,7 @@
     }
   },
   "apps/dashboard/src/components/preview/preview-header.tsx": {
-    "@typescript-eslint/array-type": {
-      "count": 1
-    },
     "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "apps/dashboard/src/components/preview/preview-workspace.tsx": {
-    "@typescript-eslint/no-unnecessary-condition": {
-      "count": 1
-    },
-    "@typescript-eslint/prefer-optional-chain": {
       "count": 1
     }
   },
@@ -1602,9 +1576,6 @@
   "apps/dashboard/src/components/sites/page-explorer-table.tsx": {
     "max-lines-per-function": {
       "count": 1
-    },
-    "react/jsx-no-leaked-render": {
-      "count": 3
     }
   },
   "apps/dashboard/src/lib/app-registry.ts": {
@@ -2696,9 +2667,6 @@
     "@typescript-eslint/no-unnecessary-condition": {
       "count": 2
     },
-    "@typescript-eslint/prefer-optional-chain": {
-      "count": 2
-    },
     "complexity": {
       "count": 1
     },
@@ -2771,9 +2739,6 @@
     }
   },
   "packages/auth/tests/auth.test.ts": {
-    "@typescript-eslint/array-type": {
-      "count": 1
-    },
     "@typescript-eslint/no-non-null-assertion": {
       "count": 2
     },
@@ -3167,11 +3132,6 @@
       "count": 1
     }
   },
-  "packages/modules/website-builder/src/ast/types.ts": {
-    "@typescript-eslint/array-type": {
-      "count": 2
-    }
-  },
   "packages/modules/website-builder/src/ast/validator.ts": {
     "@typescript-eslint/no-unnecessary-type-assertion": {
       "count": 3
@@ -3216,9 +3176,6 @@
     }
   },
   "packages/modules/website-builder/src/components/blocks/hero-block.tsx": {
-    "@typescript-eslint/dot-notation": {
-      "count": 1
-    },
     "@typescript-eslint/prefer-nullish-coalescing": {
       "count": 3
     }
@@ -3332,20 +3289,11 @@
     }
   },
   "packages/modules/website-builder/tests/integration/outbox-event-dispatch.test.ts": {
-    "@typescript-eslint/dot-notation": {
-      "count": 3
-    },
-    "@typescript-eslint/no-unnecessary-type-assertion": {
-      "count": 1
-    },
     "max-lines-per-function": {
       "count": 1
     }
   },
   "packages/modules/website-builder/tests/integration/storefront-resolution-minimization.test.ts": {
-    "@typescript-eslint/dot-notation": {
-      "count": 7
-    },
     "max-lines-per-function": {
       "count": 2
     },
@@ -3510,17 +3458,11 @@
     "@typescript-eslint/no-unnecessary-condition": {
       "count": 1
     },
-    "@typescript-eslint/prefer-nullish-coalescing": {
-      "count": 1
-    },
     "complexity": {
       "count": 1
     },
     "max-lines-per-function": {
       "count": 1
-    },
-    "react/jsx-no-leaked-render": {
-      "count": 5
     }
   },
   "packages/ui/src/components/select.tsx": {

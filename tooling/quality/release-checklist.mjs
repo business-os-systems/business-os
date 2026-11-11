@@ -34,10 +34,24 @@ function parseArgs(argv) {
 }
 
 function readJson(path) {
-  return JSON.parse(readFileSync(path, "utf8"));
+  try {
+    return JSON.parse(readFileSync(path, "utf8"));
+  } catch (error) {
+    process.stderr.write("Release evidence unavailable at " + path + ": " + String(error) + "\n");
+    return null;
+  }
 }
 
 function evaluateA11y(records) {
+  if (records === null || !Array.isArray(records)) {
+    return {
+      passed: false,
+      scanned: 0,
+      missing: [...REQUIRED_SURFACES],
+      failing: [],
+      tenantSurfaces: [],
+    };
+  }
   const surfaces = records.filter((record) => record.kind === "a11y");
   const scanned = new Map(surfaces.map((record) => [record.surface, record]));
   const missing = REQUIRED_SURFACES.filter((surface) => !scanned.has(surface));
@@ -118,12 +132,12 @@ function main(argv) {
   const checklist = {
     generatedAt: new Date().toISOString(),
     commit: args.commit ?? "local",
-    passed: a11y.passed && perf.passed === true,
+    passed: a11y.passed && perf?.passed === true,
     a11y,
     performance: {
-      passed: perf.passed === true,
-      checkedMetrics: perf.checkedMetrics,
-      violations: perf.violations,
+      passed: perf?.passed === true,
+      checkedMetrics: perf?.checkedMetrics ?? 0,
+      violations: perf?.violations ?? [],
     },
   };
   mkdirSync(dirname(args.output), { recursive: true });

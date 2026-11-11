@@ -225,7 +225,7 @@ jobs:
           printf "ALTER ROLE app_tenant WITH LOGIN PASSWORD 'tenant_test_password';" | pnpm --filter @suite/db exec prisma db execute --url "$DATABASE_URL" --stdin
 
       - name: Turborepo Typecheck & Test
-        run: pnpm turbo run typecheck test
+        run: pnpm turbo run typecheck && pnpm turbo run test --concurrency=1
 
   # Pull-request only: every added source line must be exercised by the
   # Vitest suites. The database and Redis fixtures mirror the test job because
@@ -399,6 +399,11 @@ jobs:
 
       - name: Install Playwright Chromium
         run: pnpm --filter @suite/web exec playwright install --with-deps chromium
+
+      # Build once here so the Playwright webServer only starts the app; a
+      # combined build+start command obscures the real startup error in CI.
+      - name: Build storefront for release gates
+        run: pnpm --filter @suite/web build
 
       - name: Accessibility Gate (axe WCAG 2.1 A/AA + keyboard paths)
         run: pnpm --filter @suite/web exec playwright test --project=accessibility

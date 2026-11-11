@@ -103,7 +103,7 @@ export default defineConfig({
       env: buildServerEnv({ NODE_ENV: "test", E2E_FIXTURE_PORT: String(FIXTURE_PORT) }),
     },
     {
-      command: "pnpm build && pnpm start",
+      command: "pnpm exec next start -p " + String(WEB_PORT),
       port: WEB_PORT,
       reuseExistingServer: process.env.CI === undefined,
       timeout: 240_000,
