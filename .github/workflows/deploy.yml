@@ -36,6 +36,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Every image built here is named by a service in
+      # deploy/platform/docker-compose.yml, so the deploy step pulls exactly the
+      # images this job pushed and nothing is built without being used.
       - name: Build & Push Core API Container
         uses: docker/build-push-action@v5
         with:
@@ -46,7 +49,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Build & Push Dashboard Container
+      - name: Build & Push Tenant Dashboard Container
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -55,6 +58,29 @@ jobs:
           tags: ${{ env.IMAGE_PREFIX }}/business-os-dashboard:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Build & Push Public Storefront Container
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./apps/web/Dockerfile
+          push: true
+          tags: ${{ env.IMAGE_PREFIX }}/business-os-web:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build & Push Operator Console Container
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./deploy/platform/Dockerfile
+          target: platform
+          push: true
+          tags: ${{ env.IMAGE_PREFIX }}/business-os-platform:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NEXT_PUBLIC_API_URL=https://${{ secrets.OPERATOR_DOMAIN }}
 
       - name: Deploy to Webyne VPS via SSH
         uses: appleboy/ssh-action@v1.0.3
@@ -66,9 +92,28 @@ jobs:
           script: |
             cd /home/developer/app
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
-            docker compose pull api dashboard
+            # Pull only the services this workflow pushed; a missing service
+            # name fails the deploy instead of silently skipping an application.
+            docker compose pull api dashboard web platform
             docker compose run --rm api pnpm --filter @suite/db prisma migrate deploy
             docker compose run --rm api pnpm --filter @suite/db prisma migrate status
             docker compose run --rm api sh -c 'printf "SELECT 1;" | pnpm --filter @suite/db exec prisma db execute --url "$PLATFORM_DATABASE_URL" --stdin'
             docker compose up -d --remove-orphans
+            # A container that cannot answer its own healthcheck is a failed
+            # deploy, not a green one. Each wait is bounded to 150 seconds.
+            for service in api dashboard web platform; do
+              health="starting"
+              for attempt in $(seq 1 30); do
+                health=$(docker compose ps --format '{{.Health}}' "$service" | head -n 1)
+                if [ "$health" = "healthy" ]; then
+                  break
+                fi
+                sleep 5
+              done
+              if [ "$health" != "healthy" ]; then
+                echo "::error::$service did not become healthy"
+                docker compose logs --tail 50 "$service"
+                exit 1
+              fi
+            done
             docker image prune -f
