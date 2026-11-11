@@ -184,3 +184,26 @@ describe("deploy gate (N2)", () => {
     expect(workflow).toContain("docker compose ps --format '{{.Health}}'");
   });
 });
+
+describe("edge configuration (N3, N4)", () => {
+  it("mounts the wildcard tenant certificate read-only", () => {
+    const edge = blockFor(readCompose(), "caddy");
+
+    expect(edge.body).toContain("${TENANT_TLS_DIR:?");
+    expect(edge.body).toContain(":/etc/caddy/tenant-tls:ro");
+  });
+
+  it("fails the deploy instead of mounting an empty certificate path", () => {
+    const edge = blockFor(readCompose(), "caddy");
+
+    expect(edge.body).not.toContain("${TENANT_TLS_DIR:-");
+    expect(edge.body).not.toContain("${TENANT_TLS_DIR}");
+  });
+
+  it("bakes the canonical operator host into the console build, failing when unset", () => {
+    const console = blockFor(readCompose(), "platform");
+
+    expect(console.body).toContain("NEXT_PUBLIC_API_URL: https://${OPERATOR_HOST:?");
+    expect(console.body).not.toContain("OPERATOR_DOMAIN");
+  });
+});
