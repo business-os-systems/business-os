@@ -1,5 +1,6 @@
 import { OpenAPIHono } from "@hono/zod-openapi";
 import { requireAuth } from "../../middleware/auth.js";
+import { createWebsiteBuilderInstallationGuard } from "../../middleware/website-builder-installation.js";
 import { createCmsAppearanceRouter } from "./appearance.js";
 import { createCmsCatalogRouter } from "./catalog.js";
 import { createCmsContentRouter } from "./content.js";
@@ -10,13 +11,15 @@ import { createCmsSitesRouter } from "./sites.js";
 import { createCmsVersionsRouter } from "./versions.js";
 
 /**
- * Tenant CMS administration, mounted under /api/v1/cms behind requireAuth and
- * the tenant-access guard. Every route names its capability and reads the
- * workspace from the verified session only (contract cms-admin).
+ * Tenant CMS administration, mounted under /api/v1/cms behind requireAuth, the
+ * tenant-access guard and the tenant installation gate. Every route names its
+ * capability and reads the workspace from the verified session only (contract
+ * cms-admin, FR-013).
  */
 export function createCmsRouter(): OpenAPIHono {
   const router = new OpenAPIHono();
   router.use("*", requireAuth());
+  router.use("*", createWebsiteBuilderInstallationGuard());
   router.route("/", createCmsSitesRouter());
   router.route("/", createCmsPagesRouter());
   router.route("/", createCmsContentRouter());
