@@ -81,12 +81,15 @@ function createTemplate(input: { readonly slug: string; readonly published: bool
   });
 }
 
-function publishTemplateVersion(itemId: string, definition: unknown = PUBLISHED_BLUEPRINT) {
+function publishTemplateVersion(
+  itemId: string,
+  definition: Prisma.InputJsonValue = PUBLISHED_BLUEPRINT,
+) {
   return prisma.cmsCatalogItemVersion.create({
     data: {
       itemId,
       version: 1,
-      definition: definition as Prisma.InputJsonValue,
+      definition,
       status: "ACTIVE",
       publishedAt: new Date(),
       publishedBy: ACTOR,
