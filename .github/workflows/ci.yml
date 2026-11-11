@@ -164,6 +164,11 @@ jobs:
     name: Typecheck & Test
     runs-on: ubuntu-latest
 
+    env:
+      # Tenant hosts are composed from this declared root (FR-117); CI uses the
+      # same value as the release gates.
+      DOMAIN_ROOT: localhost
+
     services:
       postgres:
         image: postgres:16-alpine
@@ -251,6 +256,11 @@ jobs:
     name: Diff Coverage
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+
+    env:
+      # Tenant hosts are composed from this declared root (FR-117); CI uses the
+      # same value as the release gates.
+      DOMAIN_ROOT: localhost
 
     services:
       postgres:

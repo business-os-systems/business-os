@@ -6,7 +6,7 @@ const mocks = vi.hoisted(() => ({
   getAuthenticatedSession: vi.fn(),
   evaluateAccess: vi.fn(),
   listWebsiteSites: vi.fn(),
-  createSite: vi.fn(),
+  provisionSite: vi.fn(),
 }));
 
 vi.mock("@/lib/session-helper", () => ({
@@ -19,7 +19,8 @@ vi.mock("@/services/websites.service", () => ({
   listWebsiteSites: mocks.listWebsiteSites,
 }));
 vi.mock("@suite/website-builder/services", () => ({
-  SiteService: vi.fn(() => ({ createSite: mocks.createSite })),
+  provisionSiteFromTemplate: mocks.provisionSite,
+  SITE_IDEMPOTENCY_KEY_PATTERN: /^[A-Za-z0-9._:-]{8,128}$/,
 }));
 
 import { GET, POST } from "@/app/api/cms/sites/route";
@@ -29,7 +30,30 @@ const SESSION = {
   userId: "usr_sites_1",
   organizationId: "org_session",
   permissions: [PERMISSIONS.WEBSITE_BUILDER.SITES_READ],
+  activeBranchId: "br_session",
 };
+const IDEMPOTENCY_KEY = "idem-sites-1";
+const JSON_CONTENT_TYPE = "application/json";
+const VALIDATION_FAILED = "VALIDATION_FAILED";
+const SITE_TITLE = "Riverview Bistro";
+const SITE_SLUG = "riverview-bistro";
+const CREATE_SITE_BODY = {
+  title: SITE_TITLE,
+  slug: SITE_SLUG,
+  templateId: "tpl_bistro",
+};
+
+function postRequest(body: unknown, headers: Record<string, string> = {}): NextRequest {
+  return new NextRequest("https://tenant.example.com/api/cms/sites", {
+    method: "POST",
+    headers: {
+      "content-type": JSON_CONTENT_TYPE,
+      "Idempotency-Key": IDEMPOTENCY_KEY,
+      ...headers,
+    },
+    body: JSON.stringify(body),
+  });
+}
 
 function request(path: string, headers: Record<string, string> = {}): NextRequest {
   return new NextRequest(`https://tenant.example.com${path}`, { headers });
@@ -119,9 +143,7 @@ describe("GET /api/cms/sites authorization", () => {
 
 describe("GET /api/cms/sites tenant identity", () => {
   it("uses the session organization and never the x-tenant-id header", async () => {
-    const response = await GET(
-      request(SITES_PATH, { "x-tenant-id": "org_attacker" })
-    );
+    const response = await GET(request(SITES_PATH, { "x-tenant-id": "org_attacker" }));
 
     expect(response.status).toBe(200);
     expect(mocks.listWebsiteSites).toHaveBeenCalledWith({
@@ -167,30 +189,16 @@ describe("GET /api/cms/sites tenant identity", () => {
 });
 
 describe("POST /api/cms/sites authorization", () => {
-  const VALID_BODY = {
-    title: "Riverview Bistro",
-    slug: "riverview-bistro",
-    initialTemplate: "hero_starter",
-  };
-
-  function postRequest(body: unknown): NextRequest {
-    return new NextRequest("https://tenant.example.com/api/cms/sites", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(body),
-    });
-  }
-
   it("denies a member without cms:sites:write", async () => {
     mocks.evaluateAccess.mockResolvedValue({
       kind: "denied",
       reason: "capability_denied",
     });
 
-    const response = await POST(postRequest(VALID_BODY));
+    const response = await POST(postRequest(CREATE_SITE_BODY));
 
     expect(response.status).toBe(403);
-    expect(mocks.createSite).not.toHaveBeenCalled();
+    expect(mocks.provisionSite).not.toHaveBeenCalled();
   });
 
   it("denies a tenant without the installation", async () => {
@@ -199,28 +207,71 @@ describe("POST /api/cms/sites authorization", () => {
       reason: "app_not_installed",
     });
 
-    const response = await POST(postRequest(VALID_BODY));
+    const response = await POST(postRequest(CREATE_SITE_BODY));
 
     expect(response.status).toBe(403);
-    expect(mocks.createSite).not.toHaveBeenCalled();
+    expect(mocks.provisionSite).not.toHaveBeenCalled();
   });
+});
 
-  it("creates from the session organization only", async () => {
-    mocks.createSite.mockResolvedValue({
-      site: { id: "site_new", title: "Riverview Bistro", slug: "riverview-bistro", status: "DRAFT" },
+describe("POST /api/cms/sites contract", () => {
+  it("creates from the session organization and branch only", async () => {
+    mocks.provisionSite.mockResolvedValue({
+      site: {
+        id: "site_new",
+        title: SITE_TITLE,
+        slug: SITE_SLUG,
+        status: "DRAFT",
+      },
       homePage: { id: "page_new", title: "Home", slug: "/" },
+      pages: [],
+      replayed: false,
     });
 
-    const response = await POST(postRequest(VALID_BODY));
+    const response = await POST(postRequest(CREATE_SITE_BODY, { "x-tenant-id": "org_attacker" }));
 
     expect(response.status).toBe(201);
     expect(mocks.evaluateAccess).toHaveBeenCalledWith({
       actor: SESSION,
       capability: PERMISSIONS.WEBSITE_BUILDER.SITES_WRITE,
     });
-    expect(mocks.createSite).toHaveBeenCalledWith(
-      expect.objectContaining({ organizationId: "org_session" })
+    expect(mocks.provisionSite).toHaveBeenCalledWith({
+      organizationId: "org_session",
+      branchId: "br_session",
+      actorUserId: "usr_sites_1",
+      title: SITE_TITLE,
+      slug: SITE_SLUG,
+      templateId: "tpl_bistro",
+      idempotencyKey: IDEMPOTENCY_KEY,
+      primaryLocale: null,
+      brandName: SITE_TITLE,
+    });
+  });
+
+  it("requires a valid Idempotency-Key before provisioning", async () => {
+    const response = await POST(
+      new NextRequest("https://tenant.example.com/api/cms/sites", {
+        method: "POST",
+        headers: { "content-type": JSON_CONTENT_TYPE },
+        body: JSON.stringify(CREATE_SITE_BODY),
+      }),
     );
+    const body = await readJson(response);
+
+    expect(response.status).toBe(400);
+    expect(body.code).toBe(VALIDATION_FAILED);
+    expect(mocks.provisionSite).not.toHaveBeenCalled();
+  });
+
+  it("refuses the removed initialTemplate enum", async () => {
+    const response = await POST(
+      postRequest({ ...CREATE_SITE_BODY, initialTemplate: "hero_starter" }),
+    );
+    const body = await readJson(response);
+
+    expect(response.status).toBe(400);
+    expect(body.code).toBe(VALIDATION_FAILED);
+    expect(mocks.provisionSite).not.toHaveBeenCalled();
   });
 });
 
@@ -230,7 +281,7 @@ describe("GET /api/cms/sites validation and failures", () => {
     const body = await readJson(response);
 
     expect(response.status).toBe(400);
-    expect(body.code).toBe("VALIDATION_FAILED");
+    expect(body.code).toBe(VALIDATION_FAILED);
     expect(mocks.listWebsiteSites).not.toHaveBeenCalled();
   });
 
@@ -241,7 +292,7 @@ describe("GET /api/cms/sites validation and failures", () => {
     const body = await readJson(response);
 
     expect(response.status).toBe(400);
-    expect(body.code).toBe("VALIDATION_FAILED");
+    expect(body.code).toBe(VALIDATION_FAILED);
   });
 
   it("maps an unexpected read failure to a generic problem without leaking it", async () => {

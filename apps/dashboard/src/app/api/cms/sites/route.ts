@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { PERMISSIONS, PLATFORM_ERROR_CODE, PLATFORM_ERROR_CODES } from "@suite/core";
 import {
-  PERMISSIONS,
-  PLATFORM_ERROR_CODE,
-  PLATFORM_ERROR_CODES,
-} from "@suite/core";
-import { SiteService } from "@suite/website-builder/services";
+  provisionSiteFromTemplate,
+  SITE_IDEMPOTENCY_KEY_PATTERN,
+} from "@suite/website-builder/services";
+import { isAppError } from "@suite/core/errors";
 import { problemResponse, successResponse, zodProblemResponse } from "@/lib/problem-response";
 import { quotaAwareProblemResponse } from "@/lib/quota-problem";
 import { getAuthenticatedSession } from "@/lib/session-helper";
@@ -14,20 +14,20 @@ import { listWebsiteSites } from "@/services/websites.service";
 import { websiteSitesQuerySchema } from "@/app/(dashboard)/websites/websites.contract";
 import type { WebsiteBuilderDenialReason } from "@/components/layout/website-builder-nav.config";
 
-const CreateSiteSchema = z.object({
-  title: z.string().min(1, "Website title is required"),
-  slug: z.string().min(1, "Subdomain slug is required"),
-  branchId: z.string().optional(),
-  primaryLocale: z.string().default("en"),
-  timezone: z.string().default("Asia/Kolkata"),
-  brandName: z.string().optional(),
-  initialTemplate: z.enum(["blank", "hero_starter"]).default("hero_starter"),
-});
+const CreateSiteSchema = z
+  .object({
+    title: z.string().trim().min(1, "Website title is required").max(120),
+    slug: z.string().trim().min(1, "Subdomain slug is required").max(63),
+    templateId: z.string().trim().min(1).max(64).nullable().optional(),
+  })
+  .strict();
 
-function accessProblem(
-  reason: WebsiteBuilderDenialReason,
-  instance: string
-): NextResponse {
+function readIdempotencyKey(request: NextRequest): string | null {
+  const key = request.headers.get("idempotency-key")?.trim() ?? "";
+  return SITE_IDEMPOTENCY_KEY_PATTERN.test(key) ? key : null;
+}
+
+function accessProblem(reason: WebsiteBuilderDenialReason, instance: string): NextResponse {
   switch (reason) {
     case "app_not_installed":
       return problemResponse({
@@ -42,7 +42,8 @@ function accessProblem(
         status: PLATFORM_ERROR_CODES.CAPABILITY_DENIED.status,
         code: PLATFORM_ERROR_CODE.CAPABILITY_DENIED,
         title: PLATFORM_ERROR_CODES.CAPABILITY_DENIED.title,
-        detail: "Your role does not include the capability required for this Website Builder action.",
+        detail:
+          "Your role does not include the capability required for this Website Builder action.",
         instance,
       });
     case "entitlements_unavailable":
@@ -122,6 +123,60 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   }
 }
 
+type CreateSiteBody = z.infer<typeof CreateSiteSchema>;
+
+function missingIdempotencyProblem(instance: string): NextResponse {
+  return problemResponse({
+    status: 400,
+    code: PLATFORM_ERROR_CODE.VALIDATION_FAILED,
+    title: "Idempotency Key Required",
+    detail:
+      "Send an Idempotency-Key header with 8 to 128 letters, digits, dot, colon, underscore or hyphen.",
+    instance,
+  });
+}
+
+async function readCreateSiteBody(
+  request: NextRequest,
+): Promise<
+  | { readonly kind: "ok"; readonly body: CreateSiteBody }
+  | { readonly kind: "invalid"; readonly response: NextResponse }
+> {
+  const rawBody: unknown = await request.json().catch(() => ({}));
+  const parsed = CreateSiteSchema.safeParse(rawBody);
+  if (!parsed.success) {
+    return {
+      kind: "invalid",
+      response: zodProblemResponse(parsed.error, {
+        status: 400,
+        code: PLATFORM_ERROR_CODE.VALIDATION_FAILED,
+        title: "Invalid Site Provisioning Payload",
+        detail: "The site provisioning payload is invalid.",
+      }),
+    };
+  }
+  return { kind: "ok", body: parsed.data };
+}
+
+function provisioningProblem(error: unknown, instance: string): NextResponse {
+  if (isAppError(error)) {
+    return problemResponse({
+      status: error.status,
+      code: error.code,
+      title: error.title,
+      detail: error.detail,
+      type: error.type,
+      instance,
+      ...(error.invalidParams === undefined ? {} : { invalidParams: error.invalidParams }),
+    });
+  }
+  return quotaAwareProblemResponse(error, {
+    code: PLATFORM_ERROR_CODE.INTERNAL_ERROR,
+    detail: "An unexpected error occurred while provisioning site.",
+    instance,
+  });
+}
+
 /**
  * Creates a site from the authenticated tenant session. The tenant id is never
  * accepted from a header or body, and the caller must hold cms:sites:write
@@ -140,32 +195,28 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return accessProblem(access.reason, request.nextUrl.pathname);
   }
 
+  const idempotencyKey = readIdempotencyKey(request);
+  if (idempotencyKey === null) {
+    return missingIdempotencyProblem(request.nextUrl.pathname);
+  }
+  const parsed = await readCreateSiteBody(request);
+  if (parsed.kind === "invalid") {
+    return parsed.response;
+  }
+
   try {
-    const rawBody = await request.json().catch(() => ({}));
-
-    const parsed = CreateSiteSchema.safeParse(rawBody);
-    if (!parsed.success) {
-      return zodProblemResponse(parsed.error, {
-        status: 400,
-        code: PLATFORM_ERROR_CODE.VALIDATION_FAILED,
-        title: "Invalid Site Provisioning Payload",
-        detail: "The site provisioning payload is invalid.",
-      });
-    }
-
-    const body = parsed.data;
-    const service = new SiteService();
-    const result = await service.createSite({
+    const body = parsed.body;
+    const result = await provisionSiteFromTemplate({
       organizationId: auth.session.organizationId,
-      branchId: body.branchId,
+      branchId: auth.session.activeBranchId ?? null,
+      actorUserId: auth.session.userId,
       title: body.title,
       slug: body.slug,
-      primaryLocale: body.primaryLocale,
-      timezone: body.timezone,
-      brandName: body.brandName ?? body.title,
-      initialTemplate: body.initialTemplate,
+      templateId: body.templateId ?? null,
+      idempotencyKey,
+      primaryLocale: null,
+      brandName: body.title,
     });
-
     return successResponse(
       {
         success: true,
@@ -181,13 +232,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           slug: result.homePage.slug,
         },
       },
-      { status: 201 }
+      { status: 201 },
     );
-  } catch (err: unknown) {
-    console.error("Error provisioning CMS site:", err);
-    return quotaAwareProblemResponse(err, {
-      code: PLATFORM_ERROR_CODE.INTERNAL_ERROR,
-      detail: "An unexpected error occurred while provisioning site.",
-    });
+  } catch (error: unknown) {
+    console.error("Error provisioning CMS site:", error);
+    return provisioningProblem(error, request.nextUrl.pathname);
   }
 }

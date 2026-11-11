@@ -1,11 +1,8 @@
-import {
-  prisma,
-  Prisma,
-  tenantWriteQuotaGuard,
-  type PrismaClient,
-  type QuotaGuard,
-} from "@suite/db";
-import { QUOTA_KEYS } from "@suite/core";
+import { randomUUID } from "node:crypto";
+import { prisma, type PrismaClient } from "@suite/db";
+import { getHostModelConfig } from "@suite/core";
+import { ValidationError } from "@suite/core/errors";
+import { provisionSiteFromTemplate, siteHostname } from "./site-provisioning.js";
 
 export interface CreateSiteInput {
   organizationId: string;
@@ -13,9 +10,20 @@ export interface CreateSiteInput {
   title: string;
   slug: string;
   primaryLocale?: string;
-  timezone?: string;
   brandName?: string;
-  initialTemplate?: "blank" | "hero_starter";
+  /** The published catalog TEMPLATE item this site copies (FR-017). */
+  templateId?: string | null;
+  /** The verified session user recorded in the creation audit. */
+  actorUserId?: string;
+  /** Replay key for create-from-template (CT-4). */
+  idempotencyKey?: string;
+  /**
+   * The unmounted admin prototype still constructs these two fields in its
+   * request type. They are refused here: a site starts from a published
+   * catalog template and its clock comes from its tenant branch.
+   */
+  initialTemplate?: string;
+  timezone?: string;
 }
 
 export interface SiteSummary {
@@ -28,7 +36,7 @@ export interface SiteSummary {
   timezone: string;
   primaryLocale: string;
   pagesCount: number;
-  primaryDomain?: string | null;
+  primaryDomain: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -39,88 +47,33 @@ export interface SubdomainAvailabilityResult {
   suggestions: string[];
 }
 
+/** Actor recorded for an internal caller that has no verified session user. */
+const INTERNAL_PROVISIONING_ACTOR = "internal:site-provisioning";
+
+function rejectLegacyProvisioningFields(input: CreateSiteInput): void {
+  if (input.initialTemplate !== undefined) {
+    throw new ValidationError(
+      "initialTemplate is no longer accepted; choose a published catalog template.",
+      [{ name: "initialTemplate", reason: "Pass a published templateId instead." }],
+      { code: "VALIDATION_FAILED" },
+    );
+  }
+  if (input.timezone !== undefined) {
+    throw new ValidationError(
+      "A site timezone is derived from its tenant branch and cannot be supplied.",
+      [{ name: "timezone", reason: "Select an operational branch with the intended timezone." }],
+      { code: "VALIDATION_FAILED" },
+    );
+  }
+}
+
 /**
  * Service for multi-tenant CmsSite domain operations backed by PostgreSQL via Prisma.
+ * Creation delegates to the one provisioning implementation so the dashboard,
+ * the API and the module share the same transaction, pages and audit row.
  */
-async function resolveInitialHomeAst(
-  db: PrismaClient,
-  input: CreateSiteInput
-): Promise<Record<string, unknown>> {
-  let initialHomeAst: Record<string, unknown> = {
-    root: {
-      id: "root-section-1",
-      type: "section",
-      children: [],
-    },
-  };
-
-  if (!input.initialTemplate) {
-    return initialHomeAst;
-  }
-
-  const template = await db.cmsTemplate.findFirst({
-    where: {
-      OR: [
-        { id: input.initialTemplate },
-        { id: `tpl_${input.initialTemplate}` },
-      ],
-    },
-  });
-
-  if (!template?.blueprintJson || typeof template.blueprintJson !== "object") {
-    return initialHomeAst;
-  }
-
-  const blueprint = template.blueprintJson as Record<string, unknown>;
-  if (!blueprint.ast || typeof blueprint.ast !== "object") {
-    return initialHomeAst;
-  }
-
-  initialHomeAst = JSON.parse(JSON.stringify(blueprint.ast));
-  const root = initialHomeAst.root as Record<string, unknown> | undefined;
-  if (!root || !Array.isArray(root.children)) {
-    return initialHomeAst;
-  }
-
-  const hero = (root.children as Record<string, unknown>[]).find(
-    (child) => child.type === "hero"
-  );
-  if (hero?.props && typeof hero.props === "object") {
-    (hero.props as Record<string, unknown>).heading = `Welcome to ${input.title}`;
-  }
-  return initialHomeAst;
-}
-
-interface ProvisionSiteInput {
-  readonly tx: Prisma.TransactionClient;
-  readonly input: CreateSiteInput;
-  readonly normalizedSlug: string;
-  readonly initialHomeAst: Record<string, unknown>;
-}
-
-interface CreateSiteRecordInput {
-  readonly tx: Prisma.TransactionClient;
-  readonly input: CreateSiteInput;
-  readonly normalizedSlug: string;
-}
-
-interface CreateHomePageInput {
-  readonly tx: Prisma.TransactionClient;
-  readonly input: CreateSiteInput;
-  readonly siteId: string;
-  readonly initialHomeAst: Record<string, unknown>;
-}
-
 export class SiteService {
-  constructor(
-    private readonly db = prisma,
-    private readonly quotaGuard: QuotaGuard = tenantWriteQuotaGuard
-  ) {}
-
-  /** Composition without an undefined positional placeholder. */
-  static withQuotaGuard(quotaGuard: QuotaGuard): SiteService {
-    return new SiteService(prisma, quotaGuard);
-  }
+  constructor(private readonly db: PrismaClient = prisma) {}
 
   /**
    * Lists all sites belonging to the specified organization with aggregate page counts.
@@ -150,7 +103,7 @@ export class SiteService {
       timezone: s.timezone,
       primaryLocale: s.primaryLocale,
       pagesCount: s._count.pages,
-      primaryDomain: s.domains[0]?.hostname || `${s.slug}.business-os.site`,
+      primaryDomain: s.domains[0]?.hostname ?? null,
       createdAt: s.createdAt.toISOString(),
       updatedAt: s.updatedAt.toISOString(),
     }));
@@ -160,7 +113,7 @@ export class SiteService {
    * Retrieves single site metadata with settings and domains, enforcing strict tenant boundary.
    */
   public async getSite(organizationId: string, siteId: string) {
-    const site = await this.db.cmsSite.findUnique({
+    return this.db.cmsSite.findUnique({
       where: {
         id_organizationId: {
           id: siteId,
@@ -173,19 +126,19 @@ export class SiteService {
         domains: true,
       },
     });
-
-    return site;
   }
 
   /**
    * Checks subdomain availability across the entire platform.
    * If claimed, dynamically queries DB to find available alternatives.
    */
-  public async checkSubdomainAvailability(
-    subdomain: string
-  ): Promise<SubdomainAvailabilityResult> {
-    const normalized = subdomain.toLowerCase().trim().replace(/[^a-z0-9-]/g, "-");
-    const fullHostname = `${normalized}.business-os.site`;
+  public async checkSubdomainAvailability(subdomain: string): Promise<SubdomainAvailabilityResult> {
+    const normalized = subdomain
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9-]/g, "-");
+    const hostRoot = getHostModelConfig().tenantRootDomain;
+    const fullHostname = siteHostname(normalized, hostRoot);
 
     const existingDomain = await this.db.cmsDomain.findUnique({
       where: { hostname: fullHostname },
@@ -202,12 +155,12 @@ export class SiteService {
     const candidates = Array.from({ length: 10 }, (_, index) => `${normalized}-${index + 1}`);
     const conflicts = await Promise.all(
       candidates.map((candidate) =>
-        this.db.cmsDomain.findUnique({ where: { hostname: `${candidate}.business-os.site` } })
-      )
+        this.db.cmsDomain.findUnique({
+          where: { hostname: siteHostname(candidate, hostRoot) },
+        }),
+      ),
     );
-    const suggestions = candidates
-      .filter((_, index) => conflicts[index] === null)
-      .slice(0, 3);
+    const suggestions = candidates.filter((_, index) => conflicts[index] === null).slice(0, 3);
 
     return {
       subdomain: normalized,
@@ -217,96 +170,22 @@ export class SiteService {
   }
 
   /**
-   * Provisions a brand-new website atomically inside an ACID transaction in < 200ms.
-   * Creates Site, SiteSettings, CmsDomain, and default Home Page with CmsPageContent.
+   * Provisions a brand-new website atomically inside one ACID transaction:
+   * site, settings, host-model primary domain, appearance snapshot, every
+   * copied PageAst page and the creation audit row.
    */
   public async createSite(input: CreateSiteInput) {
-    const normalizedSlug = input.slug
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9-]/g, "-");
-    const initialHomeAst = await resolveInitialHomeAst(this.db, input);
-
-    return this.db.$transaction((tx) =>
-      this.provisionSite({ tx, input, normalizedSlug, initialHomeAst })
-    );
-  }
-
-  private async provisionSite(options: ProvisionSiteInput) {
-    const { tx, input, normalizedSlug, initialHomeAst } = options;
-
-    // A site provisions one subdomain and one home page. Only the page seat is
-    // charged; a *.business-os.site subdomain is not a custom domain.
-    await this.quotaGuard.assertAvailable(tx, {
+    rejectLegacyProvisioningFields(input);
+    return provisionSiteFromTemplate({
       organizationId: input.organizationId,
-      resourceKey: QUOTA_KEYS.PAGES,
-    });
-
-    const site = await this.createSiteRecord({ tx, input, normalizedSlug });
-    const homePage = await this.createHomePage({
-      tx,
-      input,
-      siteId: site.id,
-      initialHomeAst,
-    });
-    return { site, homePage };
-  }
-
-  private async createSiteRecord(options: CreateSiteRecordInput) {
-    const { tx, input, normalizedSlug } = options;
-    return tx.cmsSite.create({
-      data: {
-        organizationId: input.organizationId,
-        branchId: input.branchId ?? null,
-        title: input.title,
-        slug: normalizedSlug,
-        primaryLocale: input.primaryLocale ?? "en",
-        timezone: input.timezone ?? "Asia/Kolkata",
-        status: "DRAFT",
-        settings: {
-          create: {
-            brandName: input.brandName ?? input.title,
-          },
-        },
-        seoSettings: {
-          create: {
-            metaTitle: input.title,
-          },
-        },
-        domains: {
-          create: {
-            hostname: `${normalizedSlug}.business-os.site`,
-            isPrimary: true,
-            isSubdomain: true,
-            status: "ACTIVE",
-            verificationToken: `vtoken_${Date.now()}`,
-            verifiedAt: new Date(),
-          },
-        },
-      },
-    });
-  }
-
-  private async createHomePage(options: CreateHomePageInput) {
-    const { tx, input, siteId, initialHomeAst } = options;
-    return tx.cmsPage.create({
-      data: {
-        organizationId: input.organizationId,
-        siteId,
-        title: "Home",
-        slug: "/",
-        isHomePage: true,
-        status: "DRAFT",
-        revision: 1,
-        content: {
-          create: {
-            draftAst: initialHomeAst as unknown as Prisma.InputJsonValue,
-          },
-        },
-      },
-      include: {
-        content: true,
-      },
+      branchId: input.branchId ?? null,
+      actorUserId: input.actorUserId ?? INTERNAL_PROVISIONING_ACTOR,
+      title: input.title,
+      slug: input.slug,
+      templateId: input.templateId ?? null,
+      idempotencyKey: input.idempotencyKey ?? randomUUID(),
+      primaryLocale: input.primaryLocale ?? null,
+      brandName: input.brandName ?? null,
     });
   }
 
@@ -339,8 +218,7 @@ export class SiteService {
 }
 
 /**
- * The re-baselined T-04 provisioning path lives beside the legacy prototype
- * class so the authenticated /api/v1/cms routes can adopt it immediately while
- * the prototype route layer is retired in #356 (T085).
+ * The one provisioning implementation lives in site-provisioning so the
+ * authenticated API and the dashboard BFF share it.
  */
 export * from "./site-provisioning.js";

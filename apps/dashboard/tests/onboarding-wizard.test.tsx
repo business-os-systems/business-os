@@ -1,7 +1,7 @@
 import React from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderToString } from "react-dom/server";
-import SiteOnboardingWizard from "../src/app/(dashboard)/sites/onboarding/page";
+import SiteOnboardingPage from "../src/app/(dashboard)/sites/onboarding/page";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
@@ -9,22 +9,28 @@ vi.mock("next/navigation", () => ({
   }),
 }));
 
-describe("Step-by-Step Site Onboarding Wizard (S4-3)", () => {
-  it("renders Step 1 with website title and subdomain input fields", () => {
-    const html = renderToString(<SiteOnboardingWizard />);
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
-    expect(html).toContain("Website Onboarding Wizard");
-    expect(html).toContain("Step 1 of 3");
-    expect(html).toContain("Name Your Website &amp; Subdomain");
-    expect(html).toContain(".business-os.site");
-    expect(html).toContain("Next: Starter Template");
+describe("Site onboarding is the one create-site surface", () => {
+  it("renders the config-driven create-site wizard on the linked route", () => {
+    vi.stubEnv("DOMAIN_ROOT", "localhost");
+    const html = renderToString(<SiteOnboardingPage />);
+
+    expect(html).toContain("Create a website");
+    expect(html).toContain("Name the site");
+    expect(html).toContain("Site name");
+    expect(html).toContain("Continue");
+    expect(html).not.toContain("hero_starter");
   });
 
-  it("renders website title and subdomain configuration", () => {
-    const html = renderToString(<SiteOnboardingWizard />);
+  it("fails closed with an explicit message when the host root is unconfigured", () => {
+    vi.stubEnv("DOMAIN_ROOT", "");
 
-    expect(html).toContain("Website or Brand Name");
-    expect(html).toContain("Staging Subdomain");
-    expect(html).toContain("acme-corp");
+    const html = renderToString(<SiteOnboardingPage />);
+
+    expect(html).toContain("tenant host root is not configured");
+    expect(html).not.toContain("Create a website");
   });
 });

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import {
   Prisma,
@@ -7,8 +8,14 @@ import {
   type CmsSite,
   type QuotaGuard,
 } from "@suite/db";
-import { QUOTA_KEYS } from "@suite/core";
-import { ConflictError, InternalServerError, NotFoundError, ValidationError } from "@suite/core/errors";
+import { getHostModelConfig, PLATFORM_ERROR_CODE, QUOTA_KEYS } from "@suite/core";
+import {
+  ConflictError,
+  InternalServerError,
+  NotFoundError,
+  ServiceUnavailableError,
+  ValidationError,
+} from "@suite/core/errors";
 import { PageAstSchema } from "../ast/schema.js";
 import type { PageAst } from "../ast/types.js";
 import { DEFAULT_APPEARANCE_TOKENS } from "../appearance/tokens.js";
@@ -26,6 +33,9 @@ export {
 
 const TEMPLATE_PAGE_MAX = 20;
 const MAX_DERIVED_PATH_LENGTH = 160;
+
+/** Replay-key format shared by every create-site surface (CT-4). */
+export const SITE_IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9._:-]{8,128}$/;
 
 /** A published catalog TEMPLATE carries one AST per page (contract 2026-03). */
 export const TemplateBlueprintSchema = z
@@ -45,6 +55,8 @@ export interface ProvisionSiteRequest {
   readonly slug: string;
   readonly templateId: string | null;
   readonly idempotencyKey: string;
+  readonly primaryLocale: string | null;
+  readonly brandName: string | null;
 }
 
 export interface ProvisionedSite {
@@ -63,6 +75,63 @@ interface PagePlan {
 
 function emptyPageAst(): PageAst {
   return { version: 1, schemaVersion: "2026-03", sections: [] };
+}
+
+/**
+ * Composes the tenant host from the declared host model (FR-117). An
+ * unconfigured root fails closed instead of stamping a literal domain.
+ */
+export function siteHostname(slug: string, tenantRootDomain: string | null): string {
+  if (tenantRootDomain === null) {
+    throw new ServiceUnavailableError(
+      "The tenant host root is not configured for this deployment.",
+      { code: PLATFORM_ERROR_CODE.DEPENDENCY_UNAVAILABLE },
+    );
+  }
+  return slug + "." + tenantRootDomain;
+}
+
+/** The site clock is its tenant branch clock, never a client value (CT-8). */
+async function resolveSiteTimezone(
+  tx: Prisma.TransactionClient,
+  request: ProvisionSiteRequest,
+): Promise<string | null> {
+  if (request.branchId === null) {
+    return null;
+  }
+  const branch = await tx.branch.findFirst({
+    where: { id: request.branchId, organizationId: request.organizationId },
+    select: { timezone: true },
+  });
+  if (branch === null) {
+    throw new NotFoundError("The operational branch was not found in this workspace.", {
+      code: "NOT_FOUND",
+    });
+  }
+  return branch.timezone;
+}
+
+async function ensureSiteDomain(
+  tx: Prisma.TransactionClient,
+  site: { readonly id: string; readonly organizationId: string; readonly slug: string },
+): Promise<void> {
+  const existing = await tx.cmsDomain.findFirst({
+    where: { organizationId: site.organizationId, siteId: site.id, isPrimary: true },
+    select: { id: true },
+  });
+  if (existing !== null) return;
+  await tx.cmsDomain.create({
+    data: {
+      organizationId: site.organizationId,
+      siteId: site.id,
+      hostname: siteHostname(site.slug, getHostModelConfig().tenantRootDomain),
+      isPrimary: true,
+      isSubdomain: true,
+      status: "ACTIVE",
+      verificationToken: "vt_" + randomUUID(),
+      verifiedAt: new Date(),
+    },
+  });
 }
 
 function slugifyTitle(title: string, fallback: string): string {
@@ -115,7 +184,7 @@ function blankHomePage(): PagePlan {
 
 async function readReplay(
   tx: Prisma.TransactionClient,
-  request: ProvisionSiteRequest
+  request: ProvisionSiteRequest,
 ): Promise<ProvisionedSite | null> {
   const site = await tx.cmsSite.findFirst({
     where: { organizationId: request.organizationId, idempotencyKey: request.idempotencyKey },
@@ -124,12 +193,12 @@ async function readReplay(
     return null;
   }
   if (site.title !== request.title || site.slug !== request.slug) {
-    throw new ConflictError(
-      "This request id was already used for a different site.",
-      { code: "IDEMPOTENCY_CONFLICT" }
-    );
+    throw new ConflictError("This request id was already used for a different site.", {
+      code: "IDEMPOTENCY_CONFLICT",
+    });
   }
   await ensureSiteAppearance(tx, site);
+  await ensureSiteDomain(tx, site);
   const pages = await tx.cmsPage.findMany({
     where: { organizationId: request.organizationId, siteId: site.id },
     orderBy: [{ isHomePage: "desc" }, { orderIndex: "asc" }, { id: "asc" }],
@@ -148,7 +217,7 @@ async function readReplay(
  */
 async function ensureSiteAppearance(
   tx: Prisma.TransactionClient,
-  site: { readonly id: string; readonly organizationId: string }
+  site: { readonly id: string; readonly organizationId: string },
 ): Promise<void> {
   const existing = await tx.cmsSiteAppearance.findUnique({
     where: { siteId: site.id },
@@ -170,11 +239,9 @@ async function ensureSiteAppearance(
 
 async function resolveTemplate(
   tx: Prisma.TransactionClient,
-  request: ProvisionSiteRequest
+  request: ProvisionSiteRequest,
 ): Promise<TemplateBlueprint | null> {
-  if (request.templateId === null) {
-    return null;
-  }
+  if (request.templateId === null) return null;
   const template = await tx.cmsCatalogItem.findFirst({
     where: {
       id: request.templateId,
@@ -189,18 +256,22 @@ async function resolveTemplate(
     select: { id: true, currentVersion: true },
   });
   if (template === null) {
-    throw new NotFoundError("The requested template is not published or is not available to this workspace.", {
-      code: "NOT_FOUND",
-    });
+    throw new NotFoundError(
+      "The requested template is not published or is not available to this workspace.",
+      {
+        code: "NOT_FOUND",
+      },
+    );
   }
   const published = await readPublishedDefinitions(tx, [template]);
-  const definition = published.get(
-    publishedDefinitionKey(template.id, template.currentVersion)
-  );
+  const definition = published.get(publishedDefinitionKey(template.id, template.currentVersion));
   if (definition === undefined) {
-    throw new NotFoundError("The requested template has no published version available to this workspace.", {
-      code: "NOT_FOUND",
-    });
+    throw new NotFoundError(
+      "The requested template has no published version available to this workspace.",
+      {
+        code: "NOT_FOUND",
+      },
+    );
   }
   const parsed = TemplateBlueprintSchema.safeParse(definition);
   if (!parsed.success) {
@@ -210,7 +281,7 @@ async function resolveTemplate(
         name: issue.path.join("."),
         reason: issue.message,
       })),
-      { code: "VALIDATION_FAILED" }
+      { code: "VALIDATION_FAILED" },
     );
   }
   return parsed.data;
@@ -225,6 +296,7 @@ interface CreateSiteRowsInput {
 
 async function createSiteRows(input: CreateSiteRowsInput): Promise<ProvisionedSite> {
   const { tx, request, slug, plans } = input;
+  const timezone = await resolveSiteTimezone(tx, request);
   const site = await tx.cmsSite.create({
     data: {
       organizationId: request.organizationId,
@@ -232,10 +304,13 @@ async function createSiteRows(input: CreateSiteRowsInput): Promise<ProvisionedSi
       title: request.title,
       slug,
       idempotencyKey: request.idempotencyKey,
-      settings: { create: { brandName: request.title } },
+      ...(timezone === null ? {} : { timezone }),
+      ...(request.primaryLocale === null ? {} : { primaryLocale: request.primaryLocale }),
+      settings: { create: { brandName: request.brandName ?? request.title } },
     },
   });
   await ensureSiteAppearance(tx, site);
+  await ensureSiteDomain(tx, site);
 
   const pages = await Promise.all(
     plans.map((plan, index) =>
@@ -251,8 +326,8 @@ async function createSiteRows(input: CreateSiteRowsInput): Promise<ProvisionedSi
           revision: 1,
           content: { create: { draftAst: plan.ast as unknown as Prisma.InputJsonValue } },
         },
-      })
-    )
+      }),
+    ),
   );
 
   const homePage = pages.find((page) => page.isHomePage);
@@ -281,7 +356,7 @@ async function createSiteRows(input: CreateSiteRowsInput): Promise<ProvisionedSi
 async function provisionInTransaction(
   tx: Prisma.TransactionClient,
   request: ProvisionSiteRequest,
-  quotaGuard: QuotaGuard
+  quotaGuard: QuotaGuard,
 ): Promise<ProvisionedSite> {
   const replay = await readReplay(tx, request);
   if (replay !== null) {
@@ -310,11 +385,11 @@ async function replayAfterConflict(request: ProvisionSiteRequest): Promise<Provi
  */
 export async function provisionSiteFromTemplate(
   request: ProvisionSiteRequest,
-  quotaGuard: QuotaGuard = tenantWriteQuotaGuard
+  quotaGuard: QuotaGuard = tenantWriteQuotaGuard,
 ): Promise<ProvisionedSite> {
   try {
     return await withTenantContext(request.organizationId, (tx) =>
-      provisionInTransaction(tx, request, quotaGuard)
+      provisionInTransaction(tx, request, quotaGuard),
     );
   } catch (error: unknown) {
     if (isUniqueConstraintViolation(error)) {
