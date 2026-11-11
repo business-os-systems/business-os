@@ -441,6 +441,9 @@ jobs:
       - name: Build storefront for release gates
         run: pnpm --filter @suite/web build
 
+      - name: Seed release-gate fixtures
+        run: pnpm exec tsx tooling/quality/e2e/setup-release-gates.ts
+
       - name: Accessibility Gate (axe WCAG 2.1 A/AA + keyboard paths)
         run: pnpm --filter @suite/web exec playwright test --project=accessibility
 

@@ -48,6 +48,9 @@ const CI_TOOLING = /^tooling\//;
 // browser (a11y, keyboard paths and performance budgets). Their Vitest suites
 // still run, they are simply not part of the line-coverage diff.
 const NEXT_WEB_SURFACE = /^apps\/web\/src\//;
+// App-router route files are thin server components exercised by Playwright;
+// their logic lives in tested services/components.
+const NEXT_APP_ROUTE = /^apps\/(web|dashboard)\/src\/app\//;
 
 const HUNK_HEADER = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/;
 const UNSAFE_BASE_REF = /[\s~^:?*\[\]\\]|\.\./;
@@ -77,6 +80,7 @@ export function isIgnoredPath(filePath) {
     DECLARATION_FILE.test(filePath) ||
     CI_TOOLING.test(filePath) ||
     NEXT_WEB_SURFACE.test(filePath) ||
+    NEXT_APP_ROUTE.test(filePath) ||
     filePath.startsWith(".github/")
   );
 }

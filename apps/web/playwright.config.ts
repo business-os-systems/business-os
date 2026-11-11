@@ -116,7 +116,7 @@ export default defineConfig({
     },
     {
       command:
-        "pnpm exec tsx ../../tooling/quality/e2e/setup-release-gates.ts && pnpm --filter @suite/dashboard exec next dev -p " +
+        "pnpm --filter @suite/dashboard exec next dev -p " +
         String(DASHBOARD_PORT),
       port: DASHBOARD_PORT,
       reuseExistingServer: process.env.CI === undefined,
