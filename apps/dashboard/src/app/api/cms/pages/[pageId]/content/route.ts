@@ -1,7 +1,9 @@
+import { NextRequest } from "next/server";
 import { z } from "zod";
+import { PERMISSIONS } from "@suite/core";
 import { PageService } from "@suite/website-builder/services";
 import { validatePageAst } from "@suite/website-builder/ast";
-import { resolveTenantContext } from "@/lib/tenant-context";
+import { authorizeCmsRequest } from "@/lib/cms-request-guard";
 import { problemResponse, successResponse } from "@/lib/api-response";
 
 const PatchContentSchema = z.object({
@@ -10,18 +12,21 @@ const PatchContentSchema = z.object({
 });
 
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ pageId: string }> }
 ) {
+  const auth = await authorizeCmsRequest(
+    request,
+    PERMISSIONS.WEBSITE_BUILDER.PAGES_READ
+  );
+  if (auth.kind === "denied") {
+    return auth.response;
+  }
+
   try {
     const { pageId } = await params;
-    const tenantContext = await resolveTenantContext(request);
-    if (!tenantContext.ok) {
-      return tenantContext.response;
-    }
-
     const service = new PageService();
-    const page = await service.getPage(tenantContext.organizationId, pageId);
+    const page = await service.getPage(auth.session.organizationId, pageId);
 
     if (!page) {
       return problemResponse({
@@ -53,16 +58,19 @@ export async function GET(
 }
 
 export async function PATCH(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ pageId: string }> }
 ) {
+  const auth = await authorizeCmsRequest(
+    request,
+    PERMISSIONS.WEBSITE_BUILDER.PAGES_WRITE
+  );
+  if (auth.kind === "denied") {
+    return auth.response;
+  }
+
   try {
     const { pageId } = await params;
-    const tenantContext = await resolveTenantContext(request);
-    if (!tenantContext.ok) {
-      return tenantContext.response;
-    }
-
     const rawBody = await request.json().catch(() => ({}));
 
     const parsed = PatchContentSchema.safeParse(rawBody);
@@ -93,7 +101,7 @@ export async function PATCH(
 
     const service = new PageService();
     const result = await service.updateDraftContent({
-      organizationId: tenantContext.organizationId,
+      organizationId: auth.session.organizationId,
       pageId,
       expectedRevision,
       draftAst: astValidation.data as unknown as Record<string, unknown>,

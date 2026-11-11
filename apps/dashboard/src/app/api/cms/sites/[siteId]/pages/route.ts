@@ -1,9 +1,13 @@
-import { NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { z } from "zod";
-import { PLATFORM_ERROR_CODE } from "@suite/core";
+import { PERMISSIONS, PLATFORM_ERROR_CODE } from "@suite/core";
 import { PageService } from "@suite/website-builder/services";
-import { resolveTenantContext } from "@/lib/tenant-context";
-import { problemResponse } from "@/lib/problem-response";
+import { authorizeCmsRequest } from "@/lib/cms-request-guard";
+import {
+  problemResponse,
+  successResponse,
+  zodProblemResponse,
+} from "@/lib/problem-response";
 import { quotaAwareProblemResponse } from "@/lib/quota-problem";
 
 const CreatePageBodySchema = z.object({
@@ -14,20 +18,23 @@ const CreatePageBodySchema = z.object({
 });
 
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ siteId: string }> }
 ) {
+  const auth = await authorizeCmsRequest(
+    request,
+    PERMISSIONS.WEBSITE_BUILDER.PAGES_READ
+  );
+  if (auth.kind === "denied") {
+    return auth.response;
+  }
+
   try {
     const { siteId } = await params;
-    const tenantContext = await resolveTenantContext(request);
-    if (!tenantContext.ok) {
-      return tenantContext.response;
-    }
-
     const service = new PageService();
-    const pages = await service.listPages(tenantContext.organizationId, siteId);
+    const pages = await service.listPages(auth.session.organizationId, siteId);
 
-    return NextResponse.json({ pages }, { status: 200 });
+    return successResponse({ pages });
   } catch (err: unknown) {
     console.error("Error fetching CMS pages for site:", err);
     return problemResponse({
@@ -40,25 +47,28 @@ export async function GET(
 }
 
 export async function POST(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ siteId: string }> }
 ) {
+  const auth = await authorizeCmsRequest(
+    request,
+    PERMISSIONS.WEBSITE_BUILDER.PAGES_WRITE
+  );
+  if (auth.kind === "denied") {
+    return auth.response;
+  }
+
   try {
     const { siteId } = await params;
-    const tenantContext = await resolveTenantContext(request);
-    if (!tenantContext.ok) {
-      return tenantContext.response;
-    }
-
     const rawBody = await request.json().catch(() => ({}));
 
     const parsed = CreatePageBodySchema.safeParse(rawBody);
     if (!parsed.success) {
-      return problemResponse({
+      return zodProblemResponse(parsed.error, {
         status: 400,
-        code: "VALIDATION_ERROR",
+        code: PLATFORM_ERROR_CODE.VALIDATION_FAILED,
         title: "Invalid Page Creation Payload",
-        detail: parsed.error.issues[0]?.message ?? "Validation failed",
+        detail: "The page creation payload is invalid.",
       });
     }
 
@@ -70,7 +80,7 @@ export async function POST(
 
     const service = new PageService();
     const page = await service.createPage({
-      organizationId: tenantContext.organizationId,
+      organizationId: auth.session.organizationId,
       siteId,
       title,
       slug,
@@ -78,7 +88,7 @@ export async function POST(
       draftAst: body.draftAst,
     });
 
-    return NextResponse.json({ success: true, page }, { status: 201 });
+    return successResponse({ page }, { status: 201 });
   } catch (err: unknown) {
     console.error("Error creating CMS page for site:", err);
     return quotaAwareProblemResponse(err, {

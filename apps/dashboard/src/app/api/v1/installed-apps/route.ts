@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
-import { resolveTenantContext } from "@/lib/tenant-context";
+import { NextRequest, NextResponse } from "next/server";
+import { getAuthenticatedSession } from "@/lib/session-helper";
 import { problemResponse } from "@/lib/problem-response";
 import { listInstalledApps, type InstalledAppDto } from "@/services/installed-apps.service";
 
@@ -20,19 +20,19 @@ function toInstalledAppResponse(app: InstalledAppDto) {
   };
 }
 
-export async function GET(request: Request) {
-  try {
-    const tenantContext = await resolveTenantContext(request);
-    if (!tenantContext.ok) {
-      return tenantContext.response;
-    }
+export async function GET(request: NextRequest) {
+  const auth = await getAuthenticatedSession(request, { requireOrganization: true });
+  if (!auth.ok) {
+    return auth.response;
+  }
 
-    const apps = (await listInstalledApps(tenantContext.organizationId)).map(
+  try {
+    const apps = (await listInstalledApps(auth.session.organizationId)).map(
       toInstalledAppResponse
     );
 
     return NextResponse.json(
-      { organizationId: tenantContext.organizationId, apps, installedApps: apps },
+      { organizationId: auth.session.organizationId, apps, installedApps: apps },
       { status: 200 }
     );
   } catch (error) {
