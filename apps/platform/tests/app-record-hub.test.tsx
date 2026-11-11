@@ -123,7 +123,11 @@ afterEach(() => {
 
 describe("Application record navigation config", () => {
   it("declares the record group and every destination as a route", () => {
-    expect(APP_RECORD_NAV_GROUPS.map((group) => group.id)).toEqual(["record", "catalog"]);
+    expect(APP_RECORD_NAV_GROUPS.map((group) => group.id)).toEqual([
+      "record",
+      "catalog",
+      "operations",
+    ]);
     const items = APP_RECORD_NAV_GROUPS.flatMap((group) => group.items);
     expect(items.map((item) => item.id)).toEqual([
       "overview",
@@ -131,6 +135,8 @@ describe("Application record navigation config", () => {
       "sections",
       "templates",
       "themes",
+      "rollout",
+      "activity",
     ]);
     for (const item of items) {
       expect(appRecordHref(APP_ID, item.segment)).toBe(`/apps/${APP_ID}/${item.segment}`);
@@ -151,6 +157,8 @@ describe("Application record navigation config", () => {
       "sections",
       "templates",
       "themes",
+      "rollout",
+      "activity",
     ]);
     expect(ids(PLATFORM_CAPABILITIES.ENTITLEMENTS_MANAGE.code)).toEqual([
       "overview",
@@ -158,6 +166,8 @@ describe("Application record navigation config", () => {
       "sections",
       "templates",
       "themes",
+      "rollout",
+      "activity",
     ]);
   });
 
@@ -172,6 +182,8 @@ describe("Application record hub routing", () => {
     expect(isAppRecordKnownDestination(`/apps/${APP_ID}/overview`)).toBe(true);
     expect(isAppRecordKnownDestination(`/apps/${APP_ID}/settings`)).toBe(true);
     expect(isAppRecordKnownDestination(`/apps/${APP_ID}/sections`)).toBe(true);
+    expect(isAppRecordKnownDestination(`/apps/${APP_ID}/rollout`)).toBe(true);
+    expect(isAppRecordKnownDestination(`/apps/${APP_ID}/activity`)).toBe(true);
     expect(isAppRecordKnownDestination(`/apps/${APP_ID}/preview/abc`)).toBe(true);
     expect(isAppRecordKnownDestination(`/apps/${APP_ID}/preview/abc/extra`)).toBe(false);
     expect(isAppRecordKnownDestination(`/apps/${APP_ID}/preview/..`)).toBe(false);

@@ -8,10 +8,10 @@ import { hasPlatformCapability } from "@/lib/capability";
  * Application record hub configuration (Hub Navigation Law H-3.5/H-3.13).
  *
  * Every destination is declared here and rendered as a route. Adding a panel is
- * a config edit; no component knows the list by name. The record currently has
- * one reading destination; settings and the content catalog append their own
- * catalogs declare their destinations here, and the preview route is reachable
- * by item id without becoming a menu entry.
+ * a config edit; no component knows the list by name. Reading destinations come
+ * first, then the content catalog and the operational rollout and activity
+ * views; the preview route is reachable by item id without becoming a menu
+ * entry (FR-001, FR-160).
  */
 
 export type AppRecordNavItemId =
@@ -19,9 +19,16 @@ export type AppRecordNavItemId =
   | "settings"
   | "sections"
   | "templates"
-  | "themes";
+  | "themes"
+  | "rollout"
+  | "activity";
 
-export type AppRecordIconKey = AppRecordNavItemId;
+/**
+ * The icon registry is exhaustive for the keys it already declares. Rollout and
+ * activity reuse a declared key rather than inventing an unregistered icon
+ * (H-3.7); registering a distinct glyph is a separate, additive change.
+ */
+export type AppRecordIconKey = Exclude<AppRecordNavItemId, "rollout" | "activity">;
 
 export const APP_RECORD_ROUTE_PREFIX = "/apps";
 
@@ -93,6 +100,26 @@ export const APP_RECORD_NAV_GROUPS: readonly AppRecordNavGroup[] = [
         label: "Themes",
         segment: "themes",
         icon: "themes",
+        capabilities: PLATFORM_APPS_READ_CAPABILITIES,
+      },
+    ],
+  },
+  {
+    id: "operations",
+    label: "Operations",
+    items: [
+      {
+        id: "rollout",
+        label: "Rollout",
+        segment: "rollout",
+        icon: "settings",
+        capabilities: PLATFORM_APPS_READ_CAPABILITIES,
+      },
+      {
+        id: "activity",
+        label: "Activity",
+        segment: "activity",
+        icon: "sections",
         capabilities: PLATFORM_APPS_READ_CAPABILITIES,
       },
     ],
