@@ -37,6 +37,14 @@ function readQuery(requestUrl) {
 
 function handlePage(request, response) {
   const params = readQuery(request.url);
+  if (params.get("path") === "/unpublished-page") {
+    sendJson(response, 410, { code: "SITE_SUSPENDED" });
+    return;
+  }
+  if (params.get("host") === "suspended.localhost") {
+    sendJson(response, 410, { code: "SITE_SUSPENDED" });
+    return;
+  }
   if (params.get("host") !== TENANT_HOST) {
     sendJson(response, 404, { code: "SITE_NOT_FOUND" });
     return;
@@ -51,7 +59,12 @@ function handlePage(request, response) {
 
 function handleResolve(request, response) {
   const params = readQuery(request.url);
-  if (params.get("host") !== TENANT_HOST) {
+  const host = params.get("host");
+  if (host === "suspended.localhost") {
+    sendJson(response, 410, { code: "SITE_SUSPENDED" });
+    return;
+  }
+  if (host !== TENANT_HOST) {
     sendJson(response, 404, { code: "SITE_NOT_FOUND" });
     return;
   }

@@ -105,6 +105,7 @@ const REVIEW = {
   changedPageCount: 1,
   reviewedPageCount: 0,
   pages: [REVIEW_PAGE],
+  media: {},
 };
 
 export const CATALOG_SECTION_FIXTURE = {

@@ -1,7 +1,7 @@
 import pino, { type DestinationStream, type Logger, type LoggerOptions as PinoLoggerOptions } from "pino";
 import { getTraceContext } from "./correlation.js";
 import { DEFAULT_REDACT_PATHS, REDACT_CENSOR } from "./redact.js";
-import { isProduction, isDevelopment, isTest } from "./env.js";
+import { isProduction, isDevelopment, isTest, isNextRuntime } from "./env.js";
 
 export interface RequestLogContext {
   traceId: string;
@@ -55,8 +55,9 @@ export function createLogger(options: CreateLoggerOptions = {}): Logger {
     return pino(baseConfig, options.destination);
   }
 
-  // Pretty printing via pino-pretty transport in development
-  if (shouldPrettyPrint) {
+  // Pretty printing uses a worker thread, which Next bundles without the
+  // worker entrypoint in app-router servers. Next apps use structured JSON.
+  if (shouldPrettyPrint && !isNextRuntime) {
     return pino({
       ...baseConfig,
       transport: {
