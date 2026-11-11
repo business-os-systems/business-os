@@ -31,13 +31,20 @@ function toRendererField(field: CatalogFormField): ConfigFormField<FormValues> {
     description: field.description,
     required: field.required,
   };
-  if (field.control === "select" || field.control === "block-type") {
-    return { ...base, type: "select", options: [...field.options] };
+  switch (field.control) {
+    case "select":
+    case "block-type":
+      return { ...base, type: "select", options: [...field.options] };
+    case "textarea":
+      return { ...base, type: "textarea", rows: 3 };
+    case "boolean":
+      return { ...base, type: "checkbox" };
+    case "text":
+    case "number":
+    case "list":
+    case "nullable-text":
+      return { ...base, type: "text" };
   }
-  if (field.control === "textarea") {
-    return { ...base, type: "textarea", rows: 3 };
-  }
-  return { ...base, type: "text" };
 }
 
 function buildValues(

@@ -1,4 +1,9 @@
-import type { CatalogItemStatus, CatalogTargeting } from "./app-catalog.contract.js";
+import { FeatureFlagClient } from "@suite/flags";
+import {
+  catalogTargetingSchema,
+  type CatalogItemStatus,
+  type CatalogTargeting,
+} from "./app-catalog.contract.js";
 
 /**
  * Catalog targeting resolver (T039, FR-007, FR-008).
@@ -134,4 +139,80 @@ export function isCatalogItemAvailable(
   context: CatalogTargetingContext,
 ): boolean {
   return resolveCatalogTargeting(item, context).targeted;
+}
+
+const featureFlags = new FeatureFlagClient();
+
+export interface CatalogFlaggedRow {
+  readonly flagKey: string | null;
+}
+
+/**
+ * Resolves each distinct flag a catalog page declares for one tenant. The flag
+ * client already fails closed; a missing flag is stored as false, never omitted.
+ */
+export async function readCatalogFlagStates(
+  rows: readonly CatalogFlaggedRow[],
+  organizationId: string,
+): Promise<ReadonlyMap<string, boolean>> {
+  const keys = [
+    ...new Set(rows.map((row) => row.flagKey).filter((key): key is string => key !== null)),
+  ];
+  const entries = await Promise.all(
+    keys.map(async (key) => [key, await featureFlags.isEnabled(key, { organizationId })] as const),
+  );
+  return new Map(entries);
+}
+
+/** The tenant facts a catalog row is resolved against, including flag state. */
+export interface CatalogTenantVisibilityContext {
+  readonly organizationId: string;
+  readonly plan: string | null;
+  readonly industries: readonly string[];
+  readonly flagStates: ReadonlyMap<string, boolean>;
+}
+
+export interface CatalogVisibilityRow {
+  readonly status: CatalogItemStatus;
+  readonly targeting: unknown;
+  readonly flagKey: string | null;
+}
+
+function isTargetedForIndustry(input: {
+  readonly row: CatalogVisibilityRow;
+  readonly targeting: CatalogTargeting;
+  readonly context: CatalogTenantVisibilityContext;
+  readonly industry: string | null;
+}): boolean {
+  const { row, targeting, context, industry } = input;
+  const flagEnabled =
+    row.flagKey === null ? null : context.flagStates.get(row.flagKey) === true;
+  return resolveCatalogTargeting(
+    { status: row.status, targeting, flagKey: row.flagKey },
+    {
+      organizationId: context.organizationId,
+      plan: context.plan,
+      industry,
+      flagEnabled,
+    },
+  ).targeted;
+}
+
+/**
+ * FR-008: one visibility rule for every catalog kind. A malformed targeting
+ * payload is not offered, and a tenant whose industries are unknown is tested
+ * once against "no industry" so an industry filter fails closed.
+ */
+export function isCatalogItemVisibleToTenant(
+  row: CatalogVisibilityRow,
+  context: CatalogTenantVisibilityContext,
+): boolean {
+  const targeting = catalogTargetingSchema.safeParse(row.targeting);
+  if (!targeting.success) {
+    return false;
+  }
+  const industries = context.industries.length === 0 ? [null] : context.industries;
+  return industries.some((industry) =>
+    isTargetedForIndustry({ row, targeting: targeting.data, context, industry }),
+  );
 }

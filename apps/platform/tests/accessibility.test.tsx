@@ -31,6 +31,8 @@ import TenantActivityPage from "../src/app/(platform)/tenants/[orgId]/activity/p
 import TenantDangerPage from "../src/app/(platform)/tenants/[orgId]/danger/page";
 import TenantSupportPage from "../src/app/(platform)/tenants/[orgId]/support/page";
 import AppRecordOverviewPage from "../src/app/(platform)/apps/[appId]/overview/page";
+import AppRecordRolloutPage from "../src/app/(platform)/apps/[appId]/rollout/page";
+import AppRecordActivityPage from "../src/app/(platform)/apps/[appId]/activity/page";
 import { AppSettingsDefaultsPanel } from "../src/app/(platform)/apps/[appId]/settings/app-settings-defaults-panel";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT =
@@ -222,6 +224,16 @@ const SCREENS: readonly Screen[] = [
       />
     ),
   },
+  {
+    id: "app-record-rollout",
+    pathname: "/apps/website-builder/rollout",
+    element: withAppRecord(<AppRecordRolloutPage />),
+  },
+  {
+    id: "app-record-activity",
+    pathname: "/apps/website-builder/activity",
+    element: withAppRecord(<AppRecordActivityPage />),
+  },
   { id: "catalog-panel", pathname: "/catalogs/currency", element: withCatalogs(<CatalogPanelPage />) },
   { id: "flags", pathname: "/flags", element: <FlagsPage /> },
   { id: "audit", pathname: "/audit", element: <AuditPage /> },
@@ -270,6 +282,36 @@ function renderScreen(screen: Screen): void {
   );
 }
 
+interface MountedSignIn {
+  readonly mounted: HTMLDivElement;
+  readonly root: ReturnType<typeof createRoot>;
+  readonly restoreFetch: () => void;
+}
+
+/**
+ * Mounts the sign-in screen with an isolated session probe. Another suite may
+ * leave NEXT_PUBLIC_API_URL set; without this stub a real request keeps the form
+ * in its checking state instead of rendering the accessible controls.
+ */
+function mountSignInScreen(): MountedSignIn {
+  Object.defineProperty(window, "PublicKeyCredential", {
+    value: class PublicKeyCredential {},
+    configurable: true,
+  });
+  const fetchSpy = vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("No session"));
+  const mounted = document.createElement("div");
+  document.body.appendChild(mounted);
+  const root = createRoot(mounted);
+  act(() => {
+    root.render(
+      <main>
+        <SignInPage />
+      </main>,
+    );
+  });
+  return { mounted, root, restoreFetch: () => fetchSpy.mockRestore() };
+}
+
 describe("Platform accessibility (T139, OP-4)", () => {
   for (const screen of SCREENS) {
     it(`has no WCAG A/AA axe violations on ${screen.id}`, async () => {
@@ -291,33 +333,21 @@ describe("Platform accessibility (T139, OP-4)", () => {
   }
 
   it("keeps the mounted sign-in screen accessible and keyboard reachable", async () => {
-    Object.defineProperty(window, "PublicKeyCredential", {
-      value: class PublicKeyCredential {},
-      configurable: true,
-    });
-    const mounted = document.createElement("div");
-    document.body.appendChild(mounted);
-    const root = createRoot(mounted);
-    act(() => {
-      root.render(
-        <main>
-          <SignInPage />
-        </main>,
-      );
-    });
+    const screen = mountSignInScreen();
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
 
-    const focusable = mounted.querySelectorAll<HTMLElement>(
+    const focusable = screen.mounted.querySelectorAll<HTMLElement>(
       'a[href], button, input, select, textarea, [tabindex]',
     );
     expect(focusable.length).toBeGreaterThan(0);
-    const results = await axe.run(mounted, AXE_OPTIONS);
+    const results = await axe.run(screen.mounted, AXE_OPTIONS);
     expect(results.violations.map((violation) => violation.id)).toEqual([]);
 
-    act(() => root.unmount());
-    mounted.remove();
+    act(() => screen.root.unmount());
+    screen.mounted.remove();
+    screen.restoreFetch();
   });
 
   it("has no WCAG A/AA axe violations on the break-glass denial", async () => {

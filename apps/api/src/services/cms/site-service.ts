@@ -2,6 +2,11 @@ import { z } from "zod";
 import { withTenantContext } from "@suite/db";
 import { ValidationError } from "@suite/core/errors";
 import { provisionSiteFromTemplate } from "@suite/website-builder/services";
+import { readTenantCatalogContext } from "../admin/app-catalog.service.js";
+import {
+  isCatalogItemVisibleToTenant,
+  readCatalogFlagStates,
+} from "../admin/catalog-targeting.js";
 import type {
   CmsList,
   CmsSiteRecord,
@@ -120,34 +125,45 @@ export async function getSite(input: {
   return site === null ? null : mapSite(site);
 }
 
-/** Published TEMPLATE catalog items visible to this tenant. */
+/**
+ * Published TEMPLATE catalog items visible to this tenant. Templates resolve
+ * the same plan, industry, allow/deny and flag rules as sections, from the
+ * tenant's own metadata (FR-007, FR-008).
+ */
 export async function listPublishedTemplates(
   organizationId: string
 ): Promise<CmsTemplateRecord[]> {
-  const rows = await withTenantContext(organizationId, (tx) =>
-    tx.cmsCatalogItem.findMany({
-      where: {
-        kind: "TEMPLATE",
-        status: "ACTIVE",
-        currentVersion: { gt: 0 },
-        OR: [
-          { scope: "GLOBAL", organizationId: null },
-          { scope: "TENANT", organizationId },
-        ],
-      },
-      orderBy: [{ name: "asc" }, { id: "asc" }],
-      take: CMS_TEMPLATE_LIMIT.max,
-    })
-  );
-  return rows.map((row) => ({
-    id: row.id,
-    name: row.name,
-    slug: row.slug,
-    category: row.category,
-    industries: row.industries,
-    currentVersion: row.currentVersion,
-    previewRef: row.previewRef,
-  }));
+  const [tenant, rows] = await Promise.all([
+    readTenantCatalogContext(organizationId),
+    withTenantContext(organizationId, (tx) =>
+      tx.cmsCatalogItem.findMany({
+        where: {
+          kind: "TEMPLATE",
+          status: "ACTIVE",
+          currentVersion: { gt: 0 },
+          OR: [
+            { scope: "GLOBAL", organizationId: null },
+            { scope: "TENANT", organizationId },
+          ],
+        },
+        orderBy: [{ name: "asc" }, { id: "asc" }],
+        take: CMS_TEMPLATE_LIMIT.max,
+      })
+    ),
+  ]);
+  const flagStates = await readCatalogFlagStates(rows, organizationId);
+  const context = { ...tenant, flagStates };
+  return rows
+    .filter((row) => isCatalogItemVisibleToTenant(row, context))
+    .map((row) => ({
+      id: row.id,
+      name: row.name,
+      slug: row.slug,
+      category: row.category,
+      industries: row.industries,
+      currentVersion: row.currentVersion,
+      previewRef: row.previewRef,
+    }));
 }
 
 export interface CreateSiteOutcome {

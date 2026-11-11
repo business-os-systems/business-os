@@ -2,6 +2,7 @@ import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import {
   Prisma,
+  prisma,
   type CmsCatalogItem,
   type CmsCatalogItemVersion,
   type PrismaClient,
@@ -51,6 +52,55 @@ import {
 import { isUniqueConstraintViolation } from "./prisma-errors.js";
 
 const AVAILABILITY_SET: ReadonlySet<string> = new Set(APP_CATALOG_AVAILABILITIES);
+
+/**
+ * A catalog target key (plan or industry) is a lower-case slug. The tenant's own
+ * organization metadata is the only source, so a missing or malformed value
+ * resolves to null and targeting fails closed instead of guessing (FR-007).
+ */
+const TENANT_TARGET_SLUG = /^[a-z0-9][a-z0-9_-]{0,63}$/;
+
+const tenantCatalogMetadataSchema = z
+  .object({
+    plan: z.string().trim().regex(TENANT_TARGET_SLUG).nullable().optional(),
+    industries: z.array(z.string().trim().regex(TENANT_TARGET_SLUG)).max(20).optional(),
+  })
+  .passthrough();
+
+/** The tenant facts every catalog reader resolves targeting against. */
+export interface TenantCatalogContext {
+  readonly organizationId: string;
+  readonly plan: string | null;
+  readonly industries: readonly string[];
+}
+
+const EMPTY_TENANT_CATALOG_CONTEXT = {
+  plan: null,
+  industries: [],
+} as const;
+
+/**
+ * Resolves the tenant plan and industries from the workspace's own metadata.
+ * Plans are tenant data, never a hardcoded platform list, and an unreadable
+ * record fails closed (FR-007, FR-008).
+ */
+export async function readTenantCatalogContext(
+  organizationId: string,
+): Promise<TenantCatalogContext> {
+  const organization = await prisma.organization.findUnique({
+    where: { id: organizationId },
+    select: { metadata: true },
+  });
+  const parsed = tenantCatalogMetadataSchema.safeParse(organization?.metadata);
+  if (!parsed.success) {
+    return { organizationId, ...EMPTY_TENANT_CATALOG_CONTEXT };
+  }
+  return {
+    organizationId,
+    plan: parsed.data.plan ?? EMPTY_TENANT_CATALOG_CONTEXT.plan,
+    industries: parsed.data.industries ?? EMPTY_TENANT_CATALOG_CONTEXT.industries,
+  };
+}
 
 // One token format for reads and writes: UTC microseconds, the same shape the
 // quota and entitlement contracts use (D-022: a token never repeats).
