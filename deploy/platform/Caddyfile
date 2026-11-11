@@ -1,13 +1,17 @@
 # Platform edge vhosts. The origin network policy must allow only this proxy;
 # FR-069 requires the origin to reject direct inbound traffic.
+#
+# Four host roles (FR-109, FR-117). Every address is declared configuration:
+# DOMAIN_ROOT names the tenant host family, OPERATOR_HOST the operator console,
+# MARKETING_HOST the reserved account-entry host, and BREAK_GLASS_DOMAIN the
+# offline-certificate recovery host. No hostname is written in this file.
 {
 	email {$ACME_EMAIL}
 }
 
-# Canonical operator domain. The break-glass header is stripped here so a
-# client cannot forge admission through the normal domain.
-{$OPERATOR_DOMAIN} {
-	encode zstd gzip
+# The response headers every host role sends. Caddy evaluates a snippet at the
+# import site, so the values are identical across the four vhosts.
+(security_headers) {
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
 		X-Content-Type-Options "nosniff"
@@ -16,6 +20,13 @@
 		Permissions-Policy "camera=(), microphone=(), geolocation=()"
 		-Server
 	}
+}
+
+# Canonical operator domain. The break-glass header is stripped here so a
+# client cannot forge admission through the normal domain.
+{$OPERATOR_HOST} {
+	import security_headers
+	encode zstd gzip
 	handle /api/* {
 		reverse_proxy api:4000 {
 			header_up -X-Break-Glass-Verified
@@ -37,15 +48,11 @@
 			trust_pool file {$BREAK_GLASS_CA_CERT_PATH}
 		}
 	}
-	encode zstd gzip
+	import security_headers
 	header {
-		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-		X-Content-Type-Options "nosniff"
-		X-Frame-Options "DENY"
-		Referrer-Policy "strict-origin-when-cross-origin"
 		X-Robots-Tag "noindex, nofollow"
-		-Server
 	}
+	encode zstd gzip
 	handle /api/* {
 		reverse_proxy api:4000 {
 			header_up X-Break-Glass-Verified "1"
@@ -55,5 +62,63 @@
 		reverse_proxy platform:3002 {
 			header_up X-Break-Glass-Verified "1"
 		}
+	}
+}
+
+# Reserved marketing and account-entry host (FR-109, FR-118). Release one has
+# no marketing application, so the storefront answers this host with its neutral
+# not-found response: the host exists, terminates TLS, and never serves tenant
+# content or sets a session. The recorded decision and its consequence live in
+# deploy/platform/README.md ("Three-host model decision").
+{$MARKETING_HOST} {
+	import security_headers
+	header {
+		X-Robots-Tag "noindex, nofollow"
+	}
+	encode zstd gzip
+	handle {
+		reverse_proxy web:3003
+	}
+}
+
+# One wildcard vhost serves every tenant host, <label>.DOMAIN_ROOT. The
+# published site is served from the root by the storefront; the workspace,
+# account and API plane is served by the dashboard application, which owns the
+# /dashboard rewrite and proxies /api/v1 to the API. A tenant session is bound
+# to the host that issued it (FR-111), so sign-in must happen on this host: the
+# workspace can never bounce to another host to authenticate.
+#
+# A wildcard name cannot complete an HTTP-01 challenge, so the certificate for
+# *.DOMAIN_ROOT is issued out of band with DNS-01 and mounted read-only. The
+# default Caddy image carries no DNS provider module; issuing from Caddy itself
+# would need a custom build. deploy/platform/preflight.sh fails the deploy when
+# the certificate pair is missing, and the smoke check proves TLS end to end.
+*.{$DOMAIN_ROOT} {
+	tls /etc/caddy/tenant-tls/fullchain.pem /etc/caddy/tenant-tls/privkey.pem
+	import security_headers
+	encode zstd gzip
+
+	@workspace path /dashboard* /login* /signup* /forgot-password* /reset-password* /link-account* /invite* /verify-expired* /choose-tenant* /onboarding* /api/*
+	handle @workspace {
+		reverse_proxy dashboard:3001
+	}
+
+	# Both applications are Next.js and emit /_next/* asset URLs from this same
+	# origin, so each application's chunks and stylesheets share one namespace.
+	# Try the workspace first and fall back to the storefront on its 404, so a
+	# page from either application always loads its own assets. Every storefront
+	# asset costs one extra origin hop on a browser cache miss; the alternative
+	# is an unstyled or non-hydrating page.
+	handle /_next/* {
+		reverse_proxy dashboard:3001 {
+			@asset_not_found status 404
+			handle_response @asset_not_found {
+				reverse_proxy web:3003
+			}
+		}
+	}
+
+	handle {
+		reverse_proxy web:3003
 	}
 }

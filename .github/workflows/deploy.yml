@@ -29,6 +29,17 @@ jobs:
         run: |
           echo "IMAGE_PREFIX=ghcr.io/$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
+      # The operator console build bakes its API origin, so a missing host must
+      # fail here instead of producing a console that calls "https://".
+      - name: Validate Deployment Secrets
+        env:
+          OPERATOR_HOST: ${{ secrets.OPERATOR_HOST }}
+        run: |
+          if [ -z "${OPERATOR_HOST}" ]; then
+            echo "::error::OPERATOR_HOST repository secret must hold the operator console hostname"
+            exit 1
+          fi
+
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -80,7 +91,21 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
-            NEXT_PUBLIC_API_URL=https://${{ secrets.OPERATOR_DOMAIN }}
+            NEXT_PUBLIC_API_URL=https://${{ secrets.OPERATOR_HOST }}
+
+      # The deploy host runs the compose file, the Caddyfile and the deploy
+      # scripts from its checkout, so the artifacts that define the edge are
+      # copied before the stack is touched. The host's .env files are not in the
+      # repository and are deliberately left in place.
+      - name: Sync Deployment Artifacts
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: developer
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: 22
+          source: "deploy/platform"
+          target: "/home/developer/app"
 
       - name: Deploy to Webyne VPS via SSH
         uses: appleboy/ssh-action@v1.0.3
@@ -91,6 +116,17 @@ jobs:
           port: 22
           script: |
             cd /home/developer/app
+            # The deployment env is the union of the app env and the deploy env;
+            # source both so the edge scripts and compose interpolation read the
+            # values the applications read.
+            set -a
+            . ./.env
+            . ./deploy/platform/.env
+            set +a
+            # Fail before a single container starts: a missing host, origin,
+            # database or storage value, or a missing wildcard certificate,
+            # blocks the deploy with a named reason (N4).
+            ./deploy/platform/preflight.sh || exit 1
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
             # Pull only the services this workflow pushed; a missing service
             # name fails the deploy instead of silently skipping an application.
@@ -116,4 +152,10 @@ jobs:
                 exit 1
               fi
             done
+            # Browser uploads are cross-origin PUTs: apply the bucket CORS policy
+            # and read it back instead of leaving it as a runbook step (N9).
+            ./deploy/platform/object-storage-cors.sh || exit 1
+            # A stack that is healthy but does not serve a tenant host over TLS
+            # is a failed deploy; prove /, /dashboard and /robots.txt (N3).
+            ./deploy/platform/smoke-tenant-host.sh || exit 1
             docker image prune -f

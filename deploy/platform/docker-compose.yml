@@ -131,7 +131,10 @@ services:
       dockerfile: deploy/platform/Dockerfile
       target: platform
       args:
-        NEXT_PUBLIC_API_URL: https://${OPERATOR_DOMAIN}
+        # The operator console calls the API on its own origin; a missing
+        # OPERATOR_HOST must break the deploy here instead of baking "https://"
+        # into the console build.
+        NEXT_PUBLIC_API_URL: https://${OPERATOR_HOST:?OPERATOR_HOST must hold the operator console hostname}
     restart: unless-stopped
     env_file:
       - ../../.env
@@ -164,6 +167,12 @@ services:
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - ./break-glass-ca.pem:/etc/caddy/break-glass-ca.pem:ro
+      # The wildcard tenant certificate (*.<DOMAIN_ROOT>) is issued with DNS-01
+      # outside Caddy and mounted read-only; the stock image has no DNS provider
+      # module. TENANT_TLS_DIR must name the host directory that holds
+      # fullchain.pem and privkey.pem, and an unset value fails the deploy
+      # instead of silently mounting an empty path.
+      - ${TENANT_TLS_DIR:?TENANT_TLS_DIR must hold the directory with fullchain.pem and privkey.pem}:/etc/caddy/tenant-tls:ro
       - caddy-data:/data
       - caddy-config:/config
     depends_on:
