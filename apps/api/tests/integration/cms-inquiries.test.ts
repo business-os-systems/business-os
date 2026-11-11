@@ -192,6 +192,17 @@ describe.skipIf(!enabled)("Inquiry intake guards", () => {
     }
   });
 
+  it("refuses a submission for a site that does not exist", async () => {
+    await expect(
+      ingestPublicSubmission(
+        submission({
+          siteId: "site_missing_" + RUN,
+          idempotencyKey: "idem-missing-" + RUN,
+        })
+      )
+    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
   it("refuses a payload above the 64KB cap", async () => {
     await expect(
       ingestPublicSubmission(

@@ -7,6 +7,10 @@ import {
   readPublishedDefinitions,
 } from "@suite/website-builder/services";
 import { resolveCatalogTargeting } from "../admin/catalog-targeting.js";
+import {
+  DOMAIN_OPERATIONS,
+  measureDomainOperation,
+} from "../admin/domain-metrics.service.js";
 import { catalogTargetingSchema, type CatalogItemStatus } from "../admin/app-catalog.contract.js";
 import { catalogSectionDefinitionValidationSchema, type CatalogSection } from "./contract.js";
 
@@ -130,24 +134,34 @@ export async function listTenantCatalogSections(input: {
   readonly organizationId: string;
   readonly limit: number;
 }): Promise<readonly CatalogSection[]> {
-  const [industries, catalog] = await Promise.all([
-    readTenantIndustries(input.organizationId),
-    withTenantContext(input.organizationId, async (tx) => {
-      const rows = await queryCatalogRows(tx, input.organizationId);
-      const definitions = await readPublishedDefinitions(tx, rows);
-      return { rows, definitions };
-    }),
-  ]);
-  const flagStates = await readFlagStates(catalog.rows, input.organizationId);
-  const context: VisibilityContext = { organizationId: input.organizationId, industries, flagStates };
-  return catalog.rows
-    .filter((row) => row.currentVersion > 0 && isVisibleToTenant(row, context))
-    .map((row) => {
-      const definition = catalog.definitions.get(
-        publishedDefinitionKey(row.id, row.currentVersion)
-      );
-      return definition === undefined ? null : toCatalogSection(row, definition);
-    })
-    .filter((section): section is CatalogSection => section !== null)
-    .slice(0, input.limit);
+  return measureDomainOperation(
+    DOMAIN_OPERATIONS.CATALOG_REFRESH,
+    { organizationId: input.organizationId },
+    async () => {
+      const [industries, catalog] = await Promise.all([
+        readTenantIndustries(input.organizationId),
+        withTenantContext(input.organizationId, async (tx) => {
+          const rows = await queryCatalogRows(tx, input.organizationId);
+          const definitions = await readPublishedDefinitions(tx, rows);
+          return { rows, definitions };
+        }),
+      ]);
+      const flagStates = await readFlagStates(catalog.rows, input.organizationId);
+      const context: VisibilityContext = {
+        organizationId: input.organizationId,
+        industries,
+        flagStates,
+      };
+      return catalog.rows
+        .filter((row) => row.currentVersion > 0 && isVisibleToTenant(row, context))
+        .map((row) => {
+          const definition = catalog.definitions.get(
+            publishedDefinitionKey(row.id, row.currentVersion)
+          );
+          return definition === undefined ? null : toCatalogSection(row, definition);
+        })
+        .filter((section): section is CatalogSection => section !== null)
+        .slice(0, input.limit);
+    }
+  );
 }

@@ -149,8 +149,10 @@ export const PLATFORM_RETENTION = [
     retention: "life of the tenant + 30 days",
     disposition: "archive_then_delete",
     personalData: false,
-    basis: "Tenant website configuration; deleted when the tenant is offboarded.",
-    enforcedBy: "owner-only tenant offboarding procedure (retention.md)",
+    basis:
+      "Tenant website configuration. An inactive site is flagged for deletion and stays intact until an authorised operator confirms removal (FR-097).",
+    enforcedBy:
+      "inactive-site deletion-flag job + human-confirmed removal route; owner-only tenant offboarding procedure (retention.md)",
   },
   {
     table: "cms_site_settings",
@@ -199,7 +201,8 @@ export const PLATFORM_RETENTION = [
     disposition: "delete",
     personalData: false,
     basis: "Published snapshots; the newest 30 are kept per page by default (FR-033).",
-    enforcedBy: "page version prune procedure",
+    enforcedBy:
+      "publish-time prune + page version retention job (newest 30 per page)",
   },
   {
     table: "cms_page_comments",

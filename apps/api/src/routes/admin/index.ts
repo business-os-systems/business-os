@@ -5,6 +5,7 @@ import { tenantAdminRouter } from "./tenants.js";
 import { tenantPiiRouter } from "./tenant-pii.js";
 import { tenantLifecycleRouter } from "./lifecycle.js";
 import { siteTakedownRouter } from "./site-takedown.js";
+import { siteDeletionRouter } from "./site-deletion.js";
 import { platformOperatorsRouter } from "./operators.js";
 import { platformOperatorPasskeysRouter } from "./operator-passkeys.js";
 import { platformEntitlementsRouter } from "./entitlements.js";
@@ -41,6 +42,7 @@ adminRouter.route("/apps", platformAppSettingsRouter);
 // mounted on "/" and would otherwise gate the entitlement- and quota-only paths.
 adminRouter.route("/", platformEntitlementsRouter);
 adminRouter.route("/", platformQuotasRouter);
+adminRouter.route("/", siteDeletionRouter);
 adminRouter.route("/", siteTakedownRouter);
 adminRouter.route("/", tenantAdminRouter);
 adminRouter.route("/", tenantPiiRouter);

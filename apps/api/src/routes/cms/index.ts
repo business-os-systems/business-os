@@ -1,5 +1,7 @@
 import { OpenAPIHono } from "@hono/zod-openapi";
+import { RATE_LIMITS } from "@suite/core";
 import { requireAuth } from "../../middleware/auth.js";
+import { rateLimitMiddleware } from "../../middleware/rate-limit.js";
 import { createWebsiteBuilderInstallationGuard } from "../../middleware/website-builder-installation.js";
 import { createCmsAppearanceRouter } from "./appearance.js";
 import { createCmsCatalogRouter } from "./catalog.js";
@@ -16,8 +18,21 @@ import { createCmsVersionsRouter } from "./versions.js";
  * capability and reads the workspace from the verified session only (contract
  * cms-admin, FR-013).
  */
+export const CMS_WRITE_RATE_LIMIT_PER_MINUTE = 120;
+export const CMS_WRITE_RATE_LIMIT_KEY = "rl:cms:writes";
+
 export function createCmsRouter(): OpenAPIHono {
   const router = new OpenAPIHono();
+  router.use(
+    "*",
+    rateLimitMiddleware({
+      limit: CMS_WRITE_RATE_LIMIT_PER_MINUTE,
+      windowSeconds: RATE_LIMITS.WINDOW_1_MIN_SECONDS,
+      keyPrefix: CMS_WRITE_RATE_LIMIT_KEY,
+      methods: ["POST", "PATCH", "PUT", "DELETE"],
+      failureMode: "closed",
+    })
+  );
   router.use("*", requireAuth());
   router.use("*", createWebsiteBuilderInstallationGuard());
   router.route("/", createCmsSitesRouter());

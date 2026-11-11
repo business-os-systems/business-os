@@ -1,4 +1,5 @@
-import { Prisma, withTenantContext } from "@suite/db";
+import { performance } from "node:perf_hooks";
+import { Prisma, prisma, withTenantContext } from "@suite/db";
 import { PLATFORM_ERROR_CODE } from "@suite/core";
 import { ConflictError } from "@suite/core/errors";
 import { writeCmsAudit } from "@suite/website-builder/services";
@@ -21,6 +22,14 @@ import {
   REVIEW_WINDOW_HOURS,
   type ReviewContext,
 } from "./review-service.js";
+import { prunePageVersions } from "./version-retention.js";
+import {
+  DOMAIN_OPERATIONS,
+  DOMAIN_OUTCOMES,
+  measureDomainOperationSafely,
+  recordDomainFailure,
+  recordDomainOperation,
+} from "../admin/domain-metrics.service.js";
 
 export interface PublishSiteInput {
   readonly organizationId: string;
@@ -239,7 +248,54 @@ function buildRecord(
   };
 }
 
+/**
+ * Publishing prunes the pages it snapshotted. The prune runs after the release
+ * transaction commits and as the schema owner, because the tenant identity may
+ * append versions but never delete them. A prune failure is recorded and never
+ * unwinds a release that already reached visitors (FR-033, FR-065).
+ */
+async function pruneReleasedVersions(
+  organizationId: string,
+  pages: readonly PublishedPage[]
+): Promise<void> {
+  await measureDomainOperationSafely(
+    DOMAIN_OPERATIONS.VERSION_RETENTION,
+    { organizationId },
+    () =>
+      Promise.all(
+        pages.map((page) =>
+          prunePageVersions({ organizationId, pageId: page.pageId, client: prisma })
+        )
+      )
+  );
+}
+
 export async function publishSite(input: PublishSiteInput): Promise<PublishOutcome> {
+  const startedAt = performance.now();
+  try {
+    const outcome = await releaseSite(input);
+    recordDomainOperation({
+      operation: DOMAIN_OPERATIONS.PUBLISH,
+      outcome: DOMAIN_OUTCOMES.SUCCESS,
+      startedAt,
+    });
+    await pruneReleasedVersions(input.organizationId, outcome.pages);
+    return outcome;
+  } catch (error: unknown) {
+    recordDomainOperation({
+      operation: DOMAIN_OPERATIONS.PUBLISH,
+      outcome: DOMAIN_OUTCOMES.FAILURE,
+      startedAt,
+    });
+    recordDomainFailure(DOMAIN_OPERATIONS.PUBLISH, error, {
+      organizationId: input.organizationId,
+      siteId: input.siteId,
+    });
+    throw error;
+  }
+}
+
+async function releaseSite(input: PublishSiteInput): Promise<PublishOutcome> {
   return withTenantContext(input.organizationId, async (tx) => {
     const context: ReviewContext = {
       tx,

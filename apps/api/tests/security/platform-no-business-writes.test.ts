@@ -48,6 +48,16 @@ const PERMITTED_WRITES: readonly PermittedWrite[] = [
   // definer function; it is an operator abuse-control action, not tenant data.
   { method: "POST", path: "/tenants/:orgId/sites/:siteId/suspend", reason: "site takedown" },
   { method: "POST", path: "/tenants/:orgId/sites/:siteId/restore", reason: "site restore" },
+  // Confirmed removal is the one operator action that deletes tenant site
+  // content. It is deliberately narrow: the site must already be flagged by
+  // the inactive-site job, the operator re-types the site slug and supplies a
+  // fresh single-use step-up token, and the purge plus its audit row commit
+  // together (FR-097, FR-099).
+  {
+    method: "POST",
+    path: "/tenants/:orgId/sites/:siteId/confirm-deletion",
+    reason: "human-confirmed site deletion",
+  },
   // Entitlements and app settings are platform-governed installation metadata.
   // Both writes go through narrow audited definer functions; Platform never
   // gains a grant on the public tenant tables.

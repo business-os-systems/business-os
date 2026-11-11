@@ -19,6 +19,7 @@ const MOUNT_PREFIXES: Readonly<Record<string, string>> = {
   tenants: "/",
   "tenant-pii": "/",
   lifecycle: "/",
+  "site-deletion": "/",
   flags: "/flags",
   operators: "/operators",
   "operator-passkeys": "/operator-passkeys",
@@ -132,6 +133,7 @@ const QUOTAS = "tests/contract/platform/quotas.test.ts";
 const TENANT_PII = "tests/integration/platform/tenant-pii.test.ts";
 const CATALOG_DENIAL = "tests/security/catalog-denial.test.ts";
 const SITE_TAKEDOWN = "tests/integration/platform/site-takedown.test.ts";
+const SITE_DELETION = "tests/integration/platform/site-deletion.test.ts";
 
 const DENIAL_COVERAGE: Readonly<Record<string, string>> = {
   "GET /": ENTITLEMENTS,
@@ -185,6 +187,8 @@ const DENIAL_COVERAGE: Readonly<Record<string, string>> = {
   "GET /tenants/{orgId}/sites": SITE_TAKEDOWN,
   "POST /tenants/{orgId}/sites/{siteId}/suspend": SITE_TAKEDOWN,
   "POST /tenants/{orgId}/sites/{siteId}/restore": SITE_TAKEDOWN,
+  "GET /tenants/{orgId}/sites/flagged": SITE_DELETION,
+  "POST /tenants/{orgId}/sites/{siteId}/confirm-deletion": SITE_DELETION,
   "GET /apps/website-builder/items": CATALOG_DENIAL,
   "POST /apps/website-builder/items": CATALOG_DENIAL,
   "GET /apps/website-builder/items/{id}": CATALOG_DENIAL,
