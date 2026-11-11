@@ -52,21 +52,49 @@ The approved launch content lives in `packages/db/src/reference-catalog-seed-dat
 
 ## Build and run the stack
 
-The container and proxy artifacts are in this directory:
+The stack runs four applications plus PostgreSQL, Redis and Caddy. Every
+application service in the compose file names the image the deploy workflow
+publishes and carries the same build definition, so the CI path and a local
+build produce one image:
 
-- `Dockerfile` — multi-stage build with `api` and `platform` targets. The build context is the repository root.
-- `Dockerfile.dockerignore` — keeps `.git`, worktrees, `node_modules`, `.next` and build output out of the context.
-- `docker-compose.yml` — PostgreSQL, Redis, API, Platform and Caddy.
+| Service     | Dockerfile                                       | Port   | What the tenant or operator uses it for                          |
+| ----------- | ------------------------------------------------ | ------ | ---------------------------------------------------------------- |
+| `api`       | `apps/api/Dockerfile`                            | 4000   | API, CMS admin, storefront delivery, auth, admin, health/metrics |
+| `dashboard` | `apps/dashboard/Dockerfile`                      | 3001   | Tenant workspace and studio                                      |
+| `web`       | `apps/web/Dockerfile`                            | 3003   | Public storefront delivery                                       |
+| `platform`  | `deploy/platform/Dockerfile` (`platform` target) | 3002   | Operator console                                                 |
+| `caddy`     | `caddy:2.8-alpine`                               | 80/443 | Edge TLS and host routing                                        |
+
+Every application service declares a healthcheck (API `/health/live`,
+dashboard `/login`, storefront `/`, platform `/`) and the deploy workflow
+waits for `healthy` before it reports success. Caddy starts only after all four
+are healthy.
+
+The container and proxy artifacts are:
+
+- the per-application Dockerfiles above, all built from the repository root;
+- `deploy/platform/Dockerfile` for the operator console only;
+- `Dockerfile.dockerignore` — keeps `.git`, worktrees, `node_modules`, `.next` and build output out of the context;
+- `docker-compose.yml` — PostgreSQL, Redis, API, Dashboard, Storefront, Platform and Caddy;
 - `Caddyfile` — the canonical operator vhost and the separate break-glass vhost with client-certificate authentication.
 
-The deployment env is the union of the root app `.env.example` and this directory's `.env.example`. `NEXT_PUBLIC_API_URL` must be the canonical operator origin (for example `https://ops.example.com`) because it is baked into the Platform build.
+The deployment env is the union of the root app `.env.example` and this directory's `.env.example`. `NEXT_PUBLIC_API_URL` must be the canonical operator origin (for example `https://ops.example.com`) because it is baked into the Platform build. The dashboard and the storefront call the API over the compose network, so the root app env must set `API_URL=http://api:4000`; `DOMAIN_ROOT` names the host family both applications route.
 
 ```bash
 cp .env.example .env          # deployment-only values
 cp ../../.env.example ../../.env
+# CI path: the workflow pushes all four images, the host pulls them.
+docker compose -f deploy/platform/docker-compose.yml pull api dashboard web platform
+# Local path: build the same four images from the same Dockerfiles.
 docker compose -f deploy/platform/docker-compose.yml build
 docker compose -f deploy/platform/docker-compose.yml up -d
 ```
+
+The deploy workflow builds and pushes exactly the images these services name
+(`business-os-api`, `business-os-dashboard`, `business-os-web`,
+`business-os-platform`), pulls only services that exist, applies migrations,
+refuses to finish unless every application reports `healthy`, and prunes the
+replaced images.
 
 The break-glass CA bundle is mounted from `deploy/platform/break-glass-ca.pem`; create it from the offline CA, never from a private key committed to the repository. The origin network policy must allow only the Caddy service (FR-069).
 
