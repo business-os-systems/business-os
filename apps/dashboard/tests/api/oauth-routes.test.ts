@@ -8,6 +8,7 @@ const authMocks = vi.hoisted(() => ({
   signSessionToken: vi.fn(),
   encodeSessionPayload: vi.fn(),
   createSessionCookieOptions: vi.fn(),
+  createTenantSessionCookieOptions: vi.fn(),
 }));
 const oauthMocks = vi.hoisted(() => ({
   resolveOAuthLogin: vi.fn(),
@@ -17,10 +18,12 @@ const ssoMocks = vi.hoisted(() => ({ getSsoConnection: vi.fn() }));
 
 vi.mock("@suite/auth", () => ({
   SESSION_COOKIE_NAME: "bos_session",
+  SESSION_EPHEMERAL_MAX_AGE_SECONDS: 3600,
   exchangeOAuthCode: authMocks.exchangeOAuthCode,
   signSessionToken: authMocks.signSessionToken,
   encodeSessionPayload: authMocks.encodeSessionPayload,
   createSessionCookieOptions: authMocks.createSessionCookieOptions,
+  createTenantSessionCookieOptions: authMocks.createTenantSessionCookieOptions,
 }));
 vi.mock("@/services/oauth-callback.service", () => ({
   resolveOAuthLogin: oauthMocks.resolveOAuthLogin,
@@ -55,13 +58,16 @@ beforeEach(() => {
   vi.clearAllMocks();
   authMocks.encodeSessionPayload.mockReturnValue("payload");
   authMocks.signSessionToken.mockResolvedValue("signed-token");
-  authMocks.createSessionCookieOptions.mockReturnValue({
+  const hostOnlyCookie = {
+    name: "__Host-bos_session",
     httpOnly: true,
     secure: true,
     sameSite: "lax",
     path: "/",
-    maxAge: 3600,
-  });
+    maxAge: 3599,
+  };
+  authMocks.createSessionCookieOptions.mockReturnValue(hostOnlyCookie);
+  authMocks.createTenantSessionCookieOptions.mockReturnValue(hostOnlyCookie);
   oauthMocks.recordOAuthLoginAudit.mockResolvedValue(undefined);
 });
 
@@ -137,7 +143,7 @@ describe("OAuth callback session issuance", () => {
 
     expect(response.status).toBe(302);
     expect(response.headers.get("location")).toContain("/dashboard");
-    expect(response.cookies.get("bos_session")?.value).toBe("signed-token");
+    expect(response.cookies.get("__Host-bos_session")?.value).toBe("signed-token");
     expect(authMocks.exchangeOAuthCode).toHaveBeenCalledWith(
       expect.objectContaining({ provider: "google", code: "abc" })
     );

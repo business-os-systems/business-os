@@ -6,7 +6,6 @@ import {
   createSessionCookieOptions,
   type SessionPayload,
 } from "@suite/auth";
-import { isProduction } from "@/lib/env";
 import { getAuthenticatedSession } from "@/lib/session-helper";
 import { problemResponse, successResponse } from "@/lib/api-response";
 import { completeOnboarding } from "@/services/onboarding.service";
@@ -43,7 +42,7 @@ async function buildCompletionResponse(
   });
 
   const token = await signSessionToken(updatedPayload);
-  const cookieOptions = createSessionCookieOptions(isProduction, true);
+  const cookieOptions = createSessionCookieOptions(true);
   const response = successResponse({
     success: true,
     onboardingStatus: "COMPLETED",

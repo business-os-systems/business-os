@@ -807,41 +807,6 @@
       "count": 1
     }
   },
-  "apps/dashboard/src/app/(dashboard)/sites/[siteId]/pages/page.tsx": {
-    "@typescript-eslint/dot-notation": {
-      "count": 1
-    },
-    "@typescript-eslint/no-floating-promises": {
-      "count": 1
-    },
-    "@typescript-eslint/no-misused-promises": {
-      "count": 1
-    },
-    "@typescript-eslint/no-unnecessary-condition": {
-      "count": 1
-    },
-    "@typescript-eslint/no-unsafe-argument": {
-      "count": 1
-    },
-    "@typescript-eslint/no-unsafe-assignment": {
-      "count": 11
-    },
-    "@typescript-eslint/no-unsafe-call": {
-      "count": 2
-    },
-    "@typescript-eslint/no-unsafe-member-access": {
-      "count": 12
-    },
-    "@typescript-eslint/prefer-nullish-coalescing": {
-      "count": 1
-    },
-    "max-lines-per-function": {
-      "count": 1
-    },
-    "react/jsx-no-leaked-render": {
-      "count": 1
-    }
-  },
   "apps/dashboard/src/app/(dashboard)/sites/onboarding/page.tsx": {
     "@typescript-eslint/no-floating-promises": {
       "count": 1
@@ -871,61 +836,12 @@
       "count": 2
     }
   },
-  "apps/dashboard/src/app/(dashboard)/sites/page.tsx": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 1
-    },
-    "@typescript-eslint/no-misused-promises": {
-      "count": 1
-    },
-    "@typescript-eslint/no-unsafe-assignment": {
-      "count": 7
-    },
-    "@typescript-eslint/no-unsafe-call": {
-      "count": 1
-    },
-    "@typescript-eslint/no-unsafe-member-access": {
-      "count": 6
-    },
-    "@typescript-eslint/prefer-nullish-coalescing": {
-      "count": 1
-    },
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "apps/dashboard/src/app/(editor)/sites/[siteId]/editor/[pageId]/page.tsx": {
-    "@typescript-eslint/dot-notation": {
-      "count": 2
-    },
-    "@typescript-eslint/no-floating-promises": {
-      "count": 1
-    },
-    "@typescript-eslint/no-unnecessary-condition": {
-      "count": 2
-    },
-    "@typescript-eslint/no-unsafe-assignment": {
-      "count": 4
-    },
-    "@typescript-eslint/no-unsafe-member-access": {
-      "count": 4
-    }
-  },
   "apps/dashboard/src/app/(editor)/sites/[siteId]/preview/[pageId]/page.tsx": {
     "@typescript-eslint/dot-notation": {
       "count": 2
     },
-    "@typescript-eslint/no-floating-promises": {
-      "count": 1
-    },
     "@typescript-eslint/no-unnecessary-condition": {
       "count": 2
-    },
-    "@typescript-eslint/no-unsafe-assignment": {
-      "count": 4
-    },
-    "@typescript-eslint/no-unsafe-member-access": {
-      "count": 3
     }
   },
   "apps/dashboard/src/app/api/auth/forgot-password/route.ts": {
@@ -949,9 +865,6 @@
   },
   "apps/dashboard/src/app/api/auth/login/route.ts": {
     "@typescript-eslint/no-unsafe-assignment": {
-      "count": 1
-    },
-    "max-lines-per-function": {
       "count": 1
     }
   },
@@ -1029,17 +942,6 @@
       "count": 1
     },
     "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "apps/dashboard/src/app/api/cms/pages/[pageId]/publish/route.ts": {
-    "@typescript-eslint/no-unsafe-assignment": {
-      "count": 1
-    },
-    "@typescript-eslint/prefer-nullish-coalescing": {
-      "count": 1
-    },
-    "complexity": {
       "count": 1
     }
   },
@@ -1494,48 +1396,8 @@
       "count": 2
     }
   },
-  "apps/dashboard/src/components/editor/studio-header.tsx": {
-    "@typescript-eslint/no-unnecessary-condition": {
-      "count": 1
-    },
-    "complexity": {
-      "count": 1
-    },
-    "max-lines-per-function": {
-      "count": 1
-    },
-    "react/jsx-no-leaked-render": {
-      "count": 2
-    }
-  },
-  "apps/dashboard/src/components/editor/studio-workspace.tsx": {
-    "@typescript-eslint/consistent-type-assertions": {
-      "count": 2
-    },
-    "@typescript-eslint/no-misused-promises": {
-      "count": 3
-    },
-    "@typescript-eslint/no-unnecessary-type-assertion": {
-      "count": 1
-    },
-    "@typescript-eslint/no-unused-vars": {
-      "count": 2
-    },
-    "@typescript-eslint/prefer-nullish-coalescing": {
-      "count": 2
-    },
-    "max-lines-per-function": {
-      "count": 1
-    },
-    "react/jsx-no-leaked-render": {
-      "count": 2
-    }
-  },
   "apps/dashboard/src/components/layout/dashboard-shell.tsx": {
     "@typescript-eslint/no-unnecessary-condition": {
-      "count": 2
-    },
-    "react/jsx-no-leaked-render": {
       "count": 1
     }
   },
@@ -1737,48 +1599,12 @@
       "count": 2
     }
   },
-  "apps/dashboard/src/components/sites/create-site-dialog.tsx": {
-    "@typescript-eslint/dot-notation": {
-      "count": 6
-    },
-    "max-lines-per-function": {
-      "count": 1
-    },
-    "react/jsx-no-leaked-render": {
-      "count": 3
-    }
-  },
   "apps/dashboard/src/components/sites/page-explorer-table.tsx": {
     "max-lines-per-function": {
       "count": 1
     },
     "react/jsx-no-leaked-render": {
       "count": 3
-    }
-  },
-  "apps/dashboard/src/components/sites/site-list-table.tsx": {
-    "max-lines-per-function": {
-      "count": 1
-    },
-    "react/jsx-no-leaked-render": {
-      "count": 3
-    }
-  },
-  "apps/dashboard/src/lib/api/cms-client.ts": {
-    "@typescript-eslint/no-unsafe-assignment": {
-      "count": 21
-    },
-    "@typescript-eslint/no-unsafe-member-access": {
-      "count": 16
-    },
-    "@typescript-eslint/prefer-nullish-coalescing": {
-      "count": 1
-    },
-    "complexity": {
-      "count": 1
-    },
-    "no-restricted-syntax": {
-      "count": 1
     }
   },
   "apps/dashboard/src/lib/app-registry.ts": {
@@ -1890,22 +1716,7 @@
     }
   },
   "apps/dashboard/src/middleware.ts": {
-    "@typescript-eslint/prefer-nullish-coalescing": {
-      "count": 5
-    },
     "complexity": {
-      "count": 2
-    },
-    "max-lines-per-function": {
-      "count": 2
-    },
-    "no-nested-ternary": {
-      "count": 2
-    },
-    "sonarjs/cognitive-complexity": {
-      "count": 1
-    },
-    "sonarjs/no-duplicate-string": {
       "count": 1
     }
   },
@@ -2055,9 +1866,6 @@
   "apps/dashboard/src/services/tenant-context.service.ts": {
     "@typescript-eslint/no-unnecessary-condition": {
       "count": 1
-    },
-    "max-lines-per-function": {
-      "count": 1
     }
   },
   "apps/dashboard/tests/account-security.test.tsx": {
@@ -2129,7 +1937,7 @@
       "count": 3
     },
     "sonarjs/no-duplicate-string": {
-      "count": 3
+      "count": 2
     }
   },
   "apps/dashboard/tests/branches-settings-api.test.ts": {
@@ -2152,23 +1960,6 @@
       "count": 2
     }
   },
-  "apps/dashboard/tests/cas-autosave.test.tsx": {
-    "@typescript-eslint/no-empty-function": {
-      "count": 4
-    },
-    "@typescript-eslint/no-unsafe-assignment": {
-      "count": 2
-    },
-    "@typescript-eslint/require-await": {
-      "count": 5
-    },
-    "max-lines-per-function": {
-      "count": 2
-    },
-    "sonarjs/no-duplicate-string": {
-      "count": 1
-    }
-  },
   "apps/dashboard/tests/config-form-renderer.test.tsx": {
     "max-lines-per-function": {
       "count": 1
@@ -2176,18 +1967,9 @@
   },
   "apps/dashboard/tests/e2e-studio-integration.test.tsx": {
     "@typescript-eslint/no-empty-function": {
-      "count": 2
-    },
-    "@typescript-eslint/no-unsafe-assignment": {
-      "count": 2
-    },
-    "@typescript-eslint/require-await": {
-      "count": 4
+      "count": 1
     },
     "max-lines-per-function": {
-      "count": 3
-    },
-    "sonarjs/no-duplicate-string": {
       "count": 1
     }
   },
@@ -2522,10 +2304,7 @@
   },
   "apps/dashboard/tests/sites-explorer.test.tsx": {
     "@typescript-eslint/no-empty-function": {
-      "count": 5
-    },
-    "max-lines-per-function": {
-      "count": 1
+      "count": 3
     }
   },
   "apps/dashboard/tests/sso-flow.test.tsx": {
@@ -2595,14 +2374,6 @@
   "apps/dashboard/tests/turnstile-runtime-config.test.ts": {
     "@typescript-eslint/no-unsafe-assignment": {
       "count": 2
-    }
-  },
-  "apps/dashboard/tests/visual-studio.test.tsx": {
-    "@typescript-eslint/no-empty-function": {
-      "count": 3
-    },
-    "max-lines-per-function": {
-      "count": 1
     }
   },
   "apps/platform/scripts/bootstrap-link.ts": {
@@ -2925,20 +2696,14 @@
     "@typescript-eslint/no-unnecessary-condition": {
       "count": 2
     },
-    "@typescript-eslint/prefer-nullish-coalescing": {
-      "count": 1
-    },
     "@typescript-eslint/prefer-optional-chain": {
       "count": 2
     },
     "complexity": {
-      "count": 2
-    },
-    "max-params": {
       "count": 1
     },
     "no-restricted-syntax": {
-      "count": 3
+      "count": 2
     }
   },
   "packages/auth/src/session/tenant-context.ts": {
@@ -3434,9 +3199,6 @@
   "packages/modules/website-builder/src/components/blocks/footer-block.tsx": {
     "@typescript-eslint/prefer-nullish-coalescing": {
       "count": 1
-    },
-    "complexity": {
-      "count": 1
     }
   },
   "packages/modules/website-builder/src/components/blocks/form-block.tsx": {
@@ -3458,15 +3220,12 @@
       "count": 1
     },
     "@typescript-eslint/prefer-nullish-coalescing": {
-      "count": 4
-    },
-    "complexity": {
-      "count": 1
+      "count": 3
     }
   },
   "packages/modules/website-builder/src/components/blocks/navbar-block.tsx": {
     "@typescript-eslint/prefer-nullish-coalescing": {
-      "count": 4
+      "count": 3
     },
     "complexity": {
       "count": 1
@@ -3488,96 +3247,6 @@
       "count": 1
     }
   },
-  "packages/modules/website-builder/src/editor/canvas/canvas-block-wrapper.tsx": {
-    "no-nested-ternary": {
-      "count": 1
-    }
-  },
-  "packages/modules/website-builder/src/editor/canvas/viewport-toolbar.tsx": {
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "packages/modules/website-builder/src/editor/canvas/visual-canvas.tsx": {
-    "@typescript-eslint/prefer-nullish-coalescing": {
-      "count": 5
-    },
-    "complexity": {
-      "count": 1
-    },
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "packages/modules/website-builder/src/editor/inspector/block-forms.tsx": {
-    "@typescript-eslint/prefer-nullish-coalescing": {
-      "count": 16
-    }
-  },
-  "packages/modules/website-builder/src/editor/inspector/block-property-inspector.tsx": {
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "packages/modules/website-builder/src/editor/inspector/design-token-editor.tsx": {
-    "@typescript-eslint/array-type": {
-      "count": 1
-    },
-    "@typescript-eslint/prefer-nullish-coalescing": {
-      "count": 6
-    },
-    "complexity": {
-      "count": 1
-    },
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "packages/modules/website-builder/src/editor/inspector/link-target-configurator.tsx": {
-    "@typescript-eslint/prefer-nullish-coalescing": {
-      "count": 1
-    }
-  },
-  "packages/modules/website-builder/src/editor/layers/add-block-drawer.tsx": {
-    "@typescript-eslint/no-unnecessary-type-assertion": {
-      "count": 1
-    },
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "packages/modules/website-builder/src/editor/layers/block-tree-sidebar.tsx": {
-    "@typescript-eslint/prefer-nullish-coalescing": {
-      "count": 1
-    },
-    "max-lines-per-function": {
-      "count": 2
-    }
-  },
-  "packages/modules/website-builder/src/editor/state/cas-conflict-dialog.tsx": {
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "packages/modules/website-builder/src/editor/state/use-editor-autosave.ts": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 1
-    },
-    "complexity": {
-      "count": 1
-    },
-    "max-lines-per-function": {
-      "count": 1
-    },
-    "max-params": {
-      "count": 1
-    }
-  },
-  "packages/modules/website-builder/src/render/ast-renderer.tsx": {
-    "@typescript-eslint/no-unnecessary-condition": {
-      "count": 1
-    }
-  },
   "packages/modules/website-builder/src/render/section-renderer.tsx": {
     "complexity": {
       "count": 1
@@ -3591,31 +3260,6 @@
   "packages/modules/website-builder/src/routes/admin/sites.ts": {
     "max-lines-per-function": {
       "count": 1
-    }
-  },
-  "packages/modules/website-builder/src/routes/forms.ts": {
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "packages/modules/website-builder/src/services/form-service.ts": {
-    "@typescript-eslint/array-type": {
-      "count": 2
-    },
-    "@typescript-eslint/dot-notation": {
-      "count": 1
-    },
-    "@typescript-eslint/prefer-nullish-coalescing": {
-      "count": 1
-    },
-    "@typescript-eslint/require-await": {
-      "count": 1
-    },
-    "complexity": {
-      "count": 1
-    },
-    "no-restricted-syntax": {
-      "count": 3
     }
   },
   "packages/modules/website-builder/src/services/page-service.ts": {
@@ -3677,37 +3321,6 @@
       "count": 1
     }
   },
-  "packages/modules/website-builder/tests/editor/autosave-cas.test.tsx": {
-    "@typescript-eslint/no-non-null-assertion": {
-      "count": 1
-    },
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "packages/modules/website-builder/tests/editor/layers-and-drawer.test.tsx": {
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "packages/modules/website-builder/tests/editor/property-inspector.test.tsx": {
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "packages/modules/website-builder/tests/editor/visual-canvas.test.tsx": {
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
-  "packages/modules/website-builder/tests/forms.test.ts": {
-    "max-lines-per-function": {
-      "count": 1
-    },
-    "sonarjs/no-duplicate-string": {
-      "count": 1
-    }
-  },
   "packages/modules/website-builder/tests/functions.test.ts": {
     "max-lines-per-function": {
       "count": 1
@@ -3716,14 +3329,6 @@
   "packages/modules/website-builder/tests/integration/cas-concurrency-control.test.ts": {
     "max-lines-per-function": {
       "count": 2
-    }
-  },
-  "packages/modules/website-builder/tests/integration/form-ingestion-idempotency.test.ts": {
-    "max-lines-per-function": {
-      "count": 1
-    },
-    "sonarjs/no-duplicate-string": {
-      "count": 1
     }
   },
   "packages/modules/website-builder/tests/integration/outbox-event-dispatch.test.ts": {

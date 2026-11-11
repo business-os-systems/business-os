@@ -32,10 +32,50 @@ export const PLATFORM_ERROR_CODES = {
     title: "Capability Denied",
     slug: "/errors/capability-denied",
   },
+  APP_NOT_INSTALLED: {
+    status: 403,
+    title: "Application Not Installed",
+    slug: "/errors/app-not-installed",
+  },
   STEP_UP_REQUIRED: {
     status: 403,
     title: "Step-Up Confirmation Required",
     slug: "/errors/step-up-required",
+  },
+  NOT_FOUND: {
+    status: 404,
+    title: "Resource Not Found",
+    slug: "/errors/not-found",
+  },
+  GONE: {
+    status: 410,
+    title: "Gone",
+    slug: "/errors/gone",
+  },
+  RESERVED_PATH: {
+    status: 422,
+    title: "Reserved Page Address",
+    slug: "/errors/reserved-path",
+  },
+  RESERVED_SLUG: {
+    status: 422,
+    title: "Reserved Site Address",
+    slug: "/errors/reserved-slug",
+  },
+  SITE_SLUG_CONFLICT: {
+    status: 409,
+    title: "Site Address Already In Use",
+    slug: "/errors/site-slug-conflict",
+  },
+  PAGE_PATH_CONFLICT: {
+    status: 409,
+    title: "Page Address Already In Use",
+    slug: "/errors/page-path-conflict",
+  },
+  PAGE_TREE_PROTECTED: {
+    status: 409,
+    title: "Protected Page",
+    slug: "/errors/page-tree-protected",
   },
   TENANT_NOT_FOUND: {
     status: 404,
@@ -56,6 +96,16 @@ export const PLATFORM_ERROR_CODES = {
     status: 409,
     title: "Version Conflict",
     slug: "/errors/version-conflict",
+  },
+  ITEM_NOT_PUBLISHABLE: {
+    status: 409,
+    title: "Catalog Item Not Publishable",
+    slug: "/errors/item-not-publishable",
+  },
+  PREVIEW_REQUIRED: {
+    status: 409,
+    title: "Preview Required",
+    slug: "/errors/preview-required",
   },
   FLAG_NOT_FOUND: {
     status: 404,
@@ -177,6 +227,36 @@ export const PLATFORM_ERROR_CODES = {
     title: "Invalid Lifecycle Transition",
     slug: "/errors/invalid-transition",
   },
+  MEDIA_ASSET_NOT_FOUND: {
+    status: 404,
+    title: "Media Asset Not Found",
+    slug: "/errors/media-asset-not-found",
+  },
+  MEDIA_IN_USE: {
+    status: 409,
+    title: "Media Asset Is In Use",
+    slug: "/errors/media-in-use",
+  },
+  MEDIA_OBJECT_MISSING: {
+    status: 422,
+    title: "Uploaded Object Missing",
+    slug: "/errors/media-object-missing",
+  },
+  MEDIA_TYPE_NOT_ALLOWED: {
+    status: 422,
+    title: "Media Type Not Allowed",
+    slug: "/errors/media-type-not-allowed",
+  },
+  MEDIA_SIZE_EXCEEDED: {
+    status: 413,
+    title: "Media File Too Large",
+    slug: "/errors/media-size-exceeded",
+  },
+  MEDIA_CHECKSUM_MISMATCH: {
+    status: 422,
+    title: "Media Checksum Mismatch",
+    slug: "/errors/media-checksum-mismatch",
+  },
   SLUG_MISMATCH: {
     status: 422,
     title: "Confirmation Slug Mismatch",
@@ -263,20 +343,14 @@ export type PlatformErrorCode = keyof typeof PLATFORM_ERROR_CODES;
  * accumulator.
  */
 export const PLATFORM_ERROR_CODE = Object.freeze(
-  Object.fromEntries(
-    Object.keys(PLATFORM_ERROR_CODES).map((code) => [code, code] as const)
-  )
+  Object.fromEntries(Object.keys(PLATFORM_ERROR_CODES).map((code) => [code, code] as const)),
 ) as Readonly<Record<PlatformErrorCode, PlatformErrorCode>>;
 
-export function isPlatformErrorCode(
-  value: string
-): value is PlatformErrorCode {
+export function isPlatformErrorCode(value: string): value is PlatformErrorCode {
   return Object.prototype.hasOwnProperty.call(PLATFORM_ERROR_CODES, value);
 }
 
-export function getPlatformErrorDefinition(
-  code: PlatformErrorCode
-): PlatformErrorDefinition {
+export function getPlatformErrorDefinition(code: PlatformErrorCode): PlatformErrorDefinition {
   return PLATFORM_ERROR_CODES[code];
 }
 

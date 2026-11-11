@@ -6,6 +6,7 @@ import {
   ShoppingCartIcon,
   BuildingIcon,
   PackageIcon,
+  ImageIcon,
   SettingsIcon,
   HomeIcon,
   MapPinIcon,
@@ -13,6 +14,7 @@ import {
   GitBranchIcon,
   UsersIcon,
   ShieldIcon,
+  MessageCircleIcon,
   type IconProps,
 } from "@suite/ui/icons";
 
@@ -24,6 +26,7 @@ export type IconComponent = React.FC<IconProps>;
  */
 export const CANONICAL_NAV_ICON_KEYS = [
   "home",
+  "inquiries",
   "sites",
   "website-builder",
   "website_builder",
@@ -40,6 +43,7 @@ export const CANONICAL_NAV_ICON_KEYS = [
   "inventory_tracker",
   "stock-inventory",
   "stock_inventory",
+  "media",
   "settings",
 ] as const;
 
@@ -52,6 +56,7 @@ export type NavIconKey = (typeof CANONICAL_NAV_ICON_KEYS)[number];
  */
 export const NAV_ICON_REGISTRY: Readonly<Record<NavIconKey, IconComponent>> = {
   home: HomeIcon,
+  inquiries: MessageCircleIcon,
   sites: GlobeIcon,
   "website-builder": GlobeIcon,
   website_builder: GlobeIcon,
@@ -68,6 +73,7 @@ export const NAV_ICON_REGISTRY: Readonly<Record<NavIconKey, IconComponent>> = {
   inventory_tracker: PackageIcon,
   "stock-inventory": PackageIcon,
   stock_inventory: PackageIcon,
+  media: ImageIcon,
   settings: SettingsIcon,
 };
 

@@ -6,7 +6,6 @@ import {
   createSessionCookieOptions,
   type SessionPayload,
 } from "@suite/auth/session";
-import { isProduction } from "@/lib/env";
 import { getAuthenticatedSession } from "@/lib/session-helper";
 import { problemResponse, successResponse } from "@/lib/api-response";
 import { quotaProblemResponse } from "@/lib/quota-problem";
@@ -78,7 +77,7 @@ async function buildBootstrapResponse(
     })
   );
 
-  const cookieOptions = createSessionCookieOptions(isProduction, true);
+  const cookieOptions = createSessionCookieOptions(true);
   const response = successResponse({
     success: true,
     organizationId: result.organizationId,

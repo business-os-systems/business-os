@@ -42,6 +42,31 @@ export interface LinkTarget {
   rel?: string;
 }
 
+/**
+ * A media slot either references a workspace asset by identity or keeps a
+ * legacy direct URL. The asset variant is the only one the studio writes; the
+ * URL variant keeps pre-existing blocks valid (FR-050, FR-120).
+ */
+export type MediaReference =
+  | {
+      kind: "asset";
+      assetId: string;
+      subKey?: string;
+      alt?: string;
+    }
+  | { kind: "url"; url: string };
+
+/** The render-time projection of an asset; never persisted into the AST. */
+export interface MediaAssetResolution {
+  assetId: string;
+  url: string;
+  fileName: string;
+  width: number | null;
+  height: number | null;
+}
+
+export type MediaAssetMap = Readonly<Record<string, MediaAssetResolution>>;
+
 // 1. Hero Block Props
 export interface HeroBlockProps {
   badge?: string;
@@ -55,6 +80,8 @@ export interface HeroBlockProps {
     label: string;
     target: LinkTarget;
   };
+  image?: MediaReference;
+  /** Legacy direct URL retained so previously authored blocks still render. */
   imageUrl?: string;
   imageAlt?: string;
   imagePosition?: "right" | "left" | "bottom" | "background";
@@ -152,6 +179,8 @@ export interface NavItem {
 }
 
 export interface NavbarBlockProps {
+  logo?: MediaReference;
+  /** Legacy direct URL retained so previously authored blocks still render. */
   logoUrl?: string;
   logoText?: string;
   items: NavItem[];
@@ -165,18 +194,20 @@ export interface NavbarBlockProps {
 export interface FooterColumn {
   id: string;
   title: string;
-  links: Array<{ id: string; label: string; target: LinkTarget }>;
+  links: { id: string; label: string; target: LinkTarget }[];
 }
 
 export interface FooterBlockProps {
+  logo?: MediaReference;
+  /** Legacy direct URL retained so previously authored blocks still render. */
   logoUrl?: string;
   logoText?: string;
   copyrightText?: string;
   columns: FooterColumn[];
-  socialLinks?: Array<{
+  socialLinks?: {
     platform: "twitter" | "facebook" | "instagram" | "linkedin" | "github";
     url: string;
-  }>;
+  }[];
 }
 
 // Discriminated Block AST Types

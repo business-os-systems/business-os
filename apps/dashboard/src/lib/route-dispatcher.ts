@@ -5,6 +5,8 @@
  * whether a user lands on the executive dashboard or directly into a designated app.
  */
 
+import { workspacePath } from "@/lib/workspace-paths";
+
 /**
  * Dynamic permissions context for route dispatching (ISP & SRP).
  * Evaluates purely dynamic permission tokens (e.g. "pos:orders:create", "*").
@@ -40,15 +42,15 @@ export interface RouteDispatchContext
 
 // Canonical application route registry mapping modular app IDs to entry roots
 const APP_ROUTES = new Map<string, string>([
-  ["cms", "/sites"],
-  ["sites", "/sites"],
-  ["website_builder", "/sites"],
-  ["pms", "/pms"],
-  ["lodging_pms", "/pms"],
-  ["pos", "/pos"],
-  ["restaurant_pos", "/pos"],
-  ["inventory", "/inventory"],
-  ["stock_inventory", "/inventory"],
+  ["cms", workspacePath("/sites")],
+  ["sites", workspacePath("/sites")],
+  ["website_builder", workspacePath("/sites")],
+  ["pms", workspacePath("/pms")],
+  ["lodging_pms", workspacePath("/pms")],
+  ["pos", workspacePath("/pos")],
+  ["restaurant_pos", workspacePath("/pos")],
+  ["inventory", workspacePath("/inventory")],
+  ["stock_inventory", workspacePath("/inventory")],
 ]);
 
 /**

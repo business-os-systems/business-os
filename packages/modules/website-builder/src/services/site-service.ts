@@ -199,19 +199,15 @@ export class SiteService {
       };
     }
 
-    const suggestions: string[] = [];
-    let counter = 1;
-    while (suggestions.length < 3 && counter <= 10) {
-      const candidate = `${normalized}-${counter}`;
-      const candidateHost = `${candidate}.business-os.site`;
-      const conflict = await this.db.cmsDomain.findUnique({
-        where: { hostname: candidateHost },
-      });
-      if (!conflict) {
-        suggestions.push(candidate);
-      }
-      counter++;
-    }
+    const candidates = Array.from({ length: 10 }, (_, index) => `${normalized}-${index + 1}`);
+    const conflicts = await Promise.all(
+      candidates.map((candidate) =>
+        this.db.cmsDomain.findUnique({ where: { hostname: `${candidate}.business-os.site` } })
+      )
+    );
+    const suggestions = candidates
+      .filter((_, index) => conflicts[index] === null)
+      .slice(0, 3);
 
     return {
       subdomain: normalized,
@@ -341,3 +337,10 @@ export class SiteService {
     return true;
   }
 }
+
+/**
+ * The re-baselined T-04 provisioning path lives beside the legacy prototype
+ * class so the authenticated /api/v1/cms routes can adopt it immediately while
+ * the prototype route layer is retired in #356 (T085).
+ */
+export * from "./site-provisioning.js";

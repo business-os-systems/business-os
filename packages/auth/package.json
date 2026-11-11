@@ -26,6 +26,11 @@
       "import": "./src/session/index.ts",
       "default": "./src/session/index.ts"
     },
+    "./session-cookie": {
+      "types": "./src/session-cookie.ts",
+      "import": "./src/session-cookie.ts",
+      "default": "./src/session-cookie.ts"
+    },
     "./platform": {
       "types": "./src/platform/index.ts",
       "import": "./src/platform/index.ts",

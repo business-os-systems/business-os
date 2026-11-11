@@ -1,27 +1,65 @@
-import type { PageAst } from "../../ast/types.js";
+import type { MediaAssetMap, PageAst } from "../../ast/types.js";
 
-export type AutosaveStatus = "idle" | "dirty" | "saving" | "saved" | "conflict" | "error";
+export type AutosaveStatus = "idle" | "dirty" | "saving" | "saved" | "offline" | "conflict" | "error";
 
-export interface AutosaveConflictData {
-  localAst: PageAst;
-  serverAst: PageAst;
-  serverRevision: number;
+/** The tenant-scoped page content contract, shared by the API and the editor. */
+export interface PageContentSnapshot {
+  readonly pageId: string;
+  readonly revision: number;
+  readonly draftAst: PageAst;
+  readonly publishedAst: PageAst | null;
+  /** Server-resolved asset URLs for the loaded draft and published AST. */
+  readonly media: MediaAssetMap;
+  readonly updatedAt: string;
+  readonly lastEditedByUserId: string | null;
+  readonly lastEditedAt: string | null;
 }
 
-export interface AutosaveOptions {
-  debounceMs?: number;
-  onSaveSuccess?: (revision: number) => void;
-  onConflict?: (conflict: AutosaveConflictData) => void;
-  onError?: (error: Error) => void;
+export interface DraftSaveInput {
+  readonly expectedRevision: number;
+  readonly draftAst: PageAst;
+}
+
+export type DraftSaveResult =
+  | { readonly kind: "saved"; readonly snapshot: PageContentSnapshot }
+  | {
+      readonly kind: "conflict";
+      readonly current: PageContentSnapshot;
+      readonly retainedInHistory: boolean;
+    };
+
+export interface DraftContentTransport {
+  saveDraft(input: DraftSaveInput): Promise<DraftSaveResult>;
+}
+
+export interface LocalDraftVersion {
+  readonly ast: PageAst;
+  readonly authorName: string;
+  readonly editedAt: string;
+  readonly revision: number;
+}
+
+export interface AutosaveConflict {
+  readonly mine: LocalDraftVersion;
+  readonly theirs: PageContentSnapshot;
+  readonly retainedInHistory: boolean;
+}
+
+export interface AutosaveState {
+  readonly status: AutosaveStatus;
+  readonly ast: PageAst;
+  readonly revision: number;
+  /** Server-resolved asset URLs for the current AST; replaced with each adopted snapshot. */
+  readonly media: MediaAssetMap;
+  readonly conflict: AutosaveConflict | null;
+  readonly error: string | null;
 }
 
 export interface UseEditorAutosaveReturn {
-  status: AutosaveStatus;
-  lastSavedRevision: number;
-  currentAst: PageAst;
-  conflictData: AutosaveConflictData | null;
-  updateAst: (newAst: PageAst) => void;
-  flushSave: () => Promise<void>;
-  resolveConflictKeepMine: () => Promise<void>;
-  resolveConflictKeepServer: () => void;
+  readonly state: AutosaveState;
+  readonly updateAst: (ast: PageAst) => void;
+  readonly flushSave: () => Promise<void>;
+  readonly resolveKeepMine: () => Promise<void>;
+  readonly resolveKeepTheirs: () => void;
+  readonly retryNow: () => Promise<void>;
 }

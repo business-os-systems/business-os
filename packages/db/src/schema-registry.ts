@@ -25,10 +25,19 @@ export const SCHEMA_OWNERSHIP = [
   },
   {
     owner: "website-builder",
-    schema: "public",
+    schema: "cms",
     tablePrefix: "cms_",
-    prismaFile: "website-builder.prisma",
-    description: "Website Builder / CMS tables, namespaced in the public schema.",
+    prismaFile: "cms.prisma",
+    description:
+      "Website Builder / CMS tables, namespaced with the cms_ prefix in the dedicated cms schema.",
+  },
+  {
+    owner: "media",
+    schema: "public",
+    tablePrefix: "media_",
+    prismaFile: "media.prisma",
+    description:
+      "Shared media library owned by the workspace, namespaced in the public schema.",
   },
   {
     owner: "feature-flags",

@@ -1,14 +1,14 @@
 import React from "react";
 import { Button } from "@suite/ui";
 import {
+  MonitorIcon,
+  RotateCcwIcon,
   SmartphoneIcon,
   TabletIcon,
-  MonitorIcon,
   ZoomInIcon,
   ZoomOutIcon,
-  RotateCcwIcon,
 } from "@suite/ui/icons";
-import type { ViewportDevice, ViewportConfig } from "./types.js";
+import type { ViewportConfig, ViewportDevice } from "./types.js";
 
 export const VIEWPORT_CONFIGS: Record<ViewportDevice, ViewportConfig> = {
   mobile: { device: "mobile", width: 375, label: "Mobile (375px)" },
@@ -16,129 +16,122 @@ export const VIEWPORT_CONFIGS: Record<ViewportDevice, ViewportConfig> = {
   desktop: { device: "desktop", width: 1280, label: "Desktop (1280px)" },
 };
 
-export interface ViewportToolbarProps {
-  device: ViewportDevice;
-  zoom: number;
-  onDeviceChange: (device: ViewportDevice) => void;
-  onZoomChange: (zoom: number) => void;
-  className?: string;
+const ZOOM_STEP = 0.1;
+const ZOOM_MIN = 0.5;
+const ZOOM_MAX = 2;
+
+interface DeviceOption {
+  readonly device: ViewportDevice;
+  readonly label: string;
+  readonly Icon: typeof MonitorIcon;
 }
 
-export function ViewportToolbar({
-  device,
-  zoom,
-  onDeviceChange,
-  onZoomChange,
-  className = "",
-}: ViewportToolbarProps) {
-  const handleZoomIn = () => {
-    onZoomChange(Math.min(zoom + 0.1, 2.0));
-  };
+const DEVICE_OPTIONS: readonly DeviceOption[] = [
+  { device: "desktop", label: "Desktop", Icon: MonitorIcon },
+  { device: "tablet", label: "Tablet", Icon: TabletIcon },
+  { device: "mobile", label: "Mobile", Icon: SmartphoneIcon },
+];
 
-  const handleZoomOut = () => {
-    onZoomChange(Math.max(zoom - 0.1, 0.5));
-  };
+export interface ViewportToolbarProps {
+  readonly device: ViewportDevice;
+  readonly zoom: number;
+  readonly onDeviceChange: (device: ViewportDevice) => void;
+  readonly onZoomChange: (zoom: number) => void;
+}
 
-  const handleZoomReset = () => {
-    onZoomChange(1.0);
-  };
+function clampZoom(value: number): number {
+  return Math.min(Math.max(value, ZOOM_MIN), ZOOM_MAX);
+}
 
-  const formattedZoom = `${Math.round(zoom * 100)}%`;
+function DeviceButton(props: {
+  readonly option: DeviceOption;
+  readonly active: boolean;
+  readonly onSelect: (device: ViewportDevice) => void;
+}) {
+  const { option, active, onSelect } = props;
+  return (
+    <Button
+      type="button"
+      size="sm"
+      variant={active ? "default" : "ghost"}
+      aria-pressed={active}
+      aria-label={"Switch to " + option.label + " view"}
+      onClick={() => onSelect(option.device)}
+      className="flex items-center gap-1.5"
+    >
+      <option.Icon size={16} />
+      <span className="hidden text-xs font-medium sm:inline">{option.label}</span>
+    </Button>
+  );
+}
 
+function ZoomControls(props: { readonly zoom: number; readonly onZoomChange: (zoom: number) => void }) {
+  return (
+    <div className="flex items-center gap-1" role="group" aria-label="Zoom controls">
+      <Button
+        type="button"
+        size="icon"
+        variant="ghost"
+        onClick={() => props.onZoomChange(clampZoom(props.zoom - ZOOM_STEP))}
+        disabled={props.zoom <= ZOOM_MIN}
+        aria-label="Zoom out"
+        className="h-8 w-8"
+      >
+        <ZoomOutIcon size={15} />
+      </Button>
+      <span
+        className="min-w-12 px-2 text-center font-mono text-xs font-semibold text-text-secondary"
+        aria-label="Current zoom level"
+      >
+        {Math.round(props.zoom * 100) + "%"}
+      </span>
+      <Button
+        type="button"
+        size="icon"
+        variant="ghost"
+        onClick={() => props.onZoomChange(clampZoom(props.zoom + ZOOM_STEP))}
+        disabled={props.zoom >= ZOOM_MAX}
+        aria-label="Zoom in"
+        className="h-8 w-8"
+      >
+        <ZoomInIcon size={15} />
+      </Button>
+      <Button
+        type="button"
+        size="icon"
+        variant="ghost"
+        onClick={() => props.onZoomChange(1)}
+        aria-label="Reset zoom to 100%"
+        className="h-8 w-8 text-text-muted hover:text-text"
+      >
+        <RotateCcwIcon size={14} />
+      </Button>
+    </div>
+  );
+}
+
+/** Viewport and zoom controls for the canvas. Token-only chrome (FR-025). */
+export function ViewportToolbar(props: ViewportToolbarProps) {
   return (
     <div
       role="toolbar"
-      aria-label="Viewport simulation controls"
-      className={`flex items-center justify-between px-4 py-2 bg-white border-b border-slate-200 select-none text-slate-700 ${className}`}
+      aria-label="Canvas viewport controls"
+      className="flex select-none items-center justify-between gap-2 border-b border-border bg-surface px-4 py-2 text-text"
     >
-      {/* Device Viewport Toggle Buttons */}
-      <div className="flex items-center space-x-1" role="group" aria-label="Device viewport">
-        <Button
-          type="button"
-          size="sm"
-          variant={device === "desktop" ? "default" : "ghost"}
-          onClick={() => onDeviceChange("desktop")}
-          aria-label="Switch to desktop view"
-          className="flex items-center gap-1.5"
-        >
-          <MonitorIcon size={16} />
-          <span className="hidden sm:inline text-xs font-medium">Desktop</span>
-        </Button>
-
-        <Button
-          type="button"
-          size="sm"
-          variant={device === "tablet" ? "default" : "ghost"}
-          onClick={() => onDeviceChange("tablet")}
-          aria-label="Switch to tablet view"
-          className="flex items-center gap-1.5"
-        >
-          <TabletIcon size={16} />
-          <span className="hidden sm:inline text-xs font-medium">Tablet</span>
-        </Button>
-
-        <Button
-          type="button"
-          size="sm"
-          variant={device === "mobile" ? "default" : "ghost"}
-          onClick={() => onDeviceChange("mobile")}
-          aria-label="Switch to mobile view"
-          className="flex items-center gap-1.5"
-        >
-          <SmartphoneIcon size={16} />
-          <span className="hidden sm:inline text-xs font-medium">Mobile</span>
-        </Button>
+      <div className="flex items-center gap-1" role="group" aria-label="Device viewport">
+        {DEVICE_OPTIONS.map((option) => (
+          <DeviceButton
+            key={option.device}
+            option={option}
+            active={option.device === props.device}
+            onSelect={props.onDeviceChange}
+          />
+        ))}
       </div>
-
-      {/* Viewport Width Indicator */}
-      <div className="text-xs font-semibold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-md">
-        {VIEWPORT_CONFIGS[device].label}
-      </div>
-
-      {/* Zoom Pan & Reset Controls */}
-      <div className="flex items-center space-x-1" role="group" aria-label="Zoom controls">
-        <Button
-          type="button"
-          size="icon"
-          variant="ghost"
-          onClick={handleZoomOut}
-          disabled={zoom <= 0.5}
-          aria-label="Zoom out"
-          className="h-8 w-8"
-        >
-          <ZoomOutIcon size={15} />
-        </Button>
-
-        <span
-          className="text-xs font-semibold font-mono text-slate-600 px-2 min-w-12 text-center"
-          aria-label="Current zoom level"
-        >
-          {formattedZoom}
-        </span>
-
-        <Button
-          type="button"
-          size="icon"
-          variant="ghost"
-          onClick={handleZoomIn}
-          disabled={zoom >= 2.0}
-          aria-label="Zoom in"
-          className="h-8 w-8"
-        >
-          <ZoomInIcon size={15} />
-        </Button>
-
-        <Button
-          type="button"
-          size="icon"
-          variant="ghost"
-          onClick={handleZoomReset}
-          aria-label="Reset zoom to 100%"
-          className="h-8 w-8 text-slate-500 hover:text-slate-800"
-        >
-          <RotateCcwIcon size={14} />
-        </Button>
-      </div>
+      <span className="rounded-md bg-surface-sunken px-2.5 py-1 text-xs font-semibold text-text-secondary">
+        {VIEWPORT_CONFIGS[props.device].label}
+      </span>
+      <ZoomControls zoom={props.zoom} onZoomChange={props.onZoomChange} />
     </div>
   );
 }

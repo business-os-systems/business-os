@@ -7,6 +7,7 @@ import { canManageLifecycle } from "@/components/forms/lifecycle-form.config";
 import { CapabilityDeniedView } from "@/components/states/view-state";
 import { useTenantRecord } from "../tenant-record-context";
 import { TenantDangerPanel } from "./tenant-danger-panel";
+import { TenantSitesPanel } from "./tenant-sites-panel";
 
 export default function TenantDangerPage() {
   const { record, reload } = useTenantRecord();
@@ -35,6 +36,10 @@ export default function TenantDangerPage() {
           reload();
         }}
         onReload={reload}
+      />
+      <TenantSitesPanel
+        organizationId={record.profile.id}
+        onApplied={(message) => setNotice(message)}
       />
     </div>
   );

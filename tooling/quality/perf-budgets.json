@@ -1,0 +1,84 @@
+{
+  "$schema": "./perf-budgets.schema.json",
+  "version": 1,
+  "updatedAt": "2026-11-11",
+  "description": "Release-gate budgets for every Website Builder surface (FR-064, SC-009). Values are compressed transfer sizes for bytes and milliseconds for timings.",
+  "surfaces": {
+    "storefront-home": {
+      "kind": "storefront",
+      "path": "/",
+      "description": "Published tenant home page",
+      "budgets": {
+        "htmlBytes": 12000,
+        "jsBytes": 240000,
+        "cssBytes": 16000,
+        "lcpMs": 2000,
+        "tbtMs": 150,
+        "cls": 0.05
+      }
+    },
+    "storefront-about": {
+      "kind": "storefront",
+      "path": "/about",
+      "description": "Published secondary page",
+      "budgets": {
+        "htmlBytes": 12000,
+        "jsBytes": 240000,
+        "cssBytes": 16000,
+        "lcpMs": 2000,
+        "tbtMs": 150,
+        "cls": 0.05
+      }
+    },
+    "storefront-contact": {
+      "kind": "storefront",
+      "path": "/contact",
+      "description": "Published page with the inquiry form",
+      "budgets": {
+        "htmlBytes": 12000,
+        "jsBytes": 240000,
+        "cssBytes": 16000,
+        "lcpMs": 2000,
+        "tbtMs": 150,
+        "cls": 0.05
+      }
+    },
+    "storefront-not-found": {
+      "kind": "storefront",
+      "path": "/unpublished",
+      "description": "Neutral holding / not-found page",
+      "budgets": {
+        "htmlBytes": 9000,
+        "jsBytes": 170000,
+        "cssBytes": 16000,
+        "lcpMs": 1500,
+        "tbtMs": 150,
+        "cls": 0.05
+      }
+    },
+    "dashboard-studio": {
+      "kind": "dashboard",
+      "path": "/dashboard/sites/fixture-site/studio/fixture-page-home",
+      "description": "Studio page selection interaction",
+      "budgets": {
+        "interactionP95Ms": 600
+      }
+    },
+    "dashboard-review": {
+      "kind": "dashboard",
+      "path": "/dashboard/sites/fixture-site/review",
+      "description": "Review view-mode toggle interaction",
+      "budgets": {
+        "interactionP95Ms": 300
+      }
+    },
+    "dashboard-inquiries": {
+      "kind": "dashboard",
+      "path": "/dashboard/websites/inquiries",
+      "description": "Inquiry status filter interaction",
+      "budgets": {
+        "interactionP95Ms": 450
+      }
+    }
+  }
+}

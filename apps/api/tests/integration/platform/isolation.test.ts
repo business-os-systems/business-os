@@ -22,6 +22,21 @@ interface CmsTenantFixture {
   readonly domainId: string;
 }
 
+interface CatalogItems {
+  readonly globalItemId: string;
+  readonly globalVersionId: string;
+  readonly tenantItemId: string;
+  readonly otherItemId: string;
+}
+
+interface PresetThemes {
+  readonly globalThemeId: string;
+  readonly tenantThemeId: string;
+  readonly otherThemeId: string;
+}
+
+interface CatalogFixture extends CatalogItems, PresetThemes {}
+
 interface TenantFixture extends CoreTenantFixture, CmsTenantFixture {}
 
 interface FlagFixture {
@@ -89,6 +104,105 @@ async function createCmsTenant(
   return { siteId: site.id, pageId: page.id, domainId: domain.id };
 }
 
+function catalogDefinition(suffix: string) {
+  return { schemaVersion: "2026-03", block: { id: "blk_" + suffix, type: "hero" } };
+}
+
+function catalogItemData(
+  scope: "GLOBAL" | "TENANT",
+  organizationId: string | null,
+  label: string,
+  suffix: string,
+) {
+  return {
+    kind: "SECTION" as const,
+    scope,
+    organizationId,
+    name: "RLS " + label + " section " + suffix,
+    slug: "rls-" + label + "-" + suffix,
+    category: "hero",
+    definition: catalogDefinition(suffix),
+    createdBy: "rls-test",
+    updatedBy: "rls-test",
+  };
+}
+
+async function createCatalogItems(
+  owner: PrismaClient,
+  tenantA: TenantFixture,
+  tenantB: TenantFixture,
+  suffix: string,
+): Promise<CatalogItems> {
+  const globalItem = await owner.cmsCatalogItem.create({
+    data: catalogItemData("GLOBAL", null, "global", suffix),
+  });
+  const globalVersion = await owner.cmsCatalogItemVersion.create({
+    data: {
+      itemId: globalItem.id,
+      version: 1,
+      definition: catalogDefinition(suffix),
+      publishedAt: new Date(),
+      publishedBy: "rls-test",
+      createdBy: "rls-test",
+    },
+  });
+  const tenantItem = await owner.cmsCatalogItem.create({
+    data: catalogItemData("TENANT", tenantA.organizationId, "tenant", suffix),
+  });
+  const otherItem = await owner.cmsCatalogItem.create({
+    data: catalogItemData("TENANT", tenantB.organizationId, "other", suffix),
+  });
+  return {
+    globalItemId: globalItem.id,
+    globalVersionId: globalVersion.id,
+    tenantItemId: tenantItem.id,
+    otherItemId: otherItem.id,
+  };
+}
+
+async function createPresetThemes(
+  owner: PrismaClient,
+  tenantA: TenantFixture,
+  tenantB: TenantFixture,
+  suffix: string,
+): Promise<PresetThemes> {
+  const globalTheme = await owner.cmsTheme.create({
+    data: { name: "RLS global theme " + suffix, code: "rls-global-" + suffix, tokens: {} },
+  });
+  const tenantTheme = await owner.cmsTheme.create({
+    data: {
+      organizationId: tenantA.organizationId,
+      name: "RLS tenant theme " + suffix,
+      code: "rls-tenant-" + suffix,
+      tokens: {},
+    },
+  });
+  const otherTheme = await owner.cmsTheme.create({
+    data: {
+      organizationId: tenantB.organizationId,
+      name: "RLS other tenant theme " + suffix,
+      code: "rls-other-" + suffix,
+      tokens: {},
+    },
+  });
+  return {
+    globalThemeId: globalTheme.id,
+    tenantThemeId: tenantTheme.id,
+    otherThemeId: otherTheme.id,
+  };
+}
+
+async function createCatalogFixture(
+  owner: PrismaClient,
+  tenantA: TenantFixture,
+  tenantB: TenantFixture,
+  suffix: string,
+): Promise<CatalogFixture> {
+  const items = await createCatalogItems(owner, tenantA, tenantB, suffix);
+  const themes = await createPresetThemes(owner, tenantA, tenantB, suffix);
+  return { ...items, ...themes };
+}
+
 async function createTenantFixture(owner: PrismaClient, suffix: string): Promise<TenantFixture> {
   const core = await createCoreTenant(owner, suffix);
   const cms = await createCmsTenant(owner, core.organizationId, suffix);
@@ -147,6 +261,7 @@ let ownerPrisma: PrismaClient;
 let tenantA: TenantFixture;
 let tenantB: TenantFixture;
 let flag: FlagFixture;
+let catalog: CatalogFixture;
 
 beforeAll(async () => {
   if (tenantDatabaseUrl === undefined || ownerDatabaseUrl === undefined) {
@@ -159,11 +274,36 @@ beforeAll(async () => {
   tenantA = await createTenantFixture(ownerPrisma, "a-" + suffix);
   tenantB = await createTenantFixture(ownerPrisma, "b-" + suffix);
   flag = await createFlagFixture(ownerPrisma, tenantA, tenantB, suffix);
+  catalog = await createCatalogFixture(ownerPrisma, tenantA, tenantB, suffix);
 });
 
 afterAll(async () => {
   await tenantPrisma.$disconnect();
   await ownerPrisma.featureFlag.deleteMany({ where: { key: flag.key } });
+  await ownerPrisma.cmsCatalogItemVersion.deleteMany({
+    where: { id: catalog.globalVersionId },
+  });
+  await ownerPrisma.cmsCatalogItem.deleteMany({
+    where: {
+      id: {
+        in: [
+          catalog.globalItemId,
+          catalog.tenantItemId,
+          catalog.otherItemId,
+        ],
+      },
+    },
+  });
+  await ownerPrisma.cmsTheme.deleteMany({
+    where: {
+      id: { in: [catalog.globalThemeId, catalog.tenantThemeId, catalog.otherThemeId] },
+    },
+  });
+  await ownerPrisma.cmsSite.deleteMany({
+    where: {
+      organizationId: { in: [tenantA.organizationId, tenantB.organizationId] },
+    },
+  });
   await ownerPrisma.organization.deleteMany({
     where: {
       id: { in: [tenantA.organizationId, tenantB.organizationId] },
@@ -276,15 +416,15 @@ it.skipIf(!enabled)("only exposes the current tenant's memberships", async () =>
 it.skipIf(!enabled)("only exposes the current tenant's CMS rows", async () => {
   const result = await withTenantContext(tenantA.organizationId, async (tx) => {
     const sites = await tx.$queryRawUnsafe<{ id: string }[]>(
-      'SELECT "id" FROM "cms_sites" WHERE "id" = ANY($1::text[])',
+      'SELECT "id" FROM "cms"."cms_sites" WHERE "id" = ANY($1::text[])',
       [tenantA.siteId, tenantB.siteId],
     );
     const pages = await tx.$queryRawUnsafe<{ id: string }[]>(
-      'SELECT "id" FROM "cms_pages" WHERE "id" = ANY($1::text[])',
+      'SELECT "id" FROM "cms"."cms_pages" WHERE "id" = ANY($1::text[])',
       [tenantA.pageId, tenantB.pageId],
     );
     const domains = await tx.$queryRawUnsafe<{ id: string }[]>(
-      'SELECT "id" FROM "cms_domains" WHERE "id" = ANY($1::text[])',
+      'SELECT "id" FROM "cms"."cms_domains" WHERE "id" = ANY($1::text[])',
       [tenantA.domainId, tenantB.domainId],
     );
     return { sites, pages, domains };
@@ -293,6 +433,76 @@ it.skipIf(!enabled)("only exposes the current tenant's CMS rows", async () => {
   expect(result.sites.map((row) => row.id)).toEqual([tenantA.siteId]);
   expect(result.pages.map((row) => row.id)).toEqual([tenantA.pageId]);
   expect(result.domains.map((row) => row.id)).toEqual([tenantA.domainId]);
+});
+
+it.skipIf(!enabled)(
+  "only exposes global and current-tenant catalog rows, never another tenant's",
+  async () => {
+    const result = await withTenantContext(tenantA.organizationId, async (tx) => {
+      const items = await tx.$queryRawUnsafe<{ id: string }[]>(
+        'SELECT "id" FROM cms."cms_catalog_items" WHERE "id" = ANY($1::text[])',
+        [catalog.globalItemId, catalog.tenantItemId, catalog.otherItemId],
+      );
+      const versions = await tx.$queryRawUnsafe<{ id: string }[]>(
+        'SELECT "id" FROM cms."cms_catalog_item_versions" WHERE "id" = $1',
+        catalog.globalVersionId,
+      );
+      return { items, versions };
+    });
+
+    expect(new Set(result.items.map((row) => row.id))).toEqual(
+      new Set([catalog.globalItemId, catalog.tenantItemId]),
+    );
+    expect(result.versions.map((row) => row.id)).toEqual([catalog.globalVersionId]);
+  },
+);
+
+it.skipIf(!enabled)("refuses a tenant write to the platform-owned catalog", async () => {
+  await expect(
+    withTenantContext(tenantA.organizationId, (tx) =>
+      tx.$executeRawUnsafe(
+        'INSERT INTO cms."cms_catalog_items" ("id", "kind", "scope", "organizationId", "name", "slug", "category", "definition", "createdBy", "updatedBy") VALUES ($1, $2::cms."CmsCatalogKind", $3::cms."CmsCatalogScope", $4, $5, $6, $7, $8::jsonb, $9, $10)',
+        randomUUID(),
+        "SECTION",
+        "TENANT",
+        tenantA.organizationId,
+        "Tenant written catalog",
+        "tenant-written",
+        "hero",
+        "{}",
+        "rls-test",
+        "rls-test",
+      ),
+    ),
+  ).rejects.toThrow(/42501|permission denied/i);
+});
+
+it.skipIf(!enabled)("reads global themes and own themes but not another tenant's", async () => {
+  const rows = await withTenantContext(tenantA.organizationId, (tx) =>
+    tx.$queryRawUnsafe<{ id: string }[]>(
+      'SELECT "id" FROM cms."cms_themes" WHERE "id" = ANY($1::text[])',
+      [catalog.globalThemeId, catalog.tenantThemeId, catalog.otherThemeId],
+    ),
+  );
+
+  expect(new Set(rows.map((row) => row.id))).toEqual(
+    new Set([catalog.globalThemeId, catalog.tenantThemeId]),
+  );
+});
+
+it.skipIf(!enabled)("refuses a cross-tenant theme insert", async () => {
+  await expect(
+    withTenantContext(tenantA.organizationId, (tx) =>
+      tx.$executeRawUnsafe(
+        'INSERT INTO cms."cms_themes" ("id", "organizationId", "name", "code", "tokens", "createdAt", "updatedAt") VALUES ($1, $2, $3, $4, $5::jsonb, NOW(), NOW())',
+        randomUUID(),
+        tenantB.organizationId,
+        "Cross tenant theme",
+        "cross-tenant-theme-" + randomUUID().slice(0, 8),
+        "{}",
+      ),
+    ),
+  ).rejects.toThrow(/row-level security|42501/i);
 });
 
 it.skipIf(!enabled)("refuses a cross-tenant branch insert", async () => {

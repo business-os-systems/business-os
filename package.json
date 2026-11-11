@@ -28,6 +28,7 @@
     "test:coverage": "turbo run coverage --concurrency=1",
     "verify:diff": "git fetch origin dev && pnpm turbo run coverage --filter='[origin/dev]' --concurrency=1 && node tooling/quality/diff-coverage.mjs --base origin/dev",
     "test:rules": "node --test tooling/eslint-rules/*.test.mjs",
+    "quality:perf-budgets": "node tooling/quality/validate-perf-budgets.mjs --budgets tooling/quality/perf-budgets.json --results",
     "knip": "knip",
     "knip:report": "knip --no-exit-code",
     "depcruise": "depcruise apps packages --config .dependency-cruiser.cjs",
@@ -65,7 +66,7 @@
   },
   "lint-staged": {
     "*.{ts,tsx}": [
-      "eslint --fix",
+      "eslint --fix --pass-on-unpruned-suppressions",
       "bash -c 'pnpm typecheck'"
     ],
     "*.{json,md,css}": [

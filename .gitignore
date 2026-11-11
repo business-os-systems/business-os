@@ -24,6 +24,10 @@ pnpm-debug.log*
 
 # Testing & Coverage
 coverage/
+# Playwright evidence and the authenticated release state (T125)
+apps/web/playwright-report/
+apps/web/test-results/
+apps/web/tests/e2e/.auth/
 *.lcov
 .nyc_output/
 
@@ -56,3 +60,6 @@ skills-lock.json
 # One-time Platform bootstrap link (contains a secret)
 .platform-bootstrap-link
 /docs
+
+# Release-gate checklist artifacts written locally and in CI
+artifacts/

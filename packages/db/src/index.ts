@@ -69,6 +69,12 @@ export {
   PlatformOperatorStatus,
   PlatformAppAvailability,
   PlatformOutboxStatus,
+  CmsCatalogKind,
+  CmsCatalogScope,
+  CmsCatalogStatus,
+  MediaAssetKind,
+  MediaAssetStatus,
+  MediaUsageStatus,
 } from "@prisma/client";
 
 export type {
@@ -98,6 +104,8 @@ export type {
   CmsPageVersion,
   CmsTemplate,
   CmsDomain,
+  CmsCatalogItem,
+  CmsCatalogItemVersion,
   FeatureFlag,
   FeatureFlagRule,
   FeatureFlagAuditLog,
@@ -114,4 +122,6 @@ export type {
   OutboxEvent,
   Catalog,
   CatalogValue,
+  MediaAsset,
+  MediaUsage,
 } from "@prisma/client";

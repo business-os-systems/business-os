@@ -654,13 +654,15 @@ describe("Quota form validation", () => {
         isEnforced: "true",
       }).limitValue
     ).toBeDefined();
+    // media.storage became measurable with the media library (#344), so
+    // enforcing it is valid and produces no field error.
     expect(
       validateQuotaForm({
         resourceKey: "media.storage",
         limitValue: "10",
         isEnforced: "true",
       }).isEnforced
-    ).toBeDefined();
+    ).toBeUndefined();
     expect(
       buildQuotaItem(
         { resourceKey: MEMBERS_KEY, limitValue: " 3 ", isEnforced: "false" },

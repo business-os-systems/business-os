@@ -8,6 +8,7 @@ const cookieMocks = vi.hoisted(() => ({
   signSessionToken: vi.fn(),
   encodeSessionPayload: vi.fn(),
   createSessionCookieOptions: vi.fn(),
+  createTenantSessionCookieOptions: vi.fn(),
 }));
 const botMocks = vi.hoisted(() => ({ verifyBotChallenge: vi.fn() }));
 const loginMocks = vi.hoisted(() => ({
@@ -27,6 +28,7 @@ vi.mock("@/lib/auth-constants", () => ({
   signSessionToken: cookieMocks.signSessionToken,
   encodeSessionPayload: cookieMocks.encodeSessionPayload,
   createSessionCookieOptions: cookieMocks.createSessionCookieOptions,
+  createTenantSessionCookieOptions: cookieMocks.createTenantSessionCookieOptions,
 }));
 vi.mock("@/services/bot-defense.service", () => ({
   verifyBotChallenge: botMocks.verifyBotChallenge,
@@ -90,13 +92,16 @@ beforeEach(() => {
   botMocks.verifyBotChallenge.mockResolvedValue(true);
   cookieMocks.encodeSessionPayload.mockReturnValue("payload");
   cookieMocks.signSessionToken.mockResolvedValue("signed-token");
-  cookieMocks.createSessionCookieOptions.mockReturnValue({
+  const hostOnlyCookie = {
+    name: "__Host-bos_session",
     httpOnly: true,
     secure: true,
     sameSite: "lax",
     path: "/",
     maxAge: 3600,
-  });
+  };
+  cookieMocks.createSessionCookieOptions.mockReturnValue(hostOnlyCookie);
+  cookieMocks.createTenantSessionCookieOptions.mockReturnValue(hostOnlyCookie);
   loginMocks.recordSuccessfulLogin.mockResolvedValue(undefined);
   passkeyMocks.recordPasskeyVerification.mockResolvedValue(undefined);
 });
@@ -157,7 +162,7 @@ describe("login route", () => {
     expect(loginMocks.authenticateWithPassword).toHaveBeenCalledWith(
       expect.objectContaining({ email: EMAIL, ipAddress: "198.51.100.20" })
     );
-    expect(response.cookies.get("bos_session")?.value).toBe("signed-token");
+    expect(response.cookies.get("__Host-bos_session")?.value).toBe("signed-token");
     expect(loginMocks.recordSuccessfulLogin).toHaveBeenCalled();
   });
 
@@ -339,7 +344,7 @@ describe("passkey verify route", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(response.cookies.get("bos_session")?.value).toBe("signed-token");
+    expect(response.cookies.get("__Host-bos_session")?.value).toBe("signed-token");
     expect(passkeyMocks.recordPasskeyVerification).toHaveBeenCalledWith(
       expect.objectContaining({ passkeyId: "pk_1", ipAddress: "198.51.100.20" })
     );

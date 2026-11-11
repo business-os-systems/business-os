@@ -93,6 +93,14 @@ export function PlatformShell({ children }: { children: ReactNode }) {
                 {session.capabilities.length} capabilities
               </span>
             </div>
+            <a
+              href="/abuse"
+              target="_blank"
+              rel="noreferrer"
+              className="hidden text-xs font-medium text-text-secondary underline underline-offset-4 hover:text-text sm:inline"
+            >
+              Abuse contact
+            </a>
             <ThemeToggle />
             <Button
               variant="ghost"

@@ -90,7 +90,7 @@ describe("reference client mapping", () => {
     const firstCall = fetchMock.mock.calls[0];
     expect(firstCall?.[0]).toBe("http://localhost:4000/api/v1/reference/catalogs/branch_type");
     expect(firstCall?.[1]?.headers).toMatchObject({
-      Cookie: "suite_session=session-token",
+      Cookie: "__Host-bos_session=session-token",
     });
   });
 });

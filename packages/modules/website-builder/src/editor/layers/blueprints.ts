@@ -1,5 +1,17 @@
-import type { BlockType } from "../../ast/types.js";
-import type { BlockBlueprint } from "./types.js";
+import type { BlockType, BlockAst } from "../../ast/types.js";
+
+/**
+ * Code-owned declaration of a section *type* and its editable fields. Presets
+ * are catalog data; this registry is what the catalog form is generated from
+ * (FR-068, FR-147).
+ */
+export interface BlockBlueprint {
+  readonly type: BlockType;
+  readonly title: string;
+  readonly description: string;
+  readonly category: "marketing" | "commerce" | "content" | "navigation";
+  readonly createDefaultBlock: (id: string) => BlockAst;
+}
 
 export const BLOCK_BLUEPRINTS: Record<BlockType, BlockBlueprint> = {
   hero: {

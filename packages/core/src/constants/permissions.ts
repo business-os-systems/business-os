@@ -64,6 +64,14 @@ export const PERMISSIONS = {
     MANAGE: "billing:manage",
   },
 
+  // Shared Workspace Capability: Media Library (every installed application)
+  MEDIA: {
+    ALL: "media:*",
+    READ: "media:read",
+    UPLOAD: "media:upload",
+    DELETE: "media:delete",
+  },
+
   // Modular App: Website Builder (App 01)
   WEBSITE_BUILDER: {
     ALL: "cms:*",
@@ -71,7 +79,11 @@ export const PERMISSIONS = {
     SITES_WRITE: "cms:sites:write",
     PAGES_READ: "cms:pages:read",
     PAGES_WRITE: "cms:pages:write",
+    PAGES_PREVIEW: "cms:pages:preview",
     PUBLISH: "cms:publish",
+    LEADS_READ: "cms:leads:read",
+    LEADS_PII: "cms:leads:pii",
+    THEME_MANAGE: "cms:theme:manage",
   },
 } as const;
 
@@ -82,6 +94,7 @@ export type PermissionCode =
   | (typeof PERMISSIONS.SETTINGS)[keyof typeof PERMISSIONS.SETTINGS]
   | (typeof PERMISSIONS.USERS)[keyof typeof PERMISSIONS.USERS]
   | (typeof PERMISSIONS.BILLING)[keyof typeof PERMISSIONS.BILLING]
+  | (typeof PERMISSIONS.MEDIA)[keyof typeof PERMISSIONS.MEDIA]
   | (typeof PERMISSIONS.WEBSITE_BUILDER)[keyof typeof PERMISSIONS.WEBSITE_BUILDER];
 
 export const SETTINGS_PERMISSIONS = PERMISSIONS.SETTINGS;

@@ -6,7 +6,6 @@ import {
   createSessionCookieOptions,
   ForbiddenError,
 } from "@suite/auth";
-import { isProduction } from "@/lib/env";
 import { resolvePostLoginRoute } from "@/lib/route-dispatcher";
 import { getAuthenticatedSession } from "@/lib/session-helper";
 import { problemResponse, successResponse, zodProblemResponse } from "@/lib/api-response";
@@ -82,11 +81,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       })
     );
 
-    const cookieOptions = createSessionCookieOptions(
-      isProduction,
-      !isEphemeral,
-      remainingSeconds
-    );
+    const cookieOptions = createSessionCookieOptions(!isEphemeral, remainingSeconds);
     const response = successResponse({
       success: true,
       redirectUrl,

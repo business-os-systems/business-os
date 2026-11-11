@@ -1,8 +1,8 @@
+import { getBetterAuthSecret } from "../env.js";
 import {
-  isProduction as defaultIsProduction,
-  getBetterAuthSecret,
-  getSessionCookieSameSite,
-} from "../env.js";
+  TENANT_SESSION_COOKIE_NAME,
+  createTenantSessionCookieOptions,
+} from "../session-cookie.js";
 import {
   computeHmacSha256,
   constantTimeEqual,
@@ -10,7 +10,7 @@ import {
   encodeBase64UrlText,
 } from "../crypto/hmac.js";
 
-export const DEFAULT_SESSION_COOKIE_NAME = "suite_session";
+export const DEFAULT_SESSION_COOKIE_NAME = TENANT_SESSION_COOKIE_NAME;
 export const SESSION_COOKIE_NAME = DEFAULT_SESSION_COOKIE_NAME;
 
 // Ephemeral default: 24 hours rolling expiration (maxAge: 86400)
@@ -90,6 +90,15 @@ export interface SessionOnboardingContext {
 }
 
 /**
+ * Host-binding segment. A ticket issued on a tenant host records that host, so
+ * a replay on another host is rejected even if the cookie is forced across
+ * hosts (FR-111).
+ */
+export interface SessionHostBindingContext {
+  tenantHost?: string;
+}
+
+/**
  * Consolidated Session Payload.
  * Composed via Interface Segregation Principle from discrete domain contexts.
  */
@@ -99,18 +108,18 @@ export interface SessionPayload
     SessionAuthorizationContext,
     SessionLifecycleContext,
     SessionPreferencesContext,
-    SessionOnboardingContext {}
+    SessionOnboardingContext,
+    SessionHostBindingContext {}
 
 /**
- * Creates standardized enterprise cookie security attributes for session tokens.
- * Enforces HTTP-only, Secure (in production/HTTPS), and SameSite protections against CSRF/XSS.
+ * Creates the tenant session cookie attributes. Every tenant session is
+ * host-only: __Host- prefixed, Secure, HttpOnly, SameSite=Lax, Path=/, and
+ * never a Domain attribute (FR-111). The legacy shared-domain option is gone.
  */
 export function createSessionCookieOptions(
-  isProduction = defaultIsProduction,
   keepSignedIn = false,
   customMaxAgeSeconds?: number,
-  cookieName = DEFAULT_SESSION_COOKIE_NAME,
-  domainOverride?: string
+  cookieName = DEFAULT_SESSION_COOKIE_NAME
 ): SessionCookieOptions {
   let maxAge = keepSignedIn
     ? SESSION_PERSISTENT_MAX_AGE_SECONDS
@@ -120,28 +129,8 @@ export function createSessionCookieOptions(
     maxAge = customMaxAgeSeconds;
   }
 
-  const rawDomain = domainOverride || process.env.SESSION_COOKIE_DOMAIN;
-  const domain =
-    rawDomain && !rawDomain.includes("localhost") && !rawDomain.includes("127.0.0.1")
-      ? rawDomain.trim()
-      : undefined;
-
-  const sameSite = getSessionCookieSameSite();
-  if (sameSite === "none" && !isProduction) {
-    throw new Error(
-      "SESSION_COOKIE_SAME_SITE=none requires a production HTTPS deployment"
-    );
-  }
-
-  return {
-    name: cookieName,
-    httpOnly: true,
-    secure: isProduction || sameSite === "none",
-    sameSite,
-    path: "/",
-    ...(domain ? { domain } : {}),
-    maxAge,
-  };
+  const hostOnly = createTenantSessionCookieOptions(maxAge);
+  return { ...hostOnly, name: cookieName };
 }
 
 export function encodeSessionPayload(payload: SessionPayload): string {
@@ -177,7 +166,7 @@ export async function signSessionToken(
 }
 
 export function isSessionPayloadExpired(payload: SessionPayload): boolean {
-  if (!payload || !payload.timestamp) return true;
+  if (!payload?.timestamp) return true;
   if (payload.expiresAt) {
     return Date.now() >= payload.expiresAt;
   }
@@ -188,7 +177,7 @@ export function isSessionPayloadExpired(payload: SessionPayload): boolean {
 }
 
 export function isSessionPayloadIdleTimedOut(payload: SessionPayload): boolean {
-  if (!payload || !payload.timestamp) return true;
+  if (!payload?.timestamp) return true;
   if (!payload.sessionTimeoutSeconds || payload.sessionTimeoutSeconds <= 0) return false;
   return Date.now() - payload.timestamp > payload.sessionTimeoutSeconds * 1000;
 }

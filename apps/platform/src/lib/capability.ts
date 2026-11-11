@@ -58,3 +58,12 @@ export function canManageQuotas(
     PLATFORM_CAPABILITIES.QUOTAS_MANAGE.code,
   );
 }
+
+export function canPublishApps(
+  capabilities: readonly string[] | undefined | null,
+): boolean {
+  return hasPlatformCapability(
+    capabilities,
+    PLATFORM_CAPABILITIES.APPS_PUBLISH.code,
+  );
+}

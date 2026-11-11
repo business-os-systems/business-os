@@ -15,8 +15,7 @@ export const PLATFORM_CAPABILITY_GROUPS = [
   "System",
 ] as const;
 
-export type PlatformCapabilityGroup =
-  (typeof PLATFORM_CAPABILITY_GROUPS)[number];
+export type PlatformCapabilityGroup = (typeof PLATFORM_CAPABILITY_GROUPS)[number];
 
 export interface PlatformCapabilityDefinition {
   readonly code: string;
@@ -37,21 +36,25 @@ export const PLATFORM_CAPABILITIES = {
     code: "platform:apps:author",
     label: "Author application content",
     description:
-      "Edit application defaults and create draft catalog content without publishing.",
+      "Edit application defaults and create catalog items, edit drafts, fork versions and issue previews without publishing.",
+    group: "Applications",
+  },
+  APPS_PUBLISH: {
+    code: "platform:apps:publish",
+    label: "Publish application catalog",
+    description: "Publish catalog versions and deprecate, disable or retire catalog items.",
     group: "Applications",
   },
   TENANTS_READ: {
     code: "platform:tenants:read",
     label: "Read tenants",
-    description:
-      "Search tenants and read their records, installed apps and quotas.",
+    description: "Search tenants and read their records, installed apps and quotas.",
     group: "Tenants",
   },
   TENANTS_LIFECYCLE: {
     code: "platform:tenants:lifecycle",
     label: "Manage tenant lifecycle",
-    description:
-      "Suspend, restore and archive tenants with a recorded reason.",
+    description: "Suspend, restore and archive tenants with a recorded reason.",
     group: "Tenants",
   },
   QUOTAS_MANAGE: {
@@ -63,15 +66,13 @@ export const PLATFORM_CAPABILITIES = {
   ENTITLEMENTS_MANAGE: {
     code: "platform:entitlements:manage",
     label: "Manage entitlements",
-    description:
-      "Read and change installed apps, catalog overrides and validated app settings.",
+    description: "Read and change installed apps, catalog overrides and validated app settings.",
     group: "Tenants",
   },
   OPERATORS_MANAGE: {
     code: "platform:operators:manage",
     label: "Manage operators",
-    description:
-      "Invite operators and grant or revoke platform capabilities.",
+    description: "Invite operators and grant or revoke platform capabilities.",
     group: "Governance",
   },
   PII_READ: {
@@ -89,22 +90,19 @@ export const PLATFORM_CAPABILITIES = {
   CATALOGS_MANAGE: {
     code: "platform:catalogs:manage",
     label: "Manage reference catalogs",
-    description:
-      "Add, relabel, reorder and retire shared reference values.",
+    description: "Add, relabel, reorder and retire shared reference values.",
     group: "Reference",
   },
   IMPERSONATE: {
     code: "platform:impersonate",
     label: "Start support sessions",
-    description:
-      "Open a time-boxed, read-only support session into a tenant workspace.",
+    description: "Open a time-boxed, read-only support session into a tenant workspace.",
     group: "Support",
   },
   TELEMETRY_READ: {
     code: "platform:telemetry:read",
     label: "View platform health",
-    description:
-      "Read platform health, queue depth and operational telemetry.",
+    description: "Read platform health, queue depth and operational telemetry.",
     group: "System",
   },
   FLAGS_MANAGE: {
@@ -120,48 +118,42 @@ export type PlatformCapabilityKey = keyof typeof PLATFORM_CAPABILITIES;
 /**
  * Capabilities that grant read access to an application record. The dedicated
  * reader is the narrow grant; the catalog/entitlement manager keeps the access
- * it already had before the dedicated capability existed.
+ * it already had, and catalog authors and publishers read the record they must
+ * act on (P-03, #342). The Platform UI read check and the API read guard share
+ * this one list so a capability cannot open one surface and close the other.
  */
 export const PLATFORM_APPS_READ_CAPABILITIES = [
   PLATFORM_CAPABILITIES.APPS_READ.code,
   PLATFORM_CAPABILITIES.ENTITLEMENTS_MANAGE.code,
+  PLATFORM_CAPABILITIES.APPS_AUTHOR.code,
+  PLATFORM_CAPABILITIES.APPS_PUBLISH.code,
 ] as const;
 
 /** Fail-closed read check shared by the Platform UI and the API guard. */
 export function hasPlatformAppsReadAccess(
-  capabilities: readonly string[] | undefined | null
+  capabilities: readonly string[] | undefined | null,
 ): boolean {
   if (capabilities === undefined || capabilities === null) {
     return false;
   }
-  return PLATFORM_APPS_READ_CAPABILITIES.some((capability) =>
-    capabilities.includes(capability)
-  );
+  return PLATFORM_APPS_READ_CAPABILITIES.some((capability) => capabilities.includes(capability));
 }
 
-export type PlatformCapability =
-  (typeof PLATFORM_CAPABILITIES)[PlatformCapabilityKey]["code"];
+export type PlatformCapability = (typeof PLATFORM_CAPABILITIES)[PlatformCapabilityKey]["code"];
 
-export const PLATFORM_CAPABILITY_CODES: readonly PlatformCapability[] =
-  Object.freeze(
-    Object.values(PLATFORM_CAPABILITIES).map((capability) => capability.code)
-  );
-
-const PLATFORM_CAPABILITY_CODE_SET: ReadonlySet<string> = new Set(
-  PLATFORM_CAPABILITY_CODES
+export const PLATFORM_CAPABILITY_CODES: readonly PlatformCapability[] = Object.freeze(
+  Object.values(PLATFORM_CAPABILITIES).map((capability) => capability.code),
 );
 
-export function isPlatformCapability(
-  value: string
-): value is PlatformCapability {
+const PLATFORM_CAPABILITY_CODE_SET: ReadonlySet<string> = new Set(PLATFORM_CAPABILITY_CODES);
+
+export function isPlatformCapability(value: string): value is PlatformCapability {
   return PLATFORM_CAPABILITY_CODE_SET.has(value);
 }
 
-export function getPlatformCapability(
-  code: PlatformCapability
-): PlatformCapabilityDefinition {
+export function getPlatformCapability(code: PlatformCapability): PlatformCapabilityDefinition {
   const definition = Object.values(PLATFORM_CAPABILITIES).find(
-    (capability) => capability.code === code
+    (capability) => capability.code === code,
   );
   if (definition === undefined) {
     throw new Error(`Unknown platform capability: ${code}`);

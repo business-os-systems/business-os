@@ -1,4 +1,5 @@
-import type { PageAst } from "@suite/website-builder/ast";
+import type { MediaAssetMap, PageAst } from "@suite/website-builder/ast";
+import type { AppearanceTokens } from "@suite/website-builder/appearance";
 
 export type PreviewDevice = "desktop" | "tablet" | "mobile" | "responsive";
 
@@ -7,6 +8,8 @@ export interface PreviewWorkspaceProps {
   pageId: string;
   pageTitle?: string;
   initialAst?: PageAst;
+  media?: MediaAssetMap;
+  tokens?: AppearanceTokens | null;
 }
 
 export interface PreviewHeaderProps {

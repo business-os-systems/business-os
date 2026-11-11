@@ -7,7 +7,6 @@ import {
   signSessionToken,
   createSessionCookieOptions,
 } from "@suite/auth";
-import { isProduction } from "@/lib/env";
 import { getAuthenticatedSession } from "@/lib/session-helper";
 import { problemResponse, successResponse } from "@/lib/api-response";
 import {
@@ -150,7 +149,7 @@ async function buildAcceptedResponse(
   });
 
   const tokenJwt = await signSessionToken(updatedPayload);
-  const cookieOptions = createSessionCookieOptions(isProduction, true);
+  const cookieOptions = createSessionCookieOptions(true);
 
   const response = NextResponse.json({
     success: true,

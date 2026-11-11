@@ -1,16 +1,15 @@
 import { describe, expect, it } from "vitest";
+import { createHmac } from "node:crypto";
 import {
   CmsEvents,
   OutboxWriter,
   OutboxWorker,
-  FormService,
   type OutboxRecord,
 } from "../../src/index.js";
 
 describe("Transactional Outbox Event Dispatch Integration Suite (S1-8)", () => {
   const outboxWriter = new OutboxWriter();
   const outboxWorker = new OutboxWorker();
-  const formService = new FormService();
 
   it("stages and processes cms.page.published domain event with CloudEvents envelope", async () => {
     // 1. Stage event via outbox writer
@@ -51,7 +50,9 @@ describe("Transactional Outbox Event Dispatch Integration Suite (S1-8)", () => {
     const salt = "daily_rotating_hmac_salt_20261012";
 
     // Compute GDPR salted HMAC hash
-    const emailHash = formService.computeEmailHash(rawEmail, salt);
+    const emailHash = createHmac("sha256", salt)
+      .update(rawEmail.trim().toLowerCase())
+      .digest("hex");
     expect(emailHash).toHaveLength(64); // SHA-256 hex output
 
     // Stage form submission event
@@ -73,16 +74,17 @@ describe("Transactional Outbox Event Dispatch Integration Suite (S1-8)", () => {
     });
 
     // Verify raw email is completely absent from payload data
-    const eventData = record.payload.data as Record<string, unknown>;
-    expect(eventData["email"]).toBeUndefined();
-    expect(eventData["submitterEmail"]).toBeUndefined();
-    expect(eventData["submitterEmailHash"]).toBe(emailHash);
+    const eventData = record.payload.data;
+    expect(eventData.email).toBeUndefined();
+    expect(eventData.submitterEmail).toBeUndefined();
+    expect(eventData.submitterEmailHash).toBe(emailHash);
 
-    // Worker dispatches to CRM lead pipeline and transactional notification queue
+    // Release one has no notification dispatcher: the event is staged for a
+    // later shared capability and only the CRM projection consumes it.
     const processResult = await outboxWorker.processRecord(record);
     expect(processResult.success).toBe(true);
     expect(processResult.dispatchedTo).toContain("crm_lead_pipeline");
-    expect(processResult.dispatchedTo).toContain("notification_dispatcher");
+    expect(processResult.dispatchedTo).not.toContain("notification_dispatcher");
   });
 
   it("stages cms.domain.verified event and dispatches to edge SSL cert provisioner", async () => {

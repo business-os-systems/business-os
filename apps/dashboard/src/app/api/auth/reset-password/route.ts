@@ -6,7 +6,6 @@ import {
   signSessionToken,
   encodeSessionPayload,
 } from "@/lib/auth-constants";
-import { isProduction } from "@/lib/env";
 import { resolvePostLoginRoute } from "@/lib/route-dispatcher";
 import { problemResponse, zodProblemResponse } from "@/lib/problem-response";
 import { resetPasswordWithToken, type ResetPasswordResult } from "@/services/password-reset.service";
@@ -101,7 +100,7 @@ async function buildResetResponse(result: ResetPasswordResult): Promise<NextResp
     message: "Password updated successfully. All previous sessions have been revoked.",
     redirectUrl,
   });
-  const cookieOptions = createSessionCookieOptions(isProduction, false);
+  const cookieOptions = createSessionCookieOptions(false);
   response.cookies.set({
     name: SESSION_COOKIE_NAME,
     value: sessionToken,

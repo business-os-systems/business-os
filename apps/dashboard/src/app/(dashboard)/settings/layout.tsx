@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronLeftIcon } from "@suite/ui/icons";
 import { settingsCategoriesConfig } from "@/components/layout/settings.config";
+import { workspacePath } from "@/lib/workspace-paths";
 
 export default function SettingsLayout({
   children,
@@ -12,7 +13,7 @@ export default function SettingsLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const isRootSettings = pathname === "/settings";
+  const isRootSettings = pathname === workspacePath("/settings");
 
   // Find active category for mobile breadcrumb
   const activeCategory = settingsCategoriesConfig.find(
@@ -25,18 +26,16 @@ export default function SettingsLayout({
       {!isRootSettings && (
         <div className="md:hidden flex items-center justify-between pb-4 mb-4 border-b border-border">
           <Link
-            href="/settings"
+            href={workspacePath("/settings")}
             prefetch={false}
             className="inline-flex items-center gap-1.5 text-sm font-medium text-text-secondary hover:text-text transition-colors"
           >
             <ChevronLeftIcon className="h-4 w-4" />
             <span>Back to Settings</span>
           </Link>
-          {activeCategory && (
-            <span className="text-xs font-semibold uppercase tracking-wider text-text-muted">
+          {activeCategory ? <span className="text-xs font-semibold uppercase tracking-wider text-text-muted">
               {activeCategory.label}
-            </span>
-          )}
+            </span> : null}
         </div>
       )}
 

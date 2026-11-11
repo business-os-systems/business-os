@@ -223,3 +223,35 @@ export {
 } from "./time/index.js";
 // Platform system telemetry contract (FR-031..FR-038)
 export * from "./system/contracts.js";
+// Host model classification and reserved host/path registry (FR-109..FR-117)
+export {
+  HOST_ROLES,
+  HOST_CONFIG_ENV_KEYS,
+  getHostModelConfig,
+  resolveHost,
+  readNormalizedRequestHost,
+  isTenantHostResolution,
+  type HostRole,
+  type HostConfigEnvKey,
+  type HostModelEnv,
+  type HostModelConfig,
+  type HostResolution,
+  type HostResolutionInput,
+  type HeaderReader,
+  type RequestHostInput,
+} from "./config/host-model.js";
+export {
+  RESERVED_HOST_LABELS,
+  RESERVED_PATH_PREFIXES,
+  NON_STOREFRONT_PATH_PREFIXES,
+  SITE_METADATA_PATHS,
+  ROBOTS_DISALLOWED_PATHS,
+  normalizeHostname,
+  normalizePathname,
+  getTenantHostLabel,
+  isReservedHostLabel,
+  isReservedPath,
+  isNonStorefrontPath,
+  isSiteMetadataPath,
+  type ReservedHostLabel,
+} from "./constants/reserved.js";

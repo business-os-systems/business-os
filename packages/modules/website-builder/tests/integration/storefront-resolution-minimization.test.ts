@@ -10,7 +10,7 @@ import {
 describe("Storefront Edge Resolution & Data Minimization Integration Suite (S1-8)", () => {
   const service = new StorefrontService();
   const router = createStorefrontRouter(service);
-  const rootRouter = createWebsiteBuilderRoutes(undefined, undefined, undefined, service);
+  const rootRouter = createWebsiteBuilderRoutes(undefined, undefined, service);
 
   beforeAll(async () => {
     await prisma.organization.upsert({
@@ -118,12 +118,12 @@ describe("Storefront Edge Resolution & Data Minimization Integration Suite (S1-8
 
     // 2. Strict Data Minimization Verification:
     // Core Organization/Branch identifiers and authoring internals MUST NEVER be exposed to public edge
-    expect(json["organizationId"]).toBeUndefined();
-    expect(json["branchId"]).toBeUndefined();
-    expect(json["createdBy"]).toBeUndefined();
-    expect(json["updatedBy"]).toBeUndefined();
-    expect(json["internalNotes"]).toBeUndefined();
-    expect(json["draftAst"]).toBeUndefined(); // Only publishedAst is delivered
+    expect(json.organizationId).toBeUndefined();
+    expect(json.branchId).toBeUndefined();
+    expect(json.createdBy).toBeUndefined();
+    expect(json.updatedBy).toBeUndefined();
+    expect(json.internalNotes).toBeUndefined();
+    expect(json.draftAst).toBeUndefined(); // Only publishedAst is delivered
 
     // 3. Verify public-safe edge payload contents
     if (parseResult.success && parseResult.data.resolved) {
@@ -137,7 +137,7 @@ describe("Storefront Edge Resolution & Data Minimization Integration Suite (S1-8
         expect(parseResult.data.homePage.publishedAst).toBeDefined();
         // Ensure homePage draftAst is not present
         const homePageRecord = parseResult.data.homePage as Record<string, unknown>;
-        expect(homePageRecord["draftAst"]).toBeUndefined();
+        expect(homePageRecord.draftAst).toBeUndefined();
       }
     }
   });

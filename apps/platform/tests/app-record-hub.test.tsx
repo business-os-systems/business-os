@@ -123,9 +123,15 @@ afterEach(() => {
 
 describe("Application record navigation config", () => {
   it("declares the record group and every destination as a route", () => {
-    expect(APP_RECORD_NAV_GROUPS.map((group) => group.id)).toEqual(["record"]);
+    expect(APP_RECORD_NAV_GROUPS.map((group) => group.id)).toEqual(["record", "catalog"]);
     const items = APP_RECORD_NAV_GROUPS.flatMap((group) => group.items);
-    expect(items.map((item) => item.id)).toEqual(["overview", "settings"]);
+    expect(items.map((item) => item.id)).toEqual([
+      "overview",
+      "settings",
+      "sections",
+      "templates",
+      "themes",
+    ]);
     for (const item of items) {
       expect(appRecordHref(APP_ID, item.segment)).toBe(`/apps/${APP_ID}/${item.segment}`);
     }
@@ -137,18 +143,27 @@ describe("Application record navigation config", () => {
   });
 
   it("filters destinations by capability", () => {
-    expect(
-      visibleAppRecordGroups([PLATFORM_CAPABILITIES.APPS_READ.code])[0]?.items.map(
-        (item) => item.id,
-      ),
-    ).toEqual(["overview", "settings"]);
-    expect(
-      visibleAppRecordGroups([
-        PLATFORM_CAPABILITIES.ENTITLEMENTS_MANAGE.code,
-      ])[0]?.items.map((item) => item.id),
-    ).toEqual(["overview", "settings"]);
+    const ids = (capability: string) =>
+      visibleAppRecordGroups([capability]).flatMap((group) => group.items.map((item) => item.id));
+    expect(ids(PLATFORM_CAPABILITIES.APPS_READ.code)).toEqual([
+      "overview",
+      "settings",
+      "sections",
+      "templates",
+      "themes",
+    ]);
+    expect(ids(PLATFORM_CAPABILITIES.ENTITLEMENTS_MANAGE.code)).toEqual([
+      "overview",
+      "settings",
+      "sections",
+      "templates",
+      "themes",
+    ]);
   });
 
+});
+
+describe("Application record hub routing", () => {
   it("recognizes hub routes and active destinations", () => {
     expect(isAppRecordHubRoute("/apps")).toBe(false);
     expect(isAppRecordHubRoute(`/apps/${APP_ID}`)).toBe(true);
@@ -156,6 +171,10 @@ describe("Application record navigation config", () => {
     expect(isAppRecordKnownDestination(`/apps/${APP_ID}`)).toBe(true);
     expect(isAppRecordKnownDestination(`/apps/${APP_ID}/overview`)).toBe(true);
     expect(isAppRecordKnownDestination(`/apps/${APP_ID}/settings`)).toBe(true);
+    expect(isAppRecordKnownDestination(`/apps/${APP_ID}/sections`)).toBe(true);
+    expect(isAppRecordKnownDestination(`/apps/${APP_ID}/preview/abc`)).toBe(true);
+    expect(isAppRecordKnownDestination(`/apps/${APP_ID}/preview/abc/extra`)).toBe(false);
+    expect(isAppRecordKnownDestination(`/apps/${APP_ID}/preview/..`)).toBe(false);
     expect(
       isAppRecordKnownDestination(`/apps/${APP_ID}/overview/extra`),
     ).toBe(false);
@@ -173,6 +192,12 @@ describe("Application record navigation config", () => {
     expect(canAccessPath([PLATFORM_CAPABILITIES.APPS_READ.code], `/apps/${APP_ID}/unknown`)).toBe(
       false,
     );
+    expect(canAccessPath([PLATFORM_CAPABILITIES.APPS_READ.code], `/apps/${APP_ID}/sections`)).toBe(
+      true,
+    );
+    expect(
+      canAccessPath([PLATFORM_CAPABILITIES.APPS_READ.code], `/apps/${APP_ID}/preview/item_1`),
+    ).toBe(true);
   });
 });
 

@@ -11,8 +11,9 @@ import {
 
 describe("@suite/core - Platform capability registry", () => {
   it("declares every capability with a prefix, a group and documentation", () => {
-    expect(PLATFORM_CAPABILITY_CODES).toHaveLength(13);
-    expect(new Set(PLATFORM_CAPABILITY_CODES).size).toBe(13);
+    expect(PLATFORM_CAPABILITY_CODES).toHaveLength(14);
+    expect(new Set(PLATFORM_CAPABILITY_CODES).size).toBe(14);
+    expect(new Set(PLATFORM_CAPABILITY_CODES).size).toBe(14);
 
     for (const capability of Object.values(PLATFORM_CAPABILITIES)) {
       expect(capability.code).toMatch(/^platform:[a-z:]+$/);
@@ -28,22 +29,18 @@ describe("@suite/core - Platform capability registry", () => {
     expect(isPlatformCapability("tenants:read")).toBe(false);
   });
 
-  it("grants application read to the reader or the entitlement manager", () => {
+  it("grants application read to the reader, the managers and catalog roles", () => {
     expect(PLATFORM_APPS_READ_CAPABILITIES).toEqual([
       "platform:apps:read",
       "platform:entitlements:manage",
+      "platform:apps:author",
+      "platform:apps:publish",
     ]);
-    expect(
-      hasPlatformAppsReadAccess([PLATFORM_CAPABILITIES.APPS_READ.code])
-    ).toBe(true);
-    expect(
-      hasPlatformAppsReadAccess([
-        PLATFORM_CAPABILITIES.ENTITLEMENTS_MANAGE.code,
-      ])
-    ).toBe(true);
-    expect(
-      hasPlatformAppsReadAccess([PLATFORM_CAPABILITIES.TENANTS_READ.code])
-    ).toBe(false);
+    expect(hasPlatformAppsReadAccess([PLATFORM_CAPABILITIES.APPS_READ.code])).toBe(true);
+    expect(hasPlatformAppsReadAccess([PLATFORM_CAPABILITIES.ENTITLEMENTS_MANAGE.code])).toBe(true);
+    expect(hasPlatformAppsReadAccess([PLATFORM_CAPABILITIES.APPS_AUTHOR.code])).toBe(true);
+    expect(hasPlatformAppsReadAccess([PLATFORM_CAPABILITIES.APPS_PUBLISH.code])).toBe(true);
+    expect(hasPlatformAppsReadAccess([PLATFORM_CAPABILITIES.TENANTS_READ.code])).toBe(false);
     expect(hasPlatformAppsReadAccess([])).toBe(false);
     expect(hasPlatformAppsReadAccess(undefined)).toBe(false);
   });

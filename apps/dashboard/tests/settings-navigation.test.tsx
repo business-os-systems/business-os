@@ -85,7 +85,7 @@ describe("Settings Hub Navigation Shell & Auto-Collapse Primitives (User Story 1
     it("supports backward compatibility with items array prop", () => {
       const testItems = [
         { id: "home", name: "Overview", href: "/", icon: "home" },
-        { id: "settings", name: "Settings", href: "/settings/general", icon: "settings" },
+        { id: "settings", name: "Settings", href: "/dashboard/settings/general", icon: "settings" },
       ];
       const html = renderToString(<SidebarNav items={testItems} />);
       expect(html).toContain("Overview");
@@ -111,7 +111,7 @@ describe("Settings Hub Navigation Shell & Auto-Collapse Primitives (User Story 1
 
   describe("SettingsNav Secondary Sub-Navigation", () => {
     it("renders all 4 primary vertical categories from settingsCategoriesConfig", () => {
-      mockPathname.mockReturnValue("/settings/general");
+      mockPathname.mockReturnValue("/dashboard/settings/general");
       const html = renderToString(
         <SettingsNav
           categories={settingsCategoriesConfig}
@@ -122,14 +122,14 @@ describe("Settings Hub Navigation Shell & Auto-Collapse Primitives (User Story 1
       expect(html).toContain("Branches");
       expect(html).toContain("Members");
       expect(html).toContain("Roles &amp; Permissions");
-      expect(html).toContain("/settings/general");
-      expect(html).toContain("/settings/branches");
-      expect(html).toContain("/settings/members");
-      expect(html).toContain("/settings/roles");
+      expect(html).toContain("/dashboard/settings/general");
+      expect(html).toContain("/dashboard/settings/branches");
+      expect(html).toContain("/dashboard/settings/members");
+      expect(html).toContain("/dashboard/settings/roles");
     });
 
     it("filters categories based on discrete capability permissions", () => {
-      mockPathname.mockReturnValue("/settings/general");
+      mockPathname.mockReturnValue("/dashboard/settings/general");
       const html = renderToString(
         <SettingsNav
           categories={settingsCategoriesConfig}
@@ -143,7 +143,7 @@ describe("Settings Hub Navigation Shell & Auto-Collapse Primitives (User Story 1
     });
 
     it("highlights active tab matching current pathname", () => {
-      mockPathname.mockReturnValue("/settings/branches");
+      mockPathname.mockReturnValue("/dashboard/settings/branches");
       const html = renderToString(
         <SettingsNav
           categories={settingsCategoriesConfig}
@@ -151,7 +151,7 @@ describe("Settings Hub Navigation Shell & Auto-Collapse Primitives (User Story 1
         />
       );
       expect(html).toContain("before:bg-brand");
-      expect(html).toContain("/settings/branches");
+      expect(html).toContain("/dashboard/settings/branches");
     });
   });
 
@@ -179,7 +179,7 @@ describe("Settings Hub Navigation Shell & Auto-Collapse Primitives (User Story 1
     });
 
     it("auto-collapses sidebar to w-16 and docks SettingsNav when on /settings/*", () => {
-      mockPathname.mockReturnValue("/settings/general");
+      mockPathname.mockReturnValue("/dashboard/settings/general");
       const html = renderToString(
         <DashboardShell
           tenant={{
@@ -205,7 +205,7 @@ describe("Settings Hub Navigation Shell & Auto-Collapse Primitives (User Story 1
 
   describe("SettingsLayout Mobile Drill-Down & Master-Detail Navigation", () => {
     it("renders Back to Settings mobile header on sub-routes", () => {
-      mockPathname.mockReturnValue("/settings/general");
+      mockPathname.mockReturnValue("/dashboard/settings/general");
       const html = renderToString(
         <SettingsLayout>
           <div>General Settings Content</div>
@@ -217,7 +217,7 @@ describe("Settings Hub Navigation Shell & Auto-Collapse Primitives (User Story 1
     });
 
     it("suppresses Back to Settings mobile header on root /settings page", () => {
-      mockPathname.mockReturnValue("/settings");
+      mockPathname.mockReturnValue("/dashboard/settings");
       const html = renderToString(
         <SettingsLayout>
           <div>Root Settings Index</div>
@@ -231,7 +231,7 @@ describe("Settings Hub Navigation Shell & Auto-Collapse Primitives (User Story 1
   describe("SettingsRootPage Server-Side Redirection (Issue 11)", () => {
     it("redirects immediately to /settings/general on the server without spinner flash", () => {
       SettingsRootPage();
-      expect(mockRedirect).toHaveBeenCalledWith("/settings/general");
+      expect(mockRedirect).toHaveBeenCalledWith("/dashboard/settings/general");
     });
   });
 
@@ -263,12 +263,12 @@ describe("Settings Hub Navigation Shell & Auto-Collapse Primitives (User Story 1
 
     it("evaluates route activation correctly via isRouteActive", () => {
       expect(isRouteActive("/dashboard", "/dashboard")).toBe(true);
-      expect(isRouteActive("/dashboard", "/")).toBe(true);
-      expect(isRouteActive("/settings/general", "/settings/general")).toBe(true);
-      expect(isRouteActive("/settings/branches", "/settings/general")).toBe(true);
-      expect(isRouteActive("/sites", "/dashboard")).toBe(false);
-      expect(isRouteActive("/sites/new", "/sites")).toBe(true);
-      expect(isRouteActive("/sites-other", "/sites")).toBe(false);
+      expect(isRouteActive("/dashboard", "/")).toBe(false);
+      expect(isRouteActive("/dashboard/settings/general", "/dashboard/settings/general")).toBe(true);
+      expect(isRouteActive("/dashboard/settings/branches", "/dashboard/settings/general")).toBe(true);
+      expect(isRouteActive("/dashboard/sites", "/dashboard")).toBe(false);
+      expect(isRouteActive("/dashboard/sites/new", "/dashboard/sites")).toBe(true);
+      expect(isRouteActive("/dashboard/sites-other", "/dashboard/sites")).toBe(false);
     });
 
     it("resolves registered navigation and settings icons deterministically", () => {

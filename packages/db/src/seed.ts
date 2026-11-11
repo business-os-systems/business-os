@@ -32,6 +32,11 @@ const CORE_PERMISSIONS: PermissionDef[] = [
   { appId: "apps", action: "apps:manage", description: "Configure installed modular apps" },
   { appId: "apps", action: "apps:uninstall", description: "Uninstall modular apps from workspace" },
 
+  // Shared Workspace Capability: Media Library
+  { appId: "media", action: "media:read", description: "Browse and select the workspace media library" },
+  { appId: "media", action: "media:upload", description: "Request and finalise media uploads" },
+  { appId: "media", action: "media:delete", description: "Delete an unused media asset" },
+
   // Modular App: Website Builder (App 01)
   { appId: "cms", action: "cms:sites:read", description: "View published and draft website sites" },
   { appId: "cms", action: "cms:sites:write", description: "Create and modify websites and custom domains" },

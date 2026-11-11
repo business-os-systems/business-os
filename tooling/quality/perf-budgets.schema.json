@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://business-os.local/tooling/quality/perf-budgets.schema.json",
+  "title": "Business OS performance release budgets",
+  "description": "Machine-checked budgets enforced by node tooling/quality/validate-perf-budgets.mjs and the Playwright performance suite. Budget keys are closed: an unknown metric is a configuration error, never silently ignored.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "updatedAt", "surfaces"],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "version": {
+      "const": 1
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date"
+    },
+    "description": {
+      "type": "string"
+    },
+    "surfaces": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "path", "budgets"],
+        "properties": {
+          "kind": {
+            "enum": ["storefront", "dashboard"]
+          },
+          "path": {
+            "type": "string",
+            "pattern": "^/"
+          },
+          "description": {
+            "type": "string"
+          },
+          "budgets": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "htmlBytes": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "jsBytes": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "cssBytes": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "lcpMs": {
+                "type": "number",
+                "minimum": 1
+              },
+              "tbtMs": {
+                "type": "number",
+                "minimum": 0
+              },
+              "cls": {
+                "type": "number",
+                "minimum": 0
+              },
+              "interactionP95Ms": {
+                "type": "number",
+                "minimum": 1
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

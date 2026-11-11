@@ -42,3 +42,9 @@ export {
   createIdempotencyMiddleware,
   type IdempotencyMiddlewareOptions,
 } from "./idempotency.js";
+export {
+  createTenantCapabilityGuard,
+  readSessionPermissions,
+  readTenantActor,
+  type TenantActor,
+} from "./tenant-capability.js";

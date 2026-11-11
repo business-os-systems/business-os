@@ -3,9 +3,10 @@ import {
   exchangeOAuthCode,
   signSessionToken,
   encodeSessionPayload,
-  createSessionCookieOptions,
-  SESSION_COOKIE_NAME,
+  createTenantSessionCookieOptions,
+  SESSION_EPHEMERAL_MAX_AGE_SECONDS,
 } from "@suite/auth";
+import { bindSessionToRequestHost, readRequestHostname } from "@/lib/tenant-host";
 import { isProduction } from "@/lib/env";
 import { resolvePostLoginRoute } from "@/lib/route-dispatcher";
 import { resolveRequestOrigin } from "@/lib/origin";
@@ -46,8 +47,8 @@ async function buildCallbackResponse(input: {
         currentOnboardingStep: context.currentOnboardingStep,
       });
 
-  const token = await signSessionToken(
-    encodeSessionPayload({
+  const sessionPayload = bindSessionToRequestHost(
+    {
       userId: context.userId,
       email: context.email,
       organizationId: context.organizationId,
@@ -61,20 +62,15 @@ async function buildCallbackResponse(input: {
       timestamp: Date.now(),
       onboardingStatus: context.onboardingStatus,
       currentOnboardingStep: context.currentOnboardingStep,
-    })
+    },
+    readRequestHostname(request)
   );
-
-  const cookieOptions = createSessionCookieOptions(isProduction, true);
+  const token = await signSessionToken(encodeSessionPayload(sessionPayload));
+  const cookieOptions = createTenantSessionCookieOptions(
+    SESSION_EPHEMERAL_MAX_AGE_SECONDS
+  );
   const response = createCleanRedirect(origin, redirectPath);
-  response.cookies.set({
-    name: SESSION_COOKIE_NAME,
-    value: token,
-    httpOnly: cookieOptions.httpOnly,
-    secure: cookieOptions.secure,
-    sameSite: cookieOptions.sameSite,
-    path: cookieOptions.path,
-    maxAge: cookieOptions.maxAge,
-  });
+  response.cookies.set({ ...cookieOptions, value: token });
 
   await recordOAuthLoginAudit({
     userId: context.userId,

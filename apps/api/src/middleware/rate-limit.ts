@@ -1,4 +1,4 @@
-import type { MiddlewareHandler } from "hono";
+import type { Context, MiddlewareHandler } from "hono";
 import { RateLimitError, ServiceUnavailableError } from "@suite/core/errors";
 import { redis } from "@suite/redis";
 import { resolveClientIp } from "../lib/client-ip.js";
@@ -10,6 +10,12 @@ export interface RateLimitOptions {
   failureMode?: "open" | "closed";
   /** When present, only these HTTP methods consume the budget. */
   methods?: readonly string[];
+  /**
+   * Overrides the client-IP part of the bucket key. A public read surface that
+   * is called server-to-server can budget per host instead of collapsing every
+   * visitor behind the calling server's address.
+   */
+  keyResolver?: (c: Context) => string;
 }
 
 export async function clearRateLimitStore(keyPrefix = "test:rl"): Promise<void> {
@@ -85,6 +91,7 @@ export function rateLimitMiddleware(options: RateLimitOptions = {}): MiddlewareH
     keyPrefix = "rl:global",
     failureMode = "open",
     methods,
+    keyResolver,
   } = options;
 
   return async (c, next) => {
@@ -96,8 +103,8 @@ export function rateLimitMiddleware(options: RateLimitOptions = {}): MiddlewareH
       return next();
     }
 
-    const clientIp = resolveClientIp(c);
-    const key = `${keyPrefix}:${clientIp}`;
+    const bucket = keyResolver === undefined ? resolveClientIp(c) : keyResolver(c);
+    const key = `${keyPrefix}:${bucket}`;
 
     let currentCount = 0;
     let resetSeconds = windowSeconds;

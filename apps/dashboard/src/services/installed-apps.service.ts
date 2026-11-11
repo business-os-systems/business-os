@@ -1,6 +1,7 @@
 import { PERMISSIONS, hasPermission } from "@suite/core";
 import { buildInstalledAppSettings } from "./app-manifest-settings";
 import { prisma } from "@suite/db";
+import { workspacePath } from "@/lib/workspace-paths";
 
 
 export interface InstalledAppDto {
@@ -54,7 +55,7 @@ function mapInstalledApp(record: InstalledAppRow): InstalledAppDto {
     title,
     code: readSetting(settings, "code") ?? record.appId,
     description: readSetting(settings, "description") ?? "",
-    href: readSetting(settings, "href") ?? `/${record.appId}`,
+    href: workspacePath(readSetting(settings, "href") ?? `/${record.appId}`),
     iconName: readSetting(settings, "iconName") ?? record.appId,
     permission: readSetting(settings, "permission") ?? `${record.appId}:read`,
     version: record.version,

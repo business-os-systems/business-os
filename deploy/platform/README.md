@@ -21,6 +21,8 @@ The script sets both role passwords and checks the Platform boundary:
 - `app_tenant` can select `reference.v_active_catalog_values`.
 - `app_tenant` can execute only `public.fn_assert_quota_available` for quota enforcement; it cannot read `platform.quotas`.
 - `app_platform` can read `platform.v_app_installation_counts` and has no direct grant on `public.installed_apps`.
+- `app_tenant` has `USAGE` on `cms` and per-table grants only; it cannot read `platform.operators` or `platform.audit_events`.
+- no `cms_*` table remains in `public`, and no foreign key from `cms` points at another schema.
 
 ## Verify migrations
 

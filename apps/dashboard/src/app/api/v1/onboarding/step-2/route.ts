@@ -5,7 +5,6 @@ import {
   createSessionCookieOptions,
 } from "@suite/auth";
 import { z } from "zod";
-import { isProduction } from "@/lib/env";
 import { getAuthenticatedSession } from "@/lib/session-helper";
 import { problemResponse, successResponse } from "@/lib/api-response";
 import { saveOnboardingSelection } from "@/services/onboarding.service";
@@ -57,7 +56,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     });
 
     const token = await signSessionToken(updatedPayload);
-    const cookieOptions = createSessionCookieOptions(isProduction, true);
+    const cookieOptions = createSessionCookieOptions(true);
     const response = successResponse({
       success: true,
       nextStep: 3,

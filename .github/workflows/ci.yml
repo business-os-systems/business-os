@@ -89,6 +89,14 @@ jobs:
       - name: Diff Coverage Tool Tests
         run: node --test tooling/quality/diff-coverage.test.mjs
 
+      # The budget document and its validator are release gates: a malformed
+      # budget or an over-budget sample must fail before any browser runs.
+      - name: Performance Budget Validator Tests
+        run: node --test tooling/quality/perf-budgets.test.mjs
+
+      - name: Performance Budget Tool Tests
+        run: node --test tooling/quality/perf-budgets.test.mjs
+
       - name: Dead Code & Dependency Report
         run: pnpm knip:report
 
@@ -307,12 +315,132 @@ jobs:
           BASE_REF: ${{ github.base_ref }}
         run: node tooling/quality/diff-coverage.mjs --base "origin/$BASE_REF"
 
+  # H-02: the release gates that turn FR-063/FR-064 and SC-009 into a red
+  # build. Both suites render the real storefront and workspace; only their
+  # upstream data is replaced with deterministic fixtures, so the job needs no
+  # release host, storage state or external network.
+  release-gates:
+    name: Release gates (a11y & performance)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: businessos_admin
+          POSTGRES_PASSWORD: businessos_password
+          POSTGRES_DB: business_os_dev
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      # Test-only signing key for the deterministic tenant session cookie.
+      BETTER_AUTH_SECRET: release-gates-ci-session-secret-32-characters
+      DOMAIN_ROOT: localhost
+      # The inquiries screen reads the tenant plane. This is the CI service
+      # database, never a developer database.
+      TENANT_DATABASE_URL: postgresql://app_tenant:tenant_test_password@localhost:5432/business_os_dev
+
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+          run_install: false
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "pnpm"
+
+      - name: Restore Turborepo Cache
+        uses: actions/cache@v4
+        with:
+          path: .turbo/cache
+          key: turbo-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            turbo-${{ runner.os }}-
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm --filter @suite/db run prisma:generate
+
+      - name: Apply Database Migrations
+        run: pnpm --filter @suite/db run db:migrate:deploy
+
+      - name: Provision Tenant Runtime Role
+        run: |
+          printf "ALTER ROLE app_tenant WITH LOGIN PASSWORD 'tenant_test_password';" | pnpm --filter @suite/db exec prisma db execute --url "$DATABASE_URL" --stdin
+
+      - name: Build Workspace Packages
+        run: pnpm turbo run build --filter='./packages/**'
+
+      - name: Install Playwright Chromium
+        run: pnpm --filter @suite/web exec playwright install --with-deps chromium
+
+      - name: Accessibility Gate (axe WCAG 2.1 A/AA + keyboard paths)
+        run: pnpm --filter @suite/web exec playwright test --project=accessibility
+
+      - name: Performance Gate (Core Web Vitals + interaction p95)
+        run: pnpm --filter @suite/web exec playwright test --project=performance
+
+      - name: Quickstart Journeys (release screens)
+        run: pnpm --filter @suite/web exec playwright test --project=quickstart
+
+      - name: Validate Performance Budgets
+        run: |
+          node tooling/quality/validate-perf-budgets.mjs \
+            --budgets tooling/quality/perf-budgets.json \
+            --results apps/web/test-results/release-evidence/perf-results.json \
+            --report apps/web/test-results/release-evidence/perf-report.json
+
+      - name: Record Release Checklist Artifact
+        if: always()
+        run: |
+          node tooling/quality/release-checklist.mjs \
+            --a11y apps/web/test-results/release-evidence/a11y.json \
+            --perf-report apps/web/test-results/release-evidence/perf-report.json \
+            --output artifacts/release-gates/release-checklist.md \
+            --commit "${{ github.sha }}"
+
+      - name: Upload Release Evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-gates-evidence
+          path: |
+            apps/web/test-results/**
+            artifacts/release-gates/**
+          if-no-files-found: warn
   # Keeps the check name branch protection and reviewers already know. The real
-  # signal is the three jobs above; this one only reports their result.
+  # signal is the jobs above; this one only reports their result, including the
+  # release gate so a budget or axe breach cannot leave an aggregate green check.
   verify:
     name: Lint, Typecheck & Test
     runs-on: ubuntu-latest
-    needs: [lint, build, test]
+    needs: [lint, build, test, release-gates]
 
     steps:
       - name: All verification jobs passed

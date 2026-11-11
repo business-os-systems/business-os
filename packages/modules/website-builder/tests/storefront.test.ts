@@ -11,7 +11,7 @@ import {
 describe("Public Storefront Edge Delivery API (S1-4)", () => {
   const service = new StorefrontService();
   const router = createStorefrontRouter(service);
-  const rootRouter = createWebsiteBuilderRoutes(undefined, undefined, undefined, service);
+  const rootRouter = createWebsiteBuilderRoutes(undefined, undefined, service);
 
   beforeAll(async () => {
     await prisma.organization.upsert({

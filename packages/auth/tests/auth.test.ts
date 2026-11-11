@@ -40,28 +40,31 @@ describe("Platform Core Auth Engine & Better-Auth Integration", () => {
 
   describe("Session Cookie Security Standards", () => {
     it("creates secure, HTTP-only, SameSite=lax cookie configuration", () => {
-      const devCookies = createSessionCookieOptions(false);
+      const devCookies = createSessionCookieOptions();
       expect(devCookies.name).toBe(DEFAULT_SESSION_COOKIE_NAME);
+      expect(devCookies.name.startsWith("__Host-")).toBe(true);
       expect(devCookies.httpOnly).toBe(true);
-      expect(devCookies.secure).toBe(false);
-      expect(devCookies.sameSite).toBe("strict");
+      expect(devCookies.secure).toBe(true);
+      expect(devCookies.sameSite).toBe("lax");
       expect(devCookies.path).toBe("/");
+      expect(devCookies.domain).toBeUndefined();
       expect(devCookies.maxAge).toBe(SESSION_EPHEMERAL_MAX_AGE_SECONDS);
 
-      const prodCookies = createSessionCookieOptions(true);
-      expect(prodCookies.httpOnly).toBe(true);
-      expect(prodCookies.secure).toBe(true);
-      expect(prodCookies.sameSite).toBe("strict");
+      const persistentCookies = createSessionCookieOptions(true);
+      expect(persistentCookies.httpOnly).toBe(true);
+      expect(persistentCookies.secure).toBe(true);
+      expect(persistentCookies.sameSite).toBe("lax");
+      expect(persistentCookies.domain).toBeUndefined();
     });
 
     it("respects ephemeral (24h) vs persistent (30d) vs custom expiration timeouts", () => {
-      const ephemeral = createSessionCookieOptions(false, false);
+      const ephemeral = createSessionCookieOptions(false);
       expect(ephemeral.maxAge).toBe(SESSION_EPHEMERAL_MAX_AGE_SECONDS);
 
-      const persistent = createSessionCookieOptions(false, true);
+      const persistent = createSessionCookieOptions(true);
       expect(persistent.maxAge).toBe(SESSION_PERSISTENT_MAX_AGE_SECONDS);
 
-      const customTimeout = createSessionCookieOptions(false, false, 7200);
+      const customTimeout = createSessionCookieOptions(false, 7200);
       expect(customTimeout.maxAge).toBe(7200);
     });
   });
@@ -79,7 +82,7 @@ describe("Platform Core Auth Engine & Better-Auth Integration", () => {
     });
 
     it("extracts session token from standard Cookie header", () => {
-      const cookieStr = "theme=dark; suite_session=sess_tok_12345; lang=en";
+      const cookieStr = "theme=dark; " + DEFAULT_SESSION_COOKIE_NAME + "=sess_tok_12345; lang=en";
       expect(extractTokenFromCookie(cookieStr)).toBe("sess_tok_12345");
 
       const customCookie = "my_custom=token_abc; other=val";
@@ -357,7 +360,7 @@ describe("Platform Core Auth Engine & Better-Auth Integration", () => {
     it("chains recordHash cryptographically using prevHash from preceding entry (Issue 22)", async () => {
       const { recordSecurityAuditLog } = await import("../src/index.js");
 
-      const createdRecords: Array<{ prevHash: string | null; recordHash: string }> = [];
+      const createdRecords: { prevHash: string | null; recordHash: string }[] = [];
       let storedRecord: { recordHash: string } | null = null;
 
       const mockPrisma = {
@@ -396,5 +399,4 @@ describe("Platform Core Auth Engine & Better-Auth Integration", () => {
     });
   });
 });
-
 

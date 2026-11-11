@@ -5,6 +5,7 @@ import {
   endSupportSession,
   SupportSessionClientError,
 } from "@/lib/support-session-client";
+import { workspacePath } from "@/lib/workspace-paths";
 
 export interface EndSupportSessionActionResult {
   readonly ok: boolean;
@@ -22,7 +23,7 @@ export async function endSupportSessionAction(
 ): Promise<EndSupportSessionActionResult> {
   try {
     await endSupportSession(ticketId);
-    revalidatePath("/settings/security");
+    revalidatePath(workspacePath("/settings/security"));
     return { ok: true, detail: "" };
   } catch (error) {
     if (error instanceof SupportSessionClientError) {

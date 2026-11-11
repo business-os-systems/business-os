@@ -1,15 +1,14 @@
 import { z } from "zod";
 import type { NextResponse } from "next/server";
 import {
-  SESSION_COOKIE_NAME,
   SESSION_EPHEMERAL_MAX_AGE_SECONDS,
   SESSION_PERSISTENT_MAX_AGE_SECONDS,
-  createSessionCookieOptions,
+  createTenantSessionCookieOptions,
   signSessionToken,
   encodeSessionPayload,
 } from "@/lib/auth-constants";
+import { bindSessionToRequestHost, readRequestHostname } from "@/lib/tenant-host";
 import { PLATFORM_ERROR_CODE } from "@suite/core";
-import { isProduction } from "@/lib/env";
 import { resolvePostLoginRoute } from "@/lib/route-dispatcher";
 import { problemResponse, successResponse, zodProblemResponse } from "@/lib/api-response";
 import { verifyBotChallenge } from "@/services/bot-defense.service";
@@ -64,7 +63,8 @@ function mapLoginProblem(failure: LoginFailure): NextResponse {
 
 async function buildLoginResponse(
   context: LoginSessionContext,
-  keepSignedIn: boolean
+  keepSignedIn: boolean,
+  requestHostname: string | null
 ): Promise<NextResponse> {
   const redirectUrl = context.hasMultipleWorkspaces
     ? "/choose-tenant"
@@ -80,8 +80,8 @@ async function buildLoginResponse(
     : SESSION_EPHEMERAL_MAX_AGE_SECONDS;
   const expiresAt = now + maxAgeSeconds * 1000;
 
-  const token = await signSessionToken(
-    encodeSessionPayload({
+  const sessionPayload = bindSessionToRequestHost(
+    {
       userId: context.userId,
       email: context.email,
       organizationId: context.organizationId,
@@ -97,10 +97,11 @@ async function buildLoginResponse(
       isEphemeral: !keepSignedIn,
       onboardingStatus: context.onboardingStatus,
       currentOnboardingStep: context.currentOnboardingStep,
-    })
+    },
+    requestHostname
   );
-
-  const cookieOptions = createSessionCookieOptions(isProduction, keepSignedIn);
+  const token = await signSessionToken(encodeSessionPayload(sessionPayload));
+  const cookieOptions = createTenantSessionCookieOptions(maxAgeSeconds);
   const response = successResponse({
     success: true,
     redirectUrl,
@@ -119,15 +120,7 @@ async function buildLoginResponse(
     },
   });
 
-  response.cookies.set({
-    name: SESSION_COOKIE_NAME,
-    value: token,
-    httpOnly: cookieOptions.httpOnly,
-    secure: cookieOptions.secure,
-    sameSite: cookieOptions.sameSite,
-    path: cookieOptions.path,
-    maxAge: cookieOptions.maxAge,
-  });
+  response.cookies.set({ ...cookieOptions, value: token });
   return response;
 }
 
@@ -165,7 +158,11 @@ export async function POST(request: Request) {
       return mapLoginProblem(login);
     }
 
-    const response = await buildLoginResponse(login.context, keepSignedIn);
+    const response = await buildLoginResponse(
+      login.context,
+      keepSignedIn,
+      readRequestHostname(request)
+    );
     await recordSuccessfulLogin({
       userId: login.context.userId,
       organizationId: login.context.organizationId,

@@ -13,6 +13,7 @@ export const PLATFORM_API_PATHS = {
   signInVerify: "/api/v1/admin/auth/sign-in/verify",
   bootstrapOptions: "/api/v1/admin/auth/bootstrap/options",
   bootstrapVerify: "/api/v1/admin/auth/bootstrap/verify",
+  stepUpVerify: "/api/v1/admin/auth/step-up/verify",
   me: "/api/v1/admin/auth/me",
   logout: "/api/v1/admin/auth/logout",
 } as const;

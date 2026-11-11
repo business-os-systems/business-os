@@ -31,6 +31,7 @@
     "@suite/db": "workspace:*",
     "@suite/flags": "workspace:*",
     "@suite/logger": "workspace:*",
+    "@suite/media": "workspace:*",
     "@suite/redis": "workspace:*",
     "@suite/website-builder": "workspace:*",
     "dotenv": "^18.0.9",

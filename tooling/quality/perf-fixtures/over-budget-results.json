@@ -1,0 +1,46 @@
+{
+  "generatedAt": "2026-11-11T00:00:00.000Z",
+  "surfaces": {
+    "storefront-home": {
+      "htmlBytes": 3684,
+      "jsBytes": 240001,
+      "cssBytes": 7420,
+      "lcpMs": 2001,
+      "tbtMs": 0,
+      "cls": 0.000541446606318156
+    },
+    "storefront-about": {
+      "htmlBytes": 3721,
+      "jsBytes": 149383,
+      "cssBytes": 7420,
+      "lcpMs": 412,
+      "tbtMs": 0,
+      "cls": 0.0005868430932362875
+    },
+    "storefront-contact": {
+      "htmlBytes": 3689,
+      "jsBytes": 149383,
+      "cssBytes": 7420,
+      "lcpMs": 460,
+      "tbtMs": 0,
+      "cls": 0.0005469016234079996
+    },
+    "storefront-not-found": {
+      "htmlBytes": 2530,
+      "jsBytes": 103608,
+      "cssBytes": 7420,
+      "lcpMs": 364,
+      "tbtMs": 0,
+      "cls": 0.00039626630147298177
+    },
+    "dashboard-studio": {
+      "interactionP95Ms": 226.09999999403954
+    },
+    "dashboard-review": {
+      "interactionP95Ms": 54.900000005960464
+    },
+    "dashboard-inquiries": {
+      "interactionP95Ms": 451
+    }
+  }
+}

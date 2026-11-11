@@ -58,6 +58,14 @@ export function readInvalidParams(
   return [];
 }
 
+/** The publish gate: the same version was never recorded as previewed. */
+export function isPreviewRequiredError(cause: unknown): boolean {
+  return (
+    cause instanceof AppError &&
+    cause.code === PLATFORM_ERROR_CODE.PREVIEW_REQUIRED
+  );
+}
+
 /** One conflict predicate for the three versioned editors. */
 export function isConflictError(cause: unknown): boolean {
   return cause instanceof AppError && cause.status === 409;
