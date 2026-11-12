@@ -36,6 +36,7 @@ export const STOREFRONT_SITE_STATUS = {
 
 export const STOREFRONT_PAGE_STATUS = {
   PUBLISHED: "PUBLISHED",
+  ARCHIVED: "ARCHIVED",
 } as const;
 
 export const STOREFRONT_DOMAIN_STATUS = {
@@ -79,6 +80,29 @@ export interface StorefrontReadService {
   }): Promise<StorefrontPageOutcome>;
 }
 
+/**
+ * A signed, expiring preview link for unpublished content (FR-037). The token
+ * names the host and an expiry time only; no tenant or site id travels in a
+ * visitor-visible URL, and the API re-resolves the host to the site on every
+ * read. A tampered or expired token is indistinguishable from an unknown host.
+ */
+export interface StorefrontPreviewLink {
+  readonly url: string;
+  readonly expiresAt: string;
+}
+
+export interface StorefrontPreviewService {
+  createLink(input: {
+    readonly organizationId: string;
+    readonly siteId: string;
+    readonly path: string;
+  }): Promise<StorefrontPreviewLink>;
+  readPage(input: {
+    readonly token: string;
+    readonly path: string;
+  }): Promise<StorefrontPageOutcome>;
+}
+
 export const storefrontHostQuerySchema = z
   .object({
     host: z.string().trim().min(1).max(253),
@@ -89,6 +113,24 @@ export const storefrontPageQuerySchema = z
   .object({
     host: z.string().trim().min(1).max(253),
     path: z.string().trim().min(1).max(2048).optional(),
+  })
+  .strict();
+
+export const storefrontPreviewQuerySchema = z
+  .object({
+    token: z.string().trim().min(1).max(4096),
+    path: z.string().trim().min(1).max(2048).optional(),
+  })
+  .strict();
+
+export const previewLinkQuerySchema = z
+  .object({ path: z.string().trim().min(1).max(2048).optional() })
+  .strict();
+
+export const previewLinkResultSchema = z
+  .object({
+    url: z.string().url().max(4096),
+    expiresAt: z.string().datetime(),
   })
   .strict();
 

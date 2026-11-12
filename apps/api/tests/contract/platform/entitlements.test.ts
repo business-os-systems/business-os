@@ -73,6 +73,8 @@ const settingsWriteResultSchema = z
   .object({
     appId: z.string().min(1),
     values: z.record(z.unknown()),
+    effectiveValues: z.record(z.unknown()),
+    sources: z.record(z.enum(["tenant", "app", "schema"])),
     removedFields: z.array(z.string()),
     staleFields: z.array(
       z.object({ name: z.string(), reason: z.string() }).strict()
@@ -255,6 +257,14 @@ it.skipIf(!enabled)("keeps the settings write envelope with removed fields", asy
     await response.json()
   );
   expect(body.data.values).toEqual({ customDomainEnabled: true });
+  expect(body.data.effectiveValues).toEqual({
+    customDomainEnabled: true,
+    defaultLocale: "en",
+  });
+  expect(body.data.sources).toEqual({
+    customDomainEnabled: "tenant",
+    defaultLocale: "schema",
+  });
   expect(body.data.removedFields).toEqual([]);
   expect(body.data.staleFields).toEqual([]);
   expect(body.data.version).not.toBe(observed.data.version);

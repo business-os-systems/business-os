@@ -109,7 +109,7 @@ describe("Automated E2E Integration Suite: Complete Authoring Lifecycle (@suite/
 
       expect(html).toContain("Create a website");
       expect(html).toContain("Name the site");
-      expect(html).toContain("Continue");
+      expect(html).toContain("Create site and open studio");
     });
   });
 

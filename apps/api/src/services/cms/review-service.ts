@@ -9,6 +9,10 @@ import {
   type MediaAssetMap,
 } from "@suite/website-builder/ast";
 import { writeCmsAudit } from "@suite/website-builder/services";
+import {
+  CREATION_FUNNEL_STAGES,
+  recordCreationFunnelStage,
+} from "../admin/creation-funnel.service.js";
 import { CMS_AUDIT_ACTIONS, CMS_AUDIT_ENTITY_TYPES } from "@suite/website-builder/audit";
 import {
   buildReviewPageView,
@@ -26,6 +30,55 @@ import {
 } from "./review-state.js";
 
 const REVIEW_WINDOW_HOURS = 24;
+
+/**
+ * Preview extension point (FR-094). A later release adds "request feedback" by
+ * registering one of these; opening a review itself does not change. A failing
+ * extension is logged and never unwinds the review that already committed.
+ */
+export interface PreviewExtensionContext {
+  readonly organizationId: string;
+  readonly siteId: string;
+  readonly reviewId: string;
+  readonly actorUserId: string;
+  readonly createdAt: string;
+  readonly changedPageCount: number;
+  readonly reviewedPageCount: number;
+}
+
+export interface PreviewExtension {
+  readonly name: string;
+  afterPreviewOpened(context: PreviewExtensionContext): Promise<void> | void;
+}
+
+export interface PreviewWithExtensionsInput {
+  readonly input: {
+    readonly organizationId: string;
+    readonly siteId: string;
+    readonly actorUserId: string;
+  };
+  readonly extensions: readonly PreviewExtension[];
+}
+
+async function runPreviewExtensions(
+  extensions: readonly PreviewExtension[],
+  context: PreviewExtensionContext
+): Promise<void> {
+  await Promise.all(
+    extensions.map(async (extension) => {
+      try {
+        await extension.afterPreviewOpened(context);
+      } catch (error: unknown) {
+        console.error("[cms] Preview extension failed.", {
+          extension: extension.name,
+          siteId: context.siteId,
+          reviewId: context.reviewId,
+          message: error instanceof Error ? error.message : String(error),
+        });
+      }
+    })
+  );
+}
 
 export interface ReviewSummary {
   readonly reviewId: string;
@@ -248,7 +301,19 @@ export async function openReview(input: {
   readonly siteId: string;
   readonly actorUserId: string;
 }): Promise<ReviewSummary> {
-  return withTenantContext(input.organizationId, async (tx) => {
+  return openReviewWithExtensions({ input, extensions: [] });
+}
+
+/**
+ * Opens the review, then notifies every registered preview extension. Responses
+ * and stored review data are identical to openReview; only the extension port
+ * is consulted (FR-094).
+ */
+export async function openReviewWithExtensions(
+  args: PreviewWithExtensionsInput
+): Promise<ReviewSummary> {
+  const input = args.input;
+  const summary = await withTenantContext(input.organizationId, async (tx) => {
     const context: ReviewContext = {
       tx,
       organizationId: input.organizationId,
@@ -279,6 +344,17 @@ export async function openReview(input: {
       media: await resolveReviewMedia(tx, input.organizationId, views),
     });
   });
+  recordCreationFunnelStage(CREATION_FUNNEL_STAGES.REVIEW_OPENED);
+  await runPreviewExtensions(args.extensions, {
+    organizationId: input.organizationId,
+    siteId: input.siteId,
+    reviewId: summary.reviewId,
+    actorUserId: summary.reviewerUserId,
+    createdAt: summary.createdAt,
+    changedPageCount: summary.changedPageCount,
+    reviewedPageCount: summary.reviewedPageCount,
+  });
+  return summary;
 }
 
 export async function getReview(input: {

@@ -45,18 +45,18 @@ describe("Website Builder settings surface", () => {
       <WebsiteBuilderSettingsPanel
         fields={[
           {
-            kind: "configured",
             key: "customDomainEnabled",
             label: "Custom domains",
             description: "Allow this tenant to attach custom domains.",
             displayValue: "Enabled",
+            source: "tenant",
           },
           {
-            kind: "default",
             key: "defaultLocale",
             label: "Default locale",
             description: "Locale used for new sites.",
-            displayValue: "Not configured",
+            displayValue: "en",
+            source: "schema",
           },
         ]}
       />
@@ -65,7 +65,10 @@ describe("Website Builder settings surface", () => {
     expect(screen.getByText("Custom domains")).toBeTruthy();
     expect(screen.getByText("Enabled")).toBeTruthy();
     expect(screen.getByText("Default locale")).toBeTruthy();
-    expect(screen.getByText("Not configured")).toBeTruthy();
+    expect(screen.getByText("en")).toBeTruthy();
+    expect(screen.getByText("Tenant override")).toBeTruthy();
+    expect(screen.getByText("Schema default")).toBeTruthy();
+    expect(screen.queryByText("Not configured")).toBeNull();
     expect(screen.queryByRole("link", { name: "Open studio" })).toBeNull();
     expect(screen.queryByText("Riverview Bistro")).toBeNull();
   });

@@ -225,10 +225,17 @@ async function applySettings(
       "The settings function stored a payload that fails its own schema."
     );
   }
+  const appDefaults = await readAppSettingsDefaultsValues(tx, input.appId);
+  const resolved = resolveAppSettings(definition, {
+    appDefaults,
+    tenantOverrides: storedConfig,
+  });
 
   return {
     appId: input.appId,
     values: storedConfig,
+    effectiveValues: resolved.values,
+    sources: resolved.sources,
     removedFields,
     staleFields: [],
     version: row.version,

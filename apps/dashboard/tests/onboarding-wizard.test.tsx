@@ -21,7 +21,7 @@ describe("Site onboarding is the one create-site surface", () => {
     expect(html).toContain("Create a website");
     expect(html).toContain("Name the site");
     expect(html).toContain("Site name");
-    expect(html).toContain("Continue");
+    expect(html).toContain("Create site and open studio");
     expect(html).not.toContain("hero_starter");
   });
 

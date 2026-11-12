@@ -168,6 +168,36 @@ it.skipIf(!enabled)("resolves the application default before the schema default"
   expect(settings.sources[LOCALE_KEY]).toBe("app");
 });
 
+it.skipIf(!enabled)("returns the effective value and source immediately after a write", async () => {
+  const organizationId = await createTenantWithApp("write-effective", {});
+  await fixture.ownerPrisma.appSettingsDefault.create({
+    data: {
+      appId: APP_ID,
+      settings: { [DOMAIN_KEY]: true },
+      version: 1,
+      updatedBy: managerOperatorId,
+    },
+  });
+  const observed = await readSettings(organizationId);
+
+  const response = await writeSettings(
+    organizationId,
+    { [LOCALE_KEY]: "en-IN" },
+    observed.version
+  );
+
+  expect(response.status).toBe(200);
+  const body = settingsWriteEnvelopeSchema.parse(await response.json());
+  expect(body.data.effectiveValues).toEqual({
+    [DOMAIN_KEY]: true,
+    [LOCALE_KEY]: "en-IN",
+  });
+  expect(body.data.sources).toEqual({
+    [DOMAIN_KEY]: "app",
+    [LOCALE_KEY]: "tenant",
+  });
+});
+
 it.skipIf(!enabled)("reports removed keys only when a valid write replaces them", async () => {
   const organizationId = await createTenantWithApp("removed", {
     [LEGACY_KEY]: true,

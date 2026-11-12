@@ -25,6 +25,8 @@ export const appSettingsViewSchema = z.object({
 export const appSettingsWriteResultSchema = z.object({
   appId: z.string().min(1).max(64),
   values: z.record(z.unknown()),
+  effectiveValues: z.record(z.unknown()),
+  sources: z.record(settingsValueSourceSchema),
   removedFields: z.array(z.string()),
   staleFields: z.array(staleFieldSchema),
   version: z.string().min(1).max(64),

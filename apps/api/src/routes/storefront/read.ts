@@ -13,10 +13,16 @@ import {
   storefrontHostQuerySchema,
   storefrontPageQuerySchema,
   storefrontPageResponseSchema,
+  storefrontPreviewQuerySchema,
   storefrontResolveResponseSchema,
+  type StorefrontPageMetadata,
+  type StorefrontPreviewService,
   type StorefrontReadService,
 } from "../../services/storefront/contract.js";
-import { storefrontReadService } from "../../services/storefront/storefront.service.js";
+import {
+  storefrontPreviewService,
+  storefrontReadService,
+} from "../../services/storefront/storefront.service.js";
 import { readPublishedSitemap } from "../../services/storefront/storefront-read-service.js";
 
 /**
@@ -130,6 +136,26 @@ const pageRoute = createRoute({
   },
 });
 
+const previewRoute = createRoute({
+  method: "get",
+  path: "/preview",
+  tags: [STOREFRONT_TAG],
+  summary: "Render unpublished content for a signed preview link",
+  description:
+    "Requires the signed, expiring token issued by the workspace's preview-link route. The token names the host and expiry only; no tenant or site id is accepted from the visitor. A tampered, expired or deactivated-host token is an indistinguishable 404, and a suspended or archived site is 410 (FR-037).",
+  request: { query: storefrontPreviewQuerySchema },
+  responses: {
+    200: {
+      description: "Draft page content",
+      content: { "application/json": { schema: storefrontPageResponseSchema } },
+    },
+    404: problemResponse,
+    410: problemResponse,
+    422: problemResponse,
+    429: problemResponse,
+  },
+});
+
 type ProblemBody = ReturnType<typeof problemDetailsSchema.parse>;
 
 interface ProblemPayload {
@@ -223,12 +249,17 @@ function registerSitemapRoute(router: OpenAPIHono): void {
   });
 
 }
-export function createStorefrontRouter(
-  service: StorefrontReadService = storefrontReadService
-): OpenAPIHono {
-  const router = new OpenAPIHono({ defaultHook: platformValidationHook });
-  router.use("*", storefrontReadLimiter);
+function pagePayload(page: StorefrontPageMetadata) {
+  return {
+    title: page.title,
+    path: page.path,
+    ast: page.ast,
+    media: page.media,
+    tokens: page.tokens,
+  };
+}
 
+function registerResolveRoute(router: OpenAPIHono, service: StorefrontReadService): void {
   router.openapi(resolveRoute, async (c) => {
     const { host } = c.req.valid("query");
     const outcome = await service.resolveHost(host);
@@ -255,23 +286,15 @@ export function createStorefrontRouter(
       }
     }
   });
+}
 
+function registerPageRoute(router: OpenAPIHono, service: StorefrontReadService): void {
   router.openapi(pageRoute, async (c) => {
     const query = c.req.valid("query");
     const outcome = await service.readPage({ host: query.host, path: query.path ?? "/" });
     switch (outcome.kind) {
       case "published":
-        return c.json(
-          {
-            title: outcome.page.title,
-            path: outcome.page.path,
-            ast: outcome.page.ast,
-            media: outcome.page.media,
-            tokens: outcome.page.tokens,
-          },
-          200,
-          READ_HEADERS
-        );
+        return c.json(pagePayload(outcome.page), 200, READ_HEADERS);
       case "gone": {
         const problem = goneProblem(c);
         return c.json(problem.body, problem.status, problem.headers);
@@ -282,8 +305,42 @@ export function createStorefrontRouter(
       }
     }
   });
+}
 
+function registerPreviewRoute(
+  router: OpenAPIHono,
+  previewService: StorefrontPreviewService
+): void {
+  router.openapi(previewRoute, async (c) => {
+    const query = c.req.valid("query");
+    const outcome = await previewService.readPage({
+      token: query.token,
+      path: query.path ?? "/",
+    });
+    switch (outcome.kind) {
+      case "published":
+        return c.json(pagePayload(outcome.page), 200, READ_HEADERS);
+      case "gone": {
+        const problem = goneProblem(c);
+        return c.json(problem.body, problem.status, problem.headers);
+      }
+      case "not_found": {
+        const problem = notFoundProblem(c);
+        return c.json(problem.body, problem.status, problem.headers);
+      }
+    }
+  });
+}
+
+export function createStorefrontRouter(
+  service: StorefrontReadService = storefrontReadService,
+  previewService: StorefrontPreviewService = storefrontPreviewService
+): OpenAPIHono {
+  const router = new OpenAPIHono({ defaultHook: platformValidationHook });
+  router.use("*", storefrontReadLimiter);
+  registerResolveRoute(router, service);
+  registerPageRoute(router, service);
+  registerPreviewRoute(router, previewService);
   registerSitemapRoute(router);
-
   return router;
 }

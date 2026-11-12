@@ -2,6 +2,7 @@ import React from "react";
 import Link from "next/link";
 import type { TableColumnConfig, TableConfig } from "@suite/ui";
 import { websiteBuilderStudioHref } from "@/components/layout/website-builder-nav.config";
+import { ExportSiteButton } from "./export-site-button";
 import type {
   WebsiteSiteStatus,
   WebsiteSiteSummary,
@@ -80,16 +81,24 @@ function StatusCell({ value }: { readonly value: unknown }) {
 function StudioCell({ site }: { readonly site: WebsiteSiteSummary }) {
   const href = studioPath(site);
   if (href === null) {
-    return <span className="text-xs font-medium text-text-muted">No home page</span>;
+    return (
+      <div className="flex items-center justify-end gap-2">
+        <ExportSiteButton siteId={site.id} siteSlug={site.slug} />
+        <span className="text-xs font-medium text-text-muted">No home page</span>
+      </div>
+    );
   }
   return (
-    <Link
-      href={href}
-      prefetch={false}
-      className="inline-flex items-center rounded-lg border border-border-strong bg-surface px-3 py-1.5 text-xs font-medium text-text transition-colors hover:bg-surface-muted"
-    >
-      Open studio
-    </Link>
+    <div className="flex items-center justify-end gap-2">
+      <ExportSiteButton siteId={site.id} siteSlug={site.slug} />
+      <Link
+        href={href}
+        prefetch={false}
+        className="inline-flex items-center rounded-lg border border-border-strong bg-surface px-3 py-1.5 text-xs font-medium text-text transition-colors hover:bg-surface-muted"
+      >
+        Open studio
+      </Link>
+    </div>
   );
 }
 

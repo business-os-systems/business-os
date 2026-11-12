@@ -1,119 +1,194 @@
-import { prisma } from "@suite/db";
+import { z } from "zod";
+import { cookies } from "next/headers";
 import {
-  getAppSettingsDefinition,
+  PLATFORM_ERROR_CODE,
+  TIMEOUTS,
+  settingsFieldDefinitionSchema,
+  settingsValueSourceSchema,
   type SettingsFieldDefinition,
+  type SettingsValueSource,
 } from "@suite/core";
-import { WEBSITE_BUILDER_APP_ID } from "@/components/layout/website-builder-nav.config";
+import { SESSION_COOKIE_NAME } from "@/lib/auth-constants";
+import { getApiServerUrl } from "@/lib/env";
 
 /**
- * Tenant configuration for the Website Builder installation. Only declared
- * settings fields are returned; site and inquiry data never enters this read
- * (FR-159). A missing installation is reported, never treated as empty config.
+ * Tenant configuration for the Website Builder installation.
+ *
+ * The effective value and its source come from the API, not from the raw
+ * installation row: the application default lives in the platform schema that
+ * the tenant identity cannot read, and the schema default must be shown when no
+ * override exists (FR-014). The tenant session cookie is forwarded; the
+ * workspace is never a client-supplied id. Only declared settings fields are
+ * returned, so site and inquiry data never enters this read (FR-159).
  */
 
-export type WebsiteBuilderConfigurationField =
-  | {
-      readonly kind: "configured";
-      readonly key: string;
-      readonly label: string;
-      readonly description: string;
-      readonly displayValue: string;
-    }
-  | {
-      readonly kind: "default";
-      readonly key: string;
-      readonly label: string;
-      readonly description: string;
-      readonly displayValue: string;
-    };
+export const SETTINGS_READ_PATH = "/api/v1/cms/settings";
+
+export interface WebsiteBuilderConfigurationField {
+  readonly key: string;
+  readonly label: string;
+  readonly description: string;
+  readonly displayValue: string;
+  readonly source: SettingsValueSource;
+}
 
 export type WebsiteBuilderConfigurationResult =
   | { readonly kind: "ready"; readonly fields: readonly WebsiteBuilderConfigurationField[] }
-  | { readonly kind: "not_installed" };
+  | { readonly kind: "not_installed" }
+  | { readonly kind: "unavailable"; readonly message: string };
 
-type SettingValueState =
-  | { readonly kind: "configured"; readonly displayValue: string }
-  | { readonly kind: "default" };
+const settingsViewSchema = z
+  .object({
+    appId: z.string().min(1).max(64),
+    fields: z.array(settingsFieldDefinitionSchema),
+    effectiveValues: z.record(z.unknown()),
+    sources: z.record(settingsValueSourceSchema),
+  })
+  .strict();
 
-function isSettingsRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+const settingsEnvelopeSchema = z
+  .object({
+    success: z.literal(true),
+    data: z.object({ settings: settingsViewSchema }).strict(),
+    requestId: z.string(),
+    timestamp: z.string(),
+  })
+  .strict();
+
+const problemSchema = z.object({
+  code: z.string().optional(),
+  detail: z.string().optional(),
+});
+
+class SettingsReadError extends Error {
+  readonly code: string | null;
+
+  constructor(message: string, code: string | null) {
+    super(message);
+    this.name = "SettingsReadError";
+    this.code = code;
+  }
 }
 
-function readBooleanSetting(value: unknown): SettingValueState {
-  if (value === true) {
-    return { kind: "configured", displayValue: "Enabled" };
+async function readSessionCookie(): Promise<string> {
+  const cookieStore = await cookies();
+  const value = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+  if (value === undefined || value.length === 0) {
+    throw new SettingsReadError(
+      "An authenticated workspace session is required to read settings.",
+      PLATFORM_ERROR_CODE.AUTH_REQUIRED
+    );
   }
-  if (value === false) {
-    return { kind: "configured", displayValue: "Disabled" };
-  }
-  return { kind: "default" };
+  return value;
 }
 
-function readTextSetting(value: unknown): SettingValueState {
-  if (typeof value === "string" && value.trim().length > 0) {
-    return { kind: "configured", displayValue: value };
+async function parseProblem(response: Response): Promise<SettingsReadError> {
+  const body: unknown = await response.json().catch(() => null);
+  const parsed = problemSchema.safeParse(body);
+  if (parsed.success) {
+    return new SettingsReadError(
+      parsed.data.detail ?? "The settings request failed with status " + String(response.status) + ".",
+      parsed.data.code ?? null
+    );
   }
-  return { kind: "default" };
+  return new SettingsReadError(
+    "The settings request failed with status " + String(response.status) + ".",
+    null
+  );
 }
 
-function readSettingValue(
+async function requestSettings() {
+  const sessionCookie = await readSessionCookie();
+  const response = await fetch(getApiServerUrl() + SETTINGS_READ_PATH, {
+    headers: {
+      Accept: "application/json",
+      Cookie: SESSION_COOKIE_NAME + "=" + sessionCookie,
+    },
+    cache: "no-store",
+    signal: AbortSignal.timeout(TIMEOUTS.DEFAULT_FETCH_TIMEOUT_MS),
+  });
+  if (!response.ok) {
+    throw await parseProblem(response);
+  }
+  const parsed = settingsEnvelopeSchema.safeParse(await response.json());
+  if (!parsed.success) {
+    throw new SettingsReadError(
+      "The settings response did not match the expected contract.",
+      null
+    );
+  }
+  return parsed.data.data.settings;
+}
+
+function displayValue(field: SettingsFieldDefinition, value: unknown): string {
+  switch (field.kind) {
+    case "boolean":
+      return value === true ? "Enabled" : "Disabled";
+    case "text":
+      return typeof value === "string" && value.trim() !== "" ? value : "Not set";
+  }
+}
+
+function requireEffectiveValue(
+  values: Readonly<Record<string, unknown>>,
+  key: string
+): unknown {
+  if (!Object.prototype.hasOwnProperty.call(values, key)) {
+    throw new SettingsReadError(
+      "The settings response omitted the effective value for " + key + ".",
+      null
+    );
+  }
+  return values[key];
+}
+
+function requireSource(
+  sources: Readonly<Record<string, SettingsValueSource>>,
+  key: string
+): SettingsValueSource {
+  const source = sources[key];
+  if (source === undefined) {
+    throw new SettingsReadError(
+      "The settings response omitted the source for " + key + ".",
+      null
+    );
+  }
+  return source;
+}
+
+function toConfigurationField(
   field: SettingsFieldDefinition,
-  value: unknown
-): SettingValueState {
-  if (field.kind === "boolean") {
-    return readBooleanSetting(value);
-  }
-  return readTextSetting(value);
-}
-
-function configuredField(
-  field: SettingsFieldDefinition,
-  state: SettingValueState
+  values: Readonly<Record<string, unknown>>,
+  sources: Readonly<Record<string, SettingsValueSource>>
 ): WebsiteBuilderConfigurationField {
-  if (state.kind === "configured") {
-    return {
-      kind: "configured",
-      key: field.key,
-      label: field.label,
-      description: field.description,
-      displayValue: state.displayValue,
-    };
-  }
   return {
-    kind: "default",
     key: field.key,
     label: field.label,
     description: field.description,
-    displayValue: "Not configured",
+    displayValue: displayValue(field, requireEffectiveValue(values, field.key)),
+    source: requireSource(sources, field.key),
   };
 }
 
-export async function readWebsiteBuilderConfiguration(
-  organizationId: string
-): Promise<WebsiteBuilderConfigurationResult> {
-  const definition = getAppSettingsDefinition(WEBSITE_BUILDER_APP_ID);
-  if (definition === null) {
-    throw new Error("Website Builder settings definition is not registered.");
+export async function readWebsiteBuilderConfiguration(): Promise<WebsiteBuilderConfigurationResult> {
+  try {
+    const settings = await requestSettings();
+    return {
+      kind: "ready",
+      fields: settings.fields.map((field) =>
+        toConfigurationField(field, settings.effectiveValues, settings.sources)
+      ),
+    };
+  } catch (error: unknown) {
+    if (error instanceof SettingsReadError) {
+      if (error.code === PLATFORM_ERROR_CODE.APP_NOT_INSTALLED) {
+        return { kind: "not_installed" };
+      }
+      return { kind: "unavailable", message: error.message };
+    }
+    return {
+      kind: "unavailable",
+      message: error instanceof Error ? error.message : String(error),
+    };
   }
-
-  const installation = await prisma.installedApp.findFirst({
-    where: {
-      organizationId,
-      appId: WEBSITE_BUILDER_APP_ID,
-      isEnabled: true,
-    },
-    select: { settings: true },
-  });
-  if (installation === null) {
-    return { kind: "not_installed" };
-  }
-  const storedSettings = installation.settings;
-  if (!isSettingsRecord(storedSettings)) {
-    throw new Error("Stored Website Builder settings are not a JSON object.");
-  }
-
-  const fields = definition.fields.map((field) =>
-    configuredField(field, readSettingValue(field, storedSettings[field.key]))
-  );
-  return { kind: "ready", fields };
 }

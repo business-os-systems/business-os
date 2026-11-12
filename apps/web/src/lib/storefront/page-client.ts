@@ -10,6 +10,8 @@ import { storefrontPageSchema, type StorefrontPage } from "@/lib/storefront/cont
  */
 
 const STOREFRONT_PAGE_PATH = "/api/v1/storefront/page";
+const STOREFRONT_PREVIEW_PATH = "/api/v1/storefront/preview";
+const PREVIEW_TOKEN_HEADER = "x-preview-token";
 const PAGE_TIMEOUT_MS = 3000;
 
 export type StorefrontPageResult =
@@ -56,6 +58,37 @@ async function readPageResponse(response: Response): Promise<StorefrontPageResul
     return { kind: "upstream_error" };
   }
   return { kind: "published", page: parsed.data };
+}
+
+function buildPreviewUrl(input: LoadStorefrontPageInput & { readonly token: string }): URL {
+  const url = new URL(STOREFRONT_PREVIEW_PATH, getStorefrontApiUrl());
+  url.searchParams.set("path", input.path);
+  return url;
+}
+
+/**
+ * Draft read for a signed preview link. The token travels in a request header
+ * so it never appears in an upstream access log, and the request carries no
+ * cookie: the preview link is the only credential (FR-037).
+ */
+export async function loadStorefrontPreviewPage(
+  input: LoadStorefrontPageInput & { readonly token: string }
+): Promise<StorefrontPageResult> {
+  try {
+    const response = await fetch(buildPreviewUrl(input), {
+      headers: {
+        Accept: "application/json",
+        [PREVIEW_TOKEN_HEADER]: input.token,
+      },
+      cache: "no-store",
+      signal: AbortSignal.timeout(PAGE_TIMEOUT_MS),
+    });
+    return await readPageResponse(response);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("[storefront] The preview page could not be loaded:", message);
+    return { kind: "upstream_error" };
+  }
 }
 
 export async function loadStorefrontPage(
