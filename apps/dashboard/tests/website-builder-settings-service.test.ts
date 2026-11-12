@@ -2,11 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PLATFORM_ERROR_CODE } from "@suite/core";
 import { readWebsiteBuilderConfiguration } from "../src/services/website-builder-settings.service";
 
-// The service reads the API base from NEXT_PUBLIC_API_URL. Set a deterministic
+// The service reads the server-side API base from API_URL. Set a deterministic
 // value so a coverage run cannot depend on another file having set it first.
-const declaredApiUrl = process.env.NEXT_PUBLIC_API_URL;
+const declaredApiUrl = process.env.API_URL;
 if (declaredApiUrl === undefined || declaredApiUrl === "") {
-  process.env.NEXT_PUBLIC_API_URL = "http://localhost:4000";
+  process.env.API_URL = "http://localhost:4000";
 }
 
 const state = vi.hoisted(
