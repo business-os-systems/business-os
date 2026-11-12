@@ -18,6 +18,7 @@ import {
 } from "../../src/routes/storefront/read.js";
 import { clearRateLimitStore } from "../../src/middleware/rate-limit.js";
 import { getBetterAuthSecret } from "../../src/lib/env.js";
+import { STOREFRONT_ERROR_CODE } from "../../src/services/storefront/contract.js";
 import { storefrontPreviewService } from "../../src/services/storefront/storefront.service.js";
 import type {
   StorefrontPageOutcome,
@@ -457,6 +458,20 @@ describe("public preview route", () => {
     expect(response.headers.get("Cache-Control")).toBe("private, no-store");
     const body = (await response.json()) as { ast: { meta?: { title?: string } } };
     expect(body.ast.meta?.title).toBe("Preview");
+  });
+
+  it("answers 410 when the preview service reports the site is gone", async () => {
+    const app = createStorefrontRouter(
+      fakeReadService,
+      previewServiceWith({ kind: "gone" })
+    );
+
+    const response = await app.request("/preview?token=any-token&path=/");
+
+    expect(response.status).toBe(410);
+    expect(response.headers.get("Content-Type")).toContain("application/problem+json");
+    const body = (await response.json()) as { code?: string };
+    expect(body.code).toBe(STOREFRONT_ERROR_CODE.GONE);
   });
 
   it("answers a neutral 404 for an invalid token", async () => {
