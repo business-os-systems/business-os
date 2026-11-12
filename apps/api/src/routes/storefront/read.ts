@@ -43,6 +43,9 @@ const STOREFRONT_READ_RATE_LIMIT = {
   keyPrefix: "rl:storefront:read",
 } as const;
 
+/** Exported so a suite that reads this route can start from an empty bucket. */
+export const STOREFRONT_READ_RATE_LIMIT_KEY = STOREFRONT_READ_RATE_LIMIT.keyPrefix;
+
 /**
  * Host keeps one tenant's response out of another tenant's cache; Origin keeps
  * the global CORS middleware's cache isolation intact on a cross-origin read.

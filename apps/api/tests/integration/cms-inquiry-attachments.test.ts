@@ -2,6 +2,13 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PLATFORM_ERROR_CODE } from "@suite/core";
 import { prisma } from "@suite/db";
 import { ingestPublicSubmission } from "../../src/services/cms/form-ingestion.js";
+import { clearRateLimitStore } from "../../src/middleware/rate-limit.js";
+
+// The intake path hashes the submitter with GDPR_HMAC_SALT_KEY and signs with
+// BETTER_AUTH_SECRET. Set deterministic values when the environment omits them
+// so the suite does not depend on another file having set them first.
+process.env.GDPR_HMAC_SALT_KEY ??= "suite-test-gdpr-hmac-salt-key-32chars";
+process.env.BETTER_AUTH_SECRET ??= "suite-test-attachments-secret-32-chars";
 
 const enabled = Boolean(process.env.DATABASE_URL && process.env.TENANT_DATABASE_URL);
 const RUN = Date.now().toString(36);
@@ -37,6 +44,9 @@ beforeAll(async () => {
   if (!enabled) {
     return;
   }
+  // Form submissions share the per-IP intake bucket (20/min); a full coverage
+  // run must not answer this suite's first submission with 429.
+  await clearRateLimitStore("rl:storefront-inquiries");
   await prisma.organization.create({
     data: { id: ORG, name: "WT381 attachments", slug: "wt381-attach-" + RUN },
   });

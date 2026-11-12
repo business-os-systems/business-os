@@ -1,4 +1,9 @@
 import { createHmac, hkdfSync } from "node:crypto";
+
+// The signed preview link is keyed by the session secret. Other suites unset it
+// to exercise the production guard, so this file restores a deterministic key
+// before it reads one instead of depending on file order.
+process.env.BETTER_AUTH_SECRET ??= "suite-test-preview-link-secret-32-chars";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
 import { PERMISSIONS, type PermissionCode } from "@suite/core";
@@ -7,7 +12,11 @@ import { DEFAULT_APPEARANCE_TOKENS } from "@suite/website-builder/appearance";
 import { PageAstSchema } from "@suite/website-builder/ast";
 import { globalErrorHandler } from "../../src/middleware/error-handler.js";
 import { createCmsSitesRouter } from "../../src/routes/cms/sites.js";
-import { createStorefrontRouter } from "../../src/routes/storefront/read.js";
+import {
+  createStorefrontRouter,
+  STOREFRONT_READ_RATE_LIMIT_KEY,
+} from "../../src/routes/storefront/read.js";
+import { clearRateLimitStore } from "../../src/middleware/rate-limit.js";
 import { getBetterAuthSecret } from "../../src/lib/env.js";
 import { storefrontPreviewService } from "../../src/services/storefront/storefront.service.js";
 import type {
@@ -103,19 +112,12 @@ function previewServiceWith(outcome: StorefrontPageOutcome): StorefrontPreviewSe
 
 let fixture: CmsFixture;
 
-beforeAll(async () => {
-  if (!cmsTestEnabled) {
-    return;
-  }
-  fixture = await createCmsFixture({
-    suffix: "preview_" + RUN,
-    pageCount: 1,
-    changedPageCount: 1,
-  });
+/** Publishes the fixture host the preview reads resolve against. */
+async function attachPreviewHost(activeFixture: CmsFixture): Promise<void> {
   await prisma.cmsDomain.create({
     data: {
-      organizationId: fixture.organizationId,
-      siteId: fixture.siteId,
+      organizationId: activeFixture.organizationId,
+      siteId: activeFixture.siteId,
       hostname: HOST,
       isPrimary: true,
       status: "ACTIVE",
@@ -123,6 +125,21 @@ beforeAll(async () => {
       sslActive: true,
     },
   });
+}
+
+beforeAll(async () => {
+  if (!cmsTestEnabled) {
+    return;
+  }
+  // Other storefront suites share the per-IP read bucket; start from empty so a
+  // full coverage run cannot answer one of these reads with 429.
+  await clearRateLimitStore(STOREFRONT_READ_RATE_LIMIT_KEY);
+  fixture = await createCmsFixture({
+    suffix: "preview_" + RUN,
+    pageCount: 1,
+    changedPageCount: 1,
+  });
+  await attachPreviewHost(fixture);
   await prisma.cmsPageContent.update({
     where: {
       pageId_organizationId: {
