@@ -1,6 +1,6 @@
 import { performance } from "node:perf_hooks";
-import { Prisma, prisma, withTenantContext } from "@suite/db";
-import { PLATFORM_ERROR_CODE } from "@suite/core";
+import { Prisma, prisma, tenantWriteQuotaGuard, withTenantContext } from "@suite/db";
+import { PLATFORM_ERROR_CODE, QUOTA_KEYS } from "@suite/core";
 import { ConflictError } from "@suite/core/errors";
 import { writeCmsAudit } from "@suite/website-builder/services";
 import { PageAstSchema } from "@suite/website-builder/ast";
@@ -37,6 +37,10 @@ import {
   recordDomainFailure,
   recordDomainOperation,
 } from "../admin/domain-metrics.service.js";
+import {
+  CREATION_FUNNEL_STAGES,
+  recordCreationFunnelStage,
+} from "../admin/creation-funnel.service.js";
 
 export interface PublishSiteInput {
   readonly organizationId: string;
@@ -45,6 +49,52 @@ export interface PublishSiteInput {
   readonly publisherUserId: string;
   readonly idempotencyKey: string;
   readonly changeNote: string | null;
+}
+
+/**
+ * Publish extension point (FR-094). A later release adds "request publish" by
+ * registering one of these; publishing itself does not change. A failing
+ * extension is logged and never unwinds a release that already reached
+ * visitors.
+ */
+export interface PublishExtensionContext {
+  readonly organizationId: string;
+  readonly siteId: string;
+  readonly reviewId: string;
+  readonly publisherUserId: string;
+  readonly publishedAt: string;
+  readonly pageCount: number;
+  readonly replayed: boolean;
+}
+
+export interface PublishExtension {
+  readonly name: string;
+  afterPublished(context: PublishExtensionContext): Promise<void> | void;
+}
+
+export interface PublishWithExtensionsInput {
+  readonly input: PublishSiteInput;
+  readonly extensions: readonly PublishExtension[];
+}
+
+async function runPublishExtensions(
+  extensions: readonly PublishExtension[],
+  context: PublishExtensionContext
+): Promise<void> {
+  await Promise.all(
+    extensions.map(async (extension) => {
+      try {
+        await extension.afterPublished(context);
+      } catch (error: unknown) {
+        console.error("[cms] Publish extension failed.", {
+          extension: extension.name,
+          siteId: context.siteId,
+          reviewId: context.reviewId,
+          message: error instanceof Error ? error.message : String(error),
+        });
+      }
+    })
+  );
 }
 
 export interface PublishedPage {
@@ -232,6 +282,24 @@ async function promotePageMediaUsages(
   });
 }
 
+/**
+ * FR-015: publishing re-checks the page quota, so a limit lowered after
+ * creation blocks the next release instead of serving more pages. The delta is
+ * zero because a release adds no pages; the gate refuses only while the tenant
+ * is already over the measured limit, and the refusal names the limit and the
+ * upgrade path (QuotaExceededError).
+ */
+async function assertPublishQuota(
+  tx: Prisma.TransactionClient,
+  organizationId: string
+): Promise<void> {
+  await tenantWriteQuotaGuard.assertAvailable(tx, {
+    organizationId,
+    resourceKey: QUOTA_KEYS.PAGES,
+    delta: 0,
+  });
+}
+
 function toInputJson(value: Prisma.JsonValue): Prisma.InputJsonValue | typeof Prisma.JsonNull {
   if (value === null) {
     return Prisma.JsonNull;
@@ -278,6 +346,19 @@ async function pruneReleasedVersions(
 }
 
 export async function publishSite(input: PublishSiteInput): Promise<PublishOutcome> {
+  return publishSiteWithExtensions({ input, extensions: [] });
+}
+
+/**
+ * Releases the site, then notifies every registered publish extension. The
+ * release outcome and audit row are identical to publishSite; only the
+ * extension port is consulted (FR-094). A replayed request does not notify
+ * twice.
+ */
+export async function publishSiteWithExtensions(
+  args: PublishWithExtensionsInput
+): Promise<PublishOutcome> {
+  const input = args.input;
   const startedAt = performance.now();
   try {
     const feed = await loadPublishReputationFeed();
@@ -288,6 +369,18 @@ export async function publishSite(input: PublishSiteInput): Promise<PublishOutco
       startedAt,
     });
     await pruneReleasedVersions(input.organizationId, outcome.pages);
+    if (!outcome.replayed) {
+      recordCreationFunnelStage(CREATION_FUNNEL_STAGES.SITE_PUBLISHED);
+      await runPublishExtensions(args.extensions, {
+        organizationId: input.organizationId,
+        siteId: input.siteId,
+        reviewId: outcome.reviewId,
+        publisherUserId: outcome.publisherUserId,
+        publishedAt: outcome.publishedAt,
+        pageCount: outcome.pages.length,
+        replayed: outcome.replayed,
+      });
+    }
     return outcome;
   } catch (error: unknown) {
     recordDomainOperation({
@@ -344,6 +437,7 @@ async function releaseSite(
     await lockSiteContents(tx, input);
     const pages = await loadPages(context);
     assertReviewCurrent(pages, review.snapshot);
+    await assertPublishQuota(tx, input.organizationId);
     const publishedAt = new Date();
     const changed = pages.filter((page) => isPageChanged(page.content));
     const unchanged = pages.filter((page) => !isPageChanged(page.content));

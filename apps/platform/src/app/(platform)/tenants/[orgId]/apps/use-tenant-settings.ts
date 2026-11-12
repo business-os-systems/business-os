@@ -45,6 +45,8 @@ export function useAppSettings(orgId: string, appId: string) {
         : {
             ...current,
             values: result.values,
+            effectiveValues: result.effectiveValues,
+            sources: result.sources,
             staleFields: result.staleFields,
             version: result.version,
           }

@@ -10,6 +10,10 @@ import {
   AppearanceTokensSchema,
   type AppearanceTokenPatch,
 } from "@suite/website-builder/appearance";
+import {
+  siteExportEnvelopeSchema,
+  type SiteExportDocument,
+} from "./site-export.contract";
 
 export { CmsApiError };
 export type { CmsProblem } from "./cms-http";
@@ -103,6 +107,9 @@ const redirectListSchema = cmsEnvelopeSchema(
 );
 
 const templateListSchema = cmsEnvelopeSchema(z.object({ items: z.array(templateSchema) }));
+const previewLinkSchema = cmsEnvelopeSchema(
+  z.object({ preview: z.object({ url: z.string().url(), expiresAt: z.string() }).strict() })
+);
 const siteResultSchema = cmsEnvelopeSchema(z.object({ site: siteSchema }));
 const pageResultSchema = cmsEnvelopeSchema(z.object({ page: pageSchema }));
 const createSiteSchema = cmsEnvelopeSchema(
@@ -346,4 +353,24 @@ export async function publishSiteAppearance(
     body: JSON.stringify({ expectedVersion }),
   });
   return response.data.appearance;
+}
+
+
+/** Issues a signed, expiring storefront link for this site's drafts (FR-037). */
+export async function createSitePreviewLink(
+  siteId: string,
+  path: string
+): Promise<{ url: string; expiresAt: string }> {
+  const query = new URLSearchParams({ path });
+  const requestPath =
+    CMS_BASE + "/sites/" + encodeURIComponent(siteId) + "/preview-link?" + query.toString();
+  const response = await requestCmsJson(requestPath, previewLinkSchema, { method: "GET" });
+  return response.data.preview;
+}
+
+/** Downloads the workspace's own site as the portable export document (SC-012). */
+export async function exportSiteRequest(siteId: string): Promise<SiteExportDocument> {
+  const path = CMS_BASE + "/sites/" + encodeURIComponent(siteId) + "/export";
+  const response = await requestCmsJson(path, siteExportEnvelopeSchema, { method: "GET" });
+  return response.data.export;
 }

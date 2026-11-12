@@ -71,6 +71,8 @@ export const appSettingsWriteResultSchema = z
   .object({
     appId: z.string(),
     values: z.record(z.unknown()),
+    effectiveValues: z.record(z.unknown()),
+    sources: z.record(settingsValueSourceSchema),
     removedFields: z.array(z.string()).readonly(),
     staleFields: z.array(staleFieldSchema).readonly(),
     version: z.string(),

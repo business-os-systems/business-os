@@ -293,6 +293,20 @@ function entitlementsReply(): Response {
   });
 }
 
+async function submitSettingsForm(): Promise<void> {
+  const form = document.querySelector("form");
+  if (form === null) throw new Error(SETTINGS_FORM_MISSING);
+  await act(async () => {
+    form.requestSubmit();
+    await Promise.resolve();
+  });
+  await settle();
+}
+
+function settingsPutCalls() {
+  return fetchMock.mock.calls.filter((call) => call[1]?.method === "PUT");
+}
+
 describe("Tenant settings version reconciliation", () => {
   it("uses the newly written version for a second save", async () => {
     authState.capabilities = APPS_CAPABILITIES;
@@ -303,7 +317,9 @@ describe("Tenant settings version reconciliation", () => {
         reply(200, {
           data: {
             appId: APP_ID,
-            values: SETTINGS.values,
+            values: { customDomainEnabled: true, defaultLocale: "en-GB" },
+            effectiveValues: { customDomainEnabled: true, defaultLocale: "en-GB" },
+            sources: { customDomainEnabled: "tenant", defaultLocale: "tenant" },
             removedFields: [],
             staleFields: [],
             version: "settings-v2",
@@ -315,6 +331,8 @@ describe("Tenant settings version reconciliation", () => {
           data: {
             appId: APP_ID,
             values: SETTINGS.values,
+            effectiveValues: SETTINGS.values,
+            sources: { customDomainEnabled: "tenant", defaultLocale: "tenant" },
             removedFields: [],
             staleFields: [],
             version: "settings-v3",
@@ -322,28 +340,21 @@ describe("Tenant settings version reconciliation", () => {
         })
       );
     render(withRecord(<TenantAppsPage />));
-    for (let attempt = 0; attempt < 8; attempt += 1) {
-      await settle();
-    }
-
-    const first = document.querySelector("form");
-    if (first === null) throw new Error(SETTINGS_FORM_MISSING);
-    await act(async () => {
-      first.requestSubmit();
-      await Promise.resolve();
-    });
+    await settle();
+    await settle();
+    await settle();
+    await settle();
+    await settle();
+    await settle();
+    await settle();
     await settle();
 
-    const second = document.querySelector("form");
-    if (second === null) throw new Error("Settings form missing after save");
-    await act(async () => {
-      second.requestSubmit();
-      await Promise.resolve();
-    });
+    await submitSettingsForm();
+    expect(document.body.textContent).toContain("en-GB");
+    expect(document.body.textContent).not.toContain("en-IN");
 
-    const puts = fetchMock.mock.calls.filter(
-      (call) => call[1]?.method === "PUT"
-    );
+    await submitSettingsForm();
+    const puts = settingsPutCalls();
     expect(puts).toHaveLength(2);
     expect(requestJsonBody(puts[1]?.[1])).toMatchObject({
       expectedVersion: "settings-v2",
@@ -387,6 +398,8 @@ describe("App settings editor mutations", () => {
         data: {
           appId: APP_ID,
           values: { customDomainEnabled: true, defaultLocale: "en-GB" },
+          effectiveValues: { customDomainEnabled: true, defaultLocale: "en-GB" },
+          sources: { customDomainEnabled: "tenant", defaultLocale: "tenant" },
           removedFields: [LEGACY_FIELD],
           staleFields: [],
           version: "2026-11-07T11:00:00.000000Z",

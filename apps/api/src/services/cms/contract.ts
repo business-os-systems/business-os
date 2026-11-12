@@ -1,7 +1,12 @@
 import { z } from "zod";
+import {
+  settingsFieldDefinitionSchema,
+  settingsValueSourceSchema,
+} from "@suite/core";
 import { SITE_IDEMPOTENCY_KEY_PATTERN } from "@suite/website-builder/services";
 import {
   AppearanceTokenPatchSchema,
+  AppearanceTokensSchema,
   BRAND_LOGO_URL_MAX_LENGTH,
   isSafeBrandLogoUrl,
   type AppearanceTokens,
@@ -346,4 +351,124 @@ export type PageContent = z.infer<typeof pageContentSchema>;
 export type SavePageContentBody = z.infer<typeof savePageContentBodySchema>;
 export type CatalogSection = z.infer<typeof catalogSectionSchema>;
 export type ListCatalogSectionsQuery = z.infer<typeof listCatalogSectionsQuerySchema>;
+
+// ==============================================================================
+// Portable site export (SC-012, T154)
+//
+// The document is the tenant's own content: site metadata, appearance, page
+// tree and the page bodies, with no internal identifiers and no other tenant's
+// rows. Media is exported as the resolved public URL map so the file can be
+// rendered without this deployment (FR-047 keeps inquiry data out of it).
+// ==============================================================================
+
+export const SITE_EXPORT_FORMAT = {
+  id: "business-os.website-builder.site",
+  version: 1,
+} as const;
+
+export const siteExportAstSchema = z.record(z.string(), z.unknown());
+
+const exportedSiteSchema = z
+  .object({
+    title: z.string(),
+    slug: z.string(),
+    status: z.string(),
+    timezone: z.string(),
+    primaryLocale: z.string(),
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+  })
+  .strict();
+
+const exportedAppearanceSchema = z
+  .object({
+    brandName: z.string(),
+    brandLogoUrl: z.string().nullable(),
+    draftTokens: AppearanceTokensSchema,
+    publishedTokens: AppearanceTokensSchema,
+    sourceItemId: z.string().nullable(),
+    sourceVersion: z.number().int().nullable(),
+    version: z.number().int(),
+    publishedAt: z.string().datetime(),
+  })
+  .strict();
+
+const exportedSiteSettingsSchema = z
+  .object({
+    faviconUrl: z.string().nullable(),
+    brandLogoUrl: z.string().nullable(),
+    brandName: z.string().nullable(),
+    headerAst: siteExportAstSchema,
+    footerAst: siteExportAstSchema,
+    customCss: z.string().nullable(),
+    customHeadCode: z.string().nullable(),
+  })
+  .strict();
+
+const exportedDomainSchema = z
+  .object({
+    hostname: z.string(),
+    isPrimary: z.boolean(),
+    isSubdomain: z.boolean(),
+    status: z.string(),
+  })
+  .strict();
+
+const exportedRedirectSchema = z
+  .object({
+    sourcePath: z.string(),
+    targetUrl: z.string(),
+    type: z.string(),
+  })
+  .strict();
+
+const exportedPageSchema = z
+  .object({
+    title: z.string(),
+    path: z.string(),
+    parentPath: z.string().nullable(),
+    orderIndex: z.number().int(),
+    status: z.string(),
+    isHomePage: z.boolean(),
+    revision: z.number().int(),
+    draftAst: siteExportAstSchema,
+    publishedAst: siteExportAstSchema.nullable(),
+  })
+  .strict();
+
+export const siteExportDocumentSchema = z
+  .object({
+    format: z.literal(SITE_EXPORT_FORMAT.id),
+    formatVersion: z.literal(SITE_EXPORT_FORMAT.version),
+    exportedAt: z.string().datetime(),
+    site: exportedSiteSchema,
+    appearance: exportedAppearanceSchema.nullable(),
+    settings: exportedSiteSettingsSchema.nullable(),
+    domains: z.array(exportedDomainSchema),
+    redirects: z.array(exportedRedirectSchema),
+    pages: z.array(exportedPageSchema),
+    media: MediaAssetMapSchema,
+  })
+  .strict();
+
+export type SiteExportDocument = z.infer<typeof siteExportDocumentSchema>;
+
+// ==============================================================================
+// Tenant-facing effective settings (FR-014, T163)
+//
+// A tenant needs the effective value and its source, not the raw overrides: the
+// dashboard otherwise renders "not configured" for a value the schema already
+// supplies. The app-level default lives in the platform schema, which the
+// tenant identity cannot read, so this view is served by the API and scoped to
+// the session's workspace.
+// ==============================================================================
+
+export const websiteBuilderSettingsViewSchema = z
+  .object({
+    appId: z.string().min(1).max(64),
+    fields: z.array(settingsFieldDefinitionSchema),
+    effectiveValues: z.record(z.unknown()),
+    sources: z.record(settingsValueSourceSchema),
+  })
+  .strict();
 

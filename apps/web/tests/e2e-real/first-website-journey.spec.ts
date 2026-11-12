@@ -91,7 +91,22 @@ async function publishCatalog(input: OperatorInput): Promise<PublishedCatalog> {
   return { template: visibleTemplate, section };
 }
 
-/** Drives the three wizard steps the way a tenant does, then reads the studio address. */
+/**
+ * Types into a field only once React has hydrated. A development server paints
+ * the server markup before hydration; a fill that lands earlier is overwritten
+ * when React attaches, so the value is re-applied until it sticks.
+ */
+async function fillOnceHydrated(page: Page, label: string, value: string): Promise<void> {
+  const field = page.getByLabel(label);
+  await expect(async () => {
+    await field.click();
+    await field.fill("");
+    await field.pressSequentially(value, { delay: 5 });
+    await expect(field).toHaveValue(value, { timeout: 2_000 });
+  }).toPass({ timeout: 30_000 });
+}
+
+/** Drives the one-step create form the way a tenant does, then reads the studio address. */
 async function createSiteFromTemplate(input: {
   readonly page: Page;
   readonly journey: PreparedJourney;
@@ -113,16 +128,11 @@ async function createSiteFromTemplate(input: {
     await expect(page).toHaveURL(/\/dashboard\/sites\/onboarding$/, { timeout: 5_000 });
   }).toPass({ timeout: 45_000 });
 
-  await expect(page.getByRole("heading", { name: "Name the site" })).toBeVisible();
-  await page.getByLabel("Site name").fill("Journey Studio " + suffix);
-  await page.getByRole("button", { name: "Continue" }).click();
-
-  await expect(page.getByRole("heading", { name: "Choose the address" })).toBeVisible();
-  await page.getByLabel("Address").fill(address);
-  await page.getByRole("button", { name: "Continue" }).click();
-
-  await expect(page.getByRole("heading", { name: "Pick a starting point" })).toBeVisible();
-  await page.getByLabel("Template").click();
+  // One-step creation (#381): name, address and starting point on one form.
+  await expect(page.getByRole("heading", { name: "Create a website" }).first()).toBeVisible();
+  await fillOnceHydrated(page, "Site name", "Journey Studio " + suffix);
+  await fillOnceHydrated(page, "Address", address);
+  await page.getByLabel("Starting point").click();
   await page.getByRole("option").filter({ hasText: template.name }).click();
   await page.getByRole("button", { name: "Create site and open studio" }).click();
   await page.waitForURL(STUDIO_PATH);

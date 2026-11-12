@@ -94,14 +94,10 @@ it("opens the studio on the new home page after provisioning", async () => {
   fireEvent.change(screen.getByLabelText(/Site name/), {
     target: { value: "Riverview Bistro" },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Continue" }));
-
-  fireEvent.change(await screen.findByLabelText(/Address/), {
+  fireEvent.change(screen.getByLabelText(/Address/), {
     target: { value: "riverview-bistro" },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Continue" }));
-
-  fireEvent.click(await screen.findByLabelText(/Template/));
+  fireEvent.click(screen.getByLabelText(/Starting point/));
   fireEvent.click(screen.getByRole("option", { name: "Bistro starter (hospitality)" }));
 
   fireEvent.click(

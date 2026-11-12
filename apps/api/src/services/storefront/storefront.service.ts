@@ -1,5 +1,7 @@
-import { AppError } from "@suite/core/errors";
-import { normalizeHostname } from "@suite/core";
+import { createHmac, hkdfSync, timingSafeEqual } from "node:crypto";
+import { z } from "zod";
+import { AppError, NotFoundError, ValidationError } from "@suite/core/errors";
+import { normalizeHostname, PLATFORM_ERROR_CODE } from "@suite/core";
 import { Prisma, withTenantContext, prisma, type CmsSite } from "@suite/db";
 import { resolveMediaAssets } from "@suite/media";
 import { normalizeAppearanceTokens } from "@suite/website-builder/appearance";
@@ -21,7 +23,9 @@ import {
   type StorefrontPageOutcome,
   type StorefrontReadService,
   type StorefrontResolveOutcome,
+  type StorefrontPreviewService,
 } from "./contract.js";
+import { getBetterAuthSecret } from "../../lib/env.js";
 
 type PublishedPageContent = Omit<StorefrontPageMetadata, "tokens">;
 
@@ -242,5 +246,257 @@ export const storefrontReadService: StorefrontReadService = {
       }
       return readPageInTenant(locator, path);
     });
+  },
+};
+
+// ==============================================================================
+// Signed, expiring preview link (FR-037, T166)
+//
+// The link carries the host and an expiry time, never a site, tenant or page
+// id, so a visitor cannot learn the workspace behind a host. The signing key is
+// derived from the deployment's existing BETTER_AUTH_SECRET with HKDF and a
+// purpose-specific info string: no new secret is introduced and a preview
+// signature can never be replayed as a session token. A tampered, expired or
+// deactivated-host token is reported as the same neutral not-found.
+// ==============================================================================
+
+const PREVIEW_TOKEN_VERSION = 1;
+const PREVIEW_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
+const PREVIEW_TOKEN_MAX_LENGTH = 4096;
+const PREVIEW_SIGNING_SALT = "business-os.cms.preview-link";
+const PREVIEW_SIGNING_INFO = "preview-token.v1";
+
+const previewTokenPayloadSchema = z
+  .object({
+    v: z.literal(PREVIEW_TOKEN_VERSION),
+    host: z.string().min(1).max(253),
+    exp: z.number().int().positive(),
+  })
+  .strict();
+
+function previewSigningKey(): Buffer {
+  return Buffer.from(
+    hkdfSync(
+      "sha256",
+      Buffer.from(getBetterAuthSecret(), "utf8"),
+      Buffer.from(PREVIEW_SIGNING_SALT, "utf8"),
+      Buffer.from(PREVIEW_SIGNING_INFO, "utf8"),
+      32
+    )
+  );
+}
+
+function signPreviewBody(body: string): string {
+  return createHmac("sha256", previewSigningKey()).update(body).digest("base64url");
+}
+
+function issuePreviewToken(host: string, expiresAt: Date): string {
+  const payload = {
+    v: PREVIEW_TOKEN_VERSION,
+    host,
+    exp: Math.floor(expiresAt.getTime() / 1000),
+  };
+  const body = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+  return body + "." + signPreviewBody(body);
+}
+
+function signaturesMatch(provided: string, expected: string): boolean {
+  const providedBytes = Buffer.from(provided, "utf8");
+  const expectedBytes = Buffer.from(expected, "utf8");
+  return (
+    providedBytes.length === expectedBytes.length &&
+    timingSafeEqual(providedBytes, expectedBytes)
+  );
+}
+
+function verifyPreviewToken(token: string): { host: string; expiresAt: Date } | null {
+  if (token.length === 0 || token.length > PREVIEW_TOKEN_MAX_LENGTH) {
+    return null;
+  }
+  const separator = token.indexOf(".");
+  if (separator <= 0 || separator === token.length - 1) {
+    return null;
+  }
+  const body = token.slice(0, separator);
+  const signature = token.slice(separator + 1);
+  if (!signaturesMatch(signature, signPreviewBody(body))) {
+    return null;
+  }
+  let rawPayload: unknown;
+  try {
+    rawPayload = JSON.parse(Buffer.from(body, "base64url").toString("utf8"));
+  } catch {
+    return null;
+  }
+  const parsed = previewTokenPayloadSchema.safeParse(rawPayload);
+  if (!parsed.success) {
+    return null;
+  }
+  const expiresAt = new Date(parsed.data.exp * 1000);
+  if (expiresAt.getTime() <= Date.now()) {
+    return null;
+  }
+  return { host: parsed.data.host, expiresAt };
+}
+
+function normalizePreviewPath(rawPath: string): string {
+  try {
+    return normalizePagePath(rawPath);
+  } catch (error: unknown) {
+    throw new ValidationError(
+      "The preview path is not a valid page address.",
+      [{ name: "path", reason: "Use a normalized page address such as /about." }],
+      { code: PLATFORM_ERROR_CODE.VALIDATION_FAILED, cause: error }
+    );
+  }
+}
+
+function buildPreviewUrl(host: string, path: string, token: string): string {
+  const url = new URL(path, "https://" + host);
+  url.searchParams.set("preview", token);
+  return url.toString();
+}
+
+async function readPreviewHost(
+  tx: Prisma.TransactionClient,
+  input: { readonly organizationId: string; readonly siteId: string }
+): Promise<string> {
+  const site = await tx.cmsSite.findFirst({
+    where: { id: input.siteId, organizationId: input.organizationId },
+    select: {
+      domains: {
+        where: { status: STOREFRONT_DOMAIN_STATUS.ACTIVE },
+        orderBy: [{ isPrimary: "desc" }, { hostname: "asc" }],
+        take: 1,
+        select: { hostname: true },
+      },
+    },
+  });
+  if (site === null) {
+    throw new NotFoundError("The requested site was not found.", {
+      code: PLATFORM_ERROR_CODE.NOT_FOUND,
+    });
+  }
+  const hostname = site.domains[0]?.hostname;
+  if (hostname === undefined) {
+    throw new ValidationError(
+      "This site has no active address yet, so a preview link cannot be issued.",
+      [{ name: "siteId", reason: "Attach and verify a domain before previewing." }],
+      { code: PLATFORM_ERROR_CODE.VALIDATION_FAILED }
+    );
+  }
+  return hostname;
+}
+
+function parsePreviewAst(
+  rawAst: Prisma.JsonValue,
+  context: { siteId: string; pagePath: string }
+) {
+  const parsed = PageAstSchema.safeParse(rawAst);
+  if (!parsed.success) {
+    console.error("[storefront] Draft page AST failed validation; refusing the preview.", {
+      siteId: context.siteId,
+      pagePath: context.pagePath,
+      issueCount: parsed.error.issues.length,
+    });
+    return null;
+  }
+  return parsed.data;
+}
+
+async function readDraftPage(
+  tx: Prisma.TransactionClient,
+  locator: SiteLocator,
+  path: string
+): Promise<PublishedPageResult> {
+  const page = await tx.cmsPage.findFirst({
+    where: {
+      organizationId: locator.organizationId,
+      siteId: locator.id,
+      slug: path,
+      status: { not: STOREFRONT_PAGE_STATUS.ARCHIVED },
+    },
+    select: {
+      title: true,
+      slug: true,
+      content: { select: { draftAst: true } },
+    },
+  });
+  if (page?.content?.draftAst == null) {
+    return { kind: "not_found" };
+  }
+  const ast = parsePreviewAst(page.content.draftAst, {
+    siteId: locator.id,
+    pagePath: page.slug,
+  });
+  if (ast === null) {
+    return { kind: "not_found" };
+  }
+  const media = await resolveMediaAssets(
+    tx,
+    locator.organizationId,
+    collectMediaAssetIds(ast)
+  );
+  return { kind: "published", page: { title: page.title, path: page.slug, ast, media } };
+}
+
+async function readPreviewPageInTenant(
+  locator: SiteLocator,
+  path: string
+): Promise<StorefrontPageOutcome> {
+  return withTenantContext(locator.organizationId, async (tx) => {
+    const site = await tx.cmsSite.findFirstOrThrow({
+      where: { id: locator.id, organizationId: locator.organizationId },
+      select: { status: true, appearance: { select: { draftTokens: true } } },
+    });
+    const delivery = SITE_DELIVERY_BY_STATUS[site.status];
+    if (delivery === "gone") {
+      return { kind: "gone" };
+    }
+    const page = await readDraftPage(tx, locator, path);
+    if (page.kind !== "published") {
+      return page;
+    }
+    return {
+      kind: "published",
+      page: {
+        ...page.page,
+        tokens: normalizeAppearanceTokens(site.appearance?.draftTokens),
+      },
+    };
+  });
+}
+
+/** Tenant-plane issuance and anonymous read of signed preview links (FR-037). */
+export const storefrontPreviewService: StorefrontPreviewService = {
+  async createLink(input) {
+    const hostname = await withTenantContext(input.organizationId, (tx) =>
+      readPreviewHost(tx, input)
+    );
+    const path = normalizePreviewPath(input.path);
+    const expiresAt = new Date(Date.now() + PREVIEW_TOKEN_TTL_MS);
+    const token = issuePreviewToken(hostname, expiresAt);
+    return {
+      url: buildPreviewUrl(hostname, path, token),
+      expiresAt: expiresAt.toISOString(),
+    };
+  },
+
+  async readPage(input) {
+    const verified = verifyPreviewToken(input.token);
+    if (verified === null) {
+      return { kind: "not_found" };
+    }
+    const locator = await locateSite(verified.host);
+    if (locator === null) {
+      return { kind: "not_found" };
+    }
+    const path = normalizeStorefrontPath(input.path);
+    if (path === null) {
+      return { kind: "not_found" };
+    }
+    return measureDomainOperation(DOMAIN_OPERATIONS.DELIVERY, { surface: "preview" }, () =>
+      readPreviewPageInTenant(locator, path)
+    );
   },
 };

@@ -17,6 +17,7 @@ import {
 } from "../admin/domain-metrics.service.js";
 import {
   assertInquiryPayloadWithinCap,
+  assertNoInquiryAttachments,
   assertNoSensitiveFieldNames,
   hashEmailIfPresent,
   hashSubmitterIdentity,
@@ -121,6 +122,7 @@ export async function ingestPublicSubmission(
     DOMAIN_OPERATIONS.FORM_INGESTION,
     { siteId: input.siteId, blockId: input.blockId },
     async () => {
+      assertNoInquiryAttachments(input.attachments);
       assertInquiryPayloadWithinCap(input.payload);
       assertNoSensitiveFieldNames(input.payload);
       const organizationId = await resolvePublicSiteOrganization(input.siteId);

@@ -7,6 +7,7 @@ import {
   INQUIRY_PAYLOAD_MAX_BYTES,
   looksLikeEmail,
   payloadByteSize,
+  type InquiryPayload,
 } from "@suite/website-builder/inquiries";
 import { getGdprHmacSalt } from "../../lib/env.js";
 
@@ -37,6 +38,30 @@ export function assertNoSensitiveFieldNames(payload: Record<string, unknown>): v
       name,
       reason: "Remove this field; secrets must never be stored as inquiry data.",
     })),
+    { code: PLATFORM_ERROR_CODE.VALIDATION_FAILED }
+  );
+}
+
+/**
+ * FR-044: a published form may not accept file attachments. The upload path
+ * has no virus scan, type sniffing or size enforcement yet, so the honest
+ * behaviour is an explicit refusal that names the field instead of storing an
+ * unvalidated URL. A later release that adds those checks replaces this guard.
+ */
+export function assertNoInquiryAttachments(
+  attachments: readonly InquiryPayload[]
+): void {
+  if (attachments.length === 0) {
+    return;
+  }
+  throw new ValidationError(
+    "Published forms do not accept file attachments.",
+    [
+      {
+        name: "attachments",
+        reason: "Remove the attachment; uploads are not accepted yet.",
+      },
+    ],
     { code: PLATFORM_ERROR_CODE.VALIDATION_FAILED }
   );
 }

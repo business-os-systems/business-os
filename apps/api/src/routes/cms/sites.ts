@@ -5,8 +5,23 @@ import { createTenantCapabilityGuard, readTenantActor } from "../../middleware/t
 import {
   createSiteBodySchema,
   listSitesQuerySchema,
+  siteExportDocumentSchema,
   siteParamsSchema,
+  websiteBuilderSettingsViewSchema,
 } from "../../services/cms/contract.js";
+import { exportSite } from "../../services/cms/site-export.service.js";
+import { getAppSettings } from "../../services/admin/app-settings.service.js";
+import { WEBSITE_BUILDER_APP_ID } from "../../services/cms/installation-reader.js";
+import { getPlatformPrismaClient } from "../../lib/platform-db.js";
+import {
+  CREATION_FUNNEL_STAGES,
+  recordCreationFunnelStage,
+} from "../../services/admin/creation-funnel.service.js";
+import {
+  previewLinkQuerySchema,
+  previewLinkResultSchema,
+} from "../../services/storefront/contract.js";
+import { storefrontPreviewService } from "../../services/storefront/storefront.service.js";
 import {
   createSite,
   getSite,
@@ -128,6 +143,71 @@ const getSiteRoute = createRoute({
   middleware: [createTenantCapabilityGuard(PERMISSIONS.WEBSITE_BUILDER.SITES_READ)],
 });
 
+const previewLinkRoute = createRoute({
+  method: "get",
+  path: "/sites/{siteId}/preview-link",
+  tags: [WEBSITE_BUILDER_TAG],
+  summary: "Issue a signed, expiring preview link",
+  description:
+    "Returns an absolute storefront URL carrying a signed token for this site's unpublished drafts. The token names only the active host and an expiry time, so nothing about the workspace travels in a visitor-visible URL. The link expires after 24 hours and a deactivated host invalidates it (FR-037).",
+  request: { params: siteParamsSchema, query: previewLinkQuerySchema },
+  responses: {
+    200: {
+      description: "Signed preview link",
+      content: {
+        [CMS_JSON_CONTENT]: {
+          schema: cmsEnvelope(z.object({ preview: previewLinkResultSchema })),
+        },
+      },
+    },
+    ...cmsErrorResponses,
+  },
+  middleware: [createTenantCapabilityGuard(PERMISSIONS.WEBSITE_BUILDER.PAGES_PREVIEW)],
+});
+
+const applicationSettingsRoute = createRoute({
+  method: "get",
+  path: "/settings",
+  tags: [WEBSITE_BUILDER_TAG],
+  summary: "Read the workspace's effective application settings",
+  description:
+    "Returns the compiled settings schema with the effective value and its source for every field: tenant override, then application default, then schema default. The workspace comes from the session; the tenant identity cannot read the platform default table, so the API resolves it (FR-014).",
+  responses: {
+    200: {
+      description: "Effective application settings",
+      content: {
+        [CMS_JSON_CONTENT]: {
+          schema: cmsEnvelope(z.object({ settings: websiteBuilderSettingsViewSchema })),
+        },
+      },
+    },
+    ...cmsErrorResponses,
+  },
+  middleware: [createTenantCapabilityGuard(PERMISSIONS.WEBSITE_BUILDER.SITES_READ)],
+});
+
+const exportSiteRoute = createRoute({
+  method: "get",
+  path: "/sites/{siteId}/export",
+  tags: [WEBSITE_BUILDER_TAG],
+  summary: "Export one site in the portable format",
+  description:
+    "Returns the workspace's own site as one portable JSON document: format business-os.website-builder.site version 1 with site metadata, appearance, settings, domains, redirects, the page tree and the page bodies. Internal identifiers, inquiry data and other tenants are excluded. The read is audited as SITE_EXPORTED (SC-012, FR-047).",
+  request: { params: siteParamsSchema },
+  responses: {
+    200: {
+      description: "Portable site document",
+      content: {
+        [CMS_JSON_CONTENT]: {
+          schema: cmsEnvelope(z.object({ export: siteExportDocumentSchema })),
+        },
+      },
+    },
+    ...cmsErrorResponses,
+  },
+  middleware: [createTenantCapabilityGuard(PERMISSIONS.WEBSITE_BUILDER.SITES_READ)],
+});
+
 const listTemplatesRoute = createRoute({
   method: "get",
   path: "/templates",
@@ -174,6 +254,9 @@ const handleCreateSite: RouteHandler<typeof createSiteRoute, never> = async (c) 
     idempotencyKey: readIdempotencyKey(c),
     body,
   });
+  if (!data.replayed) {
+    recordCreationFunnelStage(CREATION_FUNNEL_STAGES.SITE_CREATED);
+  }
   return c.json(
     {
       success: true as const,
@@ -205,6 +288,72 @@ const handleGetSite: RouteHandler<typeof getSiteRoute, never> = async (c) => {
   );
 };
 
+const handleCreatePreviewLink: RouteHandler<typeof previewLinkRoute, never> = async (c) => {
+  const actor = readTenantActor(c);
+  const { siteId } = c.req.valid("param");
+  const query = c.req.valid("query");
+  const preview = await storefrontPreviewService.createLink({
+    organizationId: actor.organizationId,
+    siteId,
+    path: query.path ?? "/",
+  });
+  return c.json(
+    {
+      success: true as const,
+      data: { preview },
+      requestId: readCmsRequestId(c),
+      timestamp: new Date().toISOString(),
+    },
+    200
+  );
+};
+
+const handleReadApplicationSettings: RouteHandler<
+  typeof applicationSettingsRoute,
+  never
+> = async (c) => {
+  const actor = readTenantActor(c);
+  const settings = await getAppSettings(getPlatformPrismaClient(), {
+    organizationId: actor.organizationId,
+    appId: WEBSITE_BUILDER_APP_ID,
+  });
+  return c.json(
+    {
+      success: true as const,
+      data: {
+        settings: {
+          appId: settings.appId,
+          fields: [...settings.schema.fields],
+          effectiveValues: settings.effectiveValues,
+          sources: settings.sources,
+        },
+      },
+      requestId: readCmsRequestId(c),
+      timestamp: new Date().toISOString(),
+    },
+    200
+  );
+};
+
+const handleExportSite: RouteHandler<typeof exportSiteRoute, never> = async (c) => {
+  const actor = readTenantActor(c);
+  const { siteId } = c.req.valid("param");
+  const document = await exportSite({
+    organizationId: actor.organizationId,
+    siteId,
+    actorUserId: actor.userId,
+  });
+  return c.json(
+    {
+      success: true as const,
+      data: { export: document },
+      requestId: readCmsRequestId(c),
+      timestamp: new Date().toISOString(),
+    },
+    200
+  );
+};
+
 const handleListTemplates: RouteHandler<typeof listTemplatesRoute, never> = async (c) => {
   const actor = readTenantActor(c);
   const items = await listPublishedTemplates(actor.organizationId);
@@ -222,8 +371,11 @@ const handleListTemplates: RouteHandler<typeof listTemplatesRoute, never> = asyn
 export function createCmsSitesRouter(): OpenAPIHono {
   const router = new OpenAPIHono({ defaultHook: cmsValidationHook });
   router.openapi(listSitesRoute, handleListSites);
+  router.openapi(applicationSettingsRoute, handleReadApplicationSettings);
   router.openapi(createSiteRoute, handleCreateSite);
   router.openapi(getSiteRoute, handleGetSite);
+  router.openapi(exportSiteRoute, handleExportSite);
+  router.openapi(previewLinkRoute, handleCreatePreviewLink);
   router.openapi(listTemplatesRoute, handleListTemplates);
   return router;
 }

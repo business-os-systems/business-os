@@ -1,19 +1,24 @@
 import React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@suite/ui";
+import type { SettingsValueSource } from "@suite/core";
 import type { WebsiteBuilderConfigurationField } from "@/services/website-builder-settings.service";
+
+const SOURCE_LABELS: Readonly<Record<SettingsValueSource, string>> = {
+  tenant: "Tenant override",
+  app: "Application default",
+  schema: "Schema default",
+};
 
 function ConfigurationField({
   field,
 }: {
   readonly field: WebsiteBuilderConfigurationField;
 }) {
-  const sourceLabel =
-    field.kind === "configured" ? "Workspace configuration" : "Application default";
   return (
     <div className="flex flex-col gap-1 border-b border-border py-3 last:border-b-0">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="text-sm font-medium text-text">{field.label}</span>
-        <span className="text-xs text-text-muted">{sourceLabel}</span>
+        <span className="text-xs text-text-muted">{SOURCE_LABELS[field.source]}</span>
       </div>
       <p className="text-xs text-text-secondary">{field.description}</p>
       <p className="mt-1 text-sm font-semibold text-text">{field.displayValue}</p>
@@ -39,7 +44,7 @@ export function WebsiteBuilderSettingsPanel({
         <CardHeader>
           <CardTitle className="text-base">Application configuration</CardTitle>
           <CardDescription>
-            Values are declared by the application and supplied by the platform.
+            Each value shows what applies right now and where it comes from.
           </CardDescription>
         </CardHeader>
         <CardContent>

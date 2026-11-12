@@ -1,4 +1,5 @@
 import React from "react";
+import { Alert } from "@suite/ui";
 import { PERMISSIONS } from "@suite/core";
 import { requireAuth } from "@/lib/auth-guard";
 import { evaluateWebsiteBuilderAccess } from "@/lib/website-builder-access";
@@ -20,9 +21,18 @@ export default async function WebsiteSettingsPage() {
     return <AccessDenied reason={access.reason} />;
   }
 
-  const configuration = await readWebsiteBuilderConfiguration(session.organizationId);
+  const configuration = await readWebsiteBuilderConfiguration();
   if (configuration.kind === "not_installed") {
     return <AccessDenied reason="app_not_installed" />;
+  }
+  if (configuration.kind === "unavailable") {
+    return (
+      <Alert
+        variant="error"
+        title="Settings unavailable"
+        message={configuration.message}
+      />
+    );
   }
   return <WebsiteBuilderSettingsPanel fields={configuration.fields} />;
 }

@@ -12,6 +12,7 @@ import type { CmsPageDto, CmsSiteDto } from "@/lib/api/site-client";
 import { workspacePath } from "@/lib/workspace-paths";
 import type { StudioEditorToolbar, StudioViewport } from "./studio-editor-props";
 import { AutosaveIndicator } from "./autosave-indicator";
+import { PreviewLinkButton } from "./preview-link-button";
 import { studioPreviewPath, studioReviewPath } from "./studio-links.config";
 
 const SAVEABLE_STATUSES: ReadonlySet<AutosaveStatus> = new Set(["dirty", "offline", "error"]);
@@ -71,6 +72,7 @@ interface EditorActionsProps {
   readonly isAppearanceOpen: boolean;
   readonly siteId: string;
   readonly pageId: string;
+  readonly pagePath: string;
 }
 
 function EditorActions(props: EditorActionsProps) {
@@ -99,6 +101,7 @@ function EditorActions(props: EditorActionsProps) {
         <EyeIcon size={14} />
         Preview
       </Link>
+      <PreviewLinkButton siteId={props.siteId} path={props.pagePath} />
     </>
   );
 }
@@ -129,6 +132,7 @@ function TopBarActions({ props, canSaveNow }: TopBarActionsProps) {
         isAppearanceOpen={props.isAppearanceOpen}
         siteId={props.site.id}
         pageId={props.activePage.id}
+        pagePath={props.activePage.path}
       />
       {props.canManageAppearance ? (
         <Button

@@ -3,10 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderToString } from "react-dom/server";
 import { PERMISSIONS } from "@suite/core";
 import { CreateSiteWizard } from "../src/components/sites/create-site-wizard";
-import {
-  SITE_WIZARD_STEP_ORDER,
-  createSiteTemplateConfig,
-} from "../src/components/sites/create-site-wizard.config";
+import { createSiteFormConfig } from "../src/components/sites/create-site-wizard.config";
 import { StudioShell } from "../src/components/studio/studio-shell";
 import {
   CmsApiError,
@@ -116,21 +113,22 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("Create-site wizard (T061)", () => {
-  it("renders the name step and the three-step tracker", () => {
+describe("Create-site wizard (T061, T164)", () => {
+  it("renders one form with the name, the address and the studio hand-off", () => {
     const html = renderToString(
       <CreateSiteWizard domainRoot="example.test" templates={TEMPLATES} templatesError={null} />
     );
     expect(html).toContain("Create a website");
     expect(html).toContain("Site name");
-    expect(html).toContain("Continue");
-    expect(SITE_WIZARD_STEP_ORDER).toEqual(["name", "address", "template"]);
     expect(html).toContain("Address");
-    expect(html).toContain("Template");
+    expect(html).toContain("Starting point");
+    expect(html).toContain("Create site and open studio");
+    expect(html).not.toContain("Continue");
   });
 
-  it("builds a template step with published options and a blank option", () => {
-    const field = createSiteTemplateConfig(TEMPLATES).sections[0]?.fields?.[0];
+  it("offers the published templates and a blank starting point in the same form", () => {
+    const config = createSiteFormConfig("example.test", TEMPLATES);
+    const field = config.sections[0]?.fields?.find((entry) => entry.name === "templateId");
     expect(field?.type).toBe("select");
     if (field?.type === "select") {
       expect(field.options).toEqual([
@@ -138,7 +136,10 @@ describe("Create-site wizard (T061)", () => {
         { label: "Bistro starter (hospitality)", value: "tpl_bistro" },
       ]);
     }
-    const emptyField = createSiteTemplateConfig([]).sections[0]?.fields?.[0];
+    const emptyConfig = createSiteFormConfig("example.test", []);
+    const emptyField = emptyConfig.sections[0]?.fields?.find(
+      (entry) => entry.name === "templateId"
+    );
     if (emptyField?.type === "select") {
       expect(emptyField.options).toEqual([{ label: "Blank site", value: "" }]);
     }
