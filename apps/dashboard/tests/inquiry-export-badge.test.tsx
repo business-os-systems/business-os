@@ -11,6 +11,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 import { InquiriesWorkspace } from "@/components/inquiries/inquiries-workspace";
+import { InquiryExportButton } from "@/components/inquiries/inquiry-export-button";
 import { WebsiteBuilderNav } from "@/components/layout/website-builder-nav";
 import { WEBSITE_BUILDER_NAV_GROUPS } from "@/components/layout/website-builder-nav.config";
 
@@ -38,6 +39,8 @@ const INQUIRY = {
   archivedAt: null,
   retentionExpiresAt: "2027-11-11T10:00:00.000Z",
 };
+
+const EXPORT_LABEL = "Export CSV";
 
 const fetchMock = vi.fn();
 const createObjectUrl = vi.fn(() => "blob:inquiries");
@@ -112,7 +115,7 @@ describe("Inquiry export UI", () => {
       .mockImplementation(() => undefined);
     render(<InquiriesWorkspace canRevealPii />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "Export CSV" }));
+    fireEvent.click(await screen.findByRole("button", { name: EXPORT_LABEL }));
 
     await waitFor(() => {
       expect(
@@ -126,13 +129,39 @@ describe("Inquiry export UI", () => {
     clickSpy.mockRestore();
   });
 
+  it("carries the active filters into the export request", async () => {
+    fetchMock.mockResolvedValue(csvResponse());
+    render(<InquiryExportButton filters={{ status: "READ", siteId: "site_1" }} />);
+    fireEvent.click(screen.getByRole("button", { name: EXPORT_LABEL }));
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(
+          (call) =>
+            String(call[0]) === "/api/cms/inquiries/export?status=READ&siteId=site_1"
+        )
+      ).toBe(true);
+    });
+  });
+
+  it("shows a transparent failure when the error body is not JSON", async () => {
+    fetchMock.mockResolvedValue(new Response("gateway down", { status: 500 }));
+    render(<InquiryExportButton filters={{ status: null, siteId: null }} />);
+    fireEvent.click(screen.getByRole("button", { name: EXPORT_LABEL }));
+    expect(
+      await screen.findByText("The inquiry export failed with status 500.")
+    ).toBeTruthy();
+  });
+
   it("renders no export control without cms:leads:pii", async () => {
     mockInquiryWorkspace();
     render(<InquiriesWorkspace canRevealPii={false} />);
     await screen.findByText("Please call me about a booking.");
-    expect(screen.queryByRole("button", { name: "Export CSV" })).toBeNull();
+    expect(screen.queryByRole("button", { name: EXPORT_LABEL })).toBeNull();
   });
 
+});
+
+describe("Inquiry export problem presentation", () => {
   it("shows the genuine RFC 7807 detail when the export is refused", async () => {
     fetchMock.mockImplementation((input: RequestInfo | URL) => {
       const url = requestUrl(input);
@@ -156,7 +185,7 @@ describe("Inquiry export UI", () => {
       return Promise.resolve(jsonResponse({ items: [INQUIRY], nextCursor: null }));
     });
     render(<InquiriesWorkspace canRevealPii />);
-    fireEvent.click(await screen.findByRole("button", { name: "Export CSV" }));
+    fireEvent.click(await screen.findByRole("button", { name: EXPORT_LABEL }));
     expect(
       await screen.findByText(
         "Exporting inquiry personal data requires the cms:leads:pii capability."

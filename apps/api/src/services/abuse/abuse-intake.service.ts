@@ -99,9 +99,7 @@ async function resolveHostTarget(hostname: string): Promise<HostTarget | null> {
     return null;
   }
   const organizationId = await resolvePublicSiteOrganization(resolved.data.siteId);
-  return organizationId === null
-    ? null
-    : { siteId: resolved.data.siteId, organizationId };
+  return organizationId === null ? null : { siteId: resolved.data.siteId, organizationId };
 }
 
 function isAbuseReportCategory(value: string): value is AbuseReportCategory {

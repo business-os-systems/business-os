@@ -84,10 +84,9 @@ export async function loadPublishReputationFeed(): Promise<ReputationFeed | null
   try {
     return await loadReputationFeed(getReputationFeedPath());
   } catch (error: unknown) {
-    if (error instanceof ReputationFeedUnavailableError) {
-      throw unavailableFeed(error);
-    }
-    throw error;
+    throw error instanceof ReputationFeedUnavailableError
+      ? unavailableFeed(error)
+      : error;
   }
 }
 
