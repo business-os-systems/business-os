@@ -3,7 +3,10 @@ import { createHmac, hkdfSync } from "node:crypto";
 // The signed preview link is keyed by the session secret. Other suites unset it
 // to exercise the production guard, so this file restores a deterministic key
 // before it reads one instead of depending on file order.
-process.env.BETTER_AUTH_SECRET ??= "suite-test-preview-link-secret-32-chars";
+const declaredSecret = process.env.BETTER_AUTH_SECRET;
+if (declaredSecret === undefined || declaredSecret === "") {
+  process.env.BETTER_AUTH_SECRET = "suite-test-preview-link-secret-32-chars";
+}
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
 import { PERMISSIONS, type PermissionCode } from "@suite/core";
