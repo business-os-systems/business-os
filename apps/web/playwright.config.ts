@@ -2,7 +2,10 @@ import { defineConfig } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { RELEASE_GATE_DASHBOARD_PORT } from "./tests/e2e/helpers/release-gate-ports";
+import {
+  RELEASE_GATE_DASHBOARD_PORT,
+  RELEASE_GATE_WEB_PORT,
+} from "./tests/e2e/helpers/release-gate-ports";
 
 /**
  * Release-gate runner (T124/T125/T129).
@@ -15,9 +18,8 @@ import { RELEASE_GATE_DASHBOARD_PORT } from "./tests/e2e/helpers/release-gate-po
 
 const CONFIG_DIR = dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = resolve(CONFIG_DIR, "../..");
-// Local runs may point the gate at a free port so a dev/prebuilt storefront on
-// 3003 is not reused against the real API instead of the fixture API.
-const WEB_PORT = Number(process.env.E2E_WEB_PORT ?? "3003");
+// Both ports live outside the developer stack; E2E_WEB_PORT still overrides.
+const WEB_PORT = Number(process.env.E2E_WEB_PORT ?? String(RELEASE_GATE_WEB_PORT));
 const DASHBOARD_PORT = RELEASE_GATE_DASHBOARD_PORT;
 const FIXTURE_PORT = 4310;
 const TENANT_HOST = "acme.localhost";
@@ -72,6 +74,7 @@ if (process.env.BETTER_AUTH_SECRET === undefined) {
 
 export default defineConfig({
   testDir: "./tests/e2e",
+  globalSetup: "./tests/e2e/global-setup.ts",
   fullyParallel: false,
   workers: 1,
   forbidOnly: Boolean(process.env.CI),
@@ -101,14 +104,14 @@ export default defineConfig({
     {
       command: "node tests/e2e/fixtures/fixture-server.mjs",
       port: FIXTURE_PORT,
-      reuseExistingServer: process.env.CI === undefined,
+      reuseExistingServer: false,
       timeout: 30_000,
       env: buildServerEnv({ NODE_ENV: "test", E2E_FIXTURE_PORT: String(FIXTURE_PORT) }),
     },
     {
       command: "pnpm exec next start -p " + String(WEB_PORT),
       port: WEB_PORT,
-      reuseExistingServer: process.env.CI === undefined,
+      reuseExistingServer: false,
       timeout: 240_000,
       env: buildServerEnv({
         NODE_ENV: "production",
@@ -121,7 +124,7 @@ export default defineConfig({
         "pnpm --filter @suite/dashboard exec next dev -p " +
         String(DASHBOARD_PORT),
       port: DASHBOARD_PORT,
-      reuseExistingServer: process.env.CI === undefined,
+      reuseExistingServer: false,
       timeout: 240_000,
       env: buildServerEnv({
         API_URL: "http://127.0.0.1:" + String(FIXTURE_PORT),

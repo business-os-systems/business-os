@@ -66,6 +66,7 @@ const DRAFT_AST = {
   version: 1,
   schemaVersion: "2026-03",
   meta: { title: "Home" },
+  globalStyles: {},
   sections: [
     {
       id: "sec_hero",
@@ -145,6 +146,7 @@ export const PAGE_CONTENT_FIXTURE = {
   revision: 3,
   draftAst: DRAFT_AST,
   publishedAst: null,
+  media: {},
   updatedAt: UPDATED_AT,
   lastEditedByUserId: "usr_release_gates",
   lastEditedAt: UPDATED_AT,
@@ -271,6 +273,10 @@ function handleReviewRoutes(route: Route, pathname: string, method: string): Pro
 }
 
 function handleSiteRoutes(route: Route, pathname: string, method: string): Promise<void> | null {
+  // The studio site switcher lists the tenant's sites (#375).
+  if (pathname === CMS_BASE + "/sites" && method === "GET") {
+    return json(route, envelope({ items: [SITE], nextCursor: null }));
+  }
   if (pathname === SITE_BASE && method === "GET") {
     return json(route, envelope({ site: SITE }));
   }
@@ -291,6 +297,7 @@ function handlePageRoutes(route: Route, pathname: string, method: string): Promi
         revision: 3,
         draftAst: DRAFT_AST,
         publishedAst: null,
+        media: {},
         updatedAt: UPDATED_AT,
         lastEditedByUserId: "usr_release_gates",
         lastEditedAt: UPDATED_AT,
@@ -304,6 +311,7 @@ function handlePageRoutes(route: Route, pathname: string, method: string): Promi
         revision: 2,
         draftAst: { ...DRAFT_AST, meta: { title: "About" } },
         publishedAst: null,
+        media: {},
         updatedAt: UPDATED_AT,
         lastEditedByUserId: "usr_release_gates",
         lastEditedAt: UPDATED_AT,

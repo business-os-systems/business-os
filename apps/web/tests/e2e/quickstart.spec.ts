@@ -8,6 +8,7 @@ import {
   reviewResultFixture,
 } from "./helpers/dashboard-fixtures";
 import { DASHBOARD_ORIGIN, installTenantSession } from "./helpers/session";
+import { RELEASE_GATE_WEB_PORT } from "./helpers/release-gate-ports";
 
 /**
  * The seven quickstart scenarios (T129), expressed against the real release
@@ -72,7 +73,10 @@ async function openConflictStudio(
     });
   });
   await page.goto(DASHBOARD_ORIGIN + STUDIO_PATH);
-  await expect(page.getByRole("link", { name: "Exit studio" })).toBeVisible();
+  // The first studio request compiles the route on a cold dev server.
+  await expect(page.getByRole("link", { name: "Exit studio" })).toBeVisible({
+    timeout: 60_000,
+  });
   await expect(page.getByRole("region", { name: "Canvas" })).toBeVisible();
   await expect(page.getByRole("button", { name: ADD_SECTION_LABEL })).toBeEnabled();
 }
@@ -95,7 +99,7 @@ test.describe("quickstart — authoring and review (scenarios 1-4)", () => {
       timestamp: "2026-11-11T00:00:00.000Z",
     });
     await page.goto(DASHBOARD_ORIGIN + STUDIO_PATH);
-    await expect(page.getByRole("link", { name: "Exit studio" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Exit studio" })).toBeVisible({ timeout: 60_000 });
     await expect(page.getByRole("region", { name: "Canvas" })).toBeVisible();
     await expect(page.getByRole("button", { name: ADD_SECTION_LABEL })).toBeEnabled();
     await page.getByRole("button", { name: ADD_SECTION_LABEL }).click();
@@ -161,8 +165,12 @@ test.describe("quickstart — media, inquiries and isolation (scenarios 5-7)", (
   });
 
   test("scenario 7: another host and a signed-out workspace are denied", async ({ page }) => {
-    await page.goto("http://other.localhost:3003/");
-    await expect(page.getByRole("heading", { name: "This website is not available right now." })).toBeVisible();
+    // An unknown tenant host resolves to no site, so the storefront answers the
+    // neutral not-found page — never another tenant's content.
+    await page.goto("http://other.localhost:" + String(RELEASE_GATE_WEB_PORT) + "/");
+    await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
+    await expect(page.getByText("This address does not exist on this website.")).toBeVisible();
+    await expect(page.getByText("Northwind Studio")).toHaveCount(0);
     await page.goto(DASHBOARD_ORIGIN + INQUIRIES_PATH);
     await expect(page).toHaveURL(/\/login\?redirect=/);
     await expect(page.getByRole("heading", { name: /sign in/i })).toBeVisible();
