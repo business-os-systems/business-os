@@ -320,6 +320,9 @@ importers:
       '@suite/website-builder':
         specifier: workspace:*
         version: link:../../packages/modules/website-builder
+      isomorphic-dompurify:
+        specifier: ^4.5.0
+        version: 4.5.0(@noble/hashes@2.4.0)
       next:
         specifier: ^15.3.9
         version: 15.5.27(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.65.0)(@types/node@20.19.43)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)

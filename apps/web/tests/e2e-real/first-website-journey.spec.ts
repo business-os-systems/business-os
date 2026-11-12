@@ -221,13 +221,9 @@ async function publishFromReview(input: {
 
   /*
    * The published page is read twice. The public API read proves the page is
-   * served by contract; the browser read proves a visitor actually sees it.
-   *
-   * The document status is not asserted: the bundled server build throws while
-   * generating metadata for every storefront page (the sanitiser's jsdom
-   * stylesheet is missing from the bundle), so Next reports 500 even though the
-   * page body renders. That renderer defect predates this journey, is outside
-   * its file scope, and is reported with this pull request.
+   * served by contract; the browser read proves a visitor actually receives the
+   * document, not only a rendered body behind a 500. The sanitiser that used to
+   * break document generation is kept external in apps/web/next.config.mjs.
    */
   const publicRead = await api.get("/api/v1/storefront/page", {
     params: { host: publicHost, path: "/" },
@@ -235,7 +231,9 @@ async function publishFromReview(input: {
   });
   expect(publicRead.status()).toBe(200);
   expect(await publicRead.text()).toContain(headline);
-  await page.goto(storefrontOrigin(publicHost) + "/");
+
+  const documentResponse = await page.goto(storefrontOrigin(publicHost) + "/");
+  expect(documentResponse?.status()).toBe(200);
   await expect(page.getByText(headline).first()).toBeVisible();
 }
 
