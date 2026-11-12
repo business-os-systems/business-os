@@ -179,6 +179,65 @@ function envelope(data: unknown): Record<string, unknown> {
   return { ...ENVELOPE_META, data };
 }
 
+/* --- Shared media library (FR-123, quickstart scenario 5) ------------------
+ * One uploaded asset is referenced by two pages. The library must list the
+ * asset once and the detail view must show both references, so "uploaded once,
+ * used twice" is observable without a second upload.
+ */
+const MEDIA_ASSET = {
+  id: "fixture-media-ridge",
+  kind: "IMAGE" as const,
+  fileName: "ridge-hero.jpg",
+  mimeType: "image/jpeg",
+  sizeBytes: 184_320,
+  checksum: "sha256:release-gates-ridge",
+  width: 1600,
+  height: 900,
+  url: "https://media.example.test/ridge-hero.jpg",
+  status: "ACTIVE" as const,
+  usageCount: 2,
+  createdAt: "2026-11-10T08:00:00.000Z",
+};
+
+const MEDIA_USAGES = [
+  {
+    id: "fixture-usage-home",
+    assetId: MEDIA_ASSET.id,
+    appId: "website-builder",
+    resourceType: "page",
+    resourceId: FIXTURE_PAGE_ID,
+    subKey: "hero",
+    status: "DRAFT" as const,
+    createdAt: "2026-11-10T08:05:00.000Z",
+  },
+  {
+    id: "fixture-usage-about",
+    assetId: MEDIA_ASSET.id,
+    appId: "website-builder",
+    resourceType: "page",
+    resourceId: "fixture-page-about",
+    subKey: "hero",
+    status: "PUBLISHED" as const,
+    createdAt: "2026-11-10T08:06:00.000Z",
+  },
+];
+
+async function handleMediaRoutes(
+  route: Route,
+  pathname: string,
+  method: string
+): Promise<void> {
+  if (pathname === "/api/v1/media/assets" && method === "GET") {
+    await json(route, envelope({ items: [MEDIA_ASSET], nextCursor: null }));
+    return;
+  }
+  if (pathname === "/api/v1/media/assets/" + MEDIA_ASSET.id && method === "GET") {
+    await json(route, envelope({ ...MEDIA_ASSET, usages: MEDIA_USAGES }));
+    return;
+  }
+  await json(route, { code: "NOT_FOUND" }, 404);
+}
+
 function json(route: Route, body: unknown, status = 200): Promise<void> {
   return route.fulfill({
     status,
@@ -287,6 +346,10 @@ function handleDashboardApi(route: Route, pathname: string): Promise<void> {
 }
 
 export async function mockDashboardApi(page: Page): Promise<void> {
+  await page.route("**/api/v1/media/**", (route) => {
+    const url = new URL(route.request().url());
+    return handleMediaRoutes(route, url.pathname, route.request().method());
+  });
   await page.route("**/api/v1/cms/**", (route) => {
     const url = new URL(route.request().url());
     return handleCms(route, url.pathname, route.request().method());

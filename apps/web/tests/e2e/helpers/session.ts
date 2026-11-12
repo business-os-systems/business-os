@@ -25,6 +25,11 @@ const RELEASE_GATE_PERMISSIONS: readonly string[] = [
   PERMISSIONS.WEBSITE_BUILDER.LEADS_READ,
   PERMISSIONS.WEBSITE_BUILDER.LEADS_PII,
   PERMISSIONS.WEBSITE_BUILDER.THEME_MANAGE,
+  // The shared media library is a workspace screen (FR-123); the release-gate
+  // operator must be able to open it and inspect an asset's usage.
+  PERMISSIONS.MEDIA.READ,
+  PERMISSIONS.MEDIA.UPLOAD,
+  PERMISSIONS.MEDIA.DELETE,
 ];
 
 export function buildReleaseGateSession(now: number): SessionPayload {
