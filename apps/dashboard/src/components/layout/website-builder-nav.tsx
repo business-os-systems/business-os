@@ -6,12 +6,14 @@ import { usePathname } from "next/navigation";
 import { ArrowLeftIcon } from "@suite/ui/icons";
 import { cn } from "@suite/ui";
 import { getNavIcon } from "./icon-registry";
+import { InquiryUnreadBadge } from "@/components/inquiries/inquiry-unread-badge";
 import {
   WEBSITE_BUILDER_APP_ICON,
   WEBSITE_BUILDER_APP_NAME,
   WEBSITE_BUILDER_BACK_LINK,
   isWebsiteBuilderNavItemActive,
   visibleWebsiteBuilderNavGroups,
+  type WebsiteBuilderNavBadgeKind,
   type WebsiteBuilderNavGroup,
   type WebsiteBuilderNavItem,
 } from "./website-builder-nav.config";
@@ -32,6 +34,18 @@ const NAV_ITEM_IDLE =
   "text-text-secondary hover:bg-surface-hover hover:text-text font-medium";
 const COMPACT_ITEM_BASE =
   "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium transition-colors";
+
+const NAV_BADGE_COMPONENTS = {
+  "inquiry-unread-count": InquiryUnreadBadge,
+} as const satisfies Record<WebsiteBuilderNavBadgeKind, React.ComponentType>;
+
+function NavItemBadge({ badge }: { readonly badge?: WebsiteBuilderNavBadgeKind }) {
+  if (badge === undefined) {
+    return null;
+  }
+  const Badge = NAV_BADGE_COMPONENTS[badge];
+  return <Badge />;
+}
 
 function SidebarItem({
   item,
@@ -56,6 +70,7 @@ function SidebarItem({
         )}
       />
       <span className="truncate">{item.label}</span>
+      <NavItemBadge badge={item.badge} />
     </Link>
   );
 }
@@ -83,6 +98,7 @@ function CompactItem({
     >
       <Icon className="h-4 w-4 flex-shrink-0" />
       {item.label}
+      <NavItemBadge badge={item.badge} />
     </Link>
   );
 }

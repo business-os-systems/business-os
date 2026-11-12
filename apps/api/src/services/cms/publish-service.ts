@@ -24,6 +24,13 @@ import {
 } from "./review-service.js";
 import { prunePageVersions } from "./version-retention.js";
 import {
+  PublishReputationBlockedError,
+  assertPublishReputationClear,
+  loadPublishReputationFeed,
+  recordPublishReputationRefusal,
+} from "./reputation-consult.service.js";
+import type { ReputationFeed } from "../abuse/reputation-feed.js";
+import {
   DOMAIN_OPERATIONS,
   DOMAIN_OUTCOMES,
   measureDomainOperationSafely,
@@ -273,7 +280,8 @@ async function pruneReleasedVersions(
 export async function publishSite(input: PublishSiteInput): Promise<PublishOutcome> {
   const startedAt = performance.now();
   try {
-    const outcome = await releaseSite(input);
+    const feed = await loadPublishReputationFeed();
+    const outcome = await releaseSite(input, feed);
     recordDomainOperation({
       operation: DOMAIN_OPERATIONS.PUBLISH,
       outcome: DOMAIN_OUTCOMES.SUCCESS,
@@ -291,11 +299,24 @@ export async function publishSite(input: PublishSiteInput): Promise<PublishOutco
       organizationId: input.organizationId,
       siteId: input.siteId,
     });
+    if (error instanceof PublishReputationBlockedError) {
+      await recordPublishReputationRefusal(
+        {
+          organizationId: input.organizationId,
+          siteId: input.siteId,
+          actorUserId: input.publisherUserId,
+        },
+        error
+      );
+    }
     throw error;
   }
 }
 
-async function releaseSite(input: PublishSiteInput): Promise<PublishOutcome> {
+async function releaseSite(
+  input: PublishSiteInput,
+  feed: ReputationFeed | null
+): Promise<PublishOutcome> {
   return withTenantContext(input.organizationId, async (tx) => {
     const context: ReviewContext = {
       tx,
@@ -307,6 +328,17 @@ async function releaseSite(input: PublishSiteInput): Promise<PublishOutcome> {
     if (replay !== null) {
       return replay;
     }
+    // The verdict commits with the release (FR-134); a replayed request keeps
+    // the original outcome because it returns before this check runs.
+    await assertPublishReputationClear({
+      tx,
+      input: {
+        organizationId: input.organizationId,
+        siteId: input.siteId,
+        actorUserId: input.publisherUserId,
+      },
+      feed,
+    });
     const review = await requireReviewSnapshot(context, input.reviewId);
     await lockSitePages(tx, input);
     await lockSiteContents(tx, input);

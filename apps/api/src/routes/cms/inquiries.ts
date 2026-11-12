@@ -22,6 +22,7 @@ import {
   getTenantInquiry,
   listTenantInquiries,
 } from "../../services/cms/inquiry-service.js";
+import { exportTenantInquiries } from "../../services/cms/inquiry-export.service.js";
 import {
   CMS_JSON_CONTENT,
   cmsEnvelope,
@@ -85,6 +86,13 @@ const revealPiiQuerySchema = z
   .object({ revealPii: z.enum(["true", "false"]).optional() })
   .strict();
 
+const exportInquiriesQuerySchema = z
+  .object({
+    siteId: z.string().trim().min(1).max(191).optional(),
+    status: inquiryStatusSchema.optional(),
+  })
+  .strict();
+
 const updateStatusBodySchema = z
   .object({ status: z.enum(["READ", "ARCHIVED", "SPAM"]) })
   .strict();
@@ -121,6 +129,24 @@ const unreadCountRoute = createRoute({
     ...cmsErrorResponses,
   },
   middleware: [createTenantCapabilityGuard(PERMISSIONS.WEBSITE_BUILDER.LEADS_READ)],
+});
+
+const exportInquiriesRoute = createRoute({
+  method: "get",
+  path: "/inquiries/export",
+  tags: [WEBSITE_BUILDER_TAG],
+  summary: "Export this workspace's inquiries as CSV",
+  description:
+    "Exports only the caller's tenant rows, honours the site and status filters, excludes retention-expired rows and writes one audit row per exported site. Requires cms:leads:pii because the file carries contact fields (FR-047, FR-048, FR-049).",
+  request: { query: exportInquiriesQuerySchema },
+  responses: {
+    200: {
+      description: "Inquiry CSV export",
+      content: { "text/csv": { schema: z.string() } },
+    },
+    ...cmsErrorResponses,
+  },
+  middleware: [createTenantCapabilityGuard(PERMISSIONS.WEBSITE_BUILDER.LEADS_PII)],
 });
 
 const getInquiryRoute = createRoute({
@@ -214,6 +240,22 @@ const handleUnreadCount: RouteHandler<typeof unreadCountRoute, never> = async (c
   return c.json(envelope({ count }, readCmsRequestId(c)), 200);
 };
 
+const handleExportInquiries: RouteHandler<typeof exportInquiriesRoute, never> = async (c) => {
+  const actor = readTenantActor(c);
+  const query = c.req.valid("query");
+  const result = await exportTenantInquiries({
+    organizationId: actor.organizationId,
+    ...(query.siteId === undefined ? {} : { siteId: query.siteId }),
+    ...(query.status === undefined ? {} : { status: query.status }),
+    actorUserId: actor.userId,
+  });
+  return c.body(result.csv, 200, {
+    "Content-Type": "text/csv; charset=utf-8",
+    "Content-Disposition": `attachment; filename="${result.filename}"`,
+    "Cache-Control": "no-store",
+  });
+};
+
 const handleGetInquiry: RouteHandler<typeof getInquiryRoute, never> = async (c) => {
   const actor = readTenantActor(c);
   const { inquiryId } = c.req.valid("param");
@@ -274,6 +316,7 @@ const handleEraseInquiry: RouteHandler<typeof eraseInquiryRoute, never> = async 
 export function createCmsInquiriesRouter(): OpenAPIHono {
   const router = new OpenAPIHono({ defaultHook: cmsValidationHook });
   router.openapi(unreadCountRoute, handleUnreadCount);
+  router.openapi(exportInquiriesRoute, handleExportInquiries);
   router.openapi(listInquiriesRoute, handleListInquiries);
   router.openapi(getInquiryRoute, handleGetInquiry);
   router.openapi(updateInquiryStatusRoute, handleUpdateStatus);

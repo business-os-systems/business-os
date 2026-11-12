@@ -67,9 +67,17 @@ export const inquiryStatusUpdateSchema = z
   .object({ status: z.enum(["READ", "ARCHIVED", "SPAM"]) })
   .strict();
 
+export const inquiryExportQuerySchema = z
+  .object({
+    siteId: z.string().trim().min(1).max(191).optional(),
+    status: inquiryStatusSchema.optional(),
+  })
+  .strict();
+
 export type InquiryStatus = z.infer<typeof inquiryStatusSchema>;
 export type InquirySummary = z.infer<typeof inquirySummarySchema>;
 export type InquiryDetail = z.infer<typeof inquiryDetailSchema>;
 export type InquiryContact = z.infer<typeof inquiryContactSchema>;
 export type InquiryListPage = z.infer<typeof inquiryListPageSchema>;
 export type InquiryStatusUpdate = z.infer<typeof inquiryStatusUpdateSchema>;
+export type InquiryExportQuery = z.infer<typeof inquiryExportQuerySchema>;

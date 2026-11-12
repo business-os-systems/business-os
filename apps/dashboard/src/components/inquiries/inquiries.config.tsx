@@ -175,6 +175,14 @@ export function createInquiryTableConfig({
   };
 }
 
+export const INQUIRY_EXPORT_ACTION = {
+  path: "/api/cms/inquiries/export",
+  label: "Export CSV",
+  loadingLabel: "Preparing CSV",
+  errorTitle: "Could not export inquiries",
+  filenameFallback: "inquiries.csv",
+} as const;
+
 export const INQUIRY_DETAIL_LABELS = {
   website: "Website",
   status: "Status",
