@@ -2,6 +2,11 @@
 const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ["@suite/auth", "@suite/core"],
+  // isomorphic-dompurify loads jsdom for server-side sanitising; bundling it
+  // breaks jsdom's own asset resolution (browser/default-stylesheet.css) and
+  // makes every storefront page 500 in the production server build. Keep both
+  // packages external so Node resolves them from node_modules at runtime.
+  serverExternalPackages: ["isomorphic-dompurify", "jsdom"],
   poweredByHeader: false,
   typescript: {
     ignoreBuildErrors: false,

@@ -1,5 +1,6 @@
-import { checkRateLimit, enqueueEmail, type RateLimitRule } from "@suite/redis";
+import { checkRateLimit, type RateLimitRule } from "@suite/redis";
 import { prisma } from "@suite/db";
+import { logger } from "@suite/logger";
 import { createEmailVerificationToken, sendEmail, verifyEmailToken } from "@suite/auth";
 import { RATE_LIMITS } from "@suite/core";
 
@@ -54,16 +55,30 @@ function buildVerificationEmail(email: string, rawToken: string, origin: string)
   };
 }
 
+/**
+ * Delivers the verification link through the configured transporter (T183).
+ *
+ * Delivery is synchronous because the queue has no consumer in this release:
+ * an enqueued message was never sent, so a tester outside production had no
+ * way to complete verification. The active provider decides where the message
+ * lands: the local mail capture outside production, Resend in production.
+ *
+ * A delivery failure is logged without the recipient, the subject or the
+ * single-use token and never changes the response. The endpoint must stay
+ * indistinguishable between an address that exists and one that does not.
+ */
 async function dispatchVerificationEmail(
   email: string,
   rawToken: string,
   origin: string
 ): Promise<void> {
   const payload = buildVerificationEmail(email, rawToken, origin);
-  try {
-    await enqueueEmail(payload);
-  } catch {
-    await sendEmail(payload);
+  const delivered = await sendEmail(payload);
+  if (!delivered.success) {
+    logger.error(
+      { messageId: delivered.messageId ?? null },
+      "email.verification.delivery_failed"
+    );
   }
 }
 
