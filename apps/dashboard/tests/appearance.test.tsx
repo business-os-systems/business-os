@@ -16,7 +16,7 @@ import {
 } from "../src/components/studio/appearance-form.config";
 import { AppearancePreview } from "../src/components/studio/appearance-preview";
 import { AppearanceThemeGallery } from "../src/components/studio/appearance-theme-gallery";
-import { AppearancePanel } from "../src/components/studio/appearance-panel";
+import { AppearanceEditor } from "../src/components/studio/appearance-editor";
 import type {
   CmsAppearanceDto,
   CmsAppearanceThemeDto,
@@ -198,7 +198,7 @@ describe("Appearance preview (T121)", () => {
   });
 });
 
-describe("Appearance panel (T116, T121)", () => {
+describe("Appearance editor (T116, T121, T152)", () => {
   it("loads the site appearance and exposes save, publish and reset", async () => {
     const fetchMock = vi.fn((input: RequestInfo | URL) => {
       const url = requestUrl(input);
@@ -237,7 +237,7 @@ describe("Appearance panel (T116, T121)", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     render(
-      <AppearancePanel
+      <AppearanceEditor
         siteId={SITE_ID}
         permissions={[PERMISSIONS.WEBSITE_BUILDER.THEME_MANAGE]}
       />

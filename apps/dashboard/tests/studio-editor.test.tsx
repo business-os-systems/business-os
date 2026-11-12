@@ -2,11 +2,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import React from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { StudioEditor } from "../src/components/studio/studio-editor";
+import { StudioShell } from "../src/components/studio/studio-shell";
 import type { CmsPageDto, CmsSiteDto } from "../src/lib/api/site-client";
 import type { PageAst } from "@suite/website-builder/ast";
 
 const NOW = "2026-01-01T00:00:00.000Z";
+/** The editor performs several scripted fetches; a loaded CI box can exceed 1s. */
+const SLOW_RENDER = { timeout: 5000 } as const;
 
 const SITE: CmsSiteDto = {
   id: "site_1",
@@ -123,15 +125,26 @@ function createFetchMock(state: ServerState) {
   });
 }
 
+const noop = vi.fn(() => Promise.resolve());
+
 function renderEditor(): void {
   render(
-    <StudioEditor
+    <StudioShell
       site={SITE}
-      page={PAGE}
+      sites={[SITE]}
+      pages={[PAGE]}
+      activePage={PAGE}
       canWrite
       userPermissions={[]}
       currentUserId="usr_me"
       currentUserName="Rohit"
+      onSelectPage={vi.fn()}
+      onCreatePage={noop}
+      onRenamePage={noop}
+      onReorderPage={noop}
+      onDuplicatePage={noop}
+      onArchivePage={noop}
+      onSwitchSite={vi.fn()}
     />
   );
 }
@@ -149,14 +162,16 @@ describe("Studio editor UI (T066-T069, T094)", () => {
     vi.stubGlobal("fetch", createFetchMock({ revision: 1, draftAst: pageAst("Harbour views") }));
     renderEditor();
 
-    expect(await screen.findByText("Harbour views")).toBeTruthy();
+    expect(await screen.findByText("Harbour views", undefined, SLOW_RENDER)).toBeTruthy();
     expect(screen.getByLabelText("Inspector")).toBeTruthy();
     expect(screen.getByText("No block selected")).toBeTruthy();
     expect(screen.getByText("All changes saved")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Add section" }));
-    expect(await screen.findByRole("dialog", { name: "Add a section" })).toBeTruthy();
-    expect(await screen.findByText("Tenant hero")).toBeTruthy();
+    expect(
+      await screen.findByRole("dialog", { name: "Add a section" }, SLOW_RENDER)
+    ).toBeTruthy();
+    expect(await screen.findByText("Tenant hero", undefined, SLOW_RENDER)).toBeTruthy();
     expect(screen.getByText("Hospitality")).toBeTruthy();
   });
 
@@ -164,18 +179,24 @@ describe("Studio editor UI (T066-T069, T094)", () => {
     vi.stubGlobal("fetch", createFetchMock({ revision: 2, draftAst: pageAst("Server headline") }));
     renderEditor();
 
-    fireEvent.click(await screen.findByLabelText("Select hero block"));
-    const headlineInput = await screen.findByLabelText("Headline");
+    fireEvent.click(await screen.findByLabelText("Select hero block", undefined, SLOW_RENDER));
+    const headlineInput = await screen.findByLabelText("Headline", undefined, SLOW_RENDER);
     fireEvent.change(headlineInput, { target: { value: "My headline" } });
     fireEvent.click(screen.getByRole("button", { name: "Save now" }));
 
-    expect(await screen.findByRole("alertdialog", { name: "A newer version of this page was saved" })).toBeTruthy();
+    expect(
+      await screen.findByRole(
+        "alertdialog",
+        { name: "A newer version of this page was saved" },
+        SLOW_RENDER
+      )
+    ).toBeTruthy();
     expect(screen.getByText("Your version")).toBeTruthy();
     expect(screen.getByText("Saved version")).toBeTruthy();
     expect(screen.getByText("Keep my version")).toBeTruthy();
     expect(screen.getByText("Keep their version")).toBeTruthy();
 
     fireEvent.click(screen.getByText("Keep their version"));
-    expect(await screen.findByDisplayValue("Server headline")).toBeTruthy();
+    expect(await screen.findByDisplayValue("Server headline", undefined, SLOW_RENDER)).toBeTruthy();
   });
 });

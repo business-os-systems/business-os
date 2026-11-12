@@ -89,6 +89,19 @@ const siteListSchema = cmsEnvelopeSchema(
 const pageListSchema = cmsEnvelopeSchema(
   z.object({ items: z.array(pageSchema), nextCursor: z.string().nullable() })
 );
+const redirectSchema = z.object({
+  id: z.string(),
+  siteId: z.string(),
+  sourcePath: z.string(),
+  targetPath: z.string(),
+  type: z.string(),
+  createdAt: z.string(),
+});
+
+const redirectListSchema = cmsEnvelopeSchema(
+  z.object({ items: z.array(redirectSchema), nextCursor: z.string().nullable() })
+);
+
 const templateListSchema = cmsEnvelopeSchema(z.object({ items: z.array(templateSchema) }));
 const siteResultSchema = cmsEnvelopeSchema(z.object({ site: siteSchema }));
 const pageResultSchema = cmsEnvelopeSchema(z.object({ page: pageSchema }));
@@ -100,9 +113,8 @@ const createSiteSchema = cmsEnvelopeSchema(
     replayed: z.boolean(),
   })
 );
-const deleteResultSchema = cmsEnvelopeSchema(z.object({ deleted: z.literal(true) }));
-
 export type CmsSiteDto = z.infer<typeof siteSchema>;
+export type CmsRedirectDto = z.infer<typeof redirectSchema>;
 export type CmsPageDto = z.infer<typeof pageSchema>;
 export type CmsTemplateDto = z.infer<typeof templateSchema>;
 export type CreateSiteResult = z.infer<typeof createSiteSchema>["data"];
@@ -158,8 +170,15 @@ export async function listSiteTemplates(): Promise<CmsTemplateDto[]> {
   return response.data.items;
 }
 
-export async function listSites(): Promise<{ items: CmsSiteDto[]; nextCursor: string | null }> {
-  const response = await requestCmsJson(CMS_BASE + "/sites", siteListSchema, { method: "GET" });
+const SITE_SWITCHER_LIMIT = 100;
+
+export async function listSites(
+  limit = SITE_SWITCHER_LIMIT
+): Promise<{ items: CmsSiteDto[]; nextCursor: string | null }> {
+  const query = new URLSearchParams({ limit: String(limit) });
+  const response = await requestCmsJson(CMS_BASE + "/sites?" + query.toString(), siteListSchema, {
+    method: "GET",
+  });
   return response.data;
 }
 
@@ -176,6 +195,22 @@ export async function listSitePages(siteId: string): Promise<CmsPageDto[]> {
   const path = CMS_BASE + "/sites/" + encodeURIComponent(siteId) + "/pages?limit=200";
   const response = await requestCmsJson(path, pageListSchema, { method: "GET" });
   return response.data.items;
+}
+
+const REDIRECT_LIST_LIMIT = 100;
+
+export async function listSiteRedirects(siteId: string): Promise<{
+  items: CmsRedirectDto[];
+  nextCursor: string | null;
+}> {
+  const path =
+    CMS_BASE +
+    "/sites/" +
+    encodeURIComponent(siteId) +
+    "/redirects?limit=" +
+    String(REDIRECT_LIST_LIMIT);
+  const response = await requestCmsJson(path, redirectListSchema, { method: "GET" });
+  return response.data;
 }
 
 export async function createSiteRequest(
@@ -213,10 +248,42 @@ export async function renamePageRequest(
   return response.data.page;
 }
 
-export async function deletePageRequest(pageId: string): Promise<void> {
-  await requestCmsJson(CMS_BASE + "/pages/" + encodeURIComponent(pageId), deleteResultSchema, {
-    method: "DELETE",
-  });
+export interface PageReorderInput {
+  readonly direction: "up" | "down";
+  readonly expectedRevision: number;
+}
+
+export async function reorderPageRequest(
+  pageId: string,
+  input: PageReorderInput
+): Promise<CmsPageDto> {
+  const response = await requestCmsJson(
+    CMS_BASE + "/pages/" + encodeURIComponent(pageId) + "/order",
+    pageResultSchema,
+    { method: "PATCH", body: JSON.stringify(input) }
+  );
+  return response.data.page;
+}
+
+export async function duplicatePageRequest(pageId: string): Promise<CmsPageDto> {
+  const response = await requestCmsJson(
+    CMS_BASE + "/pages/" + encodeURIComponent(pageId) + "/duplicate",
+    pageResultSchema,
+    { method: "POST" }
+  );
+  return response.data.page;
+}
+
+export async function archivePageRequest(
+  pageId: string,
+  expectedRevision: number
+): Promise<CmsPageDto> {
+  const response = await requestCmsJson(
+    CMS_BASE + "/pages/" + encodeURIComponent(pageId) + "/archive",
+    pageResultSchema,
+    { method: "POST", body: JSON.stringify({ expectedRevision }) }
+  );
+  return response.data.page;
 }
 function appearancePath(siteId: string, action?: string): string {
   const base = CMS_BASE + "/sites/" + encodeURIComponent(siteId) + "/appearance";

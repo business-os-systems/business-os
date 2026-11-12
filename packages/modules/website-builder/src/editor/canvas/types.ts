@@ -53,7 +53,6 @@ export interface VisualCanvasProps {
   readonly selection: CanvasSelection;
   readonly readOnly: boolean;
   readonly onSelect: (selection: CanvasSelection) => void;
-  readonly onDeviceChange: (device: ViewportDevice) => void;
   readonly onZoomChange: (zoom: number) => void;
   readonly onOpenCatalog: () => void;
   readonly media?: MediaAssetMap;

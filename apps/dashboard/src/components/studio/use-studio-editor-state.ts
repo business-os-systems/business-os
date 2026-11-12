@@ -30,19 +30,29 @@ export interface CanvasViewState {
   readonly closeDrawer: () => void;
 }
 
-export function useCanvasViewState(): CanvasViewState {
+export interface ControlledViewport {
+  readonly device: ViewportDevice;
+  readonly zoom: number;
+  readonly setDevice: (device: ViewportDevice) => void;
+  readonly setZoom: (zoom: number) => void;
+}
+
+/**
+ * Selection and the catalog drawer stay local to the editor; device and zoom
+ * are controlled by the studio top bar so one control surface owns them
+ * (FR-101).
+ */
+export function useCanvasViewState(viewport: ControlledViewport): CanvasViewState {
   const [selection, setSelection] = useState<CanvasSelection>(NO_SELECTION);
-  const [device, setDevice] = useState<ViewportDevice>("desktop");
-  const [zoom, setZoom] = useState(1);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   return {
     selection,
-    device,
-    zoom,
+    device: viewport.device,
+    zoom: viewport.zoom,
     isDrawerOpen,
     setSelection,
-    setDevice,
-    setZoom,
+    setDevice: viewport.setDevice,
+    setZoom: viewport.setZoom,
     openDrawer: () => setIsDrawerOpen(true),
     closeDrawer: () => setIsDrawerOpen(false),
   };

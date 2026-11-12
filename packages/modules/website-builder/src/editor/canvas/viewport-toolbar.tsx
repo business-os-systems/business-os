@@ -32,10 +32,29 @@ const DEVICE_OPTIONS: readonly DeviceOption[] = [
   { device: "mobile", label: "Mobile", Icon: SmartphoneIcon },
 ];
 
-export interface ViewportToolbarProps {
+export interface DeviceSwitchProps {
   readonly device: ViewportDevice;
-  readonly zoom: number;
   readonly onDeviceChange: (device: ViewportDevice) => void;
+}
+
+/** Device switching for the studio top bar; the canvas frame mirrors the choice. */
+export function DeviceSwitch(props: DeviceSwitchProps) {
+  return (
+    <div className="flex items-center gap-1" role="group" aria-label="Device viewport">
+      {DEVICE_OPTIONS.map((option) => (
+        <DeviceButton
+          key={option.device}
+          option={option}
+          active={option.device === props.device}
+          onSelect={props.onDeviceChange}
+        />
+      ))}
+    </div>
+  );
+}
+
+export interface ViewportToolbarProps {
+  readonly zoom: number;
   readonly onZoomChange: (zoom: number) => void;
 }
 
@@ -110,27 +129,10 @@ function ZoomControls(props: { readonly zoom: number; readonly onZoomChange: (zo
   );
 }
 
-/** Viewport and zoom controls for the canvas. Token-only chrome (FR-025). */
+/** Compact zoom controls embedded in the canvas frame (FR-025). */
 export function ViewportToolbar(props: ViewportToolbarProps) {
   return (
-    <div
-      role="toolbar"
-      aria-label="Canvas viewport controls"
-      className="flex select-none items-center justify-between gap-2 border-b border-border bg-surface px-4 py-2 text-text"
-    >
-      <div className="flex items-center gap-1" role="group" aria-label="Device viewport">
-        {DEVICE_OPTIONS.map((option) => (
-          <DeviceButton
-            key={option.device}
-            option={option}
-            active={option.device === props.device}
-            onSelect={props.onDeviceChange}
-          />
-        ))}
-      </div>
-      <span className="rounded-md bg-surface-sunken px-2.5 py-1 text-xs font-semibold text-text-secondary">
-        {VIEWPORT_CONFIGS[props.device].label}
-      </span>
+    <div role="toolbar" aria-label="Canvas zoom controls" className="flex select-none items-center text-text">
       <ZoomControls zoom={props.zoom} onZoomChange={props.onZoomChange} />
     </div>
   );

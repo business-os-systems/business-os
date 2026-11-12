@@ -5,7 +5,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { ReviewWorkspace } from "../src/components/review/review-workspace";
 import { StudioSiteLinks } from "../src/components/studio/studio-site-links";
+import { StudioTopBar } from "../src/components/studio/studio-topbar";
 import type { CmsProblem } from "../src/lib/api/cms-http";
+import type { CmsPageDto, CmsSiteDto } from "../src/lib/api/site-client";
 
 const SITE_ID = "site_review";
 const REVIEW_ID = "review_1";
@@ -145,12 +147,62 @@ beforeEach(() => {
   vi.restoreAllMocks();
 });
 
+const TOPBAR_SITE: CmsSiteDto = {
+  id: SITE_ID,
+  organizationId: "org_review",
+  branchId: null,
+  title: "Riverview",
+  slug: "riverview",
+  status: "DRAFT",
+  timezone: "Asia/Kolkata",
+  primaryLocale: "en",
+  pagesCount: 2,
+  createdAt: FIXED_TIMESTAMP,
+  updatedAt: FIXED_TIMESTAMP,
+};
+
+const TOPBAR_PAGE: CmsPageDto = {
+  id: "page_home",
+  siteId: SITE_ID,
+  parentId: null,
+  title: "Home",
+  path: "/",
+  orderIndex: 0,
+  status: "DRAFT",
+  isHomePage: true,
+  revision: 1,
+  createdAt: FIXED_TIMESTAMP,
+  updatedAt: FIXED_TIMESTAMP,
+};
+
 describe("editor publish entry (FR-085, FR-086)", () => {
-  it("exposes no direct publish control in the editor; the entry only opens review", () => {
-    render(<StudioSiteLinks siteId={SITE_ID} />);
+  it("exposes no direct publish control in the editor; the top bar only opens review", () => {
+    render(<StudioSiteLinks siteId={SITE_ID} userPermissions={["*"]} />);
     expect(screen.queryByRole("button", { name: /publish/i })).toBeNull();
+    expect(screen.queryByRole("link", { name: /review & publish/i })).toBeNull();
+  });
+
+  it("links the single top bar review entry to the review route", () => {
+    render(
+      <StudioTopBar
+        site={TOPBAR_SITE}
+        sites={[TOPBAR_SITE]}
+        activePage={TOPBAR_PAGE}
+        canWrite
+        canManageAppearance
+        toolbar={null}
+        device="desktop"
+        zoom={1}
+        onDeviceChange={vi.fn()}
+        onZoomChange={vi.fn()}
+        isAppearanceOpen={false}
+        onToggleAppearance={vi.fn()}
+        onSwitchSite={vi.fn()}
+      />
+    );
     const reviewLink = screen.getByRole("link", { name: /review & publish/i });
-    expect(reviewLink.getAttribute("href")).toContain(SITE_PATH + "/review");
+    expect(reviewLink.getAttribute("href")).toBe("/dashboard" + SITE_PATH + "/review");
+    expect(screen.queryByRole("button", { name: /publish/i })).toBeNull();
   });
 });
 

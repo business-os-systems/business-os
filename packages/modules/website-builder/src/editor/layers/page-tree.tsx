@@ -1,8 +1,22 @@
 import React, { useState } from "react";
 import { Badge, Button, Input, Label } from "@suite/ui";
-import { ChevronDownIcon, ChevronRightIcon, PencilIcon, PlusIcon, TrashIcon } from "@suite/ui/icons";
+import {
+  ChevronDownIcon,
+  ChevronRightIcon,
+  ChevronUpIcon,
+  CopyIcon,
+  PackageIcon,
+  PencilIcon,
+  PlusIcon,
+} from "@suite/ui/icons";
 import { pagePathError } from "../../paths/page-paths.js";
-import { buildPageTree, type PageTreePage, type PageTreeNode } from "./page-tree-model.js";
+import {
+  buildPageTree,
+  isArchivedPage,
+  siblingPosition,
+  type PageTreePage,
+  type PageTreeNode,
+} from "./page-tree-model.js";
 
 export interface PageTreeCreateInput {
   readonly title: string;
@@ -17,6 +31,8 @@ export interface PageTreeRenameInput {
   readonly expectedRevision: number;
 }
 
+export type PageReorderDirection = "up" | "down";
+
 export interface PageTreeProps {
   readonly pages: readonly PageTreePage[];
   readonly activePageId: string;
@@ -24,16 +40,22 @@ export interface PageTreeProps {
   readonly onSelectPage: (pageId: string) => void;
   readonly onCreatePage: (input: PageTreeCreateInput) => Promise<void>;
   readonly onRenamePage: (input: PageTreeRenameInput) => Promise<void>;
-  readonly onDeletePage: (pageId: string) => Promise<void>;
+  readonly onReorderPage: (
+    pageId: string,
+    direction: PageReorderDirection,
+    expectedRevision: number
+  ) => Promise<void>;
+  readonly onDuplicatePage: (pageId: string) => Promise<void>;
+  readonly onArchivePage: (pageId: string, expectedRevision: number) => Promise<void>;
 }
 
 type EditMode =
   | { readonly kind: "idle" }
   | { readonly kind: "create"; readonly parentId: string | null }
   | { readonly kind: "rename"; readonly page: PageTreePage }
-  | { readonly kind: "delete"; readonly page: PageTreePage };
+  | { readonly kind: "archive"; readonly page: PageTreePage };
 
-type FormMode = Exclude<EditMode, { kind: "idle" } | { kind: "delete" }>;
+type FormMode = Exclude<EditMode, { kind: "idle" } | { kind: "archive" }>;
 
 function readErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -129,7 +151,7 @@ function PageTreeForm(props: FormProps) {
   );
 }
 
-function DeleteConfirm(props: {
+function ArchiveConfirm(props: {
   readonly page: PageTreePage;
   readonly isBusy: boolean;
   readonly onCancel: () => void;
@@ -138,7 +160,8 @@ function DeleteConfirm(props: {
   return (
     <div className="space-y-2 rounded-lg border border-danger bg-surface p-3">
       <p className="text-xs text-text">
-        Delete <span className="font-semibold">{props.page.title}</span> and its content?
+        Archive <span className="font-semibold">{props.page.title}</span>? Visitors stop seeing it, and
+        the page stays restorable in the tree.
       </p>
       <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" size="sm" onClick={props.onCancel}>
@@ -151,7 +174,7 @@ function DeleteConfirm(props: {
           disabled={props.isBusy}
           onClick={props.onConfirm}
         >
-          {props.isBusy ? "Deleting..." : "Delete page"}
+          {props.isBusy ? "Archiving..." : "Archive page"}
         </Button>
       </div>
     </div>
@@ -164,10 +187,14 @@ interface NodeRowProps {
   readonly activePageId: string;
   readonly canWrite: boolean;
   readonly pageCount: number;
+  readonly canMoveUp: boolean;
+  readonly canMoveDown: boolean;
   readonly onSelectPage: (pageId: string) => void;
   readonly onAddChild: (page: PageTreePage) => void;
   readonly onRename: (page: PageTreePage) => void;
-  readonly onDelete: (page: PageTreePage) => void;
+  readonly onMove: (page: PageTreePage, direction: PageReorderDirection) => void;
+  readonly onDuplicate: (page: PageTreePage) => void;
+  readonly onArchive: (page: PageTreePage) => void;
 }
 
 function PageTreeRowLabel(props: {
@@ -191,47 +218,94 @@ function PageTreeRowLabel(props: {
       {props.node.isHomePage ? (
         <Badge variant="tertiary" className="text-[9px]">Home</Badge>
       ) : null}
+      {isArchivedPage(props.node) ? (
+        <Badge variant="secondary" className="text-[9px]">Archived</Badge>
+      ) : null}
     </button>
   );
 }
 
-function PageTreeRowActions(props: {
+interface TreeActionButtonProps {
+  readonly label: string;
+  readonly title: string;
+  readonly disabled?: boolean;
+  readonly onClick: () => void;
+  readonly children: React.ReactNode;
+}
+
+function TreeActionButton(props: TreeActionButtonProps) {
+  return (
+    <button
+      type="button"
+      aria-label={props.label}
+      title={props.title}
+      disabled={props.disabled === true}
+      onClick={props.onClick}
+      className="rounded p-1 text-text-muted hover:bg-surface-hover hover:text-text disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+    >
+      {props.children}
+    </button>
+  );
+}
+
+interface PageTreeRowActionsProps {
   readonly node: PageTreeNode;
+  readonly canMoveUp: boolean;
+  readonly canMoveDown: boolean;
   readonly isProtected: boolean;
   readonly onAddChild: () => void;
+  readonly onMoveUp: () => void;
+  readonly onMoveDown: () => void;
+  readonly onDuplicate: () => void;
   readonly onRename: () => void;
-  readonly onDelete: () => void;
-}) {
+  readonly onArchive: () => void;
+}
+
+function PageTreeRowActions(props: PageTreeRowActionsProps) {
+  const title = props.node.title;
   return (
     <span className="flex items-center gap-0.5">
-      <button
-        type="button"
-        aria-label={"Add page inside " + props.node.title}
+      <TreeActionButton
+        label={"Move " + title + " up"}
+        title="Move up"
+        disabled={!props.canMoveUp}
+        onClick={props.onMoveUp}
+      >
+        <ChevronUpIcon size={12} />
+      </TreeActionButton>
+      <TreeActionButton
+        label={"Move " + title + " down"}
+        title="Move down"
+        disabled={!props.canMoveDown}
+        onClick={props.onMoveDown}
+      >
+        <ChevronDownIcon size={12} />
+      </TreeActionButton>
+      <TreeActionButton
+        label={"Add page inside " + title}
         title="Add a child page"
         onClick={props.onAddChild}
-        className="rounded p-1 text-text-muted hover:bg-surface-hover hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
       >
         <PlusIcon size={12} />
-      </button>
-      <button
-        type="button"
-        aria-label={"Rename " + props.node.title}
-        title="Rename page"
-        onClick={props.onRename}
-        className="rounded p-1 text-text-muted hover:bg-surface-hover hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+      </TreeActionButton>
+      <TreeActionButton
+        label={"Duplicate " + title}
+        title="Duplicate page"
+        onClick={props.onDuplicate}
       >
+        <CopyIcon size={12} />
+      </TreeActionButton>
+      <TreeActionButton label={"Rename " + title} title="Rename page" onClick={props.onRename}>
         <PencilIcon size={12} />
-      </button>
-      <button
-        type="button"
-        aria-label={"Delete " + props.node.title}
-        title={props.isProtected ? "The home page and the last page cannot be deleted" : "Delete page"}
+      </TreeActionButton>
+      <TreeActionButton
+        label={"Archive " + title}
+        title={props.isProtected ? "The home page cannot be archived" : "Archive page"}
         disabled={props.isProtected}
-        onClick={props.onDelete}
-        className="rounded p-1 text-text-muted hover:bg-surface-hover hover:text-danger disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+        onClick={props.onArchive}
       >
-        <TrashIcon size={12} />
-      </button>
+        <PackageIcon size={12} />
+      </TreeActionButton>
     </span>
   );
 }
@@ -246,7 +320,8 @@ function pageRowClassName(isActive: boolean): string {
 function PageTreeRow(props: NodeRowProps) {
   const { node, level } = props;
   const isActive = node.id === props.activePageId;
-  const isProtected = node.isHomePage || props.pageCount <= 1;
+  const isArchived = isArchivedPage(node);
+  const isProtected = node.isHomePage || props.pageCount <= 1 || isArchived;
   return (
     <li
       role="treeitem"
@@ -258,21 +333,36 @@ function PageTreeRow(props: NodeRowProps) {
     >
       <div className={pageRowClassName(isActive)}>
         <PageTreeRowLabel node={node} onSelect={() => props.onSelectPage(node.id)} />
-        {props.canWrite ? (
+        {props.canWrite && !isArchived ? (
           <PageTreeRowActions
             node={node}
+            canMoveUp={props.canMoveUp}
+            canMoveDown={props.canMoveDown}
             isProtected={isProtected}
             onAddChild={() => props.onAddChild(node)}
+            onMoveUp={() => props.onMove(node, "up")}
+            onMoveDown={() => props.onMove(node, "down")}
+            onDuplicate={() => props.onDuplicate(node)}
             onRename={() => props.onRename(node)}
-            onDelete={() => props.onDelete(node)}
+            onArchive={() => props.onArchive(node)}
           />
         ) : null}
       </div>
       {node.children.length > 0 ? (
         <ul role="group" className="ml-4 space-y-0.5 border-l border-border pl-1">
-          {node.children.map((child) => (
-            <PageTreeRow key={child.id} {...props} node={child} level={level + 1} />
-          ))}
+          {node.children.map((child) => {
+            const position = siblingPosition(child, node.children);
+            return (
+              <PageTreeRow
+                key={child.id}
+                {...props}
+                node={child}
+                level={level + 1}
+                canMoveUp={position.canMoveUp}
+                canMoveDown={position.canMoveDown}
+              />
+            );
+          })}
         </ul>
       ) : null}
     </li>
@@ -331,7 +421,15 @@ function usePageTreeEditing(props: PageTreeProps) {
     }
   };
 
-  return { mode, setMode, isBusy, error, run, submitForm };
+  const movePage = (page: PageTreePage, direction: PageReorderDirection) => {
+    void run(() => props.onReorderPage(page.id, direction, page.revision));
+  };
+
+  const duplicatePage = (page: PageTreePage) => {
+    void run(() => props.onDuplicatePage(page.id));
+  };
+
+  return { mode, setMode, isBusy, error, run, submitForm, movePage, duplicatePage };
 }
 
 function PageTreeHeader(props: {
@@ -369,11 +467,11 @@ function PageTreePanels(props: {
   readonly error: string | null;
   readonly onCancel: () => void;
   readonly onSubmitForm: (title: string, path: string) => void;
-  readonly onDeletePage: (pageId: string) => Promise<void>;
+  readonly onArchivePage: (pageId: string, expectedRevision: number) => Promise<void>;
   readonly run: (action: () => Promise<void>) => Promise<void>;
 }) {
   const editor = props.mode.kind === "create" || props.mode.kind === "rename" ? props.mode : null;
-  const deletePage = props.mode.kind === "delete" ? props.mode.page : null;
+  const archivePage = props.mode.kind === "archive" ? props.mode.page : null;
   const formKey = editor?.kind === "rename" ? editor.page.id : "new-page";
   return (
     <>
@@ -391,12 +489,14 @@ function PageTreePanels(props: {
           onSubmit={props.onSubmitForm}
         />
       ) : null}
-      {deletePage !== null ? (
-        <DeleteConfirm
-          page={deletePage}
+      {archivePage !== null ? (
+        <ArchiveConfirm
+          page={archivePage}
           isBusy={props.isBusy}
           onCancel={props.onCancel}
-          onConfirm={() => void props.run(() => props.onDeletePage(deletePage.id))}
+          onConfirm={() =>
+            void props.run(() => props.onArchivePage(archivePage.id, archivePage.revision))
+          }
         />
       ) : null}
     </>
@@ -411,7 +511,9 @@ function PageTreeList(props: {
   readonly onSelectPage: (pageId: string) => void;
   readonly onAddChild: (page: PageTreePage) => void;
   readonly onRename: (page: PageTreePage) => void;
-  readonly onDelete: (page: PageTreePage) => void;
+  readonly onMove: (page: PageTreePage, direction: PageReorderDirection) => void;
+  readonly onDuplicate: (page: PageTreePage) => void;
+  readonly onArchive: (page: PageTreePage) => void;
 }) {
   if (props.nodes.length === 0) {
     return (
@@ -422,20 +524,27 @@ function PageTreeList(props: {
   }
   return (
     <ul role="tree" aria-label="Site pages" className="space-y-0.5" onKeyDown={moveTreeFocus}>
-      {props.nodes.map((node) => (
-        <PageTreeRow
-          key={node.id}
-          node={node}
-          level={1}
-          activePageId={props.activePageId}
-          canWrite={props.canWrite}
-          pageCount={props.pageCount}
-          onSelectPage={props.onSelectPage}
-          onAddChild={props.onAddChild}
-          onRename={props.onRename}
-          onDelete={props.onDelete}
-        />
-      ))}
+      {props.nodes.map((node) => {
+        const position = siblingPosition(node, props.nodes);
+        return (
+          <PageTreeRow
+            key={node.id}
+            node={node}
+            level={1}
+            activePageId={props.activePageId}
+            canWrite={props.canWrite}
+            pageCount={props.pageCount}
+            canMoveUp={position.canMoveUp}
+            canMoveDown={position.canMoveDown}
+            onSelectPage={props.onSelectPage}
+            onAddChild={props.onAddChild}
+            onRename={props.onRename}
+            onMove={props.onMove}
+            onDuplicate={props.onDuplicate}
+            onArchive={props.onArchive}
+          />
+        );
+      })}
     </ul>
   );
 }
@@ -463,7 +572,7 @@ export function PageTree(props: PageTreeProps) {
           error={editing.error}
           onCancel={() => editing.setMode({ kind: "idle" })}
           onSubmitForm={editing.submitForm}
-          onDeletePage={props.onDeletePage}
+          onArchivePage={props.onArchivePage}
           run={editing.run}
         />
         <PageTreeList
@@ -474,7 +583,9 @@ export function PageTree(props: PageTreeProps) {
           onSelectPage={props.onSelectPage}
           onAddChild={(page) => editing.setMode({ kind: "create", parentId: page.id })}
           onRename={(page) => editing.setMode({ kind: "rename", page })}
-          onDelete={(page) => editing.setMode({ kind: "delete", page })}
+          onMove={editing.movePage}
+          onDuplicate={editing.duplicatePage}
+          onArchive={(page) => editing.setMode({ kind: "archive", page })}
         />
       </div>
     </aside>

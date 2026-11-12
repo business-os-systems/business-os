@@ -49,6 +49,21 @@ export const listPagesQuerySchema = z.object({
     .default(CMS_PAGE_TREE_LIMIT.default),
 });
 
+
+export const listRedirectsQuerySchema = z.object({
+  cursor: z.string().trim().min(1).max(512).optional(),
+  limit: z.coerce.number().int().min(1).max(CMS_PAGE_LIMIT.max).default(CMS_PAGE_LIMIT.default),
+});
+
+export interface CmsRedirectRecord {
+  readonly id: string;
+  readonly siteId: string;
+  readonly sourcePath: string;
+  readonly targetPath: string;
+  readonly type: string;
+  readonly createdAt: string;
+}
+
 export const reviewParamsSchema = z.object({
   siteId: z.string().trim().min(1).max(64),
   reviewId: z.string().trim().min(1).max(64),
@@ -121,6 +136,19 @@ export const updatePageBodySchema = z
     { message: "Provide at least one of title, path or parentId." }
   );
 
+/** Moves a page one slot among its siblings (FR-020, FR-080). */
+export const reorderPageBodySchema = z
+  .object({
+    direction: z.enum(["up", "down"]),
+    expectedRevision: z.number().int().positive(),
+  })
+  .strict();
+
+/** Archives a page without destroying its content or its address (FR-020). */
+export const archivePageBodySchema = z
+  .object({ expectedRevision: z.number().int().positive() })
+  .strict();
+
 const brandNameSchema = z.string().trim().min(1).max(191);
 
 /**
@@ -171,6 +199,8 @@ export type AppearanceVersionBody = z.infer<typeof appearanceVersionBodySchema>;
 export type CreateSiteBody = z.infer<typeof createSiteBodySchema>;
 export type CreatePageBody = z.infer<typeof createPageBodySchema>;
 export type UpdatePageBody = z.infer<typeof updatePageBodySchema>;
+export type ReorderPageBody = z.infer<typeof reorderPageBodySchema>;
+export type ArchivePageBody = z.infer<typeof archivePageBodySchema>;
 export type PublishBody = z.infer<typeof publishBodySchema>;
 export type RestoreVersionBody = z.infer<typeof restoreVersionBodySchema>;
 

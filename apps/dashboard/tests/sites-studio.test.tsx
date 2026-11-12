@@ -1,6 +1,7 @@
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderToString } from "react-dom/server";
+import { PERMISSIONS } from "@suite/core";
 import { CreateSiteWizard } from "../src/components/sites/create-site-wizard";
 import {
   SITE_WIZARD_STEP_ORDER,
@@ -84,16 +85,20 @@ function renderStudio(canWrite = true): string {
   return renderToString(
     <StudioShell
       site={SITE}
+      sites={[SITE]}
       pages={PAGES}
       activePage={MENU_PAGE}
       canWrite={canWrite}
-      userPermissions={[]}
+      userPermissions={[PERMISSIONS.WILDCARD]}
       currentUserId="usr_studio"
       currentUserName="Studio Editor"
       onSelectPage={vi.fn()}
       onCreatePage={noop}
       onRenamePage={noop}
-      onDeletePage={noop}
+      onReorderPage={noop}
+      onDuplicatePage={noop}
+      onArchivePage={noop}
+      onSwitchSite={vi.fn()}
     />
   );
 }
@@ -241,5 +246,24 @@ describe("Studio shell (T064)", () => {
 
   it("hides tree write controls for a read-only session", () => {
     expect(renderStudio(false)).not.toContain("Add page");
+  });
+
+  it("renders exactly one top bar with context, device, preview, review and appearance", () => {
+    const html = renderStudio();
+    expect(html.match(/<header/g)).toHaveLength(1);
+    expect(html.match(/data-studio-topbar/g)).toHaveLength(1);
+    expect(html).toContain('for="studio-site-switcher"');
+    expect(html).toContain('aria-label="Device viewport"');
+    expect(html).toContain("Preview");
+    expect(html).toContain("Review &amp; publish");
+    expect(html).toContain("Appearance");
+  });
+
+  it("keeps the site-level destinations inside the studio navigation", () => {
+    const html = renderStudio();
+    expect(html).toContain('aria-label="Site settings"');
+    for (const segment of ["settings", "domains", "inquiries", "redirects"]) {
+      expect(html).toContain('href="/dashboard/sites/' + SITE_ID + "/" + segment + '"');
+    }
   });
 });
