@@ -485,14 +485,131 @@ jobs:
             apps/web/test-results/**
             artifacts/release-gates/**
           if-no-files-found: warn
+  # The receipt (#379, T180): the first-website journey against the real API,
+  # the real dashboard and a scratch database that this job creates, migrates
+  # and seeds. The release gates mock every CMS call; this job mocks none, so a
+  # broken create, edit or publish path fails here instead of shipping.
+  real-journey:
+    name: Real-API website journey
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: businessos_admin
+          POSTGRES_PASSWORD: businessos_password
+          POSTGRES_DB: business_os_dev
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      # The journey never touches business_os_dev: it provisions its own
+      # database through tooling/quality/e2e/scripts/provision-real-journey-database.ts.
+      DATABASE_URL: postgresql://businessos_admin:businessos_password@localhost:5432/business_os_real_journey
+      PLATFORM_DATABASE_URL: postgresql://app_platform:platform_test_password@localhost:5432/business_os_real_journey
+      TENANT_DATABASE_URL: postgresql://app_tenant:tenant_test_password@localhost:5432/business_os_real_journey
+      REDIS_URL: redis://localhost:6379
+      DOMAIN_ROOT: localhost
+      # Test-only signing keys, declared for this job only.
+      BETTER_AUTH_SECRET: release-gates-ci-session-secret-32-characters
+      CONTROL_SESSION_SECRET: platform-ci-session-secret-32-characters
+      CONTROL_PLANE_ORIGIN: http://localhost:3002
+      CONTROL_WEBAUTHN_RP_ID: localhost
+      METRICS_AUTH_TOKEN: metrics-ci-telemetry-token
+      APP_VERSION: "0.0.0-real-journey"
+      GIT_COMMIT_SHA: ${{ github.sha }}
+      BUILD_TIMESTAMP: "2026-11-12T00:00:00.000Z"
+      ENABLE_INTERNAL_DOCS: "false"
+
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.21.0
+          run_install: false
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "pnpm"
+
+      - name: Restore Turborepo Cache
+        uses: actions/cache@v4
+        with:
+          path: .turbo/cache
+          key: turbo-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            turbo-${{ runner.os }}-
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm --filter @suite/db run prisma:generate
+
+      # Creates business_os_real_journey, applies every forward-only migration
+      # and seeds the starter catalog the catalog pickers read from.
+      - name: Provision the scratch database
+        run: pnpm exec tsx tooling/quality/e2e/scripts/provision-real-journey-database.ts
+
+      # @suite/ui publishes types from dist, so the dashboard cannot render
+      # without the package build.
+      - name: Build Workspace Packages
+        run: pnpm turbo run build --filter='./packages/**'
+
+      - name: Install Playwright Chromium
+        run: pnpm --filter @suite/web exec playwright install --with-deps chromium
+
+      # The storefront serves published pages through the real renderer, which
+      # only works from the server build.
+      - name: Build storefront for the journey
+        run: pnpm --filter @suite/web build
+
+      # Booting all three applications is the Playwright webServer's job, so a
+      # startup failure is reported with the server it belongs to.
+      - name: First-website journey (real API and database)
+        run: pnpm --filter @suite/web exec playwright test -c playwright.real.config.ts
+
+      - name: Upload Journey Evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: real-journey-evidence
+          path: |
+            apps/web/test-results/**
+          if-no-files-found: warn
   # Keeps the check name branch protection and reviewers already know. The real
   # signal is the jobs above; this one only reports their result, including the
   # release gate so a budget or axe breach cannot leave an aggregate green check.
   verify:
     name: Lint, Typecheck & Test
     runs-on: ubuntu-latest
-    needs: [lint, build, test, release-gates]
+    needs: [lint, build, test, release-gates, real-journey]
 
     steps:
       - name: All verification jobs passed
-        run: echo "lint, build and typecheck/test completed successfully."
+        run: echo "lint, build, typecheck/test and the real-API journey completed successfully."
