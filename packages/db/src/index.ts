@@ -45,6 +45,12 @@ export {
 } from "./seed-platform-catalogs.js";
 export { backfillAppMetadata } from "./backfill-app-metadata.js";
 export {
+  buildStarterCatalogSeed,
+  STARTER_SECTION_BLOCK_TYPES,
+  type StarterCatalogSeed,
+  type StarterSectionBlockType,
+} from "./starter-catalog-seed-data.js";
+export {
   SCHEMA_OWNERSHIP,
   assertTableOwnership,
   registeredSchemas,

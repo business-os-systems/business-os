@@ -84,7 +84,7 @@ async function openReview(page: Page, context: import("@playwright/test").Browse
   await expect(page.getByRole("heading", { name: "Review & publish" })).toBeVisible();
 }
 
-test.describe("quickstart — the seven release scenarios", () => {
+test.describe("quickstart — authoring and review (scenarios 1-4)", () => {
   test("scenario 1: the curated catalog section is offered to the studio", async ({ page, context }) => {
     await installTenantSession(context);
     await mockDashboardApi(page);
@@ -128,10 +128,25 @@ test.describe("quickstart — the seven release scenarios", () => {
     await expect(page.getByRole("button", { name: "Keep their version" })).toBeVisible();
   });
 
-  test.skip("scenario 5: media usage is not a release-one workspace screen", () => {
-    // The media library and usage guard are delivered in the media package and
-    // its API/UI suites; adding a screen just to satisfy a gate would invent a
-    // surface the release does not ship.
+});
+
+test.describe("quickstart — media, inquiries and isolation (scenarios 5-7)", () => {
+  test("scenario 5: an asset uploaded once is used by two pages", async ({ page, context }) => {
+    await installTenantSession(context);
+    await mockDashboardApi(page);
+    await page.goto(DASHBOARD_ORIGIN + "/media");
+
+    await expect(page.getByRole("heading", { name: "Media library", level: 1 })).toBeVisible();
+    await expect(page.getByText("ridge-hero.jpg")).toBeVisible();
+
+    await page.getByRole("button", { name: "Inspect asset" }).first().click();
+    const detail = page.getByRole("dialog", { name: "Asset details and usage" });
+    await expect(detail).toBeVisible();
+    // Two references to the one asset, so the library never counts an upload twice.
+    await expect(detail.getByText("website-builder / page")).toHaveCount(2);
+    await expect(detail.getByText("DRAFT")).toBeVisible();
+    await expect(detail.getByText("PUBLISHED")).toBeVisible();
+    await expect(detail.getByText(/not referenced by any content/)).toHaveCount(0);
   });
 
   test("scenario 6: an inquiry is read from the workspace without notifications", async ({ page, context }) => {
