@@ -2,6 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PLATFORM_ERROR_CODE } from "@suite/core";
 import { readWebsiteBuilderConfiguration } from "../src/services/website-builder-settings.service";
 
+// The service reads the API base from NEXT_PUBLIC_API_URL. Set a deterministic
+// value so a coverage run cannot depend on another file having set it first.
+process.env.NEXT_PUBLIC_API_URL ??= "http://localhost:4000";
+
 const state = vi.hoisted(
   (): { cookie: string | undefined } => ({ cookie: "session-token" })
 );

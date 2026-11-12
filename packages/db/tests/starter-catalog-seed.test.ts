@@ -126,6 +126,12 @@ async function clearStarterRows(
   seed: StarterCatalogSeed,
 ): Promise<void> {
   const ids = starterIds(seed);
+  // A fresh database has none of these rows, and taking the delete locks there
+  // can deadlock against a concurrent suite. Query first and skip the delete.
+  const existing = await tx.cmsCatalogItem.count({ where: { id: { in: ids } } });
+  if (existing === 0) {
+    return;
+  }
   await tx.cmsCatalogItemVersion.deleteMany({ where: { itemId: { in: ids } } });
   await tx.cmsCatalogItem.deleteMany({ where: { id: { in: ids } } });
 }

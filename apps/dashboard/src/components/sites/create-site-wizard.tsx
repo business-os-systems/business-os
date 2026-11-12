@@ -116,6 +116,12 @@ export function CreateSiteWizard({ domainRoot, templates, templatesError }: Crea
     () => createSiteFormConfig(domainRoot, templates),
     [domainRoot, templates]
   );
+  // A stable identity: the renderer resets its values whenever initialValues
+  // changes, and an inline object would reset the form on every keystroke.
+  const initialValues = useMemo<SiteDraftValues>(
+    () => ({ title: "", slug: "", templateId: "" }),
+    []
+  );
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 py-6">
@@ -123,7 +129,7 @@ export function CreateSiteWizard({ domainRoot, templates, templatesError }: Crea
       <WizardAlerts templatesError={templatesError} problem={submission.problem} />
       <ConfigFormRenderer<SiteDraftValues>
         config={config}
-        initialValues={{ title: "", slug: "", templateId: "" }}
+        initialValues={initialValues}
         validationSchema={siteDraftSchema}
         isSaving={submission.isSaving}
         serverErrors={submission.serverErrors}
