@@ -161,7 +161,7 @@ export function StudioTopBar(props: StudioTopBarProps) {
   return (
     <header
       data-studio-topbar="true"
-      className="flex h-14 shrink-0 flex-wrap items-center gap-3 border-b border-border bg-surface px-3"
+      className="flex min-h-14 shrink-0 flex-wrap items-center gap-3 border-b border-border bg-surface px-3 py-1.5"
     >
       <Link
         href={workspacePath("/websites")}
