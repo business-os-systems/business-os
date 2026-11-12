@@ -895,7 +895,7 @@ async function archivePageTx(
   await writeCmsAudit(tx, {
     organizationId: input.organizationId,
     siteId: current.siteId,
-    action: CMS_AUDIT_ACTIONS.PAGE_DELETED,
+    action: CMS_AUDIT_ACTIONS.PAGE_ARCHIVED,
     entityType: CMS_AUDIT_ENTITY_TYPES.PAGE,
     entityId: current.id,
     actorUserId: input.actorUserId,

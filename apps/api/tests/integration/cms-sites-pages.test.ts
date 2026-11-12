@@ -481,7 +481,7 @@ describe.skipIf(!enabled)("CMS page archive (FR-020)", () => {
       where: { organizationId: ORG_A, siteId: created.site.id, entityId: legal.id },
       orderBy: { createdAt: "desc" },
     });
-    expect(audit?.action).toBe("PAGE_DELETED");
+    expect(audit?.action).toBe("PAGE_ARCHIVED");
     expect(audit?.changesJson).toMatchObject({ archived: true, previousStatus: "DRAFT" });
   });
 });
