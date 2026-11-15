@@ -28,6 +28,7 @@ export function useCatalogEditor(input: CatalogEditorInput) {
   const kind = catalogEditorKind(input.target);
   const state = useCatalogDraft(input.target);
   const [tab, setTab] = useState<CatalogEditorTab>("form");
+  const [initialDraft] = useState(() => JSON.stringify(state.draft));
   const save = useCatalogSave({
     appId: input.appId,
     target: input.target,
@@ -57,6 +58,7 @@ export function useCatalogEditor(input: CatalogEditorInput) {
 
   return {
     kind,
+    isDirty: JSON.stringify(state.draft) !== initialDraft,
     draft: state.draft,
     fields,
     blockType,
