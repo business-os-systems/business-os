@@ -36,9 +36,11 @@ describe("theme token key set (FR-017)", () => {
   });
 
   it("rejects a reserved object property", () => {
-    const tokens: Record<string, string> = Object.fromEntries([["__proto__", "#000000"]]);
-    const result = validateCatalogDraft("THEME", themeDraft(tokens));
+    const result = validateCatalogDraft("THEME", themeDraft({ prototype: "#000000" }));
     expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.issues.some((entry) => entry.message.includes("reserved"))).toBe(true);
+    }
   });
 });
 

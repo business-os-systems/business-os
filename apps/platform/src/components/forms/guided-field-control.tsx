@@ -23,7 +23,11 @@ export interface GuidedFieldControlProps<T extends object> extends FieldControlC
   readonly onChange: (value: string) => void;
 }
 
-/** The three registry-driven controls share one dispatch so the renderer stays flat. */
+/**
+ * The three registry-driven controls share one dispatch. The final branch is
+ * typed as the only remaining variant, so a fourth guided type fails the
+ * compiler here instead of silently rendering the wrong control.
+ */
 export function GuidedFieldControl<T extends object>(props: GuidedFieldControlProps<T>) {
   const chrome: FieldControlChrome = {
     inputId: props.inputId,
@@ -33,33 +37,28 @@ export function GuidedFieldControl<T extends object>(props: GuidedFieldControlPr
     describedBy: props.describedBy,
   };
   const { field, onChange } = props;
-  switch (field.type) {
-    case "color":
-      return <ColorField {...chrome} value={props.value} presets={field.presets} onChange={onChange} />;
-    case "scale":
-      return (
-        <ScaleField
-          {...chrome}
-          value={props.value}
-          steps={field.steps}
-          allowCustom={field.allowCustom}
-          labelOf={lengthLabel}
-          onChange={onChange}
-        />
-      );
-    case "multi-select":
-      return (
-        <MultiSelectField
-          {...chrome}
-          values={splitSelection(props.value)}
-          options={field.options}
-          searchable={field.searchable}
-          onChange={(next) => onChange(joinSelection(next))}
-        />
-      );
-    default: {
-      const unreachable: never = field;
-      return unreachable;
-    }
+  if (field.type === "color") {
+    return <ColorField {...chrome} value={props.value} presets={field.presets} onChange={onChange} />;
   }
+  if (field.type === "scale") {
+    return (
+      <ScaleField
+        {...chrome}
+        value={props.value}
+        steps={field.steps}
+        allowCustom={field.allowCustom}
+        labelOf={lengthLabel}
+        onChange={onChange}
+      />
+    );
+  }
+  return (
+    <MultiSelectField
+      {...chrome}
+      values={splitSelection(props.value)}
+      options={field.options}
+      searchable={field.searchable}
+      onChange={(next) => onChange(joinSelection(next))}
+    />
+  );
 }

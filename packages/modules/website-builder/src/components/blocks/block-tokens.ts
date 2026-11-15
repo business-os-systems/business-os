@@ -68,7 +68,6 @@ export const BLOCK_RADII = {
 
 export const BLOCK_CARD_SHADOW = tokenWithDefault("shadowCard");
 
-
 function isColorTokenKey(value: string): value is ColorTokenKey {
   return APPEARANCE_COLOR_TOKEN_KEYS.some((key) => key === value);
 }
