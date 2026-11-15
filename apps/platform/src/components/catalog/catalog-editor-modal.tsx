@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Alert, Button, Modal } from "@suite/ui";
 import { usePlatformAuth } from "@/components/auth/auth-provider";
 import { CapabilityDeniedView } from "@/components/states/view-state";
@@ -7,6 +8,8 @@ import { CATALOG_KIND_LABELS, type CatalogItem } from "@/lib/catalog-api";
 import { canAuthorApps } from "@/lib/capability";
 import { CatalogForm } from "./catalog-form";
 import { CatalogJsonTab } from "./catalog-json-tab";
+import { CatalogDiscardDialog } from "./catalog-discard-dialog";
+import { CatalogEditorSectionPane } from "./catalog-editor-section-pane";
 import { CatalogTokenEditor } from "./catalog-token-editor";
 import {
   CATALOG_EDITOR_TABS,
@@ -56,7 +59,7 @@ function EditorTabBar({
   );
 }
 
-function EditorBody({
+function EditorInputs({
   allowed,
   kind,
   editor,
@@ -106,6 +109,28 @@ function EditorBody({
   );
 }
 
+function editorTitle(target: CatalogEditorTarget, kindLabel: string): string {
+  return target.mode === "edit" ? `Edit ${kindLabel}` : `New ${kindLabel}`;
+}
+
+function EditorFooter(props: {
+  readonly canSave: boolean;
+  readonly isSaving: boolean;
+  readonly onCancel: () => void;
+  readonly onSave: () => void;
+}) {
+  return (
+    <div className="flex w-full items-center justify-end gap-2">
+      <Button type="button" variant="secondary" onClick={props.onCancel}>
+        Cancel
+      </Button>
+      <Button type="button" disabled={!props.canSave || props.isSaving} onClick={props.onSave}>
+        {props.isSaving ? "Saving..." : "Save draft"}
+      </Button>
+    </div>
+  );
+}
+
 export function CatalogEditorModal({
   appId,
   target,
@@ -117,33 +142,55 @@ export function CatalogEditorModal({
   const allowed = canAuthorApps(session?.capabilities);
   const kind = targetKind(target);
   const kindLabel = CATALOG_KIND_LABELS[kind].toLowerCase();
+  const isSection = kind === "SECTION";
+  const [isConfirmingClose, setIsConfirmingClose] = useState(false);
+
+  function requestClose(): void {
+    if (editor.isDirty) {
+      setIsConfirmingClose(true);
+      return;
+    }
+    onClose();
+  }
 
   return (
     <Modal
       isOpen
-      onClose={onClose}
+      onClose={requestClose}
       size="xl"
-      title={target.mode === "edit" ? `Edit ${kindLabel}` : `New ${kindLabel}`}
+      className="max-w-[min(96vw,1600px)]"
+      title={editorTitle(target, kindLabel)}
       description="A catalog change stays a draft until it is previewed and published."
       footer={
-        <div className="flex w-full items-center justify-end gap-2">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            type="button"
-            disabled={!allowed || editor.isSaving}
-            onClick={() => void editor.save()}
-          >
-            {editor.isSaving ? "Saving..." : "Save draft"}
-          </Button>
-        </div>
+        <EditorFooter
+          canSave={allowed}
+          isSaving={editor.isSaving}
+          onCancel={requestClose}
+          onSave={() => void editor.save()}
+        />
       }
     >
       {allowed ? null : (
         <CapabilityDeniedView message="Your operator account cannot author catalog items." />
       )}
-      <EditorBody allowed={allowed} kind={kind} editor={editor} />
+
+      <div className={isSection ? "grid gap-4 lg:grid-cols-[minmax(340px,420px)_1fr]" : "space-y-4"}>
+        <div className={isSection ? "min-w-0 space-y-3 lg:max-h-[70vh] lg:overflow-y-auto lg:pr-2" : "space-y-3"}>
+          <EditorInputs allowed={allowed} kind={kind} editor={editor} />
+        </div>
+        {isSection ? (
+          <div className="min-w-0">
+            <CatalogEditorSectionPane appId={appId} draft={editor.draft} />
+          </div>
+        ) : null}
+      </div>
+
+      {isConfirmingClose ? (
+        <CatalogDiscardDialog
+          onKeepEditing={() => setIsConfirmingClose(false)}
+          onDiscard={onClose}
+        />
+      ) : null}
     </Modal>
   );
 }

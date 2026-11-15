@@ -509,15 +509,15 @@ describe("Catalog preview gate", () => {
     navState.pathname = `/apps/${APP_ID}/preview/${SECTION_ITEM.id}`;
   });
 
-  it("renders the production renderer at three widths", async () => {
+  it("renders the production renderer in a fit frame and at named widths", async () => {
     await renderPreview();
     const frame = previewFrame();
-    expect(frame.style.width).toBe("1280px");
+    expect(frame.style.width).toBe("");
     expect(frame.textContent).toContain("Restaurant hero headline");
-    clickButton("Tablet (768px)");
+    clickButton("Desktop");
+    expect(frame.style.width).toBe("1280px");
+    clickButton("Tablet");
     expect(frame.style.width).toBe("768px");
-    clickButton("Mobile (375px)");
-    expect(frame.style.width).toBe("375px");
   });
 
   it("keeps publishing unavailable until the preview endpoint records it", async () => {
