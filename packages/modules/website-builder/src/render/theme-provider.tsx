@@ -2,8 +2,15 @@ import React from "react";
 import {
   appearanceCssVariables,
   normalizeAppearanceTokens,
+  responsiveTextRoleStyles,
   type AppearanceTokens,
 } from "../appearance/index.js";
+
+/**
+ * Computed once: the rules reference the provider's own variables, so the same
+ * string is correct for every site and no render recomputes it.
+ */
+const RESPONSIVE_TEXT_RULES = responsiveTextRoleStyles();
 
 export interface ThemeProviderProps {
   /** The site's stored token snapshot; incomplete snapshots receive defaults. */
@@ -34,6 +41,7 @@ export function ThemeProvider({ tokens, children, className = "" }: ThemeProvide
         fontFamily: "var(--cms-font-body)",
       }}
     >
+      <style>{RESPONSIVE_TEXT_RULES}</style>
       {children}
     </div>
   );
