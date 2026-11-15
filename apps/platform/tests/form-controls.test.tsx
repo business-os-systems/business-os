@@ -148,6 +148,15 @@ describe("ScaleField", () => {
     expect(container.querySelector<HTMLInputElement>('[aria-label="Custom value"]')?.value).toBe("");
   });
 
+  it("locks the list when custom values are not allowed", () => {
+    render(
+      <ScaleField {...chrome} value="1rem" steps={steps} allowCustom={false} labelOf={(value) => value} onChange={() => undefined} />
+    );
+    click(selectTriggers(container)[0] ?? null);
+    const labels = [...container.querySelectorAll('[role="option"]')].map((node) => node.textContent);
+    expect(labels.some((label) => label.includes("Custom value"))).toBe(false);
+  });
+
   it("selects a declared step from the list", () => {
     const onChange = vi.fn();
     render(<ScaleField {...chrome} value="" steps={steps} allowCustom labelOf={(value) => value} onChange={onChange} />);

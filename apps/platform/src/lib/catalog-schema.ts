@@ -106,14 +106,6 @@ const themeTokensSchema = z
   .record(z.union([z.string().max(200), z.number()]))
   .superRefine((tokens, ctx) => {
     for (const key of Object.keys(tokens)) {
-      if (BLOCKED_TOKEN_KEY.test(key)) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: [key],
-          message: "A theme token key cannot be a reserved object property.",
-        });
-        continue;
-      }
       if (!isAppearanceTokenKey(key)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
