@@ -564,3 +564,56 @@ describe("Catalog preview gate", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
+
+describe("Editor discard guard", () => {
+  beforeEach(() => {
+    authState.capabilities = [
+      PLATFORM_CAPABILITIES.APPS_READ.code,
+      PLATFORM_CAPABILITIES.APPS_AUTHOR.code,
+    ];
+  });
+
+  it("asks before dropping unsaved edits", async () => {
+    renderPage(<CatalogSectionsPage />);
+    await settle();
+    openNewSection();
+    await settle();
+    fillSectionMetadata("Dirty section", "dirty-section");
+    clickButton("Cancel");
+    await settle();
+    expect(document.body.textContent).toContain("Discard this draft?");
+    clickButton("Keep editing");
+    await settle();
+    expect(document.body.textContent).not.toContain("Discard this draft?");
+  });
+
+  it("closes immediately when the draft is untouched", async () => {
+    renderPage(<CatalogSectionsPage />);
+    await settle();
+    openNewSection();
+    await settle();
+    clickButton("Cancel");
+    await settle();
+    expect(document.body.textContent).not.toContain("Discard this draft?");
+    expect(document.body.textContent).not.toContain("A catalog change stays a draft");
+  });
+});
+
+describe("Theme editor layout", () => {
+  beforeEach(() => {
+    authState.capabilities = [
+      PLATFORM_CAPABILITIES.APPS_READ.code,
+      PLATFORM_CAPABILITIES.APPS_AUTHOR.code,
+    ];
+  });
+
+  it("opens the theme editor without a preview pane", async () => {
+    renderPage(<CatalogThemesPage />);
+    await settle();
+    clickButton("New theme");
+    await settle();
+    expect(document.body.textContent).toContain("A catalog change stays a draft");
+    expect(document.querySelector('[aria-label="Preview"]')).toBeNull();
+    expect(document.body.textContent).toContain("Theme tokens");
+  });
+});

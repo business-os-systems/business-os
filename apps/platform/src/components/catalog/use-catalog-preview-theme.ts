@@ -13,6 +13,30 @@ export interface PreviewThemeOption {
   readonly name: string;
 }
 
+/** The subset of a catalog item this hook needs, kept small for testing. */
+export interface PreviewThemeSource {
+  readonly id: string;
+  readonly definition: Record<string, unknown>;
+}
+
+/**
+ * A theme's tokens, normalised before rendering. A missing theme falls back to
+ * the platform appearance, and a partial or legacy set fills its defaults.
+ */
+export function previewTokensFor(
+  sources: readonly PreviewThemeSource[],
+  themeId: string | null
+): AppearanceTokens {
+  if (themeId === null) {
+    return DEFAULT_APPEARANCE_TOKENS;
+  }
+  const selected = sources.find((source) => source.id === themeId);
+  if (selected === undefined) {
+    return DEFAULT_APPEARANCE_TOKENS;
+  }
+  return normalizeAppearanceTokens(selected.definition.tokens);
+}
+
 /**
  * Published themes of one application, for the preview selector. Reading the
  * list is enough: a theme's tokens come from the record the list already
@@ -31,16 +55,10 @@ export function useCatalogPreviewTheme(appId: string, enabled: boolean) {
     [published]
   );
 
-  function tokensFor(themeId: string | null): AppearanceTokens {
-    if (themeId === null) {
-      return DEFAULT_APPEARANCE_TOKENS;
-    }
-    const selected = published.find((item) => item.id === themeId);
-    if (selected === undefined) {
-      return DEFAULT_APPEARANCE_TOKENS;
-    }
-    return normalizeAppearanceTokens(selected.definition.tokens);
-  }
-
-  return { options, tokensFor, isLoading: items.isLoading, error: items.error };
+  return {
+    options,
+    tokensFor: (themeId: string | null) => previewTokensFor(published, themeId),
+    isLoading: items.isLoading,
+    error: items.error,
+  };
 }
