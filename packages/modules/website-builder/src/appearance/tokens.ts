@@ -11,6 +11,7 @@
  * renderer and the dashboard can all share one contract.
  */
 import { z } from "zod";
+import { isHostedFontStack } from "./fonts.js";
 
 export const APPEARANCE_TOKEN_KEYS = [
   "colorBackground",
@@ -23,6 +24,10 @@ export const APPEARANCE_TOKEN_KEYS = [
   "colorBorder",
   "fontHeading",
   "fontBody",
+  "textHeroSize",
+  "textHeadingSize",
+  "textBodySize",
+  "textSmallSize",
   "radiusSm",
   "radiusMd",
   "radiusLg",
@@ -52,6 +57,11 @@ export type AppearanceTokenPatch = {
 };
 
 const COLOUR_TOKEN = /^#[0-9a-fA-F]{6}$/;
+
+/** One hex rule for the contract, the colour control and the validator. */
+export function isHexColour(value: string): boolean {
+  return COLOUR_TOKEN.test(value);
+}
 const FONT_TOKEN = /^[A-Za-z0-9 ,-]+$/;
 const SHADOW_TOKEN = /^[A-Za-z0-9 .,%()#-]+$/;
 const LENGTH_UNITS = ["px", "rem", "em"] as const;
@@ -64,7 +74,7 @@ function isDecimalDigits(value: string): boolean {
 }
 
 /** Validates 0, 12px, 0.75rem and similar bounded CSS lengths without a regex. */
-function isLengthToken(value: string): boolean {
+export function isLengthToken(value: string): boolean {
   if (value === "0") {
     return true;
   }
@@ -112,6 +122,10 @@ const APPEARANCE_TOKEN_SHAPES = {
   colorBorder: colourTokenSchema,
   fontHeading: fontTokenSchema,
   fontBody: fontTokenSchema,
+  textHeroSize: lengthTokenSchema,
+  textHeadingSize: lengthTokenSchema,
+  textBodySize: lengthTokenSchema,
+  textSmallSize: lengthTokenSchema,
   radiusSm: lengthTokenSchema,
   radiusMd: lengthTokenSchema,
   radiusLg: lengthTokenSchema,
@@ -139,6 +153,10 @@ export const DEFAULT_APPEARANCE_TOKENS: AppearanceTokens = {
   colorBorder: "#E9E2DE",
   fontHeading: "Inter, system-ui, sans-serif",
   fontBody: "Inter, system-ui, sans-serif",
+  textHeroSize: "3.75rem",
+  textHeadingSize: "2.25rem",
+  textBodySize: "1rem",
+  textSmallSize: "0.875rem",
   radiusSm: "0.375rem",
   radiusMd: "0.5rem",
   radiusLg: "0.75rem",
@@ -158,6 +176,10 @@ export const APPEARANCE_CSS_VAR_BY_TOKEN = {
   colorBorder: "--cms-color-border",
   fontHeading: "--cms-font-heading",
   fontBody: "--cms-font-body",
+  textHeroSize: "--cms-text-hero",
+  textHeadingSize: "--cms-text-heading",
+  textBodySize: "--cms-text-body",
+  textSmallSize: "--cms-text-small",
   radiusSm: "--cms-radius-sm",
   radiusMd: "--cms-radius-md",
   radiusLg: "--cms-radius-lg",
@@ -199,6 +221,10 @@ export function normalizeAppearanceTokens(value: unknown): AppearanceTokens {
     colorBorder: pickStoredToken("colorBorder", source),
     fontHeading: pickStoredToken("fontHeading", source),
     fontBody: pickStoredToken("fontBody", source),
+    textHeroSize: pickStoredToken("textHeroSize", source),
+    textHeadingSize: pickStoredToken("textHeadingSize", source),
+    textBodySize: pickStoredToken("textBodySize", source),
+    textSmallSize: pickStoredToken("textSmallSize", source),
     radiusSm: pickStoredToken("radiusSm", source),
     radiusMd: pickStoredToken("radiusMd", source),
     radiusLg: pickStoredToken("radiusLg", source),
@@ -236,10 +262,51 @@ export function appearanceCssVariables(tokens: AppearanceTokens): Record<string,
     [APPEARANCE_CSS_VAR_BY_TOKEN.colorBorder]: tokens.colorBorder,
     [APPEARANCE_CSS_VAR_BY_TOKEN.fontHeading]: tokens.fontHeading,
     [APPEARANCE_CSS_VAR_BY_TOKEN.fontBody]: tokens.fontBody,
+    [APPEARANCE_CSS_VAR_BY_TOKEN.textHeroSize]: tokens.textHeroSize,
+    [APPEARANCE_CSS_VAR_BY_TOKEN.textHeadingSize]: tokens.textHeadingSize,
+    [APPEARANCE_CSS_VAR_BY_TOKEN.textBodySize]: tokens.textBodySize,
+    [APPEARANCE_CSS_VAR_BY_TOKEN.textSmallSize]: tokens.textSmallSize,
     [APPEARANCE_CSS_VAR_BY_TOKEN.radiusSm]: tokens.radiusSm,
     [APPEARANCE_CSS_VAR_BY_TOKEN.radiusMd]: tokens.radiusMd,
     [APPEARANCE_CSS_VAR_BY_TOKEN.radiusLg]: tokens.radiusLg,
     [APPEARANCE_CSS_VAR_BY_TOKEN.shadowCard]: tokens.shadowCard,
     [APPEARANCE_CSS_VAR_BY_TOKEN.spaceSection]: tokens.spaceSection,
   };
+}
+
+/** The four typography roles a theme may size. */
+export const TEXT_SIZE_ROLE_KEYS = [
+  "textHeroSize",
+  "textHeadingSize",
+  "textBodySize",
+  "textSmallSize",
+] as const satisfies readonly AppearanceTokenKey[];
+
+export type TextSizeRoleKey = (typeof TEXT_SIZE_ROLE_KEYS)[number];
+
+/**
+ * Reports why a value cannot be stored for this token, or null when it can.
+ * The catalog uses the same shapes the renderer does, so a saved theme cannot
+ * hold a value delivery would silently replace with a default (FR-018).
+ */
+export function appearanceTokenValueIssue(
+  key: AppearanceTokenKey,
+  value: unknown
+): string | null {
+  if (typeof value !== "string") {
+    return "Store this value as text, for example \"2.5rem\".";
+  }
+  if ((key === "fontHeading" || key === "fontBody") && !isHostedFontStack(value)) {
+    return "Choose a font family the platform hosts.";
+  }
+  const parsed = APPEARANCE_TOKEN_SHAPES[key].safeParse(value);
+  if (parsed.success) {
+    return null;
+  }
+  return parsed.error.issues[0]?.message ?? "This value is not valid for the token.";
+}
+
+/** Narrows an untrusted key so only contract tokens reach the value validator. */
+export function isAppearanceTokenKey(key: string): key is AppearanceTokenKey {
+  return (APPEARANCE_TOKEN_KEYS as readonly string[]).includes(key);
 }

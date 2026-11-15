@@ -1,6 +1,8 @@
 "use client";
 
-import { Checkbox, Input, Label, Select, Textarea } from "@suite/ui";
+import { Checkbox, Label } from "@suite/ui";
+import { GuidedFieldControl } from "./guided-field-control";
+import { PlainFieldControl } from "./plain-field-control";
 import type {
   ConfigFormErrors,
   ConfigFormField,
@@ -21,6 +23,7 @@ interface FieldRenderProps<T extends object> {
   readonly error: string | undefined;
   readonly disabled: boolean;
   readonly inputId: string;
+  readonly labelId: string;
   readonly errorId: string;
   readonly onChange: (name: keyof T & string, value: string) => void;
 }
@@ -93,61 +96,45 @@ function CheckboxField<T extends object>({
 }
 
 function FieldControl<T extends object>({
-  field, value, error, disabled, inputId, errorId, onChange,
+  field, value, error, disabled, inputId, labelId, errorId, onChange,
 }: FieldRenderProps<T>) {
   if (field.type === "checkbox") {
     return null;
   }
-  if (field.type === "select") {
+  if (field.type === "color" || field.type === "scale" || field.type === "multi-select") {
     return (
-      <Select
-        id={inputId}
+      <GuidedFieldControl
+        field={field}
         value={value}
-        options={field.options}
+        inputId={inputId}
+        labelId={labelId}
         disabled={disabled}
         hasError={error !== undefined}
-        aria-describedby={describedBy(error, errorId)}
-        aria-invalid={error === undefined ? undefined : true}
+        describedBy={describedBy(error, errorId)}
         onChange={(next) => onChange(field.name, next)}
       />
     );
   }
-  if (field.type === "textarea") {
-    return (
-      <Textarea
-        id={inputId}
-        value={value}
-        disabled={disabled}
-        maxLength={field.maxLength}
-        rows={field.rows}
-        placeholder={field.placeholder}
-        aria-invalid={error === undefined ? undefined : true}
-        aria-describedby={describedBy(error, errorId)}
-        onChange={(event) => onChange(field.name, event.target.value)}
-      />
-    );
-  }
   return (
-    <Input
-      id={inputId}
-      type={field.type === "datetime-local" ? "datetime-local" : "text"}
+    <PlainFieldControl
+      field={field}
       value={value}
       disabled={disabled}
-      maxLength={field.type === "text" ? field.maxLength : undefined}
-      placeholder={field.placeholder}
-      aria-invalid={error === undefined ? undefined : true}
-      aria-describedby={describedBy(error, errorId)}
-      onChange={(event) => onChange(field.name, event.target.value)}
+      inputId={inputId}
+      hasError={error !== undefined}
+      describedBy={describedBy(error, errorId)}
+      onChange={(next) => onChange(field.name, next)}
     />
   );
 }
 
 function StandardField<T extends object>({
-  field, value, error, disabled, inputId, errorId, onChange,
+  field, value, error, disabled, inputId, labelId, errorId, onChange,
 }: FieldRenderProps<T>) {
+  const labelTarget = field.type === "multi-select" ? undefined : inputId;
   return (
     <div className={fieldWrapperClass(field)}>
-      <Label htmlFor={inputId} className="text-xs font-medium text-text">
+      <Label id={labelId} htmlFor={labelTarget} className="text-xs font-medium text-text">
         <FieldLabel field={field} />
         {field.required ? <span className="ml-0.5 text-danger">*</span> : null}
       </Label>
@@ -157,6 +144,7 @@ function StandardField<T extends object>({
         error={error}
         disabled={disabled}
         inputId={inputId}
+        labelId={labelId}
         errorId={errorId}
         onChange={onChange}
       />
@@ -176,6 +164,7 @@ export function ConfigFormRenderer<T extends object>({
     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
       {fields.map((field) => {
         const inputId = `${formId}-${field.name}`;
+        const labelId = `${inputId}-label`;
         const errorId = `${inputId}-error`;
         const fieldProps: FieldRenderProps<T> = {
           field,
@@ -183,6 +172,7 @@ export function ConfigFormRenderer<T extends object>({
           error: errors[field.name],
           disabled,
           inputId,
+          labelId,
           errorId,
           onChange,
         };

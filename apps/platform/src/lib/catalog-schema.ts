@@ -6,6 +6,10 @@ import {
   type BlockType,
   type PageAst,
 } from "@suite/website-builder/ast";
+import {
+  appearanceTokenValueIssue,
+  isAppearanceTokenKey,
+} from "@suite/website-builder/appearance";
 import { BLOCK_BLUEPRINTS } from "@suite/website-builder/editor";
 import {
   CATALOG_ITEM_KINDS,
@@ -93,12 +97,29 @@ function unsafeTokenIssues(definition: Record<string, unknown>): CatalogIssue[] 
     }));
 }
 
+/**
+ * The theme payload is a closed key set (FR-017): only tokens the appearance
+ * contract declares may be stored, so the guided fields and the validator can
+ * never disagree. Any key is reported by name so the JSON view can repair it.
+ */
 const themeTokensSchema = z
   .record(z.union([z.string().max(200), z.number()]))
-  .refine(
-    (tokens) => Object.keys(tokens).every((key) => !BLOCKED_TOKEN_KEY.test(key)),
-    { message: "A theme token key cannot be a reserved object property." },
-  );
+  .superRefine((tokens, ctx) => {
+    for (const key of Object.keys(tokens)) {
+      if (!isAppearanceTokenKey(key)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [key],
+          message: 'Unknown appearance key "' + key + '".',
+        });
+        continue;
+      }
+      const valueIssue = appearanceTokenValueIssue(key, tokens[key]);
+      if (valueIssue !== null) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: [key], message: valueIssue });
+      }
+    }
+  });
 
 const themeDefinitionSchema = z
   .object({
